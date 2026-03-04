@@ -1,0 +1,45 @@
+{
+  "generated_at": "2026-03-04T05:19:40.837349+00:00",
+  "updated_date": "20260223-20260304",
+  "carryover_days": 9,
+  "items": [
+    {
+      "id": "2602.11630v1",
+      "title": "Neuro-Symbolic Multitasking: A Unified Framework for Discovering Generalizable Solutions to PDE Families",
+      "abstract": "Solving Partial Differential Equations (PDEs) is fundamental to numerous scientific and engineering disciplines. A common challenge arises from solving the PDE families, which are characterized by sharing an identical mathematical structure but varying in specific parameters. Traditional numerical methods, such as the finite element method, need to independently solve each instance within a PDE family, which incurs massive computational cost. On the other hand, while recent advancements in machine learning PDE solvers offer impressive computational speed and accuracy, their inherent ``black-box\" nature presents a considerable limitation. These methods primarily yield numerical approximations, thereby lacking the crucial interpretability provided by analytical expressions, which are essential for deeper scientific insight. To address these limitations, we propose a neuro-assisted multitasking symbolic PDE solver framework for PDE family solving, dubbed NMIPS. In particular, we employ multifactorial optimization to simultaneously discover the analytical solutions of PDEs. To enhance computational efficiency, we devise an affine transfer method by transferring learned mathematical structures among PDEs in a family, avoiding solving each PDE from scratch. Experimental results across multiple cases demonstrate promising improvements over existing baselines, achieving up to a $\\sim$35.7% increase in accuracy while providing interpretable analytical solutions.",
+      "authors": [
+        "Yipeng Huang",
+        "Dejun Xu",
+        "Zexin Lin",
+        "Zhenzhong Wang",
+        "Min Jiang"
+      ],
+      "primary_category": "cs.AI",
+      "categories": [
+        "cs.AI"
+      ],
+      "published": "2026-02-12T06:25:44+00:00",
+      "link": "https://arxiv.org/pdf/2602.11630v1",
+      "tags": [
+        "query:SR"
+      ],
+      "llm_score": 8.0,
+      "llm_evidence_en": "discovering generalizable solutions to PDE families and neuro-symbolic framework",
+      "llm_evidence_cn": "发现偏微分方程族的泛化解及神经符号框架",
+      "llm_evidence": "发现偏微分方程族的泛化解及神经符号框架",
+      "canonical_evidence": "发现偏微分方程族的泛化解及神经符号框架",
+      "llm_tldr_en": "A neuro-symbolic framework for discovering mathematical solutions to families of partial differential equations.",
+      "llm_tldr_cn": "一种用于发现偏微分方程族数学解的神经符号框架，提升了科学发现的泛化性。",
+      "llm_tldr": "一种用于发现偏微分方程族数学解的神经符号框架，提升了科学发现的泛化性。",
+      "llm_tags": [
+        "query:sr"
+      ],
+      "matched_query_tag": "query:sr",
+      "matched_query_text": "automated discovery of mathematical expressions from data",
+      "matched_requirement_id": "req-3",
+      "selection_source": "carryover_cache",
+      "paper_id": "2602.11630v1",
+      "carry_days": 1
+    }
+  ]
+}
