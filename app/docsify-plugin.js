@@ -2451,13 +2451,24 @@ window.$docsify = {
         );
       };
 
+      const syncPageTypeClasses = ({
+        isHomePage = false,
+        isReportPage = false,
+        isPaperPage = false,
+      } = {}) => {
+        const body = document.body;
+        if (!body || !body.classList) return;
+        body.classList.toggle('dpr-home-page', !!isHomePage);
+        body.classList.toggle('dpr-report-page', !!isReportPage);
+        body.classList.toggle('dpr-landing-page', !!(isHomePage || isReportPage));
+        body.classList.toggle('dpr-paper-page', !!isPaperPage);
+      };
+
       const applyPaperTitleBar = () => {
         const file = vm && vm.route ? vm.route.file : '';
         if (!isPaperRouteFile(file)) {
-          document.body.classList.remove('dpr-paper-page');
           return;
         }
-        document.body.classList.add('dpr-paper-page');
 
         const section = document.querySelector('.markdown-section');
         if (!section) return;
@@ -3591,6 +3602,7 @@ window.$docsify = {
         const isReportPage = isReportRouteFile(file);
         const isPaperPage = isPaperRouteFile(file);
         const isLandingLikePage = isHomePage || isReportPage;
+        syncPageTypeClasses({ isHomePage, isReportPage, isPaperPage });
 
         // A. 对正文区域进行一次全局公式渲染（支持 $...$ / $$...$$）
         const mainContent = document.querySelector('.markdown-section');
