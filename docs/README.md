@@ -6,115 +6,79 @@
 </div>
 
 ## 每次日报
-- 最新运行日期：2026-02-09 ~ 2026-03-10
-- 运行时间：2026-03-10 17:23:42 UTC
+- 最新运行日期：2026-03-10
+- 运行时间：2026-03-10 19:36:31 UTC
 - 运行状态：成功
-- 本次总论文数：31
-- 精读区：19
+- 本次总论文数：19
+- 精读区：7
 - 速读区：12
 
 ### 今日简报（AI）
-今日精选 31 篇 RL 论文，深度解析了从算法稳定性突破到工业调度优化的多项满分研究。
-核心看点在于利用各向同性高斯表示提升 DRL 稳定性，以及 Mamba 架构在柔性车间调度中的卓越序列建模表现。
-建议重点关注表示学习与新型架构的融合，这是解决复杂决策与控制难题的关键趋势。
-- 详情：[/20260209-20260310/README](/20260209-20260310/README)
+今日精选 19 篇 RL 论文，深度拆解混合动作空间优化与大规模集成策略的多样性重构。
+重点关注 Hybrid TD3 如何通过解决高估偏差实现稳定优化，以及大规模 RL 中集成策略梯度的性能飞跃。
+建议优先研读两篇 9 分力作，快速掌握复杂动作空间与大规模系统下的稳定性前沿方案。
+- 详情：[/202603/10/README](/202603/10/README)
 
 ### 精读区论文标签
-1. [Stable Deep Reinforcement Learning via Isotropic Gaussian Representations](/20260209-20260310/2602.19373v1-stable-deep-reinforcement-learning-via-isotropic-gaussian-representations)  
-   标签：评分：10.0/10、query:drl
-   evidence：通过各向同性高斯表示提高训练稳定性
-2. [Mamba Meets Scheduling: Learning to Solve Flexible Job Shop Scheduling with Efficient Sequence Modeling](/20260209-20260310/2602.21546v1-mamba-meets-scheduling-learning-to-solve-flexible-job-shop-scheduling-with-efficient-sequence-modeling)  
-   标签：评分：10.0/10、query:drl-jsp
-   evidence：学习解决柔性作业车间调度问题
-3. [Learning Flexible Job Shop Scheduling under Limited Buffers and Material Kitting Constraints](/20260209-20260310/2602.24180v1-learning-flexible-job-shop-scheduling-under-limited-buffers-and-material-kitting-constraints)  
-   标签：评分：10.0/10、query:drl-jsp
-   evidence：使用深度强化学习解决柔性作业车间调度问题
-4. [Learning Memory-Enhanced Improvement Heuristics for Flexible Job Shop Scheduling](/20260209-20260310/2603.02846v1-learning-memory-enhanced-improvement-heuristics-for-flexible-job-shop-scheduling)  
-   标签：评分：10.0/10、query:drl-jsp
-   evidence：深度强化学习用于柔性作业车间调度
-5. [RESCHED: Rethinking Flexible Job Shop Scheduling from a Transformer-based Architecture with Simplified States](/20260209-20260310/2603.07020v1-resched-rethinking-flexible-job-shop-scheduling-from-a-transformer-based-architecture-with-simplified-states)  
-   标签：评分：10.0/10、query:drl-jsp
-   evidence：使用深度强化学习解决柔性作业车间调度问题
-6. [Breaking the Grid: Distance-Guided Reinforcement Learning in Large Discrete and Hybrid Action Spaces](/20260209-20260310/2602.08616v1-breaking-the-grid-distance-guided-reinforcement-learning-in-large-discrete-and-hybrid-action-spaces)  
+1. [Hybrid TD3: Overestimation Bias Analysis and Stable Policy Optimization for Hybrid Action Space](/202603/10/2603.01302v1-hybrid-td3-overestimation-bias-analysis-and-stable-policy-optimization-for-hybrid-action-space)  
+   标签：评分：9.0/10、query:drl
+   evidence：提高训练稳定性与过度估计偏差分析
+2. [Rethinking Policy Diversity in Ensemble Policy Gradient in Large-Scale Reinforcement Learning](/202603/10/2603.01741v2-rethinking-policy-diversity-in-ensemble-policy-gradient-in-large-scale-reinforcement-learning)  
+   标签：评分：9.0/10、query:drl
+   evidence：提高大规模强化学习的训练稳定性和探索能力
+3. [Wasserstein Proximal Policy Gradient](/202603/10/2603.02576v1-wasserstein-proximal-policy-gradient)  
+   标签：评分：9.0/10、query:drl
+   evidence：基于 Wasserstein 几何的策略梯度数学基础
+4. [GIPO: Gaussian Importance Sampling Policy Optimization](/202603/10/2603.03955v1-gipo-gaussian-importance-sampling-policy-optimization)  
+   标签：评分：9.0/10、query:drl
+   evidence：通过高斯信任权重提高训练稳定性和收敛性
+5. [A Constrained RL Approach for Cost-Efficient Delivery of Latency-Sensitive Applications](/202603/10/2603.04353v1-a-constrained-rl-approach-for-cost-efficient-delivery-of-latency-sensitive-applications)  
    标签：评分：9.0/10、query:drl-jsp
-   evidence：针对大规模离散动作空间调度问题的强化学习
-7. [ExO-PPO: an Extended Off-policy Proximal Policy Optimization Algorithm](/20260209-20260310/2602.09726v1-exo-ppo-an-extended-off-policy-proximal-policy-optimization-algorithm)  
-   标签：评分：9.0/10、query:drl
-   evidence：提高PPO的训练稳定性和样本效率
-8. [A Controlled Study of Double DQN and Dueling DQN Under Cross-Environment Transfer](/20260209-20260310/2602.09810v2-a-controlled-study-of-double-dqn-and-dueling-dqn-under-cross-environment-transfer)  
-   标签：评分：9.0/10、query:drl
-   evidence：Double DQN 与 Dueling DQN 架构稳定性的研究
-9. [Online Causal Kalman Filtering for Stable and Effective Policy Optimization](/20260209-20260310/2602.10609v1-online-causal-kalman-filtering-for-stable-and-effective-policy-optimization)  
-   标签：评分：9.0/10、query:drl
-   evidence：使用卡尔曼滤波稳定策略优化的技术
-10. [VESPO: Variational Sequence-Level Soft Policy Optimization for Stable Off-Policy LLM Training](/20260209-20260310/2602.10693v2-vespo-variational-sequence-level-soft-policy-optimization-for-stable-off-policy-llm-training)  
-   标签：评分：9.0/10、query:drl
-   evidence：用于稳定离线策略训练的变分公式
-11. [Mirror descent actor-critic methods for entropy regularised MDPs in general spaces: stability and convergence](/20260209-20260310/2602.10838v1-mirror-descent-actor-critic-methods-for-entropy-regularised-mdps-in-general-spaces-stability-and-convergence)  
-   标签：评分：9.0/10、query:drl
-   evidence：演员-评论家方法的稳定性与收敛性
-12. [TempoNet: Slack-Quantized Transformer-Guided Reinforcement Scheduler for Adaptive Deadline-Centric Real-Time Dispatchs](/20260209-20260310/2602.18109v1-temponet-slack-quantized-transformer-guided-reinforcement-scheduler-for-adaptive-deadline-centric-real-time-dispatchs)  
+   evidence：用于网络调度和资源分配的受限深度强化学习
+6. [Reinforcement learning-based dynamic cleaning scheduling framework for solar energy system](/202603/10/2603.07518v1-reinforcement-learning-based-dynamic-cleaning-scheduling-framework-for-solar-energy-system)  
    标签：评分：9.0/10、query:drl-jsp
-   evidence：用于实时调度的强化学习调度器
-13. [ARLArena: A Unified Framework for Stable Agentic Reinforcement Learning](/20260209-20260310/2602.21534v1-arlarena-a-unified-framework-for-stable-agentic-reinforcement-learning)  
+   evidence：基于强化学习的动态清洗调度
+7. [Model-based Offline RL via Robust Value-Aware Model Learning with Implicitly Differentiable Adaptive Weighting](/202603/10/2603.08118v1-model-based-offline-rl-via-robust-value-aware-model-learning-with-implicitly-differentiable-adaptive-weighting)  
    标签：评分：9.0/10、query:drl
-   evidence：稳定智能体强化学习及训练崩溃分析框架
-14. [Stabilizing Policy Optimization via Logits Convexity](/20260209-20260310/2603.00963v1-stabilizing-policy-optimization-via-logits-convexity)  
-   标签：评分：9.0/10、query:drl
-   evidence：通过Logits凸性稳定策略优化
-15. [Align and Filter: Improving Performance in Asynchronous On-Policy RL](/20260209-20260310/2603.01365v1-align-and-filter-improving-performance-in-asynchronous-on-policy-rl)  
-   标签：评分：9.0/10、query:drl
-   evidence：提高异步强化学习中的训练稳定性
-16. [GAC: Stabilizing Asynchronous RL Training for LLMs via Gradient Alignment Control](/20260209-20260310/2603.01501v1-gac-stabilizing-asynchronous-rl-training-for-llms-via-gradient-alignment-control)  
-   标签：评分：9.0/10、query:drl
-   evidence：提高异步强化学习的训练稳定性
-17. [Generalized Per-Agent Advantage Estimation for Multi-Agent Policy Optimization](/20260209-20260310/2603.02654v1-generalized-per-agent-advantage-estimation-for-multi-agent-policy-optimization)  
-   标签：评分：9.0/10、query:drl
-   evidence：多智能体策略优化算法
-18. [BandPO: Bridging Trust Regions and Ratio Clipping via Probability-Aware Bounds for LLM Reinforcement Learning](/20260209-20260310/2603.04918v1-bandpo-bridging-trust-regions-and-ratio-clipping-via-probability-aware-bounds-for-llm-reinforcement-learning)  
-   标签：评分：9.0/10、query:drl
-   evidence：通过概率感知边界提高训练稳定性和收敛性
-19. [Global Convergence of Average Reward Constrained MDPs with Neural Critic and General Policy Parameterization](/20260209-20260310/2603.07698v1-global-convergence-of-average-reward-constrained-mdps-with-neural-critic-and-general-policy-parameterization)  
-   标签：评分：9.0/10、query:drl
-   evidence：带神经评论器的受限MDP的全局收敛性
+   evidence：提高离线强化学习的训练稳定性并缓解梯度爆炸
 
 ### 速读区论文标签
-1. [Flexible Entropy Control in RLVR with Gradient-Preserving Perspective](/20260209-20260310/2602.09782v1-flexible-entropy-control-in-rlvr-with-gradient-preserving-perspective)  
+1. [Temporal Difference Learning with Constrained Initial Representations](/202603/10/2602.11800v1-temporal-difference-learning-with-constrained-initial-representations)  
    标签：评分：8.0/10、query:drl
-   evidence：强化学习训练稳定性中的熵控制
-2. [What Makes Value Learning Efficient in Residual Reinforcement Learning?](/20260209-20260310/2602.10539v1-what-makes-value-learning-efficient-in-residual-reinforcement-learning)  
+   evidence：稳定离策强化学习训练的技术
+2. [Dual-Granularity Contrastive Reward via Generated Episodic Guidance for Efficient Embodied RL](/202603/10/2602.12636v1-dual-granularity-contrastive-reward-via-generated-episodic-guidance-for-efficient-embodied-rl)  
    标签：评分：8.0/10、query:drl
-   evidence：提高残差强化学习的效率与稳定性
-3. [Neuro-symbolic Action Masking for Deep Reinforcement Learning](/20260209-20260310/2602.10598v1-neuro-symbolic-action-masking-for-deep-reinforcement-learning)  
+   evidence：高效具身强化学习框架
+3. [Unifying Model-Free Efficiency and Model-Based Representations via Latent Dynamics](/202603/10/2602.12643v1-unifying-model-free-efficiency-and-model-based-representations-via-latent-dynamics)  
    标签：评分：8.0/10、query:drl
-   evidence：通过动作掩码约束探索并改进深度强化学习训练
-4. [Data-Efficient Hierarchical Goal-Conditioned Reinforcement Learning via Normalizing Flows](/20260209-20260310/2602.11142v1-data-efficient-hierarchical-goal-conditioned-reinforcement-learning-via-normalizing-flows)  
+   evidence：新型强化学习算法ULD
+4. [Experiential Reinforcement Learning](/202603/10/2602.13949v1-experiential-reinforcement-learning)  
    标签：评分：8.0/10、query:drl
-   evidence：分层目标条件强化学习
-5. [G-LNS: Generative Large Neighborhood Search for LLM-Based Automatic Heuristic Design](/20260209-20260310/2602.08253v1-g-lns-generative-large-neighborhood-search-for-llm-based-automatic-heuristic-design)  
-   标签：评分：7.0/10、query:drl-jsp
-   evidence：组合优化问题的自动启发式设计
-6. [Contextual Rollout Bandits for Reinforcement Learning with Verifiable Rewards](/20260209-20260310/2602.08499v1-contextual-rollout-bandits-for-reinforcement-learning-with-verifiable-rewards)  
+   evidence：强化学习的新训练范式
+5. [Provable and Practical In-Context Policy Optimization for Self-Improvement](/202603/10/2603.01335v1-provable-and-practical-in-context-policy-optimization-for-self-improvement)  
    标签：评分：7.0/10、query:drl
-   evidence：调度回滚以提高强化学习训练的稳定性和效率
-7. [Finite-State Controllers for (Hidden-Model) POMDPs using Deep Reinforcement Learning](/20260209-20260310/2602.08734v1-finite-state-controllers-for-hidden-model-pomdps-using-deep-reinforcement-learning)  
+   evidence：用于自我提升的上下文内策略优化
+6. [Scaling Tasks, Not Samples: Mastering Humanoid Control through Multi-Task Model-Based Reinforcement Learning](/202603/10/2603.01452v1-scaling-tasks-not-samples-mastering-humanoid-control-through-multi-task-model-based-reinforcement-learning)  
    标签：评分：7.0/10、query:drl
-   evidence：利用深度强化学习和神经策略解决部分可观测马尔可夫决策过程
-8. [Robust Policy Optimization to Prevent Catastrophic Forgetting](/20260209-20260310/2602.08813v1-robust-policy-optimization-to-prevent-catastrophic-forgetting)  
+   evidence：多任务模型强化学习架构
+7. [LLM-assisted Semantic Option Discovery for Facilitating Adaptive Deep Reinforcement Learning](/202603/10/2603.01488v1-llm-assisted-semantic-option-discovery-for-facilitating-adaptive-deep-reinforcement-learning)  
    标签：评分：7.0/10、query:drl
-   evidence：提高RLHF训练的稳定性和鲁棒性
-9. [The Critical Horizon: Inspection Design Principles for Multi-Stage Operations and Deep Reasoning](/20260209-20260310/2602.09394v2-the-critical-horizon-inspection-design-principles-for-multi-stage-operations-and-deep-reasoning)  
-   标签：评分：6.0/10、query:drl-jsp
-   evidence：多阶段制造运营中的信用分配问题
-10. [Patch the Distribution Mismatch: RL Rewriting Agent for Stable Off-Policy SFT](/20260209-20260310/2602.11220v1-patch-the-distribution-mismatch-rl-rewriting-agent-for-stable-off-policy-sft)  
+   evidence：LLM辅助的语义选项发现用于自适应深度强化学习
+8. [Training Dynamics of Softmax Self-Attention: Fast Global Convergence via Preconditioning](/202603/10/2603.01514v1-training-dynamics-of-softmax-self-attention-fast-global-convergence-via-preconditioning)  
+   标签：评分：7.0/10、query:drl
+   evidence：通过预处理在训练动力学中实现快速全局收敛
+9. [When Does RL Help Medical VLMs? Disentangling Vision, SFT, and RL Gains](/202603/10/2603.01301v1-when-does-rl-help-medical-vlms-disentangling-vision-sft-and-rl-gains)  
    标签：评分：6.0/10、query:drl
-   evidence：用于稳定离策微调的强化学习智能体
-11. [Divide and Learn: Multi-Objective Combinatorial Optimization at Scale](/20260209-20260310/2602.11346v1-divide-and-learn-multi-objective-combinatorial-optimization-at-scale)  
-   标签：评分：6.0/10、query:drl-jsp
-   evidence：利用在线学习解决大规模多目标组合优化问题
-12. [Composable Model-Free RL for Navigation with Input-Affine Systems](/20260209-20260310/2602.12492v1-composable-model-free-rl-for-navigation-with-input-affine-systems)  
+   evidence：解构训练后强化学习的增益
+10. [Learning Structured Reasoning via Tractable Trajectory Control](/202603/10/2603.01641v1-learning-structured-reasoning-via-tractable-trajectory-control)  
    标签：评分：6.0/10、query:drl
-   evidence：用于动态导航的无模型强化学习
+   evidence：强化学习过程中的结构化推理与轨迹控制
+11. [Orchestrating Multimodal DNN Workloads in Wireless Neural Processing](/202603/10/2603.02109v1-orchestrating-multimodal-dnn-workloads-in-wireless-neural-processing)  
+   标签：评分：6.0/10、query:drl-jsp
+   evidence：加速器级DNN调度与工作负载编排
+12. [Robometer: Scaling General-Purpose Robotic Reward Models via Trajectory Comparisons](/202603/10/2603.02115v1-robometer-scaling-general-purpose-robotic-reward-models-via-trajectory-comparisons)  
+   标签：评分：6.0/10、query:drl
+   evidence：用于轨迹比较的奖励建模框架
 
 
 <div class="dpr-home-promo-card">

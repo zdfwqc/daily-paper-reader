@@ -1,0 +1,467 @@
+Title: Dual-Granularity Contrastive Reward via Generated Episodic Guidance for Efficient Embodied RL
+
+URL Source: https://arxiv.org/pdf/2602.12636v1
+
+Published Time: Mon, 16 Feb 2026 01:30:49 GMT
+
+Number of Pages: 21
+
+Markdown Content:
+# Dual-Granularity Contrastive Reward via Generated Episodic Guidance for Efficient Embodied RL 
+
+Xin Liu 1 2 Yixuan Li 1 2 Yuhui Chen 1 2 Yuxing Qin 1 2 Haoran Li 1 2 Dongbin Zhao 1 2 
+
+# Abstract 
+
+Designing suitable rewards poses a significant challenge in reinforcement learning (RL), espe-cially for embodied manipulation. Trajectory suc-cess rewards are suitable for human judges or model fitting, but the sparsity severely limits RL sample efficiency. While recent methods have ef-fectively improved RL via dense rewards, they rely heavily on high-quality human-annotated data or abundant expert supervision. To tackle these issues, this paper proposes Dual-granularity contrastive reward via generated Episodic Guid-ance (DEG), a novel framework to seek sample-efficient dense rewards without requiring human annotations or extensive supervision. Leverag-ing the prior knowledge of large video gener-ation models, DEG only needs a small num-ber of expert videos for domain adaptation to generate dedicated task guidance for each RL episode. Then, the proposed dual-granularity re-ward that balances coarse-grained exploration and fine-grained matching, will guide the agent to effi-ciently approximate the generated guidance video sequentially in the contrastive self-supervised la-tent space, and finally complete the target task. Extensive experiments on 18 diverse tasks across both simulation and real-world settings show that DEG can not only serve as an efficient exploration stimulus to help the agent quickly discover sparse success rewards, but also guide effective RL and stable policy convergence independently. 
+
+# 1. Introduction 
+
+Although supervised imitation learning (behavior cloning) has shown considerable policy-shaping capabilities in 
+
+> 1
+
+State Key Laboratory of Multimodal Artificial Intelligence Systems, Institute of Automation, Chinese Academy of Sci-ences 2School of Artificial Intelligence, University of Chinese Academy of Sciences. Correspondence to: Haoran Li <lihao-ran2015@ia.ac.cn >.
+
+Preprint. January 28, 2026. RL expert guide  
+
+> (Finetuned Video
+> Generation Model)
+> Episodic Guidance
+> (Generated
+> task video)
+> Open the drawer
+> Initial
+> frame Each RL episode (diverse initial distribution) Dual-granularity contrastive
+> dense reward
+
+# DEG   
+
+> Only a few expert videos No human annotation Sample-efficient RL
+> prompt
+> Finetune
+
+Figure 1. The pipeline of the proposed DEG. Without requiring human annotations or extensive supervision, DEG enables sample-efficient RL via dual-granularity contrastive dense reward based on the generated episodic video guidance. 
+
+robotics control (Chi et al., 2025; Chen et al., 2024a), au-tonomous driving (Kiran et al., 2021; Jiang et al., 2025), and the currently booming field of large language model fine-tuning (Hu et al., 2022; Li et al., 2025), two factors severely limit its upper bound of policy performance and application scenarios: (i) its reliance on large amounts of expert data, and (ii) its susceptibility to compounding errors (Zare et al., 2024). In contrast, RL can effectively address these two issues, making it a focus once again after game artificial intelligence (AI) (Mnih et al., 2015). Despite its advantages, RL also faces a tricky problem: it requires sufficient envi-ronmental interactions to support the agent’s trial-and-error and policy refinement. To solve this problem, researchers have made numerous attempts in different directions, includ-ing improving representation modules (Yarats et al., 2022; Laskin et al., 2020), expanding training data (Seo et al., 2023; Deng et al., 2022; Hafner et al., 2025), exploring multi-task potential (Sun et al., 2025; Liu et al., 2025a), and so on. These advances demonstrate that, driven by well-designed rewards, RL is able to support sample-efficient policy learning processes in various scenarios. However, how to design appropriate rewards for RL poses another challenge. The most primitive approach is to assign binary success-or-failure rewards to entire trajectories (Luo et al., 2025). Such rewards are not only easy for humans to judge or provide feedback on, but also simple for (large) re-ward models to learn and fit (Lee et al., 2026). Yet their spar-sity often leads to low sample efficiency in RL, especially 1
+
+> arXiv:2602.12636v1 [cs.LG] 13 Feb 2026 Dual-Granularity Contrastive Reward via Generated Episodic Guidance for Efficient Embodied RL
+
+in domains with large state and action spaces. Therefore, suitable dense rewards are often the key to achieving sample-efficient RL. Currently, common public benchmarks (Tassa et al., 2018; Mnih et al., 2015) in the RL field usually pro-vide effective dense feedback, but this is often the result of painstaking manual design by human experts (Cobbe et al., 2020). In manipulation tasks with stage-varying goals and complex interactions (Yu et al., 2020), manually designing dense rewards is even quite challenging for experts (McLean et al., 2025). Thus, some recent progress has aimed to real-ize automated dense reward design for manipulation tasks, attempting to derive dense rewards from expert demonstra-tions by leveraging advanced techniques such as adversarial learning (Karnan et al., 2022), generative AI (Chen et al., 2025a), and vision-language large models (Tan et al., 2025). Nevertheless, these methods either rely on large volumes of expert supervision, or require massive amounts of manually annotated data. The above discussion naturally leads to a question: Can we design dense rewards for sample-efficient RL with minimal use of expert data and no reliance on manual annotations? 
+
+A novel framework named Dual-granularity contrastive re-ward via generated Episodic Guidance (DEG) is proposed to answer this open question. DEG leverages the prior knowl-edge of large models to overcome the challenge of scarce data. It finetunes open-source video generation models with a tiny number of expert videos (only 3-5 clips) for domain adaptation, familiarizing the generator with the dynamics and workflow of target tasks. The fine-tuned video generator then acts as a guide, producing an expert guidance video tailored to each episode with diverse initial states in the RL process. Via contrastive learning, DEG aligns the noisy generated videos with high-fidelity real observations, and maps the semantic distance between observations to their self-supervised latent distance. In the latent space, DEG calculates a novel dual-granularity reward that comprises a coarse-grained exploration incentive and a fine-grained matching incentive. The former drives the agent to roughly imitate the guidance video sequentially, which is achieved via a relatively loose threshold judging imitation progress. The latter, by contrast, focuses on rewarding precise imita-tions that closely match the guidance video within the rough movements. It ensures the attention on fine-grained details (such as delicate interactions with objects), leading to the refinement of the policy from rough to accurate. Through the organic integration of these two components, the dual-granularity reward guides the agent to efficiently and accu-rately approximate the generated guidance and ultimately complete the target task, as shown in Figure 1. We conduct extensive experiments on 18 manipulation tasks across both simulation and real-world settings. DEG can serve as an efficient intrinsic stimulus to help the agent quickly discover sparse success rewards, matching (or even outperforming) manually designed dense rewards by hu-man experts. It can also guide effective RL and achieve stable policy convergence independently, surpassing state-of-the-art reward engineering approaches with much less supervision required. We summarize the contributions of our paper as follows: • We propose a novel framework of dense reward de-sign, dubbed Dual-granularity contrastive reward via generated Episodic Guidance (DEG), for efficient em-bodied RL. With minimal use of expert videos and no reliance on manual annotations, DEG reward can not only help the agent quickly discover sparse success rewards, but also independently guide effective RL and achieve stable policy convergence. • Through finetuning open-source video generation mod-els, DEG requires only a few expert videos to gen-erate dedicated task guidance for each RL episode with diverse initial states. A novel dual-granularity reward that balances coarse-grained exploration and fine-grained matching, will drive the agent to efficiently imitate the guidance in the contrastive latent space and finally complete the target task. • We conduct extensive experiments on a set of challeng-ing manipulation tasks, in both simulation and real-world settings. With the aid of sparse success feedback, DEG enables efficient RL across all 18 tasks, match-ing the performance of dense rewards handcrafted by human experts. In addition, DEG also outperforms state-of-the-art baselines on 12 reward-free tasks, with much less expert supervision required. 
+
+# 2. Related Works 
+
+2.1. Manipulation Policy Learning 
+
+Robotic manipulation has seen significant progress through behavior cloning, with recent architectures like Diffusion Policy (Chi et al., 2025) and ACT (Zhao et al., 2023) demon-strating high-performance imitation in modeling complex behavior distributions from expert data. However, BC re-mains constrained by the quality of demonstrations and struggles with sub-optimal data (Schulman et al., 2017; Kostrikov et al., 2022). To enable self-improvement, RL is often employed for policy fine-tuning (Schulman et al., 2017; Luo et al., 2025; Kostrikov et al., 2022). By inter-acting with the environment and receiving reward signals, agents can refine their behavior beyond the expert demon-strations. Despite its potential, RL manipulation tasks are frequently hindered by the ”reward engineering” bottleneck, where defining reward signals in unstructured settings re-quires manual effort or privileged state information that is not practical (Chen et al., 2025b; Singh et al., 2019). To 2Dual-Granularity Contrastive Reward via Generated Episodic Guidance for Efficient Embodied RL 
+
+overcome this, our approach focuses on synthesizing reward signals for manipulation policy improvement. 
+
+2.2. Learning from Videos 
+
+Based on the relationship with the task domain, videos can be divided into cross-domain videos and in-domain videos. Cross-domain videos are usually abundant in quantity, but there is a gap between them and the target task in terms of observation and action spaces (Xiao et al., 2022; Liu et al., 2025c). Therefore, some existing works often use them as auxiliaries to improve the performance or efficiency of existing policy learning pipelines, such as enhancing cross-domain representation (Xiao et al., 2022) or pre-training universal latent representations (Ye et al., 2025; Chen et al., 2024b). In contrast, in-domain videos have an extremely high density of available information, but they are difficult to obtain directly from the Internet and need to be manually acquired at a high cost. Although many works have proved that expert videos can serve as the main (Schmidt & Jiang, 2024; Ye et al., 2022) or even the only source of supervision signals (Giammarino et al., 2024; Liu et al., 2025d; Chen et al., 2025a) to directly support the policy convergence on target tasks, they often rely on the assumption of sufficient video data and ignore the key metric of video data efficiency (Liu et al., 2023; 2025b). With the rapid development of large models, it has become possible to perform large-scale pre-training on cross-domain videos to generate in-domain videos (Wan et al., 2025; Seawead et al., 2025; Wu et al., 2025). Recent progress (Jang et al., 2025) clearly demon-strates the feasibility of using video generation models as data generators to enhance video behavior cloning. Inspired by this, DEG first proposes to use a pre-trained video genera-tor as an episodic guide and provides corresponding rewards during the RL process. 
+
+2.3. RL Reward Design 
+
+Exploration is crucial in RL, which motivates researchers to investigate intrinsic rewards for enhancing exploration (Burda et al., 2019). These rewards are generally decoupled from specific tasks and proportional to the agent’s explo-ration of the state space (Liu & Abbeel, 2021). They can serve as plug-and-play modules to boost early-stage RL ex-ploration (Yarats et al., 2021; Liu et al., 2025c) or collect unsupervised pre-training data for multi-task RL (Sun et al., 2025). However, the task-agnostic nature results in their limited ability to handle complex state spaces and solve complex long-horizon tasks (Chen et al., 2025a), which has spurred numerous works to focus on task-specific reward de-sign. Inverse RL methods (Torabi et al., 2018; Giammarino et al., 2025) automatically infer expert rewards from expert demonstrations. They enable high-quality imitation of ex-pert policies without additional human annotations while requiring abundant expert data and extensive environmental interactions (Zare et al., 2024). Large reward models have achieved remarkable performance recently in both sparse feedback (Lee et al., 2026; Sontakke et al., 2023; Zhang et al., 2025) and dense incentive design (Tan et al., 2025; Zhai et al., 2025), but they either suffer from reward hacking or rely on massive human annotations and training resources. In contrast, DEG leverages video generation models with prior knowledge as RL guides to realize automatic and ac-curate reward design, while breaking free from the reliance on large-scale expert data and human annotations. 
+
+# 3. Methodology 
+
+The goal of this paper is to derive the task-specific dense reward function for an environment with only success sparse reward or even no reward. The former environment can be represented as a sparse-reward Markov Decision Process (MDP) (Bellman, 1957) M = ( O, A, P, Rs, γ, d 0), where 
+
+O denotes the visual observation space, A denotes the ac-tion space, P denotes the transition function, Rs denotes the sparse success reward function, γ is the discount, and 
+
+d0 is the distribution of the initial observation. The latter can be correspondingly expressed as a reward-free MDP 
+
+M = ( O, A, P, γ, d 0) where the symbols share the same meanings as those in the former. With the help of a well-pretrained video generation model G, DEG only requires a few expert videos V for reward calculation. DEG first obtains a robust task-specific guide G′ based on a well pre-trained video generation model G and a small number of expert videos V (Section 3.1 ). The guide G′ will generate a unique task video for each episode with diverse initial states in the subsequent RL process. Then, DEG adopts contrastive self-supervised learning ( Section 3.2 ) to (i) alleviate the impact of generated noise and (ii) attempt to align the semantic distance and latent distance between observations. In the self-supervised latent space, DEG cal-culates a novel dual-granularity dense reward ( Section 3.3 ). This reward balances coarse-grained exploration and fine-grained matching, driving the agent to efficiently and accu-rately follow the generated instruction and finally complete the target task. 
+
+3.1. Training Task Guide 
+
+We leverage the extensive prior knowledge of pre-trained large models to mitigate the problem of incomplete expert data distribution. Specifically, we select Wan2.1-I2V-14B (Wan et al., 2025), an advanced and open-source image-to-video model, as our backbone. We find that without finetuning, it already possesses the ability to understand the semantics of environments and objects, while lacking knowledge on the specific dynamics relevant to the target task (e.g., the degrees of freedom and movement modes of the arm). To this end, we finetune the backbone model with 3Dual-Granularity Contrastive Reward via Generated Episodic Guidance for Efficient Embodied RL Target Start 
+
+> Coarse-grained threshold
+> Fine-grained threshold
+> Expert Guidance
+> Fine-grained Matching Reward
+> Coarse-grained Exploration Reward
+
+Figure 2. The effect diagram of coarse-grained exploration reward and fine-grained matching reward. The top-left panel shows a schematic of the expert trajectory for the plate slide task. We take the 2D trajectory of the task’s latter half (the arm pushing the plate to the target on the plane) as an example (bottom-left), with the expert guidance, coarse-grained threshold, and fine-grained threshold represented in different colors. Note that this simple example is set to clearly illustrate the core idea of our method. In practical tasks, the expert trajectories are complex 3D curves. The right panel illustrates how different trajectories trigger the two rewards, respectively. Coarse-grained rewards use a larger threshold to guide sequential target imitation, which encourages the robotic arm to roughly mimic the movement intent in the guidance. However, (i) the larger threshold tolerates operations with deviations, making it hard to learn precise interactions (’reaching target’ in this task); (ii) its sequential imitation goals mean that trajectories that deviate at first but later correct and even succeed will no longer receive rewards. Fine-grained rewards directly tackle these two problems: they not only prioritize rewarding precise interactions to further refine the policy, but also ensure that trajectories achieving final success without sequential imitation receive positive feedback, thus reducing agent confusion. 
+
+the given expert videos via Low-Rank Adaptation (LoRA) (Hu et al., 2022), adapting it to the target domain: 
+
+G′ = LoRA (G; V, prompt ), (1) where the prompt corresponds to the specific task. The finetuned video generator G′ serves as an expert guide in the RL process, generating personalized guidance V ′ tailored to each RL episode: 
+
+V ′ = G′(o0; prompt ), (2) where o0 ∼ d0 denotes the initial observation of the current episode. V ′ consists of several generated frames {v′i}li=0 ,where l denotes the fixed length of generated videos. 
+
+3.2. Contrastive Latent Alignment 
+
+After obtaining the expert guide, DEG aims to drive the agent to match the generated expert video sequentially to complete the target task, which can be achieved by reward-ing the distance variation between the current observation and the generated frames. Considering that the distance cal-culated directly in the raw pixel space cannot align with the actual semantic distance (Liu & Abbeel, 2021; Yarats et al., 2021), a natural approach is to leverage open-source pre-trained encoders trained on large-scale datasets (Sim ´eoni et al., 2025) and compute the distance in the semantic latent space. However, the generated videos inevitably contain noise, and we find that pre-trained models are highly sensi-tive to such noise, failing to align noisy generated images (e.g., blurry or distorted ones) with their semantically iden-tical real observations. In addition, the pre-trained encoder fails to encode the subtle observational variations in the target domain—which are negligible compared to the vast prior knowledge—into distinct changes in the latent space distance, leading to potential reward misalignment. For these issues, DEG employs self-supervised learning to train an encoder E tailored to the target domain, seeking to ig-nore the non-semantic gaps and map the semantic distance to the computable latent distance for reward design. Concretely, DEG employs contrastive learning (Stooke et al., 2021; Laskin et al., 2020) to align expert video frames that are manually added with noise yet semantically consistent and push away different frames. A batch of images {vi}Mi=1 
+
+is sampled from the expert video set V. Each vi is randomly augmented with noise (random shift in this paper) to ob-tain two noisy images. They are separately encoded by E
+
+and its momentum copy E′ (updated by Exponential Mov-ing Average (EMA) (He et al., 2020)) to obtain two latent features, ˆzi and ˇzi. Note that E consists of both a Convo-lutional Neural Network (CNN) for image understanding and a Multi-Layer Perceptron (MLP) for self-supervised 4Dual-Granularity Contrastive Reward via Generated Episodic Guidance for Efficient Embodied RL 
+
+projection. The formula for contrastive learning is given as follows: 
+
+Lalign = − log exp( u(ˆ zi)⊤W ˇz′
+
+> i
+
+)
+
+PMj=1 exp( u(ˆ zi)⊤W ˇz′ 
+
+> j
+
+) , (3) where u(·) is another MLP set to introduce asymmetry for avoiding collapse to trivial solutions and W is the con-trastive matrix that is co-trained with E and u(·).
+
+3.3. Dual-Granularity Dense Reward 
+
+With the encoder E trained via contrastive self-supervised learning, both generated guidance and real observations are encoded into the aligned self-supervised latent space where DEG achieves reward calculation. Concretely, DEG takes the cosine similarity between the agent observations and the generated videos {v′i}li=0 in the latent space as the metric and reward design basis: 
+
+S(t, i ) = cos sim (E(v′
+
+> i
+
+), E (ot)) = E(v′
+
+> i
+
+)⊤E(ot)
+
+∥E(v′
+
+> i
+
+)∥ · ∥ E(ot)∥ ,
+
+(4) where S(t, i ) denotes the cosine similarity between obser-vation ot at time t and the generated frame v′ 
+
+> i
+
+indexed i.The proposed dual-granularity reward comprises two com-ponents: a coarse-grained exploration reward and a fine-grained matching reward. They are both based on the distance function S(t, i ) while achieving distinct effects through different distance thresholds. The coarse-grained exploration reward uses a loose judgment threshold to en-courage the agent to roughly and sequentially imitate the robotic motion trajectory in the expert guidance. This not only prevents the agent from being confined to a single tra-jectory (there are obviously multiple feasible trajectories for the robotic arm to reach the target object, but the expert guidance video only provides one) but also significantly reduces the learning difficulty and thus improves sample efficiency. However, relying solely on the coarse-grained reward cannot support the agent to perform fine-grained operations in tasks requiring precise interaction with ob-jects, which motivates us to further design the fine-grained matching reward. With a strict judgment threshold, this re-ward incentivizes agent observations that sufficiently match any guidance frame that is not reached yet, thus fully re-warding the accurate movements or successful interactions with objects. Through the organic integration of the two components, the dual-granularity reward achieves a balance between sampling efficiency and imitation accuracy. See Figure 2 for a concrete example to grasp our motivation on these two rewards. 
+
+Coarse-grained exploration reward drives the agent to roughly imitate the generated guidance {v′i}li=0 in se-quence, thereby enabling efficient learning of the general motion intent of the robotic arm and achieving task-relevant intrinsic exploration. In each episode, we maintain a vari-able Itarget to represent the index of the current target frame that the agent needs to approach. This variable is initialized as Itarget ← 1 and our coarse-grained exploration reward 
+
+Rcoarse is formulated as the similarity gain after reaching the current observation: 
+
+Rcoarse = S(t, I target ) − S(t − 1, I target ). (5) A coarse-grained threshold τcoarse is set to determine whether the target index Itarget can be sequentially advanced to the next target by fixed step number s:
+
+Itarget ←
+
+(
+
+min( Itarget + s, l ), if S(t, I target ) > τ coarse 
+
+Itarget , otherwise ,
+
+(6) 
+
+Fine-grained matching reward encourages observations that sufficiently match the expert video, thus rewarding the robotic arm for accurate movements or successful interac-tions with objects. Considering that (i) the trajectories for reaching the target object can be highly diverse and different with guidance and (ii) the poses required for object interac-tion are rather consistent and semantically aligned with the corresponding frames in the generated guidance, we don’t adopt a strictly sequential target update mechanism, which is employed in coarse-grained reward. Instead, we calcu-late the cosine similarity between the current observation ot
+
+and the whole guidance {v′i}li=0 , identifying the generated frame that is most similar to the current observation: 
+
+i∗ = arg max  
+
+> i∈{ 1,2,...,l }
+
+S(t, i ). (7) Then, a strict fine-grained threshold τfine is employed to determine whether ot sufficiently matches v′i∗ , and then grants a reward accordingly: 
+
+Rf ine =
+
+(
+
+i∗, if S(t, i ∗) > τ fine & i∗ > I reached 
+
+0, otherwise , (8) where Ireached is set to record the rearmost (i.e., largest index) frame that has been successfully matched so far, which pre-vents the agent from ”slacking off” and repeatedly obtaining rewards by matching the same or previous frames. 5Dual-Granularity Contrastive Reward via Generated Episodic Guidance for Efficient Embodied RL  
+
+> Figure 3. Comparison with state-of-the-art reward engineering methods on 12 task-free tasks. DEG achieves better performance on both the final policy level and RL sample efficiency. Owing to the non-open-source implementation or constraints on computational resources, we employ the results of TeViR and RoboCLIP provided by previous works (Chen et al., 2025a) only for the first eight tasks.
+
+Dual-granularity reward employed in DEG consists of the above two sub-incentives with coefficients α and β:
+
+RDEG = αRcoarse + βRf ine . (9) It can guide effective RL independently or achieve more efficient learning with the help of a success sparse reward 
+
+Rs that is easy to obtain and scaled by θ:
+
+RDEG + = αRcoarse + βRf ine + θRs. (10) 
+
+# 4. Experiment 
+
+We conduct extensive experiments to answer the follow-ing questions: (Section 4.1) Can DEG, relying solely on a small amount of expert videos, independently guide ef-fective RL and outperform SOTA baselines (equipped with sufficient multi-view expert data) in terms of sampling ef-ficiency? (Section 4.2) With the aid of the sparse success reward, can DEG achieve performance comparable to that of handcrafted rewards designed by human experts? (Sec-tion 4.3) Can DEG also work in the real-world manipulation domains? (Section 4.4) Are both components of the dual-granularity reward effective? (Section 4.5) Compared with large-scale pre-trained encoders, does the contrastive self-supervised encoder possess superior latent space alignment capabilities? In addition, we further provide more results and analysis in Appendix A. 
+
+4.1. Comparison on Reward-Free Tasks 
+
+In this section, we compare the proposed DEG on reward-free manipulation tasks against several popular and state-of-the-art baselines: TeViR (Chen et al., 2025a), Diffu-sion Reward (Huang et al., 2024), Viper (Escontrela et al., 2024), and RoboCLIP (Sontakke et al., 2023). Following these works, we conduct experiments on 12 challenging and diverse Metaworld manipulation tasks (Yu et al., 2020; McLean et al., 2025). These tasks cover a diverse and chal-lenging set of robotic arm operations, essentially spanning the entire feasible state space of the Sawyer robotic arm. DrQv2 (Yarats et al., 2022) is employed as the backbone for all methods, with only 500k steps allowed to fully evaluate the RL sample efficiency. See Appendix B for a detailed description of baseline methods and tasks. For each task, DEG is only provided with 3-5 videos (details in Appendix B), and no other expert supervision or human annotations are used. Considering the different data require-ments of the baselines, we conduct experiments according to their own settings or directly use the results from previous papers. For example, TeViR (Chen et al., 2025a) relies on 60 videos and requires three camera viewpoints (the left side of the arm, the top of the arm, and a close-up view of the gripper). We follow its requirements for TeViR, and the same applies to other methods. Note that although we present all results together for comparison, our DEG is still only trained with a few videos from a single camera. 6Dual-Granularity Contrastive Reward via Generated Episodic Guidance for Efficient Embodied RL     
+
+> Figure 4. With success sparse reward, DEG+ can effectively improve RL efficiency and match human expert-annotated dense reward. It even outperforms expert dense reward across several tasks, such as assembly ,hammer , and drawer-open .
+
+The results are shown in Figure 3. Except for door-close 
+
+where DEG and TeViR achieve similar final performance, and drawer-close where all baselines converge well, DEG consistently and significantly outperforms all baselines on the remaining 10 tasks. This demonstrates DEG’s ability to independently guide effective RL and ultimately drive stable policy convergence. Note that TeViR uses sufficient expert videos from three viewpoints, while DEG only uses a small number of single-view videos. In terms of sample efficiency, DEG also shows a huge advantage across all tasks, which proves the high precision of the proposed dual-granularity contrastive dense reward in the semantic guidance of robotic arm movements. 
+
+4.2. DEG with Sparse Success Feedback 
+
+In this section, we demonstrate the performance of DEG with the help of an easy-to-obtain success sparse reward, named DEG+. To demonstrate the effectiveness of DEG, we directly compare it with the latest human expert-annotated dense reward (McLean et al., 2025) on the MetaWorld benchmark, and refer to this method as Expert Dense Re-ward. In addition, the RL results of Success Sparse Reward (Yu et al., 2020) are also used for comparison. The results across all 16 tasks are shown in Figure 4. With-out dense incentives, Success Sparse Reward struggles to guide stable RL. This is because the exploration space in long-horizon tasks is vast, and it is hard for the agent to complete the task and obtain signals through the exploration provided by the randomness of the stochastic policy. In contrast, DEG provides an exclusive successful trajectory for each RL episode and delivers efficient guiding rewards accordingly, which greatly improves the efficiency of ex-ploring sparse success feedback. In addition, even when compared with the dense rewards handcrafted by human ex-perts, DEG can still match their performance on most tasks and outperform them on several tasks, mainly due to the complete information provided by expert guidance videos. Take drawer-open as an example: the expert dense reward incentivizes the distance between the gripper and the han-dle, which can cause the gripper to push against the handle from the outside, making it hard to open the drawer, falling into a local optimum. DEG, however, can accurately learn from the generated expert guidance to lift the gripper, aim at the inner side of the handle, and then lower it, achieving extremely stable policy improvement. 7Dual-Granularity Contrastive Reward via Generated Episodic Guidance for Efficient Embodied RL   
+
+> Figure 5. Smoothed training curves on real-world Franka manipulation tasks. DEG enables better RL efficiency and lower intervention rates than employing only the success sparse reward.
+> Figure 6. Numerical ablation experiments. Both the coarse-grained reward and fine-grained reward are useful in DEG.
+
+4.3. Real-World Experiments 
+
+To further explore the capabilities of DEG, we conduct experiments on physical robotic arm manipulation tasks. We design two tasks using the Franka robotic arm: stack-cube and pick-banana . Both are long-horizon tasks that require precise interaction between the robotic arm and objects. You can refer to Appendix B for a more detailed description of the real-world tasks. We adopt the state-of-the-art human-in-the-loop RL algorithm, HIL-SERL (Luo et al., 2025), as the backbone of the physical experiments and allow a maximum of 25k steps and 3 expert videos for each task. The results are shown in Figure 5. DEG can also provide real-world robotic manipulation with effective task-level dense incentives, significantly improving the sampling effi-ciency of real-world RL. In addition, we observe that DEG reward is triggered with extremely high frequency when hu-mans provide help. This indicates that the DEG reward can effectively align with expert knowledge, thereby improving the efficiency of learning useful demonstrations and reduc-ing the intervention rate. Since object states are not directly accessible in the real world as they are in simulators, hand-crafting dense rewards becomes extremely difficult, while DEG can realize effective dense reward design for physical tasks with very easy data collection. 
+
+4.4. Ablation Study 
+
+In this section, we provide ablation experiments on the proposed dual-granularity reward, verifying whether both  
+
+> Figure 7. Heatmaps from two different encoders: frame similarity between generated videos and real observations with identical trajectories ( drawer-open ). The vertical axis represents the real observation sequence (sampled at an interval of 1), while the horizontal axis represents the corresponding generated frames. Compared with DINOv3 (right), our DEG contrastive encoder (left) can (i) better align frames with the same semantics while distinguishing those with different semantics and (ii) map the semantic distance into a proper similarity distance.
+
+sub-rewards are useful. Experimental results (Figure 6) confirm that both contribute to DEG’s achievement of the sample-efficient RL. In addition, we further provide a very intuitive visualization of the policy intentions learned by DEG and its two ablation variants on the drawer-open task, shown in Figure 9 in Appendix A. With only the coarse-grained reward, DEG can quickly learn the overall motion trajectory of the robotic arm in the expert videos but fails to achieve precise interaction with the drawer. With only the fine-grained reward, the robotic arm can grasp the handle yet lacks the tendency to imitate the motion trajectory. In contrast, the dual-granularity reward effectively combines the strengths of both, enabling correct handle interaction and smooth task completion. 
+
+4.5. Encoder Analysis 
+
+In DEG, we train the reward calculation encoder via con-trastive self-supervised learning, instead of adopting state-of-the-art pre-trained models such as DINOv3 (Sim ´eoni et al., 2025). In this section, we visualize the matching performance of different encoders when facing real and generated videos, as shown in Figure 7. The pre-trained DINOv3 can adapt to different domains via downstream predictors, while its extensive prior knowledge makes minor visual variations in a single target domain less distinguish-8Dual-Granularity Contrastive Reward via Generated Episodic Guidance for Efficient Embodied RL 
+
+able in the latent space. By contrast, the DEG contrastive encoder can well align semantically identical frames and distinguish semantically different ones. In addition, the con-trastive encoder can also map the semantic distance into a proper similarity change in the latent space, thus enabling DEG to design dual-granularity rewards based on this simi-larity. We provide more visualizations in Appendix A. 
+
+# 5. Conclusion & Limitation 
+
+In this paper, we propose DEG, a dense reward framework for sample-efficient embodied RL without requirements on human annotations or extensive supervisions. By employ-ing a finetuned video generation model as an RL guide, the proposed dual-granularity reward effectively encour-ages the agent to imitate the generated guidance in the self-supervised space, achieving efficient RL that surpasses state-of-the-art baselines. The main bottleneck of DEG lies in the slow video generation speed. Since pre-training data for video generation models is relatively high-fidelity, reducing the resolution to speed up generation may cause collapse. We believe this issue will likely be resolved with the devel-opment of foundation models, and DEG can inspire more researchers to focus on data-efficient dense reward design. 
+
+# Impact Statement 
+
+This paper presents work whose goal is to advance the field of Machine Learning. There are many potential societal consequences of our work, none which we feel must be specifically highlighted here. 
+
+# References 
+
+Bellman, R. A markovian decision process. Journal of Mathematics and Mechanics , pp. 679–684, 1957. Burda, Y., Edwards, H., Storkey, A., and Klimov, O. Ex-ploration by random network distillation. In Seventh International Conference on Learning Representations ,pp. 1–17, 2019. Chen, S.-F., Wang, H.-C., Hsu, M.-H., Lai, C.-M., and Sun, S.-H. Diffusion model-augmented behavioral cloning. In Proceedings of the 41st International Conference on Machine Learning , pp. 7486–7510, 2024a. Chen, X., Guo, J., He, T., Zhang, C., Zhang, P., Yang, D. C., Zhao, L., and Bian, J. Igor: Image-goal representations are the atomic control units for foundation models in embodied ai. arXiv preprint arXiv:2411.00785 , 2024b. Chen, Y., Li, H., Jiang, Z., Wen, H., and Zhao, D. Tevir: Text-to-video reward with diffusion models for efficient reinforcement learning. arXiv preprint arXiv:2505.19769 ,2025a. Chen, Y., Tian, S., Liu, S., Zhou, Y., Li, H., and Zhao, D. ConRFT: A Reinforced Fine-tuning Method for VLA Models via Consistency Policy. In Proceedings of Robotics: Science and Systems , LosAngeles, CA, USA, June 2025b. doi: 10.15607/RSS.2025.XXI.019. Chi, C., Xu, Z., Feng, S., Cousineau, E., Du, Y., Burch-fiel, B., Tedrake, R., and Song, S. Diffusion policy: Visuomotor policy learning via action diffusion. The International Journal of Robotics Research , 44(10-11): 1684–1704, 2025. Cobbe, K., Hesse, C., Hilton, J., and Schulman, J. Lever-aging procedural generation to benchmark reinforcement learning. In International Conference on Machine Learn-ing , pp. 2048–2056. PMLR, 2020. Deng, F., Jang, I., and Ahn, S. Dreamerpro: Reconstruction-free model-based reinforcement learning with prototypi-cal representations. In International Conference on Ma-chine Learning , pp. 4956–4975. PMLR, 2022. Escontrela, A., Adeniji, A., Yan, W., Jain, A., Peng, X. B., Goldberg, K., Lee, Y., Hafner, D., and Abbeel, P. Video prediction models as rewards for reinforcement learning. 
+
+Advances in Neural Information Processing Systems , 36, 2024. Giammarino, V., Queeney, J., and Paschalidis, I. Adver-sarial imitation learning from visual observations using latent information. Transactions on Machine Learn-ing Research , 2024. ISSN 2835-8856. URL https: //openreview.net/forum?id=ydPHjgf6h0 .Giammarino, V., Queeney, J., and Paschalidis, I. C. Visually robust adversarial imitation learning from videos with contrastive learning. In 2025 IEEE International Con-ference on Robotics and Automation (ICRA) , pp. 15642– 15648. IEEE, 2025. Hafner, D., Pasukonis, J., Ba, J., and Lillicrap, T. Mastering diverse control tasks through world models. Nature , pp. 1–7, 2025. He, K., Fan, H., Wu, Y., Xie, S., and Girshick, R. Mo-mentum contrast for unsupervised visual representation learning. In Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition , pp. 9729– 9738, 2020. Hu, E. J., yelong shen, Wallis, P., Allen-Zhu, Z., Li, Y., Wang, S., Wang, L., and Chen, W. LoRA: Low-rank adap-tation of large language models. In International Confer-ence on Learning Representations , 2022. URL https: //openreview.net/forum?id=nZeVKeeFYf9 .9Dual-Granularity Contrastive Reward via Generated Episodic Guidance for Efficient Embodied RL 
+
+Huang, T., Jiang, G., Ze, Y., and Xu, H. Diffusion reward: Learning rewards via conditional video diffusion. In 
+
+European Conference on Computer Vision , pp. 478–495. Springer, 2024. Jang, J., Ye, S., Lin, Z., Xiang, J., Bjorck, J., Fang, Y., Hu, F., Huang, S., Kundalia, K., Lin, Y.-C., et al. Dreamgen: Unlocking generalization in robot learning through video world models. arXiv preprint arXiv:2505.12705 , 2025. Jiang, X., Ma, Y., Li, P., Xu, L., Wen, X., Zhan, K., Xia, Z., Jia, P., Lang, X., and Sun, S. Transdiffuser: Diverse trajectory generation with decorrelated multi-modal repre-sentation for end-to-end autonomous driving, 2025. URL 
+
+https://arxiv.org/abs/2505.09315 .Karnan, H., Torabi, F., Warnell, G., and Stone, P. Adversar-ial imitation learning from video using a state observer. In 2022 International Conference on Robotics and Au-tomation (ICRA) , pp. 2452–2458. IEEE, 2022. Kingma, D. P. and Ba, J. Adam: A method for stochastic optimization. arXiv preprint arXiv:1412.6980 , 2014. Kiran, B. R., Sobh, I., Talpaert, V., Mannion, P., Al Sal-lab, A. A., Yogamani, S., and P ´erez, P. Deep reinforce-ment learning for autonomous driving: A survey. IEEE Transactions on Intelligent Transportation Systems , 23 (6):4909–4926, 2021. Kostrikov, I., Nair, A., and Levine, S. Offline reinforcement learning with implicit q-learning. In International Confer-ence on Learning Representations , 2022. URL https: //openreview.net/forum?id=68n2s9ZJWF8 .Langley, P. Crafting papers on machine learning. In Langley, P. (ed.), Proceedings of the 17th International Conference on Machine Learning (ICML 2000) , pp. 1207–1216, Stan-ford, CA, 2000. Morgan Kaufmann. Laskin, M., Srinivas, A., and Abbeel, P. Curl: Contrastive unsupervised representations for reinforcement learning. In International Conference on Machine Learning , pp. 5639–5650. PMLR, 2020. Lee, T., Wagenmaker, A., Pertsch, K., Liang, P., Levine, S., and Finn, C. Roboreward: General-purpose vision-language reward models for robotics. arXiv preprint arXiv:2601.00675 , 2026. Li, B., Jiang, H., Ding, Z., Xu, X., Li, H., Zhao, D., and Lu, Z. SELU: Self-learning embodied multimodal large language models in unknown environments. Transac-tions on Machine Learning Research , 2025. ISSN 2835-8856. URL https://openreview.net/forum? id=G5gROx8AVi .Liu, H. and Abbeel, P. Behavior from the void: Unsuper-vised active pre-training. Advances in Neural Information Processing Systems , 34:18459–18473, 2021. Liu, M., He, T., Zhang, W., YAN, S., and Xu, Z. Visual imitation learning with patch rewards. In The Eleventh International Conference on Learning Representations ,2023. URL https://openreview.net/forum? id=OnM3R47KIiU .Liu, X., Chen, Y., Chen, G., Li, H., and Zhao, D. Balancing state exploration and skill diversity in unsupervised skill discovery. IEEE Transactions on Cybernetics , 55(5): 2234–2247, 2025a. doi: 10.1109/TCYB.2025.3548821. Liu, X., Chen, Y., and Li, H. Sample-efficient unsuper-vised policy cloning from ensemble self-supervised la-beled videos. In 2025 IEEE International Conference on Robotics and Automation (ICRA) , pp. 3632–3639. IEEE, 2025b. Liu, X., Chen, Y., Li, H., Li, B., and Zhao, D. Cross-domain random pretraining with prototypes for reinforce-ment learning. IEEE Transactions on Systems, Man, and Cybernetics: Systems , 55(5):3601–3613, 2025c. doi: 10.1109/TSMC.2025.3541926. Liu, X., Li, H., and Zhao, D. Videos are sample-efficient supervisions: Behavior cloning from videos via latent representations. In The Thirty-ninth Annual Conference on Neural Information Processing Systems ,2025d. URL https://openreview.net/forum? id=cx1KfZerNY .Luo, J., Xu, C., Wu, J., and Levine, S. Precise and dex-terous robotic manipulation via human-in-the-loop rein-forcement learning. Science Robotics , 10(105):eads5033, 2025. McLean, R., Chatzaroulas, E., McCutcheon, L., R ¨oder, F., Yu, T., He, Z., Zentner, K., Julian, R., Terry, J. K., Woun-gang, I., Farsad, N., and Castro, P. S. Meta-world+: An improved, standardized, RL benchmark. In The Thirty-ninth Annual Conference on Neural Information Processing Systems Datasets and Benchmarks Track ,2025. URL https://openreview.net/forum? id=1de3azE606 .Mnih, V., Kavukcuoglu, K., Silver, D., Rusu, A. A., Veness, J., Bellemare, M. G., Graves, A., Riedmiller, M., Fidje-land, A. K., Ostrovski, G., et al. Human-level control through deep reinforcement learning. Nature , 518(7540): 529–533, 2015. Schmidt, D. and Jiang, M. Learning to act without actions. In The Twelfth International Conference on Learning Representations , 2024. URL https://openreview. net/forum?id=rvUq3cxpDF .10 Dual-Granularity Contrastive Reward via Generated Episodic Guidance for Efficient Embodied RL 
+
+Schulman, J., Wolski, F., Dhariwal, P., Radford, A., and Klimov, O. Proximal policy optimization algorithms. 
+
+arXiv preprint arXiv:1707.06347 , 2017. Seawead, T., Yang, C., Lin, Z., Zhao, Y., Lin, S., Ma, Z., Guo, H., Chen, H., Qi, L., Wang, S., et al. Seaweed-7b: Cost-effective training of video generation foundation model. arXiv preprint arXiv:2504.08685 , 2025. Seo, Y., Hafner, D., Liu, H., Liu, F., James, S., Lee, K., and Abbeel, P. Masked world models for visual control. In 
+
+Conference on Robot Learning , pp. 1332–1344. PMLR, 2023. Sim ´eoni, O., Vo, H. V., Seitzer, M., Baldassarre, F., Oquab, M., Jose, C., Khalidov, V., Szafraniec, M., Yi, S., Ramamonjisoa, M., et al. Dinov3. arXiv preprint arXiv:2508.10104 , 2025. Singh, A., Yang, L., Finn, C., and Levine, S. End-to-end robotic reinforcement learning without reward engineer-ing. Robotics: Science and Systems XV , 2019. Sontakke, S., Zhang, J., Arnold, S., Pertsch, K., Bıyık, E., Sadigh, D., Finn, C., and Itti, L. Roboclip: One demonstration is enough to learn robot policies. Advances in Neural Information Processing Systems , 36:55681– 55693, 2023. Stooke, A., Lee, K., Abbeel, P., and Laskin, M. Decoupling representation learning from reinforcement learning. In 
+
+International Conference on Machine Learning , pp. 9870– 9879. PMLR, 2021. Sun, J., Tu, S., Zhang, Q., Liu, X., Li, H., Chen, Y., Chen, K., and Zhao, D. Unsupervised zero-shot reinforcement learning via dual-value forward-backward representation. In The Thirteenth International Conference on Learning Representations , 2025. Tan, H., Chen, S., Xu, Y., Wang, Z., Ji, Y., Chi, C., Lyu, Y., Zhao, Z., Chen, X., Co, P., et al. Robo-dopamine: Gen-eral process reward modeling for high-precision robotic manipulation. arXiv preprint arXiv:2512.23703 , 2025. Tassa, Y., Doron, Y., Muldal, A., Erez, T., Li, Y., Casas, D. d. L., Budden, D., Abdolmaleki, A., Merel, J., Lefrancq, A., et al. Deepmind control suite. arXiv preprint arXiv:1801.00690 , 2018. Torabi, F., Warnell, G., and Stone, P. Generative ad-versarial imitation from observation. arXiv preprint arXiv:1807.06158 , 2018. Wan, T., Wang, A., Ai, B., Wen, B., Mao, C., Xie, C.-W., Chen, D., Yu, F., Zhao, H., Yang, J., et al. Wan: Open and advanced large-scale video generative models. arXiv preprint arXiv:2503.20314 , 2025. Wu, B., Zou, C., Li, C., Huang, D., Yang, F., Tan, H., Peng, J., Wu, J., Xiong, J., Jiang, J., et al. Hunyuanvideo 1.5 technical report. arXiv preprint arXiv:2511.18870 , 2025. Xiao, T., Radosavovic, I., Darrell, T., and Malik, J. Masked visual pre-training for motor control. arXiv preprint arXiv:2203.06173 , 2022. Yarats, D., Fergus, R., Lazaric, A., and Pinto, L. Reinforce-ment learning with prototypical representations. In Inter-national Conference on Machine Learning , pp. 11920– 11931. PMLR, 2021. Yarats, D., Fergus, R., Lazaric, A., and Pinto, L. Master-ing visual continuous control: Improved data-augmented reinforcement learning. In International Conference on Learning Representations , 2022. Ye, S., Jang, J., Jeon, B., Joo, S. J., Yang, J., Peng, B., Mandlekar, A., Tan, R., Chao, Y.-W., Lin, B. Y., Liden, L., Lee, K., Gao, J., Zettlemoyer, L., Fox, D., and Seo, M. Latent action pretraining from videos. In The Thirteenth International Conference on Learning Representations ,2025. URL https://openreview.net/forum? id=VYOe2eBQeh .Ye, W., Zhang, Y., Abbeel, P., and Gao, Y. Become a proficient player with limited data through watching pure videos. In The Eleventh International Conference on Learning Representations , 2022. Yu, T., Quillen, D., He, Z., Julian, R., Hausman, K., Finn, C., and Levine, S. Meta-world: A benchmark and evalua-tion for multi-task and meta reinforcement learning. In 
+
+Conference on robot learning , pp. 1094–1100. PMLR, 2020. Zare, M., Kebria, P. M., Khosravi, A., and Nahavandi, S. A survey of imitation learning: Algorithms, recent develop-ments, and challenges. IEEE Transactions on Cybernet-ics , 2024. Zhai, S., Zhang, Q., Zhang, T., Huang, F., Zhang, H., Zhou, M., Zhang, S., Liu, L., Lin, S., and Pang, J. A vision-language-action-critic model for robotic real-world rein-forcement learning. arXiv preprint arXiv:2509.15937 ,2025. Zhang, J., Huang, Z., Gu, C., Ma, Z., and Zhang, L. Rein-forcing action policies by prophesying. arXiv preprint arXiv:2511.20633 , 2025. Zhao, T. Z., Kumar, V., Levine, S., and Finn, C. Learn-ing fine-grained bimanual manipulation with low-cost hardware. arXiv preprint arXiv:2304.13705 , 2023. 11 Dual-Granularity Contrastive Reward via Generated Episodic Guidance for Efficient Embodied RL 
+
+# A. Additional Results & Analysis 
+
+A.1. More Ablation Results 
+
+In addition to the results in Section 4.4, we provide more ablation experiments on three reward-free tasks and one sparse-reward task (marked with DEG+). The results in Figure 8 further demonstrate that both sub-rewards are necessary in the proposed dual-granularity reward.  
+
+> Figure 8. Numerical ablation study on three reward-free tasks and one sparse-reward task (marked with DEG+). Both coarse-grained and fine-grained rewards are necessary.
+
+A.2. Ablation: Policy Intention Visualization 
+
+In addition to the numerical comparison, we further provide the visualization of the policy intentions learned by DEG and its two ablation variants. We employ the learned policy in the reward-free drawer-open task at 250k environmental steps and show the results in Figure 9. With only the coarse-grained reward, DEG can quickly learn the overall motion trajectory of the robotic arm (contained in the expert videos) but fails to achieve precise interaction with the drawer. With only the fine-grained reward, the robotic arm can grasp the handle yet lacks the tendency to imitate the motion trajectory. In contrast, the dual-granularity reward effectively combines the strengths of both, enabling precise and smooth task completion.  
+
+> Figure 9. Policy intention visualization of DEG and its two ablation variants. Each of the two sub-rewards has its own strengths and weaknesses, while the dual-granularity reward can combine the advantages of both.
+
+12 Dual-Granularity Contrastive Reward via Generated Episodic Guidance for Efficient Embodied RL 
+
+# B. More Encoder Visualization and Analysis 
+
+In addition to the comparison in Section 4.5, we further provide more results and analysis on the DEG contrastive encoder and pre-trained DINOv3 (Sim ´eoni et al., 2025). We first present the performance of DINOv3 on video sequences with different frame intervals, as shown in Figure 10. DINOv3 exhibits slightly increased discrimination for frames with larger intervals (i.e., larger semantic distances), but the color distributions remain highly similar, indicating that it cannot adequately map semantic distances to similarity differences, which makes it unsuitable for similarity-based reward design. 
+
+Figure 10. Frame similarity between generated videos and real observations (with intervals 1, 3, and 5) with identical semantics (drawer-open ) when using DINOv3. The vertical axis represents the real observation sequence (sampled at an interval of 1, 3, and 5), while the horizontal axis represents the corresponding generated frames. Specifically, an interval of 1 means the frame sequence used for visualization is frames indexed 0, 1, 2, ..., 10 from the real video; an interval of 3 denotes using frames indexed 0, 3, 6, ..., 27 from the real video; and an interval of 5 denotes using frames indexed 0, 5, 10, ..., 50 from the real video. The color distributions remain highly similar across different intervals, indicating that DINOv3 cannot adequately map semantic distances to similarity differences. 
+
+In contrast, the DEG contrastive encoder (Figure 11) shows significantly stronger discrimination for frame sequences with larger intervals, while maintaining the ability to align semantically identical frames over a wider temporal range. Furthermore, for frames that are semantically close but distinct, DEG can effectively map their semantic distance to the similarity difference (heatmap of interval 1), thereby supporting the design of the proposed dual-granularity reward with different thresholds. 
+
+Figure 11. Frame similarity between generated videos and real observations (with intervals 1, 3, and 5) with identical semantics (drawer-open ) when using our DEG contrastive encoder. The vertical axis represents the real observation sequence (sampled at an interval of 1, 3, and 5), while the horizontal axis represents the corresponding generated frames. Specifically, an interval of 1 means the frame sequence used for visualization is frames indexed 0, 1, 2, ..., 10 from the real video; an interval of 3 denotes using frames indexed 0, 3, 6, ..., 27 from the real video; and an interval of 5 denotes using frames indexed 0, 5, 10, ..., 50 from the real video. The DEG contrastive encoder shows significantly stronger discrimination for frame sequences with larger intervals, while maintaining the ability to align semantically identical frames over a wider temporal range. 
+
+13 Dual-Granularity Contrastive Reward via Generated Episodic Guidance for Efficient Embodied RL 
+
+B.1. Generated Episodic Guidance in DEG 
+
+In this chapter, we present a direct comparison between the real videos and generated videos, shown in Figure 12 and Figure 13. We find that the fine-tuned video generation model can achieve effective domain adaptation. Despite remaining noise in terms of clarity and certain details, it basically recovers the semantic manner of real task execution. Note that real videos (3-5 clips) are only used to fine-tune the video generation model, and DEG uses generated videos to calculate rewards throughout the entire RL process.       
+
+> Figure 12. DEG generated videos versus real videos on Metaworld drawer-open task.
+> Figure 13. DEG generated videos versus real videos on real-world stack-cube task.
+
+14 Dual-Granularity Contrastive Reward via Generated Episodic Guidance for Efficient Embodied RL 
+
+# C. Experimental Details 
+
+C.1. Task Description 
+
+Following previous works (Huang et al., 2024; Chen et al., 2025a), we employ sixteen simulation tasks from Metaworld (Yu et al., 2020; McLean et al., 2025): door-close ,window-close , handle-press , button-press , coffee-button , drawer-open ,
+
+button-press-wall , drawer-close , plate-slide , button-press-topdown , hammer , assembly ,door-open , window-open , handle-press-side , faucet-close . These tasks cover a diverse and challenging set of robotic arm operations, essentially spanning the entire feasible state space of the Sawyer robotic arm. For real-world tasks, we employ the Franka arm as the physical manipulator, designing two tasks: pick-banana and stack-cube . We provide the description of the above 18 tasks below: 
+
+door-close. 
+
+Closing a door mounted on a revolving hinge joint. The task requires adapting the pushing trajectory to account for the door’s randomized locations. 
+
+window-close. 
+
+Executing a push motion to close a sliding window with a randomized position. 
+
+handle-press. 
+
+Depressing a lever handle to its endpoint. The handle’s initial locations are varied. 
+
+button-press. 
+
+Actuating a standard push-button from a randomized location in the workspace. 
+
+coffee-button. 
+
+Pushing a button on a coffee machine to trigger dispensing. The position of the coffee machine is randomized. 
+
+drawer-open. 
+
+Grasping and pulling open a drawer from a randomized closed position. 
+
+button-press-wall. 
+
+A navigation and manipulation task that involves bypassing a physical barrier to reach and press a button located behind it, with randomized relative positioning. 
+
+drawer-close. 
+
+Pushing a drawer shut from a randomized open displacement. 
+
+plate-slide. 
+
+Sliding a plate laterally into a constrained cabinet opening. The initial placements of the target cabinet are varied. 
+
+button-press-topdown. 
+
+Pressing a button via a precise top-down approach, with randomized button place-ment. 
+
+hammer. 
+
+A dynamic task requiring the accurate swinging of a hammer to strike the head of a wall-mounted screw. Randomization of the tool positions assesses swing tra-jectory planning and impact control. 
+
+assembly. 
+
+A bi-manipulation task involving the se-quential picking of a free nut and its pre-cise placement onto a fixed peg. Ran-domization of the peg positions tests fine grasping, alignment, and insertion skills. 
+
+15 Dual-Granularity Contrastive Reward via Generated Episodic Guidance for Efficient Embodied RL 
+
+> door-open.
+> Opening a hinged door from a random-ized closed position, involving grasping and pulling a handle from variable config-urations.
+> window-open.
+> Opening a sliding window by pushing it from a randomized initial closed state.
+> handle-press-side.
+> Applying downward force on a handle along a sideways axis, with randomized handle poses.
+> faucet-close.
+> Rotating a faucet knob clockwise to its closed position, starting from a random-ized angular position.
+> Real-world: pick-banana.
+> Grasping a banana from a randomized initial position and placing it onto a fixed-location white plate. The task evaluates precision grasping of deformable objects and targeted placement.
+> Real-world: stack-cube.
+> Stacking a small red cube from a random-ized start position onto a larger, fixed-position natural wood-colored cube. The task assesses spatial alignment and stable placement for basic assembly.
+
+C.2. Baseline Introduction 
+
+In Section 4.1, we employ four popular and advanced baselines: TeViR (Chen et al., 2025a), Diffusion Reward (Huang et al., 2024), VIPER (Escontrela et al., 2024), and RoboCLIP (Sontakke et al., 2023). 
+
+TeViR (Chen et al., 2025a) utilizes a conditional video diffusion model to generate the multi-view trajectory of distance-based reward calculation. It is trained under three different cameras. 
+
+Diffusion Reward (Huang et al., 2024) leverages a conditional video diffusion model to capture the expert demonstration distribution and uses the conditional entropy of the video prediction with the sparse reward to formulate dense rewards. 
+
+VIPER (Escontrela et al., 2024) utilizes a video prediction transformer and directly leverages the model’s prediction likelihood as a reward signal to encourage the agent to learn the expected behavior. 
+
+RoboCLIP (Sontakke et al., 2023) utilizes pre-trained Vision-Language Models (VLM) to generate rewards by calculating the similarity of the agent’s observation to the language task description for the agent. In Section 4.2, we use the Success Sparse Reward and the Expert Dense Reward provided by the Metaworld environment (Yu et al., 2020; McLean et al., 2025). 
+
+Success Sparse Reward (Yu et al., 2020) corresponds to the success signals provided by the environments. It is proportional to info[’success’] in standard Metaworld environments. 
+
+Expert Dense Reward (McLean et al., 2025) is the latest dense reward designed by experts on the Metaworld benchmark. This reward ensures solvability with PPO (Schulman et al., 2017) while being minimally opinionated. 16 Dual-Granularity Contrastive Reward via Generated Episodic Guidance for Efficient Embodied RL 
+
+C.3. Hyper-Parameters 
+
+We provide the hyper-parameters of DEG, as shown in 1. More information (prompts and detailed number of expert videos) about video generation model finetuning is provided in the next section. 
+
+Table 1. The hyper-parameters of DEG. For domain door , coffee , task drawer-close , and task button-press , ( Icoarse , If ine ) is (0.8, 0.95); for domain window and hammer , ( Icoarse , If ine ) is (0.8, 0.96); for faucet , Icoarse is 0.9; and for assembly , s is 2 while θ is 100. For the detailed number of used videos, please refer to the next section. 
+
+Hyper-parameter Setting Video fondation Model Wan2.1-I2V-14B Number of finetuning videos 3-5 (details in next section) Video frames 250 
+
+Frame shape 256 × 256 × 3
+
+Frame stack 1
+
+Action repeat 2
+
+Action type Continuous Action dimension See (McLean et al., 2025) Large model finetuning LoRA self-supervised pre-training times 5000 
+
+Feature encoder lr 1e − 4
+
+Random shift (noise) upper bound 4
+
+EMA update frequency 2
+
+EMA Momentum 0.05 Optimizer Adam (Kingma & Ba, 2014) Coarse-grained coefficient α 100 Coarse-grained threshold Icoarse 0.85 Coarse-grained frequency s 4
+
+Fine-grained coefficient β 1Fine-grained threshold If ine 0.98 Sparse reward weight θ 10 (if used) Metaworld RL backbone DrQv2 Discount factor 0.98 
+
+Batch size 256 
+
+n-step returns 3
+
+Random frames in RL 4000 
+
+Feature dimension 50 
+
+Task difficulty for exploration Hard Other DrQv2 hyper-parameters See (Yarats et al., 2022) Real-world RL backbone HIL-SERL HIL-SERL hyper-parameters See (Luo et al., 2025) 17 Dual-Granularity Contrastive Reward via Generated Episodic Guidance for Efficient Embodied RL 
+
+C.4. Finetuning Details: Framework, Data, and Prompts 
+
+In DEG, we employ LoRA (Hu et al., 2022) to finetune Wan2.1-I2V-14B (Wan et al., 2025) as our RL guide. We use DiffSynth-Studio ( https://github.com/modelscope/DiffSynth-Studio ) as our finetuning framework, following its default settings on Wan2.1-I2V-14B. The number of videos and task prompts employed in each task is provided here. C.4.1. M ETAWORLD TASKS 
+
+door-close (3 videos) :A video clip of the door-close task: A red robotic arm is positioned on a table, along with a dark cabinet whose door is initially open (with its position randomly initialized and then fixed), and a light green target marker. The robotic arm moves toward the cabinet door, presses against it from the outside, and closes it. Keep the table static and the cabinet position unchanged throughout. Preserve detailed shadows on the ground. Ensure that the motion of the robotic arm and the cabinet door follows logical physics. Maintain consistent colors and appearance of objects and the scene from start to finish. After initialization, the cabinet door exhibits a slight automatic rebound, then remains stationary until contacted by the robotic arm. 
+
+window-close (3 videos) :A video clip of the window-close task: A red robotic arm is positioned on a table alongside an open window. The robotic arm moves toward the window, presses against its white handle from the left side, and slides it to the right to close the window. Keep the table static and the window position unchanged throughout. Preserve detailed ground shadows. Ensure that the motion of the robotic arm and the window follows logical physics. Maintain consistent colors and appearance of the scene and objects from start to finish. 
+
+handle-press (5 videos) :A video clip of the handle-press task: A red robotic arm is positioned on a table, along with a device featuring a red handle (the device position is randomly initialized and then fixed). The robotic arm lifts up, moves above the handle, then descends and uses its gripper to press the handle downward onto the table. Keep the table static and the device position unchanged throughout. Preserve detailed ground shadows. Ensure that the motion of the robotic arm follows logical physics, and maintain consistent colors and shapes of the objects and scene from start to finish. Note that the handle does not move until the robotic arm makes contact with it. 
+
+button-press (3 videos) :A video clip of the button-press task: A red robotic arm is positioned on a table, along with a box featuring a red button. The robotic arm moves toward the box, accurately aligns with the red button, and presses it down. Keep the table static and the box position unchanged throughout. Preserve detailed ground shadows. Ensure that the motion of the robotic arm follows logical physics, and maintain consistent colors and shapes of the objects and scene from start to finish. 
+
+coffee-button (5 videos) :A video clip of the coffee-button task: A red robotic arm is positioned on a table, along with a coffee machine with a button (machine position randomly initialized and then fixed), and a coffee mug. The robotic arm reasonably adjusts its orientation until aligned with the coffee machine, then moves toward the button and presses it. Keep the table static and the coffee machine position unchanged throughout. Preserve detailed ground shadows. Ensure that the motion of the robotic arm follows logical physics, and maintain consistent colors and shapes of the objects and scene from start to finish. Note that the button does not move until the robotic arm makes contact with it. 
+
+18 Dual-Granularity Contrastive Reward via Generated Episodic Guidance for Efficient Embodied RL 
+
+drawer-open (3 videos) :A video clip of the drawer-open task: A red robotic arm is positioned on a table, along with a closed green drawer featuring a white handle. The robotic arm lifts up and moves above the white handle, then descends and uses its gripper to precisely hook the handle (with the blue inner jaw positioned inside and the white outer jaw positioned outside), and pulls the drawer open. Keep the table static. Preserve detailed ground shadows. Ensure that the motion of the robotic arm and the target object follows logical physics, and maintain consistent colors and shapes of the objects and scene from start to finish. Note that the drawer does not move until the robotic arm makes contact with it or its handle. 
+
+button-press-wall (3 videos) :A video clip of the button-press-wall task: A red robotic arm is positioned on a table, along with a box featuring a red button and a fixed wall. The robotic arm lifts up and closes its gripper, moves toward the box and passes over the wall, then descends to align the outer side of its gripper precisely with the red button, opens the gripper, and presses the button down. Keep the table static and the box position unchanged throughout. Preserve detailed ground shadows. Ensure that the motion of the robotic arm follows logical physics, and maintain consistent colors and shapes of the objects and scene from start to finish. Note that the red button does not move until the robotic arm makes contact with it, and the robotic arm cannot pass directly through the wall. 
+
+drawer-close (3 videos) :A video clip of the drawer-close task: A red robotic arm is positioned on a table, along with an open green drawer featuring a white handle. The robotic arm first lifts upward, then descends and uses its gripper to precisely press against the white handle from the outside, pushing the green drawer closed. Keep the table static. Preserve detailed ground shadows. Ensure that the motion of the robotic arm and the target object follows logical physics, and maintain consistent colors and shapes of the objects and scene from start to finish. Note that the drawer does not move until the robotic arm makes contact with it or its handle. 
+
+plate-slide (3 videos) :A video clip of the plate-slide task: A red robotic arm is positioned on a table, alongside a black plate initialized at a random position, and a soccer goal. The robotic arm moves downward, accurately presses on the plate, and slides it into the goal toward a red target point. Keep the table and goal static with unchanged positions. Preserve detailed shadows on the ground. Ensure the motion of the robotic arm is logical and that the colors and shapes of the objects and scene remain consistent. Note that the plate does not move until the robotic arm makes contact with it. 
+
+button-press-topdown (3 videos) :A video clip of the button-press-topdown task: A red robotic arm is positioned on a table, along with a box featuring a red button on its top surface. The robotic arm lifts upward, then moves over the box, aligns with the red button, and descends to press it down precisely. Keep the table static and the box position unchanged throughout. Preserve detailed ground shadows. Ensure that the motion of the robotic arm follows logical physics, and maintain consistent colors and shapes of the objects and scene from start to finish. Note that the red button does not move until the robotic arm makes contact with it. 
+
+hammer (3 videos) :A video clip of the hammer task: A red robotic arm is positioned on a table, along with a hammer featuring a red handle and a wooden block with a nail. The robotic arm moves toward the hammer, uses its gripper to precisely grasp the hammer’s red handle, lifts the hammer, moves it to align the hammerhead with the nail, and presses the nail into the wooden block. Keep the table static and the wooden block position unchanged throughout. Preserve detailed ground shadows. Ensure that the motion of the robotic arm and the hammer follows logical physics, and maintain consistent colors and shapes of the objects and scene from start to finish. 
+
+19 Dual-Granularity Contrastive Reward via Generated Episodic Guidance for Efficient Embodied RL 
+
+assembly (3 videos) :A video clip of the assembly task: A red robotic arm is positioned on a table, along with a circular part featuring a green handle and a fixed red cylinder. The robotic arm moves toward the part, uses its gripper to precisely grasp its green handle, lifts the part, moves it toward the red cylinder, and places the circular part onto the cylinder. Keep the table static and the red cylinder position unchanged throughout. Preserve detailed ground shadows. Ensure that the motion of the robotic arm and the part follows logical physics, and maintain consistent colors and shapes of the objects and scene from start to finish. 
+
+door-open (3 videos) :A video clip of the door-open task: A red robotic arm is positioned on a table, along with a black cabinet with a gray handle (cabinet position randomly initialized and then fixed), and a light green target marker. The robotic arm lifts up, moves toward the cabinet handle while gradually closing its gripper, uses the gripper to precisely press against the gray handle of the black cabinet from the inside, then pulls the cabinet door open until it reaches the position of the green target marker. Keep the table static and the cabinet position unchanged throughout. Preserve detailed ground shadows. Ensure that the motion of the robotic arm and the cabinet door follows logical physics, and maintain consistent colors and appearance of the objects and the scene from start to finish. 
+
+window-open (5 videos) :A video clip of the window-open task: A red robotic arm is positioned on a table, along with a closed window whose position is randomly initialized and then fixed. The robotic arm lifts up, moves toward the window, uses its gripper to press against the window’s white handle from the right side, and then moves leftward to push the window open. Keep the table static and the window position unchanged throughout. Preserve detailed ground shadows. Ensure that the motion of the robotic arm and the window follows logical physics, and maintain consistent colors and appearance of the scene and objects from start to finish. 
+
+handle-press-side (3 videos) :A video clip of the handle-press-side task: A red robotic arm is positioned on a table, along with a dark gray device featuring a red handle (device position randomly initialized and then fixed). The robotic arm lifts up, moves above the handle, then descends and presses the handle down. Keep the table static and the device position unchanged throughout. Preserve detailed ground shadows. Ensure that the motion of the robotic arm follows logical physics, and maintain consistent colors and shapes of the objects and scene from start to finish with no pixelation or artifacts. Note that the handle does not move until the robotic arm makes contact with it. 
+
+faucet-close (3 videos) :A video clip of the faucet-close task: A red robotic arm is positioned on a table, along with a faucet featuring a red knob. The robotic arm moves toward the faucet, uses its gripper to precisely press against the red knob from the left side, and rotates it clockwise to close the faucet. Keep the table static and the faucet position unchanged throughout. Preserve detailed ground shadows. Ensure that the motion of the robotic arm and the target object follows logical physics, and maintain consistent colors and shapes of the objects and scene from start to finish. Note that the knob does not move until the robotic arm makes contact with it. 
+
+C.4.2. R EAL -W ORLD TASKS 
+
+real-world: pick banana (3 videos) :A video clip of the robotic arm successfully grasping and placing a banana into a plate. On a table, there are a plate, a banana initialized at a random position, and a robotic arm equipped with a gripper. The robotic arm moves horizontally above the banana, then opens its gripper, descends to precisely grasp the banana with the gripper, lifts it, moves horizontally above the plate, opens the gripper, and places the banana into the plate. 
+
+20 Dual-Granularity Contrastive Reward via Generated Episodic Guidance for Efficient Embodied RL 
+
+real-world: stack cube (3 videos) :A video clip of the robotic arm stacking a cube. On a table, there are a plate, a red cube initialized at a random position, and a wooden block. The robotic arm moves horizontally above the red cube, then opens its gripper, descends to precisely grasp the red cube with the gripper, lifts it, moves horizontally above the wooden block, opens the gripper, and places the red cube onto the wooden block. 
+
+21

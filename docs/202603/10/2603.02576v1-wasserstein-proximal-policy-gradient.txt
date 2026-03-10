@@ -1,0 +1,4016 @@
+Title: Wasserstein Proximal Policy Gradient
+
+URL Source: https://arxiv.org/pdf/2603.02576v1
+
+Published Time: Wed, 04 Mar 2026 01:35:02 GMT
+
+Number of Pages: 35
+
+Markdown Content:
+# Wasserstein Proximal Policy Gradient 
+
+Zhaoyu Zhu 1 Shuhan Zhang 2 Rui Gao 3 Shuang Li 2
+
+## Abstract 
+
+We study policy gradient methods for continuous-action, entropy-regularized reinforcement learn-ing through the lens of Wasserstein geometry. Starting from a Wasserstein proximal update, we derive Wasserstein Proximal Policy Gradient (WPPG) via an operator-splitting scheme that al-ternates an optimal transport update with a heat step implemented by Gaussian convolution. This formulation avoids evaluating the policy’s log den-sity or its gradient, making the method directly applicable to expressive implicit stochastic poli-cies specified as pushforward maps. We establish a global linear convergence rate for WPPG, cover-ing both exact policy evaluation and actor–critic implementations with controlled approximation error. Empirically, WPPG is simple to implement and attains competitive performance on standard continuous-control benchmarks. 
+
+## 1. Introduction 
+
+Reinforcement learning (RL) has become a powerful paradigm for solving complex sequential decision-making problems, powering landmark achievements from super-human performance in strategic games(Silver et al., 2016; 2017) and advanced robotic control (Levine et al., 2016) to the training of Large Language Models (Guo et al., 2025). At the heart of many of these successes are policy gradient (PG) methods (Williams, 1992; Sutton et al., 1999), which iteratively update a parameterized policy to maximize ex-pected rewards. The geometry underlying policy updates plays an important role in the learning process. Standard policy gradient meth-ods use the Euclidean geometry of parameter space, while the natural policy gradient (Kakade, 2001) and trust-region methods such as TRPO (Schulman et al., 2015) and PPO    
+
+> 1Zhiyuan College, Shanghai Jiao Tong University, Shanghai 200240, China 2School of Data Science, The Chinese University of Hong Kong, Shenzhen, Guangdong, China 3McCombs School of Business, The University of Texas at Austin, Austin, TX, USA. Correspondence to: Shuang Li <lishuang@cuhk.edu.cn >.
+
+(Schulman et al., 2017) instead exploit the information ge-ometry of policies via Kullback–Leibler (KL) divergence. These methods are supported by a growing body of analysis, with recent results establishing fast global convergence rates in finite action spaces (Agarwal et al., 2021; Lan, 2023; Xiao, 2022; Cen et al., 2022; Bhandari & Russo, 2024). Recent work explores an alternative paradigm that formu-lates policy optimization in distribution space under the Wasserstein metric. This perspective builds on the theory of gradient flows in probability spaces (Zhang et al., 2018; Moskovitz et al., 2021; Ziesche & Rozo, 2023; Pfau et al., 2025). In contrast to KL-based methods, which treat actions as independent categories, Wasserstein-based approaches in-herently respect the geometry of the action space, capturing meaningful notions of proximity between actions (Pacchi-ano et al., 2020; Moskovitz et al., 2021; Song et al., 2023). The resulting stochastic policy updates rely on the gradi-ent of the action-value function with respect to the action, drawing a close connection to deterministic policy gradients (Pfau et al., 2025). While Wasserstein policy optimization offers a compelling alternative to KL-based methods, its theoretical foundations are far less developed. (Terpin et al., 2022) uses Wasserstein distance as the trust region metric, but they explicitly leave the convergence analysis for future work. Using the JKO framework (Jordan et al., 1998) for Wasserstein gradient flows, Zhang et al. (2018) established asymptotic conver-gence of the entropy-regularized problem when the policy distribution is approximated by particles. For finite action spaces, Song et al. (2023) proved global convergence as the Wasserstein penalty coefficient vanishes. Beyond these results, however, convergence guarantees in the more gen-eral setting of continuous action spaces—particularly for parametric policies beyond particle approximations (e.g., mixtures of Gaussians)—remain, to the best of our knowl-edge, an open question. In this paper, we introduce a version of the Wasserstein policy gradient, which we term Wasserstein Proximal Policy Gradient (WPPG). Our main findings are as follows. • Our WPPG update introduces a new scheme for opti-mizing stochastic policies. Via an operator-splitting, we decompose the Wasserstein proximal policy update 1
+
+> arXiv:2603.02576v1 [cs.LG] 3 Mar 2026 Wasserstein Proximal Policy Gradient
+
+into two steps: a Wasserstein transport step that shifts actions to increase the action-value function, followed by a heat flow step that injects Gaussian noise to ac-count for entropy regularization. When instantiated with parametric policies, it does not require access to the policy distribution’s (log-)density or its gradient. This enables a novel approach to policy optimization with implicit policies (Tang & Agrawal, 2018). Empir-ically, the resulting algorithm is simple to implement and demonstrates competitive performance on standard continuous-control benchmarks. • We establish a linear convergence rate of WPPG for the entropy-regularized problem, under assumptions that can be verified directly. Our analysis applies to both the exact and approximate value function estimation. 
+
+1.1. Related Works On Wasserstein policy update Zhang et al. (2018) formu-late continuous-time entropy-regularized policy optimiza-tion as a gradient flow of an energy functional, and de-rive its discrete-time counterpart via the JKO scheme (Jor-dan et al., 1998), parameterizing policies with particles or energy-based models. Related gradient-flow perspectives also appear in Richemond & Maginnis (2018), and in Zi-esche & Rozo (2023) for mixtures of Gaussian policies. Moskovitz et al. (2021) introduce a Wasserstein trust-region policy update and develop efficient kernel-based estimators. Song et al. (2023) study Wasserstein and Sinkhorn trust-region updates in finite action spaces, with an extension to one-dimensional continuous control, and derive closed-form policy updates via duality. More recently, Pfau et al. (2025) propose a Wasserstein gradient flow–inspired update by projecting the Wasserstein gradient flow on parametric manifold using KL divergence. Most of the above-mentioned Wasserstein policy updates rely on the (log-)density of the policy distribution (or proba-bility mass function for finite action spaces) and/or its score functions, with the exception of Moskovitz et al. (2021), whose kernel-based method instead requires gradients of the kernel for implicit models. In particular, our update, like those of Zhang et al. (2018); Pfau et al. (2025), depends on the gradient of the action-value function with respect to the action. However, unlike both of these two approaches, our method does not rely on the (log-)density of the pol-icy distribution. This is achieved by handling the entropy term through Gaussian noise injection, rather than working directly with the density as in Zhang et al. (2018), and by projecting under the Wasserstein metric instead of the KL divergence, as in Pfau et al. (2025). We remark that other related approaches leverage Wasser-stein geometry in different ways. For instance, Pacchiano et al. (2020) compare policies in latent behavior spaces but do not focus on explicit policy updates, while Abdullah et al. (2019) use Wasserstein distances for robust uncer-tainty modeling, treating Wasserstein as a constraint on the transition dynamics of the environment rather than as a tool for defining learning dynamics. 
+
+On convergence analysis Zhang et al. (2018) establish asymptotic convergence of Wasserstein policy optimization based on the JKO scheme when policies are approximated by particles. Song et al. (2023) proves linear convergence analysis for Wasserstein trust-region optimization on finite action spaces, but requires vanishing Wasserstein penalty coefficients. Our convergence proof strategy parallels KL-based analyses such as Lan (2023) for mirror policy gradient in finite action spaces. However, instead of relying on KL-specific tools (e.g., the three-point identity), we develop new analyses tailored to Wasserstein geometry and adopt different assumptions on the problem. 
+
+## 2. Preliminaries 
+
+2.1. Reinforcement Learning Markov decision processes. We consider an infinite-horizon discounted MDP M = ( S, A, P, r, ρ, γ ), where 
+
+S is the state space, A is the action space, γ ∈ (0 , 1) the dis-count factor, P(· | s, a ) the transition kernel, r : S ×A → R
+
+the reward function, and ρ the initial-state distribution. A policy is a Markov kernel π : S → P (A) so that π(· | s) is a probability distribution on A for each s ∈ S . Our results apply to the case where A is a general metric space. For a policy π, the value and action-value (Q) functions are 
+
+V π (s) := E
+
+> at∼π(·| st)
+> st+1 ∼P(·| st,a t)
+
+" ∞X
+
+> t=0
+
+γtr(st, a t) s0 = s
+
+#
+
+,Qπ (s, a ) := E
+
+> at∼π(·| st)
+> st+1 ∼P(·| st,a t)
+
+" ∞X
+
+> t=0
+
+γt r(st, a t) s0 = s, a 0 = a
+
+#
+
+.
+
+We have the relationship that 
+
+V π (s) = Ea∼π(·| s) [Qπ (a, s )] .
+
+The advantage function is Aπ (s, a ) := Qπ (s, a ) − V π (s).Given an initial distribution ρ, the performance (expected return) is Jρ(π) := Es0∼ρ[ V π (s0) ] . The discounted state visitation probability is defined as dπρ (s) := (1 −
+
+γ) P∞ 
+
+> t=0
+
+γt Pπ (st = s | s0 ∼ ρ), with P 
+
+> s
+
+dπρ (s) = 1 .
+
+Explicit vs. implicit policies. We distinguish explicit and implicit policies by whether the log-density is available. An explicit policy is one for which the policy’s log-density 
+
+log πθ (a | s) can be evaluated directly for any state-action 2Wasserstein Proximal Policy Gradient 
+
+pair (s, a ). In contrast, an implicit policy is specified only through a transport map, 
+
+a = gθ (s, Z ), Z ∼ ν, 
+
+where ν is an easy-to-sample distribution. The induced policy πθ (· | s) = ( gθ (s, ·)) #ν generally has an unknown density, so log πθ (a | s) is unavailable and its density is hard to compute. A subtle but important distinction is that a pushforward representation does not automatically imply implicitness in our sense: for example, a Gaussian policy can be written as the transport gθ (s, Z ) = μθ (s) + σθ (s)Z,yet it remains an explicit policy because its log-density ad-mits a closed-form expression. Explicit policies are often more expressive than common explicit families (e.g., Gaus-sians), since a rich generator gθ can represent complex and non-Gaussian(Multimodal) action distributions while re-maining easy to sample from, which is particularly attractive in continuous-control tasks. 
+
+2.2. Entropy Regularization 
+
+Entropy regularization is widely used in reinforcement learn-ing to prevent premature policy collapse and encourage ex-ploration. It smooths the optimization landscape, reduces gradient variance, and promotes robust, generalizable strate-gies. These benefits make it a standard component in mod-ern algorithms like soft Q-learning and Soft Actor-Critic (SAC). Define the negative entropy of a policy π at state s
+
+as 
+
+Hπ (s) := 
+
+Z
+
+> a∈A
+
+π(a|s) log π(a|s)d a. 
+
+The entropy-regularized discounted value is the value of π
+
+under the modified reward rτ (s, a ) := r(s, a ) − τ log π(a |
+
+s):
+
+V πτ (s) := Eπ h ∞X
+
+> t=0
+
+γt r(st, a t) − τ Hπ (st) s0 = s
+
+i
+
+,
+
+Define the corresponding soft-Q function by 
+
+Qπτ (s, a ) := r(s, a ) + γE [V πτ (s′) | s, a ] .
+
+Then the soft Bellman recursion can be written as 
+
+V πτ (s) = Ea∼π(·| s) [Qπτ (s, a ) − τ log π(a | s)] = Ea∼π(·| s) [Qπτ (s, a )] − τ Hπ (s). (1) 
+
+Connection to injected Gaussian noise In distributional optimization, entropy regularization corresponds to inject-ing Gaussian noise in Langevin dynamics. More precisely, consider a generic distributional optimization problem over probability measures μ ∈ P (Rd):
+
+min 
+
+> μ∈P (Rd)
+
+F(μ) := ⟨U, μ ⟩ + τ H(μ). (2) A standard way to solve it is the Langevin dynamics: 
+
+xk+1 = xk − η∇U (xk) + p2ητ ξ k, ξk ∼ N (0 , I ). (3) Hence, the entropy penalty τ appears exactly as the variance scale of the injected Gaussian noise. 
+
+Policy-entropy vs. parameter-entropy. It is important to distinguish the above policy entropy regularization from approaches that inject Gaussian noise at the level of policy parameters. For example, Parameswaran Kamalaruban et al. (2019) models a distribution over policy parameters and per-forms Langevin-type updates on the parameters. While this also promotes exploration, it does not directly regularize the conditional action distribution π(· | s), and therefore does not yield the same soft Bellman structure in (1) . In particular, parameter-space randomness can induce state-dependent action stochasticity only indirectly through the parameter-to-action map, whereas policy-entropy regular-ization explicitly regularizes uncertainty at the level of the action distribution. 
+
+2.3. Wasserstein Policy Gradient 
+
+We consider a parameterized stochastic policy πθ (· | s) on a continuous action space. Let J(πθ ) denote the expected discounted return obtained by executing πθ . Policy gradient methods update θ so as to increase J(πθ ) by following an estimator of its gradient. A central identity is the policy gradient theorem, which expresses the gradient in terms of the action-value function: 
+
+∇θ J(πθ ) = Es∼dπθ , a ∼πθ (·| s)
+
+h
+
+∇θ log πθ (a | s)Qπθ (s, a )
+
+i
+
+.
+
+Thanks to this result, most policy gradient methods work with explicit policies. Wasserstein policy optimization operates directly in the space of action distributions π(· | s) equipped with the 2-Wasserstein metric. This viewpoint controls how the policy changes in action space and connects policy improvement to Wasserstein gradient flows and optimal transport geome-try. Fix a state s and iteration k. The Wasserstein proximal policy update is given by 
+
+πk+1 (· | s) ∈ argmax π(·| s)
+
+⟨Qπk (s, ·), π (· | s)⟩ − 12η W22
+
+ π(· | s), π k(· | s),
+
+(4) where W2 is 2-Wasserstein metric, η > 0 is a step size and 
+
+⟨f, μ ⟩ := R f dμ. Equivalently, Qπk (s, ·) can be replaced by the advantage function Aπk (s, ·) = Qπk (s, ·) − V πk (s),since V πk (s) is constant with respect to the optimized ac-tion distribution. The Wasserstein penalty in (4) plays the role of a trust region, encouraging local improvement while 3Wasserstein Proximal Policy Gradient 
+
+preventing large shifts of the policy in action space. Alterna-tively, one can work with an explicit trust-region constraint on the Wasserstein distance. A complementary implementation strategy is from the per-spective of Wasserstein gradient flow, which realizes the Wasserstein update through the action-gradient of the critic. Concretely, actions are transported along the drift induced by ∇aQπk (s, a ):
+
+a 7 → a + η ∇aQπk (s, a ), a ∼ πk(· | s),
+
+and the updated policy is obtained by pushing forward πk(· | 
+
+s) through this map. To update the policy parameters θ, existing literature works within the tabular or explicit policy setting, relying on access to the policy density or score function. Different from these works, our approach in the next section develops a method aimed at implicit policies that bypasses the need for density or score function evaluations. 
+
+## 3. Wasserstein Proximal Policy Gradient for Entropy-Regularized RL 
+
+3.1. Derivation of the Policy Update 
+
+For an initial-state distribution, we evaluate a policy π by the expected performance 
+
+Jρ(π) := Es0∼ρ
+
+V πτ (s0).
+
+Substituting the soft Bellman identity (1) into Jρ(π) yields a composite objective consisting of an expectation term and an entropy term. We propose to optimize Jρ(π) via a proximal gradient scheme in the Wasserstein space of policies. To this end, we first note that the first variation of Jρ(π)
+
+with respect to the conditional distribution π(· | s) can be expressed as 
+
+δδπ (· | s) Jρ(π)( a) = 11 − γ dπρ (s)Qπτ (s, a ),
+
+where dπρ (s) is the discounted visitation distribution under 
+
+π, up to an additive constant in a. Thereby, at iteration k,the linearization of Jρ(π) around the current policy πk is given by 
+
+11 − γ Es∼dπkρ Ea∼π(·| s)[Qπk 
+
+> τ
+
+(s, ·)] .
+
+Consider a weighted Wasserstein distance that aggregates across states with weights dπk 
+
+> ρ
+
+(s)/(1 − γ). Then the result-ing Wasserstein proximal update is given by 
+
+πk+1 (· | · ) ∈ argmax π
+
+n
+
+Es∼dπkρ Ea∼π(·| s)[Qπk 
+
+> τ
+
+(s, ·)] 
+
+− 12η Es∼dπkρ
+
+W22
+
+ π(· | s), π k(· | s) − τ Es∼dπkρ [Hπ (s)] 
+
+o
+
+.
+
+(WPPG )Because it decomposes across states, this is equivalent to 
+
+πk+1 (· | s) ∈ argmax π(·| s)
+
+n
+
+⟨Qπk 
+
+> τ
+
+(s, ·), π (· | s)⟩− 12η W22
+
+ π(· | s), π k(· | s) − τ Hq (s)
+
+o
+
+,
+
+(WPPG s)which is termed the Wasserstein proximal policy gradient (WPPG). When τ = 0 , it reduces to the entropy-free Wasser-stein proximal update (4) . When W22 is replaced by a Breg-man divergence, (WPPG s) recovers mirror-descent style pol-icy optimization (Lan, 2023). Note that Qπk 
+
+> τ
+
+(s, a ) can re-placed by the advantage function Aπk 
+
+> τ
+
+(s, a ) = Qπk 
+
+> τ
+
+(s, a ) −
+
+V πk 
+
+> τ
+
+(s), since V πk 
+
+> τ
+
+(s) does not depend on π(· | s). We would like to emphasize that this per-state formulation will be mainly used for theoretical analysis; below, we will present a practical scheme that works with implicit poli-cies .To solve (WPPG ) (or (WPPG s)), we employ a (Lie–Trotter) operator splitting that decouples the Wasserstein proximal component from the entropy component by maintaining a full-step sequence {πk} and a half-step sequence {πk− 12 }.We perform the following two steps sequentially. First, we compute an intermediate policy πk+ 12 (· | s) by 
+
+πk+ 12 (· | s) ∈ argmax π(·| s)
+
+⟨Qπk− 12 
+
+> τ
+
+(s, ·), π (· | s)⟩ − 12η W22
+
+ π(· | s), π k− 12 (· | s),
+
+(5) Here, the half sequence can be initialized at any implicit policy π 12 = g0# ν. Second, to handle the entropy term, using its connection to injected Gaussian noise (Section 2.2), we convolve πk+ 12 (· | s) with a Gaussian kernel: 
+
+πk+1 (· | s) = πk+ 12 (· | s) ∗ N (0 , 2τ ηI . (6) Equivalently, if A ∼ πk+ 12 (· | s) and ξ ∼ N (0 , I ) are independent, then A + √2τ ηξ ∼ πk+1 (· | s).
+
+3.2. Wasserstein Proximal Gradient for Implicit Policies 
+
+We now discuss how to solve (5) for implicit polices. Re-call that an implicit policy at state s is represented as a pushforward π(· | s) = g(s, ·)#ν, where g is a sufficiently expressive generative model. We represent the solution to (5) as πk+ 12 (· | s) = gk+ 12 (s, ·)#ν. Thereby, for implicit polices, the Wasserstein proximal step (5) becomes 
+
+max  
+
+> g(s, ·)
+
+Eν [Qπk− 12 
+
+> τ
+
+(s, g (s, Z ))] − 12η W22(g(s, ·), π k− 12 (· | s)) .
+
+The next proposition shows an exact equivalent reformula-tion of this problem, as a result of the interchangeability principle, provided that the implicit policy class is expres-sive. 4Wasserstein Proximal Policy Gradient 
+
+Proposition 1. Assume the range of the function g(s, ·)
+
+covers the action space A. Then (5) can be equivalently solved via 
+
+gk+ 12 (s, ·) ∈ argmax g(s, ·)Qπk− 12
+
+> τ
+
+ s, g (s, Z )
+
+− 12η g(s, Z ) − gk− 12 (s, Z ) 2,
+
+(7) 
+
+with πk+ 12 = gk+ 12 (s, ·)#ν.
+
+This result shows that the Wasserstein proximal step for implicit policies can be implemented as a drift-map opti-mization, where the new drift map gk+ 12 is obtained by maximizing the expected Q-value minus a quadratic penalty that encourages proximity to the previous drift map gk− 12 .Taking expectation over s ∼ dπk− 12 
+
+> ρ
+
+, we obtain a further equivalent form, provided that the visitation distribution has full support and enables the interchangeability principle: 
+
+gk+ 12 ∈ argmax g Es∼d  
+
+> πk−12
+> ρ,Z ∼ν
+
+h
+
+Qπk− 12
+
+> τ
+
+ s, g (s, Z )
+
+− 12η g(s, Z ) − gk− 12 (s, Z ) 2i
+
+.
+
+This formulation leads to the following parametric update rule when g is parameterized by gθ :
+
+θk+ 12 ∈ argmax θ Es∼d  
+
+> πk−12
+> ρ,Z ∼ν
+
+h
+
+Qπk− 12
+
+> τ
+
+ s, g θ (s, Z )
+
+− 12η gθ (s, Z ) − gθk− 12
+
+(s, Z ) 2i
+
+.
+
+Finally, the entropy step is applied at sampling time by injecting Gaussian noise: 
+
+Ak+1 = gk+ 12 (s, Z ) + p2τ ηξ. 
+
+Thereby, the WPPG scheme (WPPG ) admits a practical im-plementation for implicit policies via the two-step updates above. Crucially, optimizing the generator parameters θ
+
+does not require access to the policy log-density or its gradi-ent, but only the action-gradient of the soft-Q function. In an actor–critic implementation, this can be obtained from a differentiable critic network, and Appendix D.1 describes a procedure to estimate the soft-Q function for our implicit policy class. It is worth contrasting WPPG with related methods. Al-though SAC (Haarnoja et al., 2018) uses the reparameteri-zation trick, it still requires a policy family with a tractable log-density (e.g., Tanh–Gaussian) and does not directly ex-tend to general pushforward policies whose densities are typically intractable. WPO (Pfau et al., 2025), includes a KL-based projection step that requires access to the policy log-density. In contrast, our update is derived under W2 ge-ometry only; making it compatible with expressive implicit stochastic policies. 
+
+## 4. Convergence Analysis 
+
+This section derives convergence guarantees for (WPPG ),considering both exact (Section 4.1) and inexact (Section 4.2) Q-functions. Our analysis follows the roadmap in (Lan, 2023), but we provide special treatment for the Wasserstein metric in place of the Bregman divergence used therein. 
+
+4.1. Exact Q-function 
+
+We begin by stating the main assumptions. Let P2(Rd)
+
+denote the space of probability measures on Rd with finite second moments, equipped with the 2-Wasserstein metric. 
+
+Assumption 1. (Boundedness) For every state s, the fol-lowings hold: The reward r(s, a ) is uniformly bounded,i.e. 
+
+Rmin ≤ r(s, a ) ≤ Rmax and the action space A is bounded by RA.
+
+Assumption 2. The differential entropy −Hπ0 (·) of initial policy π0(·| s) is uniformly lower bounded by C0.
+
+Definition 1 (T2 transportation-information inequality) . Aprobability measure μ ∈ P 2(Rd) is said to satisfy the T2(λ)
+
+transportation-information inequality (for some λ > 0) if, for every ν ∈ P 2(Rd),
+
+W22(ν, μ ) ≤ 2
+
+λ KL( ν∥μ). (T2(λ))
+
+Assumption 3 (Uniform T2(λ) along the optimization tra-jectory) . There exists a constant λ > 0 such that for all iter-ations k ∈ N and all states s ∈ S , the distribution πk(· | s)
+
+satisfies the T2(λ) transportation-information inequality. 
+
+Remark 1. The first assumption 1 is quite common in prac-tice. For the second assumption 2, we only need to choose the initial policy to be a uniform distribution. We will verify Assumption 3 in Appendix C.2. Recall our WPPG scheme (WPPG ), by the soft Bellman optimality conditions, there exists an optimal policy π⋆
+
+such that 
+
+V π⋆ 
+
+> τ
+
+(s) ≥ V πτ (s) for all s ∈ S , and any π. 
+
+Hence, optimizing V π (·) state-wise is equivalent to optimiz-ing any strictly positive weighted average of it. In particular, for any probability weights ρ ∈ P (S) with full support, 
+
+π⋆ ∈ argmax π Es∼ρ [V π (s)] s.t. π(· | s) ∈ P (A), ∀s ∈ S .
+
+While the initial distribution ρ can be chosen arbitrarily, we follow Lan (2023) and set ρ = ν∗—the stationary distribu-tion induced by the optimal policy π∗—to ease the proof. Notably, our (WPPG s) algorithm designed to optimize the objective (8) does not require access to ν∗. We thereby define the objective function as 
+
+J(π) := Jν∗ (π) = Es∼ν∗ [V π (s)] , (8) 5Wasserstein Proximal Policy Gradient 
+
+and our goal is to maximize Jν∗ (π) over all admissible policies: 
+
+max  
+
+> π
+
+J(π) s.t. π(· | s) ∈ P A, ∀s ∈ S . (9) Our main result in this subsection is as follows. 
+
+Theorem 1. Suppose Assumption 3 holds and set the step size ηk = η = 1 
+
+> γλτ
+
+. Then for any k ≥ 0, the iterates of 
+
+(WPPG s) satisfy 
+
+J(π∗) − J(πk) + λτ D(πk, π ∗)
+
+≤ γk [J(π∗) − J(π0) + λτ D(π0, π ∗)] 
+
+where J is defined in (8) , and 
+
+D(πk, π ∗) := Es∼ν∗
+
+ 12 W22
+
+ πk(·| s), π ∗(·| s) .
+
+Consequently, in order to achieve an error of O(ε + δ), the required iteration complexity is 
+
+O
+
+ 11 − γ log J(π∗) − J(π0) + λτ D(π0, π ∗)
+
+ε
+
+
+
+.
+
+Proof sketch. We sketch the key one-step recursion; The detailed proof is deferred to Appendix C.3.2 Consider WPPG update (WPPG s) . Let φπk+1 →πk (s, ·) be an optimal Kantorovich potential for  πk+1 (·| s), π k(·| s)
+
+under quadratic cost. Kantorovich duality yields the supporting-hyperplane inequality for F (q) :=  
+
+> 12
+
+W 22 (q, π k(·| s)) :
+
+12 W 22
+
+ p, π k
+
+ ≥ 12 W 22
+
+ πk+1 , π k
+
++ (10) 
+
+φπk+1 →πk (s, ·), p − πk+1 , (11) for any competitor p(·| s) (we omit (·| s) inside W2 for read-ability). Since (WPPG s) is a concave maximization over q(·| s) ∈ P A,its first-order optimality condition states that there ex-ists an optimal Kantorovich potential φπk+1 →πk (s, ·) for  πk+1 (·| s), π k(·| s) such that, for all competitors p(·| s),
+
+D
+
+Qπk 
+
+> τ
+
+(s, ·) − τ  1 + ln πk+1 (·| s) − 1
+
+η φπk+1 →πk (s, ·),p(·| s) − πk+1 (·| s)
+
+E
+
+≤ 0.
+
+Combining this optimal condition with (11) yields the prox-imal bound: for all p(·| s),
+
+η
+
+
+
+Qπk 
+
+> τ
+
+(s, ·), p −πk+1 − τ Hp(s) + τ Hπk+1 (s)
+
+
+
+(12) 
+
++ 12 W 22
+
+ πk+1 , π k
+
+
+
+≤ 12 W 22
+
+ p, π k
+
+ − τ η KL  p ∥ πk+1 
+
+.
+
+(13) Then by Assumption 3(which could be verified), 
+
+KL  p ∥ πk+1 
+
+ ≥ λ
+
+2 W 22
+
+ p, π k+1 
+
+, (14) so the last term in (13) yields explicit W 22 (p, π k+1 ) control. Next, we relate the linear term to the value gap under ν∗.The entropy-regularized performance difference lemma and stationarity of ν∗ under π∗ imply, for any policy π,
+
+(1 − γ) Es∼ν∗
+
+V π∗ 
+
+> τ
+
+(s) − V πτ (s) = (15) 
+
+Es∼ν∗
+
+h
+
+Qπτ (s, ·), π ∗(·| s) − π(·| s) − τ Hπ∗
+
+(s) + τ Hπ (s)
+
+i
+
+.
+
+(16) Moreover, applying the entropy-regularized performance difference lemma again with (π′, π ) = ( πk+1 , π k) and us-ing (13) with p = πk(·| s) shows the per-state improvement integrand is nonnegative, yielding the pointwise bound 
+
+V πk+1  
+
+> τ
+
+(s) − V πk 
+
+> τ
+
+(s) ≥ Qπk 
+
+> τ
+
+(s, ·), π k+1 (·| s) − πk(·| s)
+
+(17) 
+
+− τ Hπk+1 (s) + τ Hπk (s). (18) Instantiate (13) at p = π∗(·| s), combine (14) – (18) , and take expectation over s ∼ ν∗. This yields the one-step recursion 
+
+J(π∗) − J(πk+1 ) + λτ D(πk+1 , π ∗)
+
+≤ γ
+
+
+
+J(π∗) − J(πk) + 1 
+
+> ηγ
+
+D(πk, π ∗)
+
+
+
+,
+
+where J is defined in (8) and D(π, π ∗) =
+
+Eν∗
+
+ 12 W 22 (π(·| s), π ∗(·| s)) . Choosing η = 1 
+
+> γλτ
+
+makes the quantity J(π∗) − J(πk) + λτ D(πk, π ∗) geometrically contract with rate γ, and iterating yields the theorem. 
+
+Remark 2. A closely related result is Song et al. (2023, Theorem 5). They study the unregularized setting with finite action spaces (and a one-dimensional continuous extension), whereas we analyze the entropy-regularized problem on continuous action spaces. Technically, their analysis bounds the deviation between the Wasserstein update and classical policy iteration via a uniform bound on pairwise distances between discrete actions, without exploiting the Wasserstein geometry. Consequently, they require an increasing step-size schedule (i.e., decreasing β), leading to an O(1 /ε ) step size to reach O(ε) accuracy. In contrast, we achieve the same accuracy with a constant step size independent of ε;see Section C.3. 
+
+Remark 3. Our result is reminiscent of the linear conver-gence guarantee for mirror descent policy optimization in Lan (2023), but the analyses differ in essential ways. While Lan (2023) relies on the KL geometry and the associ-ated three-point (Bregman) lemma, our proof is developed in the W2 geometry, where such a lemma is unavailable. Instead, we combine Wasserstein descent estimates with 6Wasserstein Proximal Policy Gradient 
+
+transportation-information inequalities to obtain a linear rate; see details in Section C.3. More importantly, we exploit the structure of the policy trajectory {πk}: a refined analysis of the corresponding Kantorovich potentials and value functions yields a uniform 
+
+T2 inequality along the entire trajectory, which is crucial for controlling the Wasserstein proximal term; see details in Section C.2. 
+
+4.2. Inexact Q-function 
+
+In practice, the exact action-value function Qπk is rarely available, since computing it requires either full knowl-edge of the environment dynamics or an infinite num-ber of Monte Carlo samples. Instead, one typically con-structs a stochastic estimator Qπk ,ξ k from finite trajectories, temporal-difference updates, or function approximation. In this case, the (WPPG ) update is defined by substituting the exact value function Qπk in (54) with its stochastic estimator Qπk ,ξ k . Formally, the update rule is given by 
+
+πk+1 (· | s) ∈ arg max 
+
+> q(·| s)
+
+n
+
+⟨Qπk ,ξ k (s, ·), q (· | s)⟩− τ Hq (s) − 12ηk
+
+W22
+
+ q(· | s), π k(· | s)o
+
+.
+
+(19) Such an estimator inevitably introduces both variance and bias, which can accumulate across iterations and signifi-cantly affect policy updates. To ensure that our analysis remains tractable while still capturing realistic scenarios, we impose mild conditions on the stochastic approximation and estimation error. 
+
+Assumption 4. For each iteration k ≥ 0, the stochastic estimator Qπk ,ξ k satisfies 
+
+Eξk
+
+Qπk ,ξ k
+
+ = ¯Qπk , (20) 
+
+¯Qπk − Qπk 
+
+> ∞
+
+≤ ϵk, (21) 
+
+Eξk
+
+h
+
+∇aQπk ,ξ k − ∇ aQπk 22,∞
+
+i
+
+≤ σ2
+
+> k
+
+. (22) Where ∥ · ∥ ∞ is the uniform norm over (s, a ) ∈ S × A , and for any function f , ∥ · ∥ 2,∞ is defined as 
+
+∥f ∥2,∞ := sup 
+
+> (s,a )∈S×A
+
+∥f (s, a )∥2.
+
+This assumption is similar to (Lan, 2023), except that (22) concerns the action-gradient of the Q-function, which is needed in our Wasserstein policy update. We have the fol-lowing convergence result. 
+
+Theorem 2. Suppose Assumptions 3 and 4 hold, and for all 
+
+k ≥ 0, ϵk ≤ ϵ, σ k ≤ σ and Qπk ,ξ k are uniformly bounded. Then the iterates of (19) using step size ηk = η = 1
+
+> γλτ
+
+satisfies 
+
+Eξ0: k−1
+
+h
+
+J(π∗) − J(πk) + λτ D (πk, π ∗)
+
+i
+
+≤ γkh
+
+J(π∗) − J(π0) + λτ D (π0, π ∗)
+
+i
+
++ O(ϵ + σ).
+
+(23) 
+
+where J is defined in (8) , and D(πk, π ∗) := 
+
+Es∼ν∗
+
+ 12 W22
+
+ πk(·| s), π ∗(·| s) . Consequently, in order to achieve an error of O(ε+ϵ+σ) in expectation, the required iteration complexity is 
+
+O
+
+ 11 − γ log J(π∗) − J(π0) + λτ D(π0, π ∗)
+
+ε
+
+
+
+.
+
+The detailed proof is deferred to Appendix C.3.3. Compared with Theorem 1, this result involves additional bias arising from the estimation of the Q-function and vari-ance from stochastic estimation of the Q-function. Nonethe-less, our analysis shows that the total error does not ac-cumulate across iterations, and the convergence guarantee only incurs an O(ϵ + σ) term in the final bound, rather than growing with the number of iterations. 
+
+## 5. Experiments 
+
+Our empirical study consists of two parts: comparative eval-uation and ablation analysis. The comparative evaluation focuses on benchmarking our methods against representa-tive baselines to assess overall performance. The ablation analysis, which is postponed to the appendix, investigates three key questions: (i) the effect of τ on WPPG, (ii) the impact of latent variable dimension on WPPG-I, and (iii) the role of double-Q learning in WPPG. 
+
+Evaluation Tasks We evaluate our approach on a set of standard continuous control benchmarks from the MuJoCo suite 1, including Hopper-v5, Walker2d-v5, HalfCheetah-v5, Reacher-v5, Swimmer-v5, and Humanoid-v5.These tasks cover a wide range of difficulties: from relatively low-dimensional and easy-to-learn tasks such as Swimmer and Hopper, to high-dimensional and challenging tasks such as Humanoid. 
+
+Baseline Models We compare against three representa-tive baselines: (i) PPO, a KL-proximal policy optimiza-tion method that employs clipped surrogate objectives to constrain successive policy updates and improve training stability (Schulman et al., 2017); (ii) SAC, a stochastic ac-tor–critic algorithm formulated as an entropy-regularized policy optimization method, which augments the reward with a maximum-entropy term to encourage exploration and improve stability (Haarnoja et al., 2018). (iii) WPO, a 
+
+> 1https://gymnasium.farama.org/environments/mujoco/
+
+7Wasserstein Proximal Policy Gradient  
+
+> Figure 1. Training curves on MuJoCo continuous control benchmarks: Solid lines denote the mean episodic return, while shaded areas represent the 95% confidence interval computed over 10 independent evaluation runs with different random seeds.
+
+Wasserstein-proximal actor–critic algorithm that replaces the KL divergence commonly used in proximal methods with the Wasserstein distance, thereby constraining succes-sive policy updates under the geometry of optimal transport. (Pfau et al., 2025). Our proposed methods include WPPG, with a Gaussian MLP policy actor, and WPPG-I, with an implicit MLP policy actor. Hyperparameters for PPO are taken from the RL Zoo project 2, while those for SAC and WPO follow Pfau et al. (2025). 
+
+Experiment Setup For fair comparison, WPPG and WPPG-I adopt the double-Q technique, taking the mini-mum of two Q-functions for both critic targets and action gradients, and WPO follows the original implementation provided in ACME 3. To further ensure fairness, SAC is eval-uated with entropy coefficient self-tuning disabled, since 
+
+τ in WPPG and WPPG-I is also fixed rather than adap-tively tuned while training. All off-policy methods share the same replay buffer structure. Additional implementation details for all methods and pseudo code of our algorithm are provided in the Appendix D. 
+
+Results and Discussion The learning curves for all tasks are shown in Figure 1. Across the six MuJoCo bench-marks, WPPG demonstrates performance comparable to SAC, which can be attributed to the fact that both methods employ Gaussian MLP policies. This observation suggests that Wasserstein geometry can match, and in some cases even surpass, the effectiveness of KL-based geometry in pol-
+
+> 2https://github.com/DLR-RM/rl-baselines3-zoo
+> 3https://github.com/google-deepmind/acme
+
+icy optimization. More importantly, WPPG-I consistently outperforms all baselines, achieving higher returns across nearly all tasks. The success of WPPG-I further indicates that WPPG can be naturally extended to implicit policy classes: although we use only a simple MLP-based implicit policy here, the framework readily accommodates richer architectures. We refer readers to the Appendix D.1 and D.2 for a detailed comparison between the two algorithms. In contrast, PPO lags behind due to slower learning and lower asymptotic performance, while WPO suffers from unstable convergence on challenging environments such as Humanoid and Swimmer and even fails to learn in Reacher. Overall, these results highlight that WPPG preserves the sample efficiency of off-policy actor-critic methods, while WPPG-I not only inherits these advantages but also demon-strates a consistent and significant margin over all baselines. 
+
+## 6. Conclusion 
+
+In this work, we proposed Wasserstein Proximal Policy Gra-dient (WPPG), a novel framework for policy optimization that leverages Wasserstein geometry to design proximal up-dates directly in distribution space. Our method eliminates the need for policy densities or score functions, making it naturally applicable to implicit policies. Theoretically, we established linear convergence guarantees under entropy regularization and mild conditions, covering both exact and approximate value function settings. To our best knowledge, this work is an early attempt to employ Wasserstein geome-try for establishing global convergence guarantees. Empiri-cally, WPPG with implicit policies demonstrates superior performance in challenging continuous-control benchmarks. 8Wasserstein Proximal Policy Gradient 
+
+## Impact Statement 
+
+This paper presents work whose goal is to advance the field of Machine Learning theory. There are many potential societal consequences of our work, none of which we feel must be specifically highlighted here. 
+
+## References 
+
+Abdullah, M. A., Ren, H., Ammar, H. B., Milenkovic, V., Luo, R., Zhang, M., and Wang, J. Wasserstein robust reinforcement learning. arXiv preprint arXiv:1907.13196 ,2019. Agarwal, A., Kakade, S. M., Lee, J. D., and Mahajan, G. On the theory of policy gradient methods: Optimality, approximation, and distribution shift. Journal of Machine Learning Research , 22(98):1–76, 2021. Ambrosio, L., Gigli, N., and Savar ´e, G. Gradient flows: in metric spaces and in the space of probability measures .Springer, 2005. Bhandari, J. and Russo, D. Global optimality guarantees for policy gradient methods. Operations Research , 72(5): 1906–1927, 2024. Bobkov, S. G. and Ledoux, M. From brunn-minkowski to brascamp-lieb and to logarithmic sobolev inequalities. 
+
+Geometric and Functional Analysis , 10(5):1028–1052, 2000. Cen, S., Cheng, C., Chen, Y., Wei, Y., and Chi, Y. Fast global convergence of natural policy gradient methods with entropy regularization. Operations Research , 70(4): 2563–2578, 2022. Compris, G. Remarks on the log-sobolev inequality for the continuous cube, 2002. Gozlan, N., Roberto, C., and Samson, P.-M. A new char-acterization of talagrand’s transport-entropy inequalities and applications. 2011. Guo, D., Yang, D., Zhang, H., Song, J., Wang, P., Zhu, Q., Xu, R., Zhang, R., Ma, S., Bi, X., et al. Deepseek-r1 incentivizes reasoning in llms through reinforcement learning. Nature , 645(8081):633–638, 2025. Haarnoja, T., Zhou, A., Abbeel, P., and Levine, S. Soft actor-critic: Off-policy maximum entropy deep reinforce-ment learning with a stochastic actor. In International conference on machine learning , pp. 1861–1870. Pmlr, 2018. Jordan, R., Kinderlehrer, D., and Otto, F. The variational formulation of the fokker–planck equation. SIAM journal on mathematical analysis , 29(1):1–17, 1998. Kakade, S. M. A natural policy gradient. Advances in neural information processing systems , 14, 2001. Lan, G. Policy mirror descent for reinforcement learning: Linear convergence, new sampling complexity, and gen-eralized problem classes. Mathematical programming ,198(1):1059–1106, 2023. Levine, S., Finn, C., Darrell, T., and Abbeel, P. End-to-end training of deep visuomotor policies. Journal of Machine Learning Research , 17(39):1–40, 2016. Moskovitz, T., Arbel, M., Huszar, F., and Gretton, A. Ef-ficient wasserstein natural gradients for reinforcement learning. In International Conference on Learning Rep-resentations , 2021. Otto, F. and Villani, C. Generalization of an inequality by ta-lagrand and links with the logarithmic sobolev inequality. 
+
+Journal of Functional Analysis , 173(2):361–400, 2000. Pacchiano, A., Parker-Holder, J., Tang, Y., Choromanski, K., Choromanska, A., and Jordan, M. Learning to score behaviors for guided policy optimization. In Interna-tional Conference on Machine Learning , pp. 7445–7454. PMLR, 2020. Parameswaran Kamalaruban, D. T., Rolland, P., and Cevher, V. Reinforcement learning with langevin dynamics. Opti-mization Foundations for Reinforcement Learning Work-shop (OptRL) at NeurIPS 2019, Vancouver, Canada, 2019. URL https://optrl2019.github.io/ assets/accepted_papers/36.pdf . Workshop paper. Pfau, D., Davies, I., Borsa, D. L., Ara ´ujo, J. G. M., Tracey, B. D., and van Hasselt, H. Wasserstein policy optimiza-tion. In Forty-second International Conference on Ma-chine Learning, ICML 2025, Vancouver, BC, Canada, July 13-19, 2025 . OpenReview.net, 2025. URL https: //openreview.net/forum?id=oAKe7MG9GM .Puterman, M. L. Markov decision processes: discrete stochastic dynamic programming . John Wiley & Sons, 2014. Richemond, P. H. and Maginnis, B. Diffusing policies: Towards wasserstein policy gradient flows. 2018. Santambrogio, F. Optimal transport for applied mathemati-cians: Calculus of variations, pdes, and modeling, volume 87 of progress in nonlinear differential equations and their applications, 2015. Schulman, J., Levine, S., Abbeel, P., Jordan, M., and Moritz, P. Trust region policy optimization. In International conference on machine learning , pp. 1889–1897. PMLR, 2015. 9Wasserstein Proximal Policy Gradient 
+
+Schulman, J., Wolski, F., Dhariwal, P., Radford, A., and Klimov, O. Proximal policy optimization algorithms. 
+
+arXiv preprint arXiv:1707.06347 , 2017. Silver, D., Huang, A., Maddison, C. J., Guez, A., Sifre, L., Van Den Driessche, G., Schrittwieser, J., Antonoglou, I., Panneershelvam, V., Lanctot, M., et al. Mastering the game of go with deep neural networks and tree search. 
+
+nature , 529(7587):484–489, 2016. Silver, D., Schrittwieser, J., Simonyan, K., Antonoglou, I., Huang, A., Guez, A., Hubert, T., Baker, L., Lai, M., Bolton, A., et al. Mastering the game of go without human knowledge. nature , 550(7676):354–359, 2017. Song, J., He, N., Ding, L., and Zhao, C. Provably convergent policy optimization via metric-aware trust region meth-ods. Trans. Mach. Learn. Res. , 2023, 2023. URL https: //openreview.net/forum?id=jkTqJJOGMS .Sutton, R. S., McAllester, D., Singh, S., and Mansour, Y. Policy gradient methods for reinforcement learning with function approximation. Advances in neural information processing systems , 12, 1999. Tang, Y. and Agrawal, S. Implicit policy for reinforcement learning. arXiv preprint arXiv:1806.06798 , 2018. Terpin, A., Lanzetti, N., Yardim, B., Dorfler, F., and Ram-poni, G. Trust region policy optimization with optimal transport discrepancies: Duality and algorithm for contin-uous actions. Advances in Neural Information Processing Systems , 35:19786–19797, 2022. Williams, R. J. Simple statistical gradient-following algo-rithms for connectionist reinforcement learning. Machine learning , 8(3):229–256, 1992. Xiao, L. On the convergence rates of policy gradient meth-ods. Journal of Machine Learning Research , 23(282): 1–36, 2022. Zhang, R., Chen, C., Li, C., and Carin, L. Policy opti-mization as wasserstein gradient flows. In International Conference on machine learning , pp. 5737–5746. PMLR, 2018. Ziesche, H. and Rozo, L. Wasserstein gradient flows for optimizing gaussian mixture policies. Advances in Neural Information Processing Systems , 36:21058–21080, 2023. 10 Wasserstein Proximal Policy Gradient 
+
+## A. Proof of Proposition 1 
+
+Fix a state s. Abbreviate Q(a) := Qπk− 12 
+
+> τ
+
+(s, a ) and μ := πk− 12 (· | s).
+
+Proof. Write μ := πk− 12 (· | s). Consider the proximal problem 
+
+sup 
+
+> π
+
+n
+
+⟨Q, π ⟩ − 12η W22(π, μ )
+
+o
+
+. (24) By the definition of W2,
+
+W 22 (π, μ ) = inf 
+
+> γ∈Γ( π,μ )
+
+Z
+
+∥a − b∥2 γ(da, db ).
+
+Hence, merging the negative inf with outer sup of (24) and using the fact that ⟨Q, π ⟩ = R Q(a) γ(da, db ) for any γ ∈ Γ( π, μ ),we can rewrite (24) as 
+
+sup  
+
+> γ:γ2=μ
+
+Z 
+
+Q(a) − 12η ∥a − b∥2
+
+γ(da, db ), (25) where γB denotes the second marginal of γ (so the second marginal is fixed to be μ). Disintegrate γ(da, db ) = γ(da | b) μ(db ) to obtain 
+
+sup 
+
+> γ(·| b)
+
+Z Z 
+
+Q(a) − 12η ∥a − b∥2
+
+γ(da | b)
+
+
+
+μ(db ).
+
+For each fixed b, the inner term is maximized by a Dirac mass at any maximizer of the integrand: 
+
+Ts(b) ∈ arg max 
+
+> a∈A
+
+n
+
+Q(a) − 12η ∥a − b∥2o
+
+,
+
+which is assumed to exist; otherwise we can consider an ϵ-optimal selection. Then an optimal coupling for (25) is 
+
+γ⋆ = ( Ts, Id) #μ, and the corresponding optimal policy is 
+
+πk+ 12 (· | s) = ( Ts)#μ. (26) Moreover, the optimal value admits the envelope representation 
+
+sup 
+
+> π
+
+n
+
+⟨Q, π ⟩ − 12η W 22 (π, μ )
+
+o
+
+=
+
+Z
+
+sup 
+
+> a
+
+n
+
+Q(a) − 12η ∥a − b∥2o
+
+μ(db ). (27) Finally, use the implicit representation μ = ( gk− 12 (s, ·)) #ν: if Z ∼ ν and B = gk− 12 (s, Z ) then B ∼ μ, so (27) becomes 
+
+EZ∼ν
+
+
+
+sup 
+
+> a
+
+n
+
+Q(a) − 12η ∥a − gk− 12 (s, Z )∥2o
+
+. (28) By interchangeability, (28) equals 
+
+sup 
+
+> g(s, ·)
+
+EZ∼ν
+
+h
+
+Q(g(s, Z )) − 12η ∥g(s, Z ) − gk− 12 (s, Z )∥2i
+
+,
+
+and an optimizer is realized by the pointwise choice 
+
+gk+ 12 (s, Z ) = Ts
+
+ gk− 12 (s, Z ),
+
+which is consistent with (26) since then (gk+ 12 (s, ·)) #ν = ( Ts)#(gk− 12 (s, ·)) #ν = πk+ 12 (· | s). This completes the proof. 11 Wasserstein Proximal Policy Gradient 
+
+## B. Entropy flow and the heat semigroup 
+
+We justify the closed form (6). 
+
+Proposition 2 (Entropy W2-flow is the heat equation) . Let qt(da ) = ρt(a) da be an absolutely continuous curve in P2(Rd).Consider the (negative) Boltzmann entropy 
+
+H(ρ) = 
+
+Z
+
+> Rd
+
+ρ(a) log ρ(a) da, 
+
+and the functional Φ2(ρ) = τ H(ρ). Then the Wasserstein gradient flow of Φ2 is the heat equation 
+
+∂tρt = τ ∆ρt.
+
+Its solution operator is Gaussian convolution: 
+
+ρt = ρ0 ∗ N (0 , 2τ t I d).
+
+Equivalently, if X0 ∼ ρ0 and ξ ∼ N (0 , I d) are independent, then Xt := X0 + √2τ t ξ satisfies Law( Xt) = qt.Proof. Formally, the Wasserstein gradient flow of an internal energy functional R f (ρ) satisfies 
+
+∂tρt = ∇ · 
+
+
+
+ρt∇ δΦ2
+
+δρ (ρt)
+
+
+
+.
+
+For Φ2(ρ) = τ R ρ log ρ, the first variation is δΦ2/δρ = τ (1 + log ρ). Thus 
+
+∂tρt = ∇ ·  ρt∇(τ (1 + log ρt))  = τ ∇ · (ρt∇ log ρt) = τ ∇ · (∇ρt) = τ ∆ρt.
+
+The heat equation on Rd has the explicit solution ρt = ρ0 ∗ N (0 , 2τ tI ). The probabilistic representation follows since convolution with a Gaussian equals adding an independent Gaussian random variable. 
+
+## C. Theoretical Derivations and Proofs 
+
+C.1. Gˆ ateaux Derivative of Entropy-rugularized Reinforcement Learning Objective Lemma 1 (Log-derivative of the trajectory law) . Consider a zero-mass perturbation δπ (·| s) (i.e. R 
+
+> A
+
+δπ (da |s) = 0 for all s)and the policy path πϵ = π + ϵ δπ , with |ϵ| small so that πϵ ≥ 0 and supp( δπ ) ⊆ { π > 0}. Let ¶πϵ be the path measure of the Markov chain induced by πϵ and the transition kernel P (d s′|s, a ) from an initial law ρ0. For any finite horizon T and any integrable test functional F of τ0: T = ( s0, a 0, . . . , s T ),
+
+ddϵ ϵ=0 
+
+Z
+
+F (τ0: T ) dP πϵ (τ0: T ) = 
+
+Z
+
+F (τ0: T ) 
+
+> T−1
+
+X
+
+> u=0
+
+δπ (au | su)
+
+π(au | su)
+
+!
+
+dP π (τ0: T ). (29) 
+
+If F is dominated by an integrable function uniformly, then letting T → ∞ and applying dominated convergence yields 
+
+ddϵ ϵ=0 
+
+Z
+
+F (τ ) dP πϵ (τ ) = 
+
+Z
+
+F (τ )
+
+> ∞
+
+X
+
+> u=0
+
+δπ (au | su)
+
+π(au | su)
+
+!
+
+dP π (τ ). (30) 
+
+Proof. Write the truncated path density under πϵ as 
+
+dPπϵ (τ0: T ) = ρ0(s0) 
+
+> T−1
+
+Y
+
+> t=0
+
+h
+
+πϵ(at | st) P (st+1 | st, a t)
+
+i
+
+.
+
+Only πϵ depends on ϵ, hence by the product rule, 
+
+ddϵ 
+
+> T−1
+
+Y
+
+> t=0
+
+πϵ(at | st) = 
+
+ T −1Y
+
+> t=0
+
+πϵ(at | st)
+
+ T −1X 
+
+> u=0 ddϵ
+
+πϵ(au | su)
+
+πϵ(au | su) .
+
+12 Wasserstein Proximal Policy Gradient 
+
+Evaluating at ϵ = 0 gives 
+
+ddϵ πϵ(au | su)
+
+> ϵ=0
+
+= δπ (au | su),
+
+hence (29) follows by dominated convergence under the stated integrability. 
+
+Lemma 2 (Functional policy gradient of Entropy) . Fix a state s ∈ S . Let the policy at s admit a density π(·| s) w.r.t. a reference measure da (and write hπ (s) := h(π(·| s)) ) with 
+
+Hπ (s) = 
+
+Z
+
+> A
+
+π(a|s) log π(a|s) d a. 
+
+For any zero-mass direction δπ (·| s) (i.e. R 
+
+> A
+
+δπ (a|s) = 0 ) and the perturbation πϵ(·| s) = π(·| s) + ϵ δπ (·| s), provided πϵ(·| s)
+
+stays nonnegative for |ϵ| small and π(a|s) > 0 on its support, the Gˆ ateaux derivative of hπ (s) in the direction δπ (·| s) is 
+
+δHπ (s)
+
+δπ := ddϵ ϵ=0 
+
+Hπϵ (s) = 
+
+Z
+
+> A
+
+1 + log π(a|s) δπ (d a|s). (31) 
+
+Proof. Let πϵ(a) = π(a|s) + ϵ δπ (a|s). Then 
+
+lim 
+
+> ϵ→0
+
+Hπϵ (s) − Hπ (s)
+
+ϵ = lim 
+
+> ϵ→0
+
+1
+
+ϵ (
+
+Z
+
+πϵ(a|s) log πϵ(a|s) d a −
+
+Z
+
+π(a|s) log π(a|s) d a)= lim 
+
+> ϵ→0
+
+1
+
+ϵ (
+
+Z
+
+(π(a|s) + ϵ δπ (a|s)) log( π(a|s) + ϵ δπ (a|s)) d a −
+
+Z
+
+π(a|s) log π(a|s) d a)=
+
+Z
+
+lim 
+
+> ϵ→0
+
+π(a|s) ln( π(a|s) + ϵ δπ (a|s)) − ln π(a|s)
+
+ϵ + δπ (a|s) ln( π(a|s) + ϵδπ (a|s))d a
+
+=
+
+Z
+
+(1 + ln π)d δπ 
+
+which implies that δHπ (s) 
+
+> δπ
+
+(a) = 1 + ln π(a|s).
+
+Lemma 3 (Functional policy gradient under entropy regularization) . Then for any zero-mass direction δπ , the G ˆateaux derivative (functional gradient) 
+
+δV πτ (s0)
+
+δπ (s, a ) = 11 − γ dπs0 (s)
+
+
+
+Qπτ (s, a ) − τ (1 + ln π(a|s)) 
+
+
+
+, (32) 
+
+Proof. We should be very careful here: when computing the functional gradient of V πτ (s) with respect to π, there are two contributing parts - one from the MDP dynamics and one from the entropy regularization. Let V πτ (s) := 
+
+Eπ,s 0=s
+
+hP 
+
+> t≥0
+
+γt r(st, a t) − τ Hπ (st)i
+
+By Lemma 1 with F (τ) = P 
+
+> t≥0
+
+γt r(st, a t) − τ Hπ (st),
+
+ddϵ ϵ=0 
+
+V πϵ 
+
+> τ
+
+= X
+
+> t≥0
+
+γt Eπ
+
+" r(st, a t) − τ Hπ (st) tX
+
+> u=0
+
+δπ (au|su)
+
+π(au|su)
+
+#
+
+− X
+
+> t≥0
+
+γt Eπ
+
+ ddϵ ϵ=0 
+
+τ Hπϵ (s)
+
+
+
+(I) Trajectory-law part. 
+
+(I) = X
+
+> u≥0
+
+Eπ
+
+ δπ (au|su)
+
+π(au|su)
+
+X
+
+> t≥u
+
+γt r(st, a t) − τ Hπ (st) = X
+
+> u≥0
+
+γu Eπ
+
+ δπ (au|su)
+
+π(au|su) Qπτ (su, a u)
+
+
+
+.
+
+Condition on su and expand over a to cancel π, then sum over time and use P 
+
+> u≥0
+
+γu Pπ (su = s | s0) = 11−γ dπs0 (s) to get 
+
+(I) = 
+
+Z Z 
+
+> S×A
+
+11 − γ dπs0 (d s) Qπτ (s, a ) δπ (a|s)d sda. 
+
+13 Wasserstein Proximal Policy Gradient 
+
+(II) Explicit entropy part. By Lemma 2 for each state s, Hπ (s) = − R π(a|s) log π(a|s) d a , we have 
+
+ddϵ ϵ=0 
+
+Hπϵ (s) = 
+
+Z
+
+> A
+
+[1 + log π(a|s)] δπ (a|s)d a, 
+
+hence 
+
+(II) = X
+
+> t≥0
+
+γt Eπ [τ ddϵ ϵ=0 
+
+Hπϵ (s)] = 
+
+Z Z 
+
+> S×A
+
+11 − γ dπs0 (s) τ [1 + log π(a|s)] δπ (a|s)d ads. 
+
+Finally, we have 
+
+δV πτ (s0)
+
+δπ (s, a ) = 11 − γ dπs0 (s) Qπτ (s, a ) − τ (1 + ln π(a|s)) 
+
+C.2. Boundedness of the Value Function and Per-Iteration Satisfaction of the T2 Inequality Lemma 4 (Entropy upper bound from bounded action space) . Let A ∈ Rd be absolutely continuous with differential entropy 
+
+h(A) := − R 
+
+> A
+
+p(a) ln p(a) da . Assume A is supported on a measurable set A ⊂ Rd with 0 < Vol( A) < ∞, i.e., 
+
+P(A ∈ A ) = 1 .
+
+Then 
+
+h(A) ≤ ln Vol( A).
+
+In particular, if A ⊆ B2(0 , R A) (the Euclidean ball of radius RA), then 
+
+h(A) ≤ ln 
+
+
+
+Vol( B2(0 , R A)) 
+
+
+
+= ln 
+
+ πd/ 2
+
+Γ  d 
+
+> 2
+
++ 1  RdA
+
+
+
+.
+
+If A ⊆ [−RA, R A]d, then 
+
+h(A) ≤ d ln(2 RA).
+
+Proof. Let p be the density of A with respect to Lebesgue measure, and note that p(a) = 0 for all a / ∈ A . Let u denote the uniform density on A:
+
+u(a) = 1Vol( A) 1A(a).
+
+Consider the KL divergence KL( p∥u), which is nonnegative: 
+
+0 ≤ KL( p∥u) = 
+
+Z
+
+> A
+
+p(a) ln p(a)
+
+u(a) da =
+
+Z
+
+> A
+
+p(a) ln p(a) da + ln Vol( A),
+
+where we used log u(a) = − ln Vol( A) on A and R 
+
+> A
+
+p(a) da = 1 . Rearranging yields 
+
+−
+
+Z
+
+> A
+
+p(a) ln p(a) da ≤ ln Vol( A),
+
+i.e., 
+
+h(A) = −
+
+Z
+
+> Rd
+
+p(a) ln p(a) da = −
+
+Z
+
+> A
+
+p(a) ln p(a) da ≤ ln Vol( A).
+
+For the explicit bounds, note that if A ⊆ B2(0 , R A) then Vol( A) ≤ Vol( B2(0 , R A)) , and similarly if A ⊆ [−RA, R A]d
+
+then Vol( A) ≤ (RA)d. Substituting these volume upper bounds completes the proof. In the next part, we will prove that the value function are uniformly bounded and then proof the policy in the trajectory satisfy T2 Uniformly. 14 Wasserstein Proximal Policy Gradient 
+
+Recall our definition of value function 
+
+Qπτ (s, a ) = r(s, a ) − τ Hπ (s) + γE [V πτ (s′) | s, a ] ,V πτ (s) = Ea∼π(·| s) [Qπτ (s, a )] .
+
+(33) For ease of presentation in this part, we slightly modify the notation in this section. Define 
+
+Qk(s, a ) := r(s, a ) + γE [Vk(s′) | s, a ] ,Vk(s) := Ea∼πk (·| s) [Qk(s, a )] − τ Hπk (s).
+
+(34) It is straightforward to verify that 
+
+Qπk 
+
+> τ
+
+(s, a ) = Qk(s, a ) − τ Hπk (s)
+
+V πk 
+
+> τ
+
+= Vk.
+
+(35) In particular, the value functions coincide, and Qπk 
+
+> τ
+
+(s, ·) differs from Qk(s, ·) only by an additive constant (depending on s but not on the action). Recall the policy update: 
+
+πk+1 (· | s) ∈ argmax q(·| s)∈P (A)
+
+n
+
+⟨Qπk 
+
+> τ
+
+(s, ·), q (·| s)⟩ − τ Hq (s) − 12ηk
+
+W 22
+
+ q(·| s), π k(· | s)o
+
+. (36) 
+
+πk+1 (· | s) ∈ argmax q(·| s)∈P (A)
+
+n
+
+⟨Qk(s, ·), q (·| s)⟩ − τ Hq (s) − 12ηk
+
+W 22
+
+ q(·| s), π k(· | s)o
+
+. (37) The solutions of (36) and (37) are the same since Qπk 
+
+> τ
+
+(s, ·) differs from Qk(s, ·) only by an additive constant (depending on s but not on the action). In the sequel, we will use Qk and Vk as our notation. 
+
+Lemma 5 (Monotone improvement) . For all k ≥ 0 and all states s, Vk+1 (s) ≥ Vk(s).
+
+πk+1 (· | s) ∈ argmax q(·| s)∈P (A)
+
+n
+
+⟨Qk(s, ·), q (·| s)⟩ − τ Hq (s) − 12ηk
+
+W 22
+
+ q(·| s), π k(· | s)o
+
+. (38) 
+
+Lemma 6 (Monotone improvement) . For all k ≥ 0 and all states s, V πk+1  
+
+> τ
+
+(s) ≥ V πk 
+
+> τ
+
+(s).Proof. Fix s. By optimality of πk+1 (· | s) in (38), evaluating the objective at q = πk(· | s) gives 
+
+Eπk+1 (·| s)[Qk(s, a )] − τ Hπk+1 (s) ≥ Eπk (·| s)[Qk (s, a )] − τ Hπk (s) = Vk(s).
+
+Let T πτ denote the regularized policy evaluation operator 
+
+(T πτ V )( s) := Ea∼π(·| s)
+
+h
+
+r(s, a ) + γ Es′∼p(·| s,a )[V (s′)] 
+
+i
+
+− τ Hπ (s).
+
+Then the previous display is exactly (T πk+1  
+
+> τ
+
+Vk)( s) ≥ Vk(s). Since T πk+1  
+
+> τ
+
+is monotone and a γ-contraction in ∥ · ∥ ∞ (see e.g. (Puterman, 2014, Ch. 6)), iterating yields 
+
+Vk+1 = lim 
+
+> n→∞
+
+(T πk+1  
+
+> τ
+
+)nVk ≥ Vk.
+
+15 Wasserstein Proximal Policy Gradient 
+
+Lemma 7 (Uniform bounds on Qk). Under Assumptions 12, for all k ≥ 0, s, and a,
+
+sup 
+
+> a∈A
+
+Qk(s, a ) ≤ Rmax + γτ ln Vol( A)1 − γ , inf  
+
+> a∈A
+
+Qk(s, a ) ≥ Rmin + γτ C 0
+
+1 − γ .
+
+Consequently, 
+
+Osc  Qk(s, ·) ≤ Rmax − Rmin + γτ ln Vol( A) − γτ C 0
+
+1 − γ =: ∆ Q. (39) 
+
+Proof. For the upper bound, use r ≤ Rmax and Vk ≤ Rmax +τ log Vol( A)(1 −γ) since the entropy term term in (37) have an upper bound 4: 
+
+Qk(s, a ) = r(s, a ) + γE[Vk(s′)] ≤ Rmax + γ Rmax + τ log Vol( A)1 − γ = Rmax + γτ log Vol( A)1 − γ .
+
+For the lower bound, note that by Assumption 2, 
+
+V0(s) = Eπ0 [Q0(s, a )] − τ H(π0(· | s)∥p0) ≥ Rmin + γ inf  
+
+> s′
+
+V0(s′) + τ C 0,
+
+so inf s V0(s) ≥ (Rmin + τ C 0)/(1 − γ). By Lemma 5, Vk ≥ V0, hence 
+
+Qk(s, a ) = r(s, a ) + γ E[Vk(s′)] ≥ Rmin + γ inf  
+
+> s′
+
+V0(s′) = Rmin + γτ C 0
+
+1 − γ .
+
+Subtracting gives (39). 
+
+Lemma 8 (Uniform-in-time Hπ bound) . Under assumption 1 and 2, we know for all k,s: 
+
+− ln Vol( A) ≤ Hπk (s) ≤ Rmax − Rmin 
+
+τ (1 − γ) + ln Vol( A) − C0
+
+1 − γ
+
+Proof. Using (37), 
+
+Hπk (s) = Ea∼πk (·| s)[Qk(s, a )] − Vk(s)
+
+τ ≤ sup a Qk(s, a ) − Vk(s)
+
+τ . (40) From the bounded-reward assumption and because the entropy regularized term is always upper bounded, we always have From 7, we have for all k ≥ 0, s, and a,
+
+sup 
+
+> a∈A
+
+Qk(s, a ) ≤ Rmax + γτ ln Vol( A)1 − γ , inf  
+
+> a∈A
+
+Qk(s, a ) ≥ Rmin + γτ C 0
+
+1 − γ .
+
+Using Vk(s) ≥ V0(s) and Qk is uniformly upper bounded gives 
+
+Hπk (s) ≤  
+
+> Rmax +γτ Vol( A)1−γ
+
+− V0(s)
+
+τ ∀k, ∀s. (41) To get a uniform lower bound on V0(s), we have assumed 2 C0 := inf s −Hπ0 (s) > −∞ . Then 
+
+V0(s) ≥ Rmin 
+
+1 − γ + τ C 0
+
+1 − γ .
+
+Plugging this into the previous bound yields 
+
+sup 
+
+> k,s
+
+Hπk (s) ≤ Rmax − Rmin 
+
+τ (1 − γ) + ln Vol( A) − C0
+
+1 − γ . (42) and with 4, we know for all k,s: 
+
+− ln Vol( A) ≤ Hπk (s) ≤ Rmax − Rmin 
+
+τ (1 − γ) + Vol( A) − C0
+
+1 − γ
+
+16 Wasserstein Proximal Policy Gradient 
+
+Lemma 9. For any k, s , πk+1 (· | s) of (38) satisfies πk+1 (· | s) ≪ p0 and dπ k+1 (· | s)/dp 0 > 0 p0-a.e., where p0 is uniform distribution. Proof. From lemma8 Finite objective value forces KL (πk+1 (·| s)∥p0) = Hπk+1 (s) + ln Vol( A) < ∞, hence πk+1 ≪ p0.If B ⊂ A has p0(B) > 0 and πk+1 (B) = 0 , consider the perturbation qε = (1 − ε)πk+1 + ε p 0(· | B). The linear term 
+
+⟨Qk, q ε⟩ changes by O(ε) since Qk is bounded on A. Moreover, W2(qε, π k) ≤ W2(πk+1 , π k) + εD 2 by convexity of 
+
+W2(·, π k) under mixtures. Finally, the entropy gain satisfies KL (qε∥p0) − KL (πk+1 ∥p0) = ε log ε + O(ε) as ε ↓ 0. Thus the objective in (38) increases by τ (−ε log ε) − O(ε) > 0 for small ε, contradicting optimality. 
+
+Lemma 10 (Oscillation bound for Kantorovich potentials) . Let A ⊂ Rd be compact with diameter RA. If φ is a Kantorovich potential for the quadratic cost c(a, a ′) = 12 ∥a − a′∥2 between measures supported on A, then 
+
+Osc( φ) ≤ R2
+
+> A
+
+.
+
+Proof. This is standard, but we include a short proof for completeness (see also (Ambrosio et al., 2005, Ch. 5), (Santambrogio, 2015, Ch. 1)). Choose c-conjugate optimal potentials so that 
+
+φ(a) = inf 
+
+> a′∈A
+
+n 12 ∥a − a′∥2 − ψ(a′)
+
+o
+
+.
+
+For fixed a′, set ga′ (a) := 12 ∥a − a′∥2 − ψ(a′). For a, b ∈ A ,
+
+ga′ (a) − ga′ (b) = 12 ⟨a − b, a + b − 2a′⟩,
+
+hence 
+
+|ga′ (a) − ga′ (b)| ≤ 12 ∥a − b∥(∥a − a′∥ + ∥b − a′∥) ≤ RA∥a − b∥.
+
+Thus each ga′ is D-Lipschitz, and so is φ = inf a′ ga′ . Since ∥a − b∥ ≤ RA on A, we obtain Osc( φ) ≤ R2
+
+> A
+
+.
+
+Lemma 11 (Bounded perturbations preserve T2). Let μ satisfy T2(λ0) and let dν = 1 
+
+> Z
+
+ef dμ with f bounded. Then ν
+
+satisfies T2(λ) with 
+
+λ ≥ λ0
+
+8 e− Osc( f ).
+
+Proof. In the notation of (Gozlan et al., 2011), T2(λ0) is equivalent to (T2(C)) with C = 1 /λ 0. Corollary 1.7 in (Gozlan et al., 2011) gives (T2(8 Ce Osc( f ))) for ν. Translating back yields λ ≥ (λ0/8) e− Osc( f ).
+
+Theorem 3 (Uniform T2). Under Assumption 1 and 2, there exists λ > 0 such that for all k ≥ 1 and all states s, πk(· | s)
+
+satisfies T2(λ):
+
+KL (ν∥πk(· | s)) ≥ λ
+
+2 W 22
+
+ ν, π k(· | s) ∀ν ≪ πk(· | s).
+
+One admissible explicit constant is 
+
+λ := λ0
+
+8 exp − 1
+
+τ ∆Q − D2
+
+ητ 
+
+!
+
+, ∆Q = Rmax − Rmin + γτ Vol( A) − γτ C 0
+
+1 − γ . (43) Where λ0 is the T2 constant for uniform distribution on the corresponding compact action spaces like ball and hypercube. 
+
+Proof. Fix k ≥ 0 and a state s. We show that πk+1 (· | s) satisfies T2(λ) with a constant independent of k and s.Rewrite (38) as minimization of 
+
+Φ( q) := τ Hq (s) − ⟨ Qk(s, ·), q ⟩ + 12ηk
+
+W 22
+
+ q, π k(· | s).
+
+By Lemma 9, πk+1 (· | s) has strictly positive density w.r.t. p0, where p0 is uniform distribution on action space, so 
+
+fk+1 := log dπ k+1 (·| s) 
+
+> dp 0
+
+is well-defined p0-a.e. Let φk+1 be a Kantorovich potential for the quadratic cost transporting 17 Wasserstein Proximal Policy Gradient 
+
+πk+1 (· | s) to πk(· | s). Standard first-order optimality conditions for Wasserstein proximal maps (e.g. (Santambrogio, 2015, Ch. 10) or (Santambrogio, 2015, Ch. 7)) yield that there exists a constant ck+1 ∈ R such that, p0-a.e. on A,
+
+fk+1 (a) = 1
+
+τ Qk(s, a ) − 1
+
+ηkτ φk+1 (a) − ck+1 . (44) Taking oscillations in (44) and using that oscillation is invariant under constants, 
+
+Osc( fk+1 ) ≤ 1
+
+τ Osc  Qk(s, ·) + 1
+
+ηkτ Osc( φk+1 ).
+
+By Lemma 7, Osc( Qk(s, ·)) ≤ ∆Q. By Lemma 10, Osc( φk+1 ) ≤ D2. This gives the uniform bound 
+
+Osc( fk+1 ) ≤ ∆Q
+
+τ + D2
+
+ητ =: B. 
+
+Since p0 is the uniform distribution on a compact action set A—in particular, we focus on either a Euclidean ball or a hypercube, both common in practice— p0 satisfies the transportation-information inequality T2(λ0). In what follows, we specialize to these two representative bounded action sets. (i) If A = B2(0 , R A) ⊂ Rd and μ = Unif( A), then μ satisfies T2(λball ) with 
+
+λball = Γ( d 
+
+> 2
+
++ 1) 2/d 
+
+2R2
+
+> A
+
+,
+
+see Bobkov & Ledoux (2000) together with the implication LSI ⇒ T2 in Otto & Villani (2000). (ii) If A = [ −RA, R A]d and μ = Unif( A), then μ satisfies T2(λcube ) with 
+
+λcube = π2
+
+4R2
+
+> A
+
+,
+
+see Compris (2002) and again Otto & Villani (2000). Since πk+1 (· | s) is an exponential tilt of p0, namely dπ k+1 ∝ efk+1 dp 0, Lemma 11 yields 
+
+πk+1 (· | s) satisfies T2(λ) with λ ≥ λ0
+
+8 e− Osc( fk+1 ) ≥ λ0
+
+8 e−B .
+
+Substituting the expression for B gives (43). 
+
+C.3. Proof of the Main Theorems 
+
+C.3.1. T ECHNICAL LEMMAS 
+
+We first present the performance differance lemma for entropy regularized reinforcement learning. 
+
+Lemma 12 (Entropy Regularized Performance Difference Lemma) . (Lan, 2023, Lemma2) For any two feasible policies π
+
+and π′, we have 
+
+V π′ 
+
+> τ
+
+(s) − V πτ (s) = 11 − γ Es′∼dπ′
+
+> s
+
+h
+
+Aπτ (s′, ·), π ′(·| s′) − τ Hπ′
+
+(s′) + τ Hπ (s′)
+
+i
+
+,
+
+where Aπτ (s′, a ) := Qπτ (s′, a ) − V πτ (s′).
+
+For completeness, we provide the proof here and adapt it to our notation. 
+
+Proof. For simplicity, let us denote ξπ′
+
+(s0) the random process (st, a t, s t+1 ), t ≥ 0, generated by following the policy π′
+
+18 Wasserstein Proximal Policy Gradient 
+
+starting with the initial state s0. It then follows from the definition of V π′ 
+
+> τ
+
+that 
+
+V π′ 
+
+> τ
+
+(s) − V πτ (s)= Eξπ′ (s)
+
+" ∞X
+
+> t=0
+
+γt r(st, a t) − τ Hπ′
+
+(st)#
+
+− V πτ (s)= Eξπ′ (s)
+
+" ∞X
+
+> t=0
+
+γt r(st, a t) − τ Hπ′
+
+(st) + V πτ (st) − V πτ (st)#
+
+− V πτ (s)
+
+> (1)
+
+= Eξπ′ (s)
+
+" ∞X
+
+> t=0
+
+γt r(st, a t) − τ Hπ′
+
+(st) + γV πτ (st+1 ) − V πτ (st)#
+
++ Eξπ′ (s) [V πτ (s0)] − V πτ (s)
+
+> (2)
+
+= Eξπ′ (s)
+
+" ∞X
+
+> t=0
+
+γt r(st, a t) − τ Hπ′
+
+(st) + γV πτ (st+1 ) − V πτ (st)#
+
+= Eξπ′ (s)
+
+" ∞X
+
+> t=0
+
+γt r(st, a t) − τ Hπ (st) + γV πτ (st+1 ) − V πτ (st) − τ Hπ′
+
+(st) + τ Hπ (st)#
+
+> (3)
+
+= Eξπ′ (s)
+
+" ∞X
+
+> t=0
+
+γt Qπτ (st, a t) − V πτ (st) − τ Hπ′
+
+(st) + τ Hπ (st)#
+
+.
+
+where (1) follows by taking the term V πτ (s0) outside the summation, (2) follows from the fact that Eξπ′ (s)[V πτ (s0)] = V πτ (s)
+
+since the random process starts with s0 = s, and (3) follows from 33. The previous conclusion then imply that 
+
+V π′ 
+
+> τ
+
+(s) − V πτ (s)= 11 − γ
+
+X
+
+> s′∈S
+
+X
+
+> a′∈A
+
+dπ′ 
+
+> γ
+
+(s′)π′(a′|s′)Aπτ (s′, a ′) + τ Hπ′
+
+(s′) − τ Hπ (s′)
+
+= 11 − γ
+
+X
+
+> s′∈S
+
+dπ′ 
+
+> γ
+
+(s′)Aπτ (s′, π ′(·| s′)) − τ Hπ′
+
+(s′) + τ Hπ (s′),
+
+which immediately implies the result. Remember our defination of ν∗ as the steady state distribution induced by π∗.
+
+Lemma 13. (Lan, 2023, Lemma3) 
+
+Es∼ν∗
+
+h
+
+Qπτ (s, ·), π ∗(·| s) − π(·| s) − τ Hπ∗
+
+(s) + τ Hπ (s)
+
+i
+
+= Es∼ν∗
+
+h
+
+(1 − γ)
+
+
+
+V π∗ 
+
+> τ
+
+(s) − V πτ (s)
+
+i 
+
+. (45) For completeness, we provide the proof here and adapt it to our notation. 
+
+Proof. It follows from Lemma 12 (with π′ = π∗) that 
+
+(1 − γ)
+
+h
+
+V π∗ 
+
+> τ
+
+(s) − V πτ (s)
+
+i
+
+= Es′∼dπ∗
+
+> s
+
+h
+
+Aπτ (s′, ·), π ∗(·| s′) + τ Hπ (s′) − τ Hπ∗
+
+(s′)
+
+i
+
+.
+
+Noting that: 
+
+⟨Aπτ (s′, ·), π ∗(·| s′)⟩ = ⟨Qπτ (s′, ·), π ∗(·| s′)⟩ − V πτ (s′) (46) 
+
+= ⟨Qπτ (s′, ·), π ∗(·| s′)⟩ − ⟨ Qπτ (s′, ·), π (·| s′)⟩ (47) 
+
+= ⟨Qπτ (s′, ·), π ∗(·| s′) − π(·| s′)⟩, (48) 19 Wasserstein Proximal Policy Gradient 
+
+Combining the above two relations and taking expectation w.r.t. ν∗, we obtain 
+
+(1 − γ)Es∼ν∗
+
+h
+
+V π∗ 
+
+> τ
+
+(s) − V πτ (s)
+
+i
+
+= Es∼ν∗, s ′∼dπ∗
+
+> s
+
+h
+
+⟨Qπτ (s′, ·), π ∗(·| s′) − π(·| s′)⟩ + τ Hπ (s′) − τ Hπ∗
+
+(s′)
+
+i
+
+= Es∼ν∗
+
+h
+
+Qπτ (s, ·), π ∗(·| s) − π(·| s) − τ Hπ∗
+
+(s)
+
+i
+
++ τ Hπ (s)
+
+where the second identity is due to ν∗ is the steady state distribution induced by π∗.Next we will show a geometry property of the squared W2 distance that we repeatedly leverage in our convergence analysis. 
+
+Lemma 14. Let ν ∈ P 2(Rd). For any ρ, μ ∈ P 2(Rd), let (φρ→ν , ψ ρ→ν ) be an optimal Kantorovich dual pair for the cost 
+
+c(x, y ) = 12 ∥x − y∥2 between (ρ, ν ), i.e. 
+
+φ(x) + ψ(y) ≤ 12 ∥x − y∥2 for all x, y ∈ Rd (49) 
+
+Z
+
+φρ→ν dρ +
+
+Z
+
+ψρ→ν dν = 12 W22(ρ, ν ). (50) 
+
+Then, for every μ ∈ P 2(Rd),
+
+12 W22(μ, ν ) ≥ 12 W22(ρ, ν ) + 
+
+Z
+
+> Rd
+
+φρ→ν (x) μ − ρ(dx ). (51) 
+
+Proof. Recall the dual formulation (valid for any μ ∈ P 2(Rd)): 
+
+12 W22(μ, ν ) = sup 
+
+> φ,ψ
+
+n Z
+
+φ dμ +
+
+Z
+
+ψ dν : φ(x) + ψ(y) ≤ 12 ∥x − y∥2o
+
+. (52) Since the feasibility constraint (49) is pointwise in (x, y ), the optimal pair (φρ→ν , ψ ρ→ν ) for (ρ, ν ) is also a feasible pair in the supremum (52) for (μ, ν ). Therefore, 
+
+12 W22(μ, ν ) ≥
+
+Z
+
+φρ→ν dμ +
+
+Z
+
+ψρ→ν dν. (53) By optimality for (ρ, ν ), we have (50). Subtracting R φρ→ν dρ on the right-hand side of (53) yields 
+
+12 W22(μ, ν ) ≥
+
+ Z
+
+φρ→ν dρ +
+
+Z
+
+ψρ→ν dν 
+
+
+
++
+
+Z
+
+φρ→ν d(μ − ρ)= 12 W22(ρ, ν ) + 
+
+Z
+
+φρ→ν d(μ − ρ),
+
+which is exactly (51). C.3.2. E XACT VALUE FUNCTION CASE 
+
+Lemma 15 (Wasserstein proximal one step inequality) . Under assumption 3, fix a state s ∈ S and let the per-state proximal update be 
+
+πk+1 (·| s) ∈ argmax q∈P A
+
+n
+
+⟨Qπk (s, ·), q ⟩ − τ Hq (s) − 12ηk
+
+W22
+
+ q, π k(·| s)o
+
+, (54) 
+
+where ⟨f, q ⟩ := R 
+
+> a∈A
+
+f (a) q(a)d a. Then for any competitor p ∈ ∆A,
+
+ηk
+
+
+
+Qπk (s, ·), p − πk+1 (·| s) − τ Hp(s) + τ Hπk+1 (s)
+
+
+
++ 12 W22
+
+ πk+1 (·| s), π k(·| s)
+
+≤ 12 W22
+
+ p, π k(·| s) − ηk λτ  
+
+> 2
+
+W22
+
+ p, π k+1 (·| s).
+
+20 Wasserstein Proximal Policy Gradient 
+
+Proof. Let φπk+1 →πk (s, ·) be a Kantorovich potential for the pair  ¯πk+1 (·| s), π k(·| s) under cost c(a, a ′) = 12 ∥a − a′∥2.Note that ⟨Qπk (s, ·), q ⟩ is a linear functional of q, −τ Hq (s) is strongly concave in q, and − 12ηk W22
+
+ q, π k(·| s) is concave in 
+
+q. The first-order optimality condition of the concave program (54) states that 
+
+D
+
+ηk
+
+ Qπk (s, ·) − τ (1 + ln πk+1 (·| s))  − φπk+1 →πk (·, a ), p (·| s) − πk+1 (·| s)
+
+E
+
+≤ 0, ∀ p(·| s) ∈ P A. (55) Next, apply 14 for F (p) = 12 W22(p, π k(·| s)) and arbitrary p(·| s):
+
+12 W22
+
+ p(·| s), π k(·| s) ≥ 12 W22
+
+ πk+1 (·| s), π k(·| s) + φπk+1 →πk (s, ·), p (·| s) − πk+1 (·| s) . (56) Rearranging (56) gives 
+
+φπk+1 →πk , p − πk+1 ≤ 12 W22(p, π k) − 12 W22(πk+1 , π k),
+
+where the arguments (·| s) are omitted for readability. Plug this bound into optimal condition to obtain 
+
+D
+
+ηk
+
+ Qπk (s, ·) − τ (1 + ln πk+1 ), p − πk+1 
+
+E
+
++ 12 W22(πk+1 , π k) (57) 
+
+≤ 12 W22(p, π k), ∀ p(·| s) in PA. (58) By noting the two facts that 
+
+⟨1, p − πk+1 (·| s)⟩ = 0 ,
+
+and 
+
+⟨ln πk+1 (·| s), p ⟩ = ⟨ln πk+1 (·| s), p ⟩ − ⟨ ln p, p ⟩ + ⟨ln p, p ⟩ (59) 
+
+= −KL (p∥πk+1 (·| s)) + Hp(s), (60) By assumption3 and combine all the above, we have 
+
+ηk
+
+
+
+Qπk (s, ·), p − πk+1 (·| s) − τ Hp(s) + τ Hπk+1 (s)
+
+
+
++ 12 W22
+
+ πk+1 (·| s), π k(·| s)
+
+≤ 12 W22
+
+ p, π k(·| s) − ηkλτ 
+
+2 W22
+
+ p, π k+1 (·| s).
+
+(61) 
+
+Lemma 16. For any s ∈ S , we have 
+
+V πk+1  
+
+> τ
+
+(s) − V πk 
+
+> τ
+
+(s) ≥ ⟨ Qπk 
+
+> τ
+
+(s, ·), π k+1 (·| s) − πk(·| s)⟩ − τ Hπk+1 (s) + τ Hπk (s). (62) 
+
+Proof. It follows from Lemma 12 (with π′ = πk+1 , π = πk) that 
+
+V πk+1  
+
+> τ
+
+(s) − V πk 
+
+> τ
+
+(s) = 11 − γ Es′∼dπks
+
+h
+
+⟨Aπk 
+
+> τ
+
+(s′, ·), π k+1 (·| s′)⟩ − τ Hπk+1 (s′) + τ Hπk (s′)
+
+i
+
+. (63) And 
+
+⟨Aπk 
+
+> τ
+
+(s′, ·), π k+1 (·| s′)⟩ = ⟨Qπk 
+
+> τ
+
+(s′, ·), π k+1 (·| s′)⟩ − V πk 
+
+> τ
+
+(s′)= ⟨Qπk 
+
+> τ
+
+(s′, ·), π k+1 (·| s′)⟩ − ⟨ Qπk 
+
+> τ
+
+(s′, ·), π k(·| s′)⟩
+
+= ⟨Qπk 
+
+> τ
+
+(s′, ·), π k+1 (·| s′) − πk(·| s′)⟩.
+
+Combining the two identities above, we obtain 
+
+V πk+1  
+
+> τ
+
+(s) − V πk 
+
+> τ
+
+(s) = 11 − γ Es′∼dπk+1 
+
+> s
+
+h
+
+⟨Qπk 
+
+> τ
+
+(s′, ·), π k+1 (·| s′) − πk(·| s′)⟩ − τ Hπk+1 (s′) + τ Hπk (s′)
+
+i
+
+. (64) 21 Wasserstein Proximal Policy Gradient 
+
+Now we conclude from Lemma 15 with p = πk(·| s′) for any s′ that 
+
+⟨Qπk 
+
+> τ
+
+(s′, ·), π k+1 (·| s′) − πk(·| s′)⟩ − τ Hπk+1 (s′) + τ Hπk (s′) ≥ ηkλτ 
+
+2 W22
+
+ πk(·| s′), π k+1 (·| s′). (65) The previous two conclusions then clearly imply the result in (62). For any fixed s′ ∈ S , since πk+1 (·| s′) maximizes the per-state WPPG objective (54) , we can compare it with the feasible competitor q = πk(·| s′) to obtain 
+
+D
+
+Qπk 
+
+> τ
+
+(s′, ·), π k+1 (·| s′)
+
+E
+
+− τ Hπk+1 (s′) − 12ηk
+
+W 22
+
+
+
+πk+1 (·| s′), π k(·| s′)
+
+
+
+≥
+
+D
+
+Qπk 
+
+> τ
+
+(s′, ·), π k(·| s′)
+
+E
+
+− τ Hπk (s′) − 12ηk
+
+W 22
+
+
+
+πk(·| s′), π k(·| s′)
+
+
+
+.
+
+Since W 22 (πk(·| s′), π k(·| s′)) = 0 , rearranging yields 
+
+D
+
+Qπk 
+
+> τ
+
+(s′, ·), π k+1 (·| s′) − πk(·| s′)
+
+E
+
+− τ Hπk+1 (s′) + τ Hπk (s′) ≥ 12ηk
+
+W 22
+
+
+
+πk+1 (·| s′), π k(·| s′)
+
+
+
+≥ 0, (66) which holds for all s′ ∈ S .Then combine with (65), we have that 
+
+Es′∼dπk+1 
+
+> s(s)
+
+h
+
+⟨Qπk 
+
+> τ
+
+(s′, ·), π k+1 (·| s′) − πk(·| s′)⟩ − τ Hπk+1 (s′) + τ Hπk (s′)
+
+i
+
+≥ dπk+1 
+
+> s(s)
+
+h
+
+⟨Qπk 
+
+> τ
+
+(s, ·), π k+1 (·| s) − πk(·| s)⟩ − τ Hπk+1 (s) + τ Hπk (s)
+
+i
+
+≥ (1 − γ)
+
+h
+
+⟨Qπk 
+
+> τ
+
+(s, ·), π k+1 (·| s) − πk(·| s)⟩ − τ Hπk+1 (s) + τ Hπk (s)
+
+i
+
+,
+
+where the last inequality follows from the fact that dπk 
+
+> s
+
+(s) ≥ (1 − γ) due to the definition of dπk 
+
+> s
+
+and s0 = s with probability one. Then by (64) and the above inequality, the claim follows. 
+
+Theorem 4. Suppose Assumption 3 holds and set the step size ηk = η = 1 
+
+> γλτ
+
+. Then for any k ≥ 0, the iterates of (WPPG )
+
+satisfy 
+
+J(π∗) − J(πk) + λτ D(πk, π ∗)
+
+≤ γk [J(π∗) − J(π0) + λτ D(π0, π ∗)] 
+
+where J is defined in (8) , and 
+
+D(πk, π ∗) := Es∼ν∗
+
+ 12 W22
+
+ πk(·| s), π ∗(·| s) .
+
+Consequently, in order to achieve an error of O(ε + δ), the required iteration complexity is 
+
+O
+
+ 11 − γ log J(π∗) − J(π0) + λτ D(π0, π ∗)
+
+ε
+
+
+
+.
+
+Proof. By Lemma 15 with p = π∗, we have 
+
+Qπk 
+
+> τ
+
+(s, ·), π ∗(·| s) − πk+1 (·| s) − τ Hπ∗ (s) + τ Hπk+1 (s) + 12ηk
+
+W22
+
+ πk+1 (·| s), π k(·| s)
+
+≤ 12ηk
+
+W22
+
+ πk(·| s), π ∗(·| s) − λτ 
+
+2 W22
+
+ πk+1 (·| s), π ∗(·| s).
+
+22 Wasserstein Proximal Policy Gradient 
+
+Combining with (62), we obtain 
+
+h
+
+⟨Qπk 
+
+> τ
+
+(s, ·), π ∗(·| s) − πk(·| s)⟩ − τ Hπ∗
+
+(s) + τ Hπk (s)
+
+i
+
++
+
+h
+
+V πk 
+
+> τ
+
+(s) − V πk+1  
+
+> τ
+
+(s)
+
+i
+
++ 12ηk
+
+W22
+
+ πk(·| s), π k+1 (·| s)
+
+≤
+
+h
+
+⟨Qπk 
+
+> τ
+
+(s, ·), π ∗(·| s) − πk(·| s)⟩ − τ Hπ∗
+
+(s) + τ Hπk (s)
+
+i
+
+−
+
+h
+
+⟨Qπk 
+
+> τ
+
+(s, ·), π k+1 (·| s) − πk(·| s)⟩ − τ Hπk+1 (s) + τ Hπk (s)
+
+i
+
++ 12ηk
+
+W22
+
+ πk(·| s), π k+1 (·| s)
+
+=
+
+
+
+⟨Qπk 
+
+> τ
+
+(s, ·), π ∗(·| s) − πk+1 (·| s)⟩ − τ Hπ∗
+
+(s) + τ Hπk+1 (s)
+
+
+
++ 12ηk
+
+W22
+
+ πk+1 (·| s), π k(·| s)
+
+≤ 12ηk
+
+W22
+
+ πk(·| s), π ∗(·| s) − λτ 
+
+2 W22
+
+ πk+1 (·| s), π ∗(·| s).
+
+Taking expectation with respect to ν∗ on both sides of the inequality, we obtain 
+
+Es∼ν∗
+
+h
+
+(1 − γ) V π∗ 
+
+> τ
+
+(s) − V πk 
+
+> τ
+
+(s)i
+
++ Es∼ν∗
+
+h
+
+V πk 
+
+> τ
+
+(s) − V πk+1  
+
+> τ
+
+(s)
+
+i
+
++ Es∼ν∗
+
+h 12ηk
+
+W22
+
+ πk(·| s), π k+1 (·| s)i
+
+≤ Es∼ν∗
+
+h 12ηk
+
+W22
+
+ πk(·| s), π ∗(·| s) − λτ 
+
+2 W22
+
+ πk+1 (·| s), π ∗(·| s)i
+
+.
+
+By rewriting 
+
+V πk 
+
+> τ
+
+(s) − V πk+1  
+
+> τ
+
+(s) = V πk 
+
+> τ
+
+(s) − V π∗ 
+
+> τ
+
+(s) + V π∗ 
+
+> τ
+
+(s) − V πk+1  
+
+> τ
+
+(s),
+
+and rearranging the inequality, we have 
+
+Es∼ν∗
+
+h
+
+V π∗ 
+
+> τ
+
+(s) − V πk+1  
+
+> τ
+
+(s)
+
+i
+
++ λτ Es∼ν∗
+
+h 12 W22(πk+1 (·| s), π ∗(·| s)) 
+
+i
+
++ Es∼ν∗
+
+h 12 W22(πk(·| s), π k+1 (·| s)) 
+
+i
+
+≤ γ Es∼ν∗
+
+h
+
+V π∗ 
+
+> τ
+
+(s) − V πk 
+
+> τ
+
+(s) + 12ηk γ W22(πk(·| s), π ∗(·| s)) 
+
+i
+
+.
+
+Thus, 
+
+Es∼ν∗
+
+h
+
+V π∗ 
+
+> τ
+
+(s) − V πk+1  
+
+> τ
+
+(s) + λτ  
+
+> 2
+
+W22(πk+1 (·| s), π ∗(·| s)) 
+
+i
+
+≤ γ Es∼ν∗
+
+h
+
+V π∗ 
+
+> τ
+
+(s) − V πk 
+
+> τ
+
+(s) + 12ηk γ W22(πk(·| s), π ∗(·| s)) 
+
+i
+
+.
+
+Recalling the definitions of J (8) and D, we obtain 
+
+J(π∗) − J(πk+1 ) + λτ D(πk+1 , π ∗) ≤ γ
+
+h
+
+J(π∗) − J(πk) + 1  
+
+> ηkγ
+
+D(πk, π ∗)
+
+i
+
+. (67) For any ηk = η ≥ 1 
+
+> γλτ
+
+in the JKO scheme, we obtain 
+
+J(π∗) − J(πk+1 ) + λτ D(πk+1 , π ∗) ≤ γ
+
+h
+
+J(π∗) − J(πk) + λτ D(πk, π ∗)
+
+i
+
+,
+
+23 Wasserstein Proximal Policy Gradient 
+
+which implies 
+
+J(π∗) − J(πk) + λτ D(πk, π ∗) ≤ γkh
+
+J(π∗) − J(π0) + λτ D(π0, π ∗)
+
+i
+
+.
+
+C.3.3. I NEXACT VALUE FUNCTION CASE 
+
+In the next part, we will show how inexact Q affect our results. For the ease of presentation, we denote ∆k = Qπk ,ξ k − Qπk
+
+and ξ0: k = {ξ0, ξ 1, · · · , ξ k} in the following paper. Recall our added assumption4: For each iteration k ≥ 0, the stochastic estimator Qπk ,ξ k satisfies 
+
+Eξk
+
+Qπk ,ξ k
+
+ = ¯Qπk ,
+
+¯Qπk − Qπk 
+
+> ∞
+
+≤ ϵk,
+
+Eξk
+
+h
+
+∇aQπk ,ξ k − ∇ aQπk 22,∞
+
+i
+
+≤ σ2
+
+> k
+
+.
+
+The optimization iteration becomes 
+
+πk+1 (· | s) ∈ arg max 
+
+> q(·| s)∈Π( s)
+
+n
+
+⟨Qπk ,ξ k (s, ·), q (· | s)⟩ − τ Hq (s) − 12ηk
+
+W22
+
+ q(· | s), π k(· | s)o
+
+(68) 
+
+Lemma 17. Under Assumption 4, for any state s we have: 
+
+Eξ0: k [⟨∆k(·, s ), π k+1 (·| s) − πk(·| s)⟩] ≤ 2ηkσ2 
+
+> k
+
++ 12ηk
+
+Eξ0: k W22(πk(·| s), π k+1 (·| s)) (69) 
+
+Proof. For any s, let γ(a, a ′|s) be the optimal couple of the two distribution πk(·| s) and πk+1 (·| s) in W2.
+
+Eξ0: k [⟨∆k(a, s ), π k+1 (a|s) − πk(a|s)⟩| ξ0: k−1]= Eξk [
+
+Z
+
+> A
+
+∆k(·, s )d( πk+1 (·| s) − πk(·| s)) |ξ0: k−1]= Eξ0: k [
+
+Z Z 
+
+> A×A
+
+∆k(a, s ) − ∆k(a′, s )d γ(a, a ′|s)|ξ0: k−1]= Eξ0: k [
+
+Z Z 
+
+> A×A
+
+Z
+
+⟨∇ a∆k((1 − t)a′ + ta, s ), a − a′⟩dtdγ(a, a ′|s)|ξ0: k−1]=
+
+Z Z 
+
+> A×A
+
+Z
+
+Eξ0: k [⟨∇ a∆k((1 − t)a′ + ta, s ), a − a′⟩| ξ0: k−1]d tdγ(a, a ′|s)
+
+≤
+
+Z Z 
+
+> A×A
+
+Z
+
+Eξ0: k [2 ηk∥∇ a∆k((1 − t)a′ + ta, s )∥22 + 12ηk
+
+∥a − a′∥22|ξ0: k−1]d tdγ(a, a ′|s)
+
+≤ 2ηkσ2 
+
+> k
+
++ 12ηk
+
+Eξ0: k [W22(πk(·| s), π k+1 (·| s)) |ξ0: k−1]
+
+The second equality applies the definition of an optimal coupling γ(·, ·| s) ∈ Γ( πk+1 (·| s), π k(·| s)) , which means has the same marginal distribution as πk and πk+1 . The second inequality uses Young’s inequality ⟨u, v ⟩ ≤ 12ηk ∥u∥2 + ηk 
+
+> 2
+
+∥v∥2
+
+to separate the two terms. The last inequality bounds the variance term of the stochastic gradient by σ2 
+
+> k
+
+yields the last inequality, where the quadratic term recovers the squared Wasserstein distance between πk(·| s) and πk+1 (·| s).Taking expectation with respect to ξ0: k−1 on both sides, we have the final result: 
+
+Eξ0: k [⟨∆k(·, s ), π k+1 (·| s) − πk(·| s)⟩] ≤ 2ηkσ2 
+
+> k
+
++ 12ηk
+
+Eξ0: k W22(πk(·| s), π k+1 (·| s)) 
+
+24 Wasserstein Proximal Policy Gradient 
+
+Theorem 5. Suppose Assumptions 3 and 4 hold, and for all k ≥ 0, ϵk ≤ ϵ, σ k ≤ σ. Then the iterates of (68) using step size 
+
+ηk = η ≥ 1 
+
+> γλτ
+
+satisfies 
+
+Eξ0: k−1
+
+h
+
+J(π∗) − J(πk) + λτ D (πk, π ∗)
+
+i
+
+≤ γkh
+
+J(π∗) − J(π0) + λτ D (π0, π ∗)
+
+i
+
++ O(ϵ + σ).
+
+(70) 
+
+where J is defined in (8) , and D(πk, π ∗) := Es∼ν∗
+
+ 12 W22
+
+ πk(·| s), π ∗(·| s) . Consequently, in order to achieve an error of 
+
+O(ε + ϵ + σ) in expectation, the required iteration complexity is 
+
+O
+
+ 11 − γ log J(π∗) − J(π0) + λτ D(π0, π ∗)
+
+ε
+
+
+
+.
+
+Proof. By Lemma 15 applied to 68 with p = π∗, we have 
+
+Qπk ,ξ k 
+
+> τ
+
+(s, ·), π ∗(·| s) − πk+1 (·| s) − τ Hπ∗
+
+(s) + τ Hπk+1 (s) + 12ηk
+
+W22
+
+ πk+1 (·| s), π k(·| s)
+
+≤ 12ηk
+
+W22
+
+ πk(·| s), π ∗(·| s) − λτ 
+
+2 W22
+
+ πk+1 (·| s), π ∗(·| s).
+
+(71) By Lemma 15 applied to 68 with p = πk, we have 
+
+
+
+Qπk ,ξ k 
+
+> τ
+
+(s, ·), π k(·| s) − πk+1 (·| s) − τ Hπk (s) + τ Hπk+1 (s)
+
+
+
++ 12ηk
+
+W22
+
+ πk+1 (·| s), π k(·| s)
+
+≤ − λτ 
+
+2 W22
+
+ πk+1 (·| s), π ∗(·| s) ≤ 0.
+
+Which implies that 
+
+Es′∼dπks
+
+⟨Qπk ,ξ k 
+
+> τ
+
+(s′, ·), π k+1 (·| s′) − πk(·| s′)⟩ − τ Hπk+1 (s′) + τ Hπk (s′) + 12ηk
+
+W22
+
+ πk+1 (·| s), π k(·| s) 
+
+≤ dπk 
+
+> s
+
+(s)⟨Qπk 
+
+> τ
+
+(s, ·), π k+1 (·| s) − πk(·| s)⟩ − τ Hπk+1 (s) + τ Hπk (s) + 12ηk
+
+W22
+
+ πk+1 (·| s), π k(·| s) 
+
+≤ (1 − γ)⟨Qπk 
+
+> τ
+
+(s, ·), π k+1 (·| s) − πk(·| s)⟩ − τ Hπk+1 (s) + τ Hπk (s) + 12ηk
+
+W22
+
+ πk+1 (·| s), π k(·| s) 
+
+(72) where the last inequality follows from the fact that dπk 
+
+> s
+
+(s) ≥ (1 − γ) due to the definition of dπk 
+
+> s
+
+and s0 = s with probability one. Note that we can still use the performance difference identity 64 
+
+V πk+1  
+
+> τ
+
+(s) − V πk 
+
+> τ
+
+(s) = 11 − γ Es′∼dπks
+
+⟨Qπk 
+
+> τ
+
+(s′, ·), π k+1 (·| s′) − πk(·| s′)⟩ − τ Hπk+1 (s′) + τ Hπk (s′)
+
+= 11 − γ Es′∼dπks
+
+⟨Qπk ,ξ k 
+
+> τ
+
+(s′, ·), π k+1 (·| s′) − πk(·| s′)⟩ − τ Hπk+1 (s′) + τ Hπk (s′)
+
+− ⟨ ∆k(·, s ′), π k+1 (·| s′) − πk(·| s′)⟩ (73) By multiplying both sides by -1 and taking expectation with respect to ξ0: k gives 
+
+Eξ0: k [V πk 
+
+> τ
+
+(s) − V πk+1  
+
+> τ
+
+(s)] 
+
+≤ 11 − γ Eξ0: k Es′∼dπks
+
+h
+
+⟨Qπk ,ξ k 
+
+> τ
+
+(s′, ·), π k(·| s′) − πk+1 (·| s′)⟩ − τ Hπk (s′) + τ Hπk+1 (s′)+ 12ηk
+
+W22
+
+ πk(·| s′), π k+1 (·| s′)i
+
++ 2 ηkσ2
+
+> k
+
+≤ Eξ0: k
+
+h
+
+⟨Qπk 
+
+> τ
+
+(s, ·), π k(·| s) − πk+1 (·| s)⟩ − τ Hπk (s) + τ Hπk+1 (s)+ 12ηk W22
+
+ πk+1 (·| s), π k(·| s)i
+
++ 2ηk σ2 
+
+> k
+> 1−γ
+
+. (74) 25 Wasserstein Proximal Policy Gradient 
+
+Taking expectation with ξ0: k on 71 and combine with 74, we have: 
+
+Eξ0: k
+
+⟨Qπk ,ξ k 
+
+> τ
+
+(s, ·), π k(·| s) − π⋆(·| s)⟩ + τ Hπk (s) − τ Hπ∗
+
+(s) + V πk+1  
+
+> τ
+
+(s) − V πk 
+
+> τ
+
+(s)
+
+≤ Eξ0: k
+
+ 12ηk
+
+W22(πk(·| s), π ∗(·| s)) − λτ 
+
+2 W22(πk+1 (·| s), π ∗(·| s))  + 2ηkσ2
+
+> k
+
+1 − γ .
+
+Finally, averaging over the distribution s ∼ ν∗ and noting that s and ξ0: k are independent, we have 
+
+Es∼ν∗,ξ 0: k
+
+⟨Qπk ,ξ k 
+
+> τ
+
+(s, ·), π ∗(·| s) − πk(·| s)⟩ − τ Hπ∗
+
+(s) + τ Hπk (s) + V πk 
+
+> τ
+
+(s) − V πk+1  
+
+> τ
+
+(s)
+
+≤ Es∼ν∗,ξ 0: k
+
+ 12ηk
+
+W22(πk(·| s), π ∗(·| s)) − λτ 
+
+2 W22(πk+1 (·| s), π ∗(·| s))  + 2ηkσ2
+
+> k
+
+1 − γ . (75) Noting that 
+
+Eξk
+
+⟨Qπk ,ξ k 
+
+> τ
+
+(s, ·), π ∗(·| s) − πk(·| s)⟩ ξ0: k−1
+
+
+
+= Eξk
+
+h
+
+⟨Qπk 
+
+> τ
+
+(s, ·), π ∗(·| s) − πk(·| s)⟩ + ⟨ ¯Qπk 
+
+> τ
+
+(s, ·) − Qπk 
+
+> τ
+
+(s, ·), π ∗(·| s) − πk(·| s)⟩
+
++ ⟨Qπk ,ξ k 
+
+> τ
+
+(s, ·) − ¯Qπk 
+
+> τ
+
+(s, ·), π ∗(·| s) − πk(·| s)⟩ ξ0: k−1
+
+i
+
+≥ ⟨ Qπk 
+
+> τ
+
+(s, ·), π ∗(·| s) − πk(·| s)⟩ − 2ϵk
+
+(76) The first equality expands Qπk ,ξ k 
+
+> τ
+
+into its expectation Qπk 
+
+> τ
+
+plus two error terms, namely the bias ¯Qπk 
+
+> τ
+
+− Qπk 
+
+> τ
+
+and the stochastic fluctuation Qπk ,ξ k 
+
+> τ
+
+− ¯Qπk 
+
+> τ
+
+. Taking conditional expectation w.r.t. ξk eliminates the mean of the fluctuation term. Finally, using the uniform error bound ∥ ¯Qπk 
+
+> τ
+
+− Qπk 
+
+> τ
+
+∥∞ ≤ ϵk and noting that both πk(·| s) and π∗(·| s) are probability measures (which implies ∥π∗(·| s) − πk(·| s)∥1 ≤ 2), H¨ older’s inequality yields the desired bound. Combining 75 and 76 and using Lemma 13, 
+
+Es∼ν∗,ξ 0: k
+
+h
+
+(1 − γ) V πk 
+
+> τ
+
+(s) − V π∗ 
+
+> τ
+
+(s) + V ¯πk+1  
+
+> τ
+
+(s) − V πk 
+
+> τ
+
+(s)
+
+i
+
+≤ Es∼ν∗,ξ 0: k
+
+h 12ηk
+
+W22(πk(·| s), π ∗(·| s)) − λτ 
+
+2 W22(¯ πk+1 (·| s), π ∗(·| s)) 
+
+i
+
++ 2 ϵk + 2ηkσ2
+
+> k
+
+1 − γ .
+
+(77) Decomposing V πk 
+
+> τ
+
+(s) − V πk+1  
+
+> τ
+
+(s) into V πk 
+
+> τ
+
+(s) − V π∗ 
+
+> τ
+
+(s) −  V πk+1  
+
+> τ
+
+(s) − V π∗ 
+
+> τ
+
+(s), recalling our definition of J (8) and rearranging the terms in the above inequality, we get 
+
+Eξ0: k [J(π∗) − J(πk+1 ) + λτ D(πk+1 , π ⋆)] 
+
+≤ Eξ0: k−1 [γ(J(π∗) − J(πk)) + 1
+
+ηk
+
+D(π∗, π k)] + O(δ + τ ) + 2 ϵk + ηkσ2
+
+> k
+
+2(1 − γ) . (78) By choosing ηk = η ≥ 1 
+
+> γλτ
+
+, and for all k ≥ 0, ϵk ≤ ϵ, σ k ≤ σ, we get 
+
+Eξ0: k−1
+
+J(π∗) − J(πk) + λτ D (πk, π ∗) ≤ γkh
+
+J(π∗) − J(π0) + λτ D (π0, π ∗)
+
+i
+
++ O(ϵ + σ) (79) 26 Wasserstein Proximal Policy Gradient 
+
+## D. Numerical 
+
+D.1. Overall Algorithm WPPG vs. WPPG-I: commonalities and differences Both WPPG and WPPG-I are off-policy actor–critic methods built on the same backbone: (i) replay-based training with 1-step TD targets; (ii) Double-Q critics with target networks and Polyak averaging; (iii) multi-sample bootstrap for target construction (average over K next-action samples and take 
+
+min( Q1, Q 2)); (iv) actor updates driven by action-gradient matching, i.e., aligning the policy’s action increment with a noisy target direction, and (v) tanh squashing that maps actions to box constraints. 
+
+Key difference. WPPG employs an explicit Tanh–Gaussian policy a = Affine(tanh( μθ (s) + σθ (s) ⊙ ε)) with a closed-form density (useful if one wishes to incorporate entropy/KL terms). WPPG-I uses a latent-conditioned implicit policy 
+
+a = Affine(tanh( fθ ([ s, z ]))) , where z ∼ N (0 , I ) is concatenated with the state; the policy distribution is implicit (no closed-form log π), and learning relies purely on pathwise gradients through ∇aQ and the shared latent variable reforwarding trick. Operationally, WPPG controls stochasticity via the Gaussian actor’s output scale, whereas WPPG-I controls it via the 
+
+input latent variables (its scale and dimensionality), enabling richer, state-conditional exploration. 
+
+Entropy estimation via plug-in mixture (Gaussian-convolved implicit policy). For a given state s, let the implicit generator be gθ (s, z ) with latent prior z ∼ ν (typically ν = N (0 , I )). We add a small Gaussian noise a = gθ (s, z ) + σent ξ
+
+with ξ ∼ N (0 , I ) so that the induced policy has a density. Define the Gaussian kernel 
+
+φσ (x) = 1(2 πσ 2)da/2 exp 
+
+
+
+− ∥x∥22
+
+2σ2
+
+
+
+.
+
+Then the (Gaussian-convolved) policy density is the latent-mixture 
+
+πθ (a | s) = Ez∼ν
+
+φσent (a − gθ (s, z )) .
+
+Plug-in approximation. Sample M latent codes {zj }Mj=1 ∼ ν and form mixture centers μj ≜ gθ (s, z j ). We approximate the density by 
+
+bπθ,M (a | s) ≜ 1
+
+M
+
+> M
+
+X
+
+> j=1
+
+φσent (a − μj ).
+
+Entropy estimator. Sample L baseline actions from the convolved policy, 
+
+˜zℓ ∼ ν, ξ ℓ ∼ N (0 , I ), aℓ ≜ gθ (s, ˜zℓ) + σent ξℓ, ℓ = 1 , . . . , L, 
+
+and estimate the conditional entropy by the plug-in Monte Carlo average 
+
+bH(s) ≜ − 1
+
+L
+
+> L
+
+X
+
+> ℓ=1
+
+log bπθ,M (aℓ | s).
+
+Entropy-regularized reward (used in replay). Given a transition (s, a, r, s ′), we store a regularized reward 
+
+rent ≜ r + τ bH(s)}
+
+Entropy regularization without explicit log-likelihood. Compared with SAC-style maximum-entropy RL, our approach encourages exploration by increasing policy entropy using a plug-in mixture estimator that only requires sampling actions, rather than an explicit log πθ (a | s). In SAC, the entropy term is computed from a single action sample via − log πθ (a | s),which necessitates a tractable density (and often its gradients/“score” ∇a log πθ through reparameterization), making it unsuitable for implicit policies. In contrast, we estimate the entropy at each state by drawing multiple latent samples {μj = gθ (s, z j )}Mj=1 to form a Gaussian-kernel mixture bπθ,M (a | s) = 1
+
+> M
+
+PMj=1 φσ (a − μj ), and then average − log bπθ,M (aℓ | s) over L baseline actions 
+
+{aℓ}Lℓ=1 . This “many-sample” plug-in estimator reduces the stochasticity of the entropy signal: instead of relying on a 27 Wasserstein Proximal Policy Gradient 
+
+single-point log-density as in SAC, we aggregate information from M × L samples per state, yielding a substantially lower-variance regularization term while remaining fully compatible with implicit generators. Crucially, the procedure does not require a closed-form log πθ nor access to the score ∇a log πθ ; the only requirement is the ability to sample gθ (s, z )
+
+(plus a small Gaussian smoothing noise), which makes the method broadly applicable to expressive implicit policies. 
+
+Algorithm 1 Plug-in Mixture Entropy Estimation for Gaussian-Convolved Implicit Policy 
+
+Require: State batch {si}Bi=1 ; generator gθ (s, z ); noise scale σ; mixture samples M ; baseline samples L; latent prior ν
+
+(typically N (0 , I )). 
+
+Ensure: Entropy estimates { bH(si)}Bi=1 
+
+Define Gaussian kernel density in da dimensions: 
+
+φσ (x) = 1(2 πσ 2)da/2 exp 
+
+
+
+− ∥x∥2
+
+2σ2
+
+
+
+for i = 1 to B do Mixture centers (MC for (7)): draw zi, 1: M ∼ ν, set μi,j ← gθ (si, z i,j ) for j = 1 ..M 
+
+Baseline actions (for (11)): draw ˜zi, 1: L ∼ ν, ξi, 1: L ∼ N (0 , I )
+
+set ai,ℓ ← gθ (si, ˜zi,ℓ ) + σ ξ i,ℓ for ℓ = 1 ..L 
+
+Plug-in density (9): for each ℓ, compute 
+
+bπθ,M (ai,ℓ | si) ← 1
+
+M
+
+> M
+
+X
+
+> j=1
+
+φσ (ai,ℓ − μi,j )
+
+Entropy estimate (11): 
+
+bH(si) ← − 1
+
+L
+
+> L
+
+X
+
+> ℓ=1
+
+log bπθ,M (ai,ℓ | si)
+
+end for return { bH(si)}Bi=1 
+
+28 Wasserstein Proximal Policy Gradient 
+
+Algorithm 2 WPPG with Replay and Double-Q Critics (Gaussian policy) + On-the-fly Plug-in Entropy Regularization 
+
+Require: Initialize actor πθ (a|s) = N (μθ (s), Σθ (s)) with Tanh squash; twin critics Qw1 , Q w2 and targets ¯Qw1 , ¯Qw2 ;target actor ¯πθ ; replay buffer D; step size η, noise scale τ , samples per state K, discount γ, Polyak σ.
+
+Require: Entropy params: convolution noise std σent ; mixture size M ; baseline size L.
+
+for each episode do 
+
+Initialize s0
+
+for t = 0 to T − 1 do 
+
+Sample at ∼ πθ (·| st) and Gaussian-convolve : at ← at + σent ξt, ξ t ∼ N (0 , I )
+
+Execute at, observe (rt, s t+1 , d t)
+
+On-the-fly entropy estimation at st:
+
+Compute bH(st) by calling Algorithm 1 Form entropy-regularized reward: rent  
+
+> t
+
+← rt + τ bH(st)
+
+Store (st, a t, r ent  
+
+> t
+
+, s t+1 , d t) into D
+
+if len (D) ≥ batch size then 
+
+Sample minibatch {(si, a i, r ent  
+
+> i
+
+, s ′
+
+> i
+
+, d i)}Bi=1 from D
+
+Compute 1-step TD targets (multi-sample bootstrap using target nets): 
+
+For each s′
+
+> i
+
+, draw ϵi, 1: K ∼ N (0 , I ) and set a′ 
+
+> i,k
+
+← ¯πθ (s′
+
+> i
+
+; ϵi,k )ˆQi ← 1
+
+> K
+
+PKk=1 min   ¯Qw1 (s′
+
+> i
+
+, a ′
+
+> i,k
+
+), ¯Qw2 (s′
+
+> i
+
+, a ′
+
+> i,k
+
+)
+
+yi ← rent  
+
+> i
+
++ γ(1 − di) ˆQi
+
+Critic update (train both critics): 
+
+wj ← wj − βQ∇wj
+
+> 1
+> B
+
+P
+
+> i
+
+ Qwj (si, a i) − yi
+
+2, j ∈ { 1, 2}
+
+Actor update (WPPG step with action-sample direction): 
+
+For each si, draw shared ϵi, 1: K and form ai,k = πθ (si; ϵi,k ); let Ai = [ ai, 1: K ]
+
+Compute qi,k = min  Qw1 (si, a i,k ), Q w2 (si, a i,k )
+
+Obtain ∇aQ at samples: Gi = ∇aqi,k 
+
+Kk=1 
+
+Form noisy target direction: ∆⋆i ← η G i + ξi, where ξi ∼ N (0 , 2τ η I )
+
+Re-sample A′ 
+
+> i
+
+= πθ (si; ϵi, 1: K ) with the same ϵ and define ∆i ← A′ 
+
+> i
+
+− Ai
+
+Update actor by matching directions: θ ← θ − βπ ∇θ 1
+
+> BK
+
+P 
+
+> i,k
+
+∥∆i,k − ∆⋆i,k ∥22
+
+Target updates (Polyak): ¯wj ← σw j + (1 − σ) ¯ wj , ¯θ ← σθ + (1 − σ)¯θ, j ∈ { 1, 2}
+
+end if 
+
+st+1 ← s′
+
+end for end for 
+
+29 Wasserstein Proximal Policy Gradient 
+
+Algorithm 3 WPPG-I with Replay and Double-Q Critics (Implicit Policy) + On-the-fly Plug-in Entropy Regularization 
+
+Require: Implicit actor a = gθ (s, z ) with Tanh squash ( z ∼ N (0 , I M )); twin critics Qw1 , Q w2 and targets ¯Qw1 , ¯Qw2 ; target actor ¯gθ ; replay buffer D; step size η, noise scale τ , samples per state K, discount γ, Polyak σ.
+
+Require: Entropy params: convolution noise std σent ; mixture size M ; baseline size L.
+
+for each episode do 
+
+Initialize s0
+
+for t = 0 to T − 1 do 
+
+Sample zt ∼ N (0 , I M ), set at = gθ (st, z t) and Gaussian-convolve : at ← at + σent ξt, ξ t ∼ N (0 , I )
+
+Step env, observe (rt, s t+1 , d t)
+
+On-the-fly entropy estimation at st:
+
+Compute bH(st) by calling Algorithm 1 with generator gθ and noise σent 
+
+Form entropy-regularized reward: rent  
+
+> t
+
+← rt + τ bH(st)
+
+Store (st, a t, r ent  
+
+> t
+
+, s t+1 , d t) into D
+
+if len (D) ≥batch size then 
+
+Sample minibatch {(si, a i, r ent  
+
+> i
+
+, s ′
+
+> i
+
+, d i)}Bi=1 from D
+
+Compute 1-step TD targets (multi-sample bootstrap): 
+
+For each s′
+
+> i
+
+, draw z′ 
+
+> i, 1: K
+
+∼ N (0 , I M ) and set a′ 
+
+> i,k
+
+← ¯gθ (s′
+
+> i
+
+, z ′
+
+> i,k
+
+)ˆQi ← 1
+
+> K
+
+PKk=1 min   ¯Qw1 (s′
+
+> i
+
+, a ′
+
+> i,k
+
+), ¯Qw2 (s′
+
+> i
+
+, a ′
+
+> i,k
+
+)
+
+yi ← rent  
+
+> i
+
++ γ(1 − di) ˆQi
+
+Critic update (train both critics): 
+
+wj ← wj − βQ∇wj
+
+> 1
+> B
+
+P
+
+> i
+
+ Qwj (si, a i) − yi
+
+2, j ∈ { 1, 2}
+
+Actor update (direction matching with shared noise): 
+
+For each si, draw shared zi, 1: K ∼ N (0 , I M ) and set a(0)  
+
+> i,k
+
+← gθ (si, z i,k )
+
+Compute qi,k = min  Qw1 (si, a (0)  
+
+> i,k
+
+), Q w2 (si, a (0)  
+
+> i,k
+
+)
+
+Obtain Gi = ∇aqi,k 
+
+Kk=1 at a(0) (stop grad to critics) Form target direction: ∆⋆i ← η G i + ξi, where ξi ∼ N (0 , 2τ η I )
+
+Reforward with the same z: a(1)  
+
+> i,k
+
+← gθ (si, z i,k ), define ∆i,k ← a(1)  
+
+> i,k
+
+− a(0) 
+
+> i,k
+
+Update actor: θ ← θ − βπ ∇θ 1
+
+> BK
+
+P 
+
+> i,k
+
+∥∆i,k − ∆⋆i,k ∥22
+
+Target updates (Polyak): ¯wj ← σw j + (1 − σ) ¯ wj , ¯θ ← σθ + (1 − σ)¯θ, j ∈ { 1, 2}
+
+end if 
+
+st+1 ← s′
+
+end for end for D.2. Implementations 
+
+D.2.1. A CTOR AND POLICY 
+
+All our models and baselines are implemented under the standard actor–critic framework. Below we provide the implemen-tation details for the actor and critic components separately. 
+
+Action Squashing. For consistency across methods, we apply a tanh squashing function to map sampled actions into the valid box [amin , a max ] for all algorithms. This squashing is crucial for the implicit policy: without it, when the injected-latent dimension is high, many actions are hard-clipped at the bounds, which prevents meaningful exploration and gradients, often leading to training failure. Below we present concise formulations of the two actors used. 30 Wasserstein Proximal Policy Gradient 
+
+Tanh–Gaussian MLP Policy (used in WPPG/SAC/WPO). Given state s ∈ RS , the actor outputs μθ (s), log σθ (s) ∈ RA
+
+and samples 
+
+a = amax −amin  
+
+> 2
+
+⊙ tanh  μθ (s) + σθ (s) ⊙ ε + amax +amin  
+
+> 2
+
+, ε ∼ N (0 , I A),
+
+i.e., a tanh-squashed Gaussian mapped to [amin , a max ] via an MLP producing (μθ , log σθ ).
+
+Noise-Conditioned Deterministic Policy (used in WPPG-I). Given state s ∈ RS and latent variables z ∈ RM ,
+
+a = amax −amin  
+
+> 2
+
+⊙ tanh  fθ ([ s, z ])  + amax +amin  
+
+> 2
+
+, z ∼ N (0 , I M ),
+
+where fθ is an MLP taking the concatenated input [s, z ]. This defines an implicit policy (no closed-form density) with tanh-squashed outputs mapped to [amin , a max ].D.2.2. C RITIC 
+
+Critic Learning Target For all off-policy algorithms (SAC, WPPG, WPPG-I, WPO), the critic is trained with 1-step TD targets that average over K bootstrap action samples and use Double-Q when available: 
+
+yt = rt + γ(1 − dt) 1
+
+K
+
+> K
+
+X
+
+> k=1
+
+min  
+
+> j∈{ 1,2}
+
+Q ¯wj
+
+ st+1 , a ′
+
+> t+1 ,k
+
+, a′ 
+
+> t+1 ,k
+
+= g¯θ
+
+ st+1 , ε k
+
+, εk ∼ N (0 , I ).
+
+Here, j ∈ { 1, 2} indexes the two target critics used by Double-Q (the per-sample minimum is taken), and the outer average is over K target actions drawn from the target actor g¯θ . For single-Q methods (e.g., WPO uses a single Q, or the single-Q
+
+WPPG ablation), replace min j∈{ 1,2} Q ¯wj by Q ¯w. In contrast, PPO retains its on-policy generalized advantage estimation (GAE) for actor updates. 
+
+D.3. Hyperparameters Neural Network Architecture All experiments are based on two standard network configurations: a larger network with hidden sizes (256, 256) and ReLU activation, and a smaller network with hidden sizes (64, 64) and Tanh activation. We use the larger network for Hopper, Humanoid, and HalfCheetah, and the smaller network for all other tasks. The same choice is applied uniformly across all models, and the actor and critic share the same network architecture. 
+
+Replay Buffer For consistency, all off-policy algorithms (SAC, WPPG, WPPG-I, WPO) use the same replay buffer configuration as summarized in Table 1, ensuring identical storage capacity, sampling scheme, and update frequency across methods. 
+
+Training Setup All off-policy models share the same basic training setup: each is trained for 1 × 10 6 timesteps, with evaluation performed every 2000 steps. Target networks are updated via Polyak averaging to stabilize critic training. Both actor and critic use a learning rate of 3 × 10 −4. The discount factor is set to γ = 0 .99 for all tasks, except Swimmer where 
+
+γ = 0 .9999 . The configuration is summarized in Table 2. For PPO, hyperparameters are environment-specific and detailed below.  
+
+> Table 1. Replay buffer.
+
+Hyperparameter Value 
+
+Buffer size 1,000 ,000 
+
+Batch size 256 
+
+Learning starts 10 ,000 
+
+Train frequency 1 (step) Gradient steps per update 1
+
+Number of environments 1 
+
+> Table 2. Training Setup.
+
+Hyperparameter Value 
+
+Discount factor γ 0.99 
+
+Polyak coefficient 0.005 
+
+Learning rate (actor/critic) 3 × 10 −4
+
+Target update interval 1
+
+Total timesteps 1,000 ,000 
+
+Optimizer Adam 31 Wasserstein Proximal Policy Gradient  
+
+> Figure 2. Multi-Run Evaluation
+
+Model Specific Hyperparameters The hyperparameters of all models are summarized in the tables below. For WPO and SAC, we follow the settings reported in the WPO paper, while the hyperparameters of PPO are taken from RL Zoo. Although we find that tuning hyperparameters for each environment can often improve performance, for simplicity and fairness of comparison we adopt a single unified set of hyperparameters for all off-policy methods across all tasks, which yields stable and competitive learning performance.  
+
+> Table 3. WPPG-I hyperparameters.
+
+Hyperparameter Default Value 
+
+Action samples 32 
+
+Step size η 0.1
+
+Entropy scale τ 0.0001 
+
+Actor Latent Dimension 13 × State Dimension  
+
+> Table 4. WPPG hyperparameters.
+
+Hyperparameter Default Value 
+
+Action samples 32 
+
+Step size η 0.1
+
+Entropy scale τ 0.0001  
+
+> Table 5. SAC hyperparameters.
+
+Hyperparameter Default Value 
+
+Entropy Coefficient α 0.001 
+
+Maximum Policy Variance exp(4) 
+
+Minimum Policy Variance exp( −10)  
+
+> Table 6. WPO hyperparameters.
+
+Hyperparameter Default Value 
+
+KL Mean Penalty αμ 0.001 
+
+KL Variance Penalty αΣ 0.001 
+
+Action samples 32 
+
+D.4. Additional Experiment Results Multi-Run Evaluation To more comprehensively demonstrate the behavior of WPPG and WPPG-I, we further evaluate both methods with multiple training runs. Specifically, each algorithm is trained 5 times with different random seeds. In the corresponding plots, the solid line denotes the mean return across the 5 runs, while the shaded area indicates the range between the minimum and maximum returns over these runs (see Fig.2). 
+
+Combined Humanoid Task Our method shares some similarities with SAC in that both are based on entropy regularization and use the action gradient of the Q-function for policy updates. However, the key advantage of WPPG lies in its ability to train an implicit policy. To better showcase this benefit, we follow the construction in WPO (Pfau et al., 2025) and create a combined task that increases the action dimensionality: multiple Humanoid environments are run in parallel, their states 32 Wasserstein Proximal Policy Gradient  
+
+> Figure 3. Combined Humanoid Task
+
+are concatenated and fed into a single agent, which outputs the concatenated actions jointly. As shown in the combined Humanoid task, WPPG-I converges to consistently higher returns than SAC, indicating that the implicit policy is able to discover action distributions that achieve higher rewards. (see Fig.3). 
+
+Ablation on τ . In the preceding analysis, we showed that the parameter τ originates from entropy regularization of the policy. Unlike SAC and related methods that explicitly add an entropy penalty term into the Q-function fitting objective, WPPG does not require such a penalty. Instead, Gaussian noise is injected when computing the movement direction of action samples, where the scale of the injected noise τ corresponds to the magnitude of the entropy penalty. To study the impact of τ , we conducted ablation experiments on Humanoid environment. As illustrated in Figure 4, on Humanoid we observe that injecting noise with τ in the range [0 , 0.01] significantly accelerates convergence, while larger values 0.1 slows it down. This reflects a clear exploration–exploitation trade-off: noise injection encourages the policy to maintain entropy, thereby enabling exploration of richer reward information, but excessive noise hampers the ability of 
+
+∇aQ(s, a ) to provide useful guidance for policy updates.      
+
+> Figure 4. Ablation study on τ(left) and Latent Dimension (right).
+
+33 Wasserstein Proximal Policy Gradient 
+
+Ablation on Latent Dimension We further evaluate the effect of the dimension of latent variable z in our implicit generative model on WPPG-I in the Humanoid environment. When the latent dimension is as small as 1, the model learns slowly due to insufficient stochasticity. With moderate dimensions (e.g., 10, 50, 100), learning is significantly accelerated, indicating that a reasonable amount of latent variables enhances exploration without overwhelming the policy. However, when the latent dimension becomes too large (e.g., 150), excessive non-informative variables begin to dominate the input and degrade learning speed. Empirically, we find that setting the latent dimension about one-third of the state dimension provides a good balance between exploration and stability. 
+
+Ablation on Double Q Trick We also evaluated the single-Q variant of WPPG across all environments, and found that it outperforms WPO on nearly every task, with the corresponding results provided in the Appendix D.4. In addition, consistent with prior findings, adopting double-Q further improves WPPG by both stabilizing training and enhancing overall performance. 
+
+Ablation on Double Q Function Double-Q plays a crucial role for WPPG. As shown in the figures, although the single-Q
+
+variant of WPPG outperforms WPO on most environments, it fails to achieve fast and stable learning on challenging tasks such as Humanoid. Beyond stability, the use of double-Q also opens up interesting directions for further exploration; for example, one could choose the Q-function with the smaller gradient magnitude to provide the action-sample update direction. We leave such extensions for future work.  
+
+> Figure 5. Ablation on Double Q Function
+
+Additional Ablation Study Beyond the main results, we also conduct additional ablation studies on Humanoid-v5 and HalfCheetah-v5, systematically varying key hyperparameters (e.g., the Wasserstein step size η, the number of sampled actions, and the latent dimension of the implicit policy). These experiments, reported in the supplementary material, further validate the robustness of our method and illustrate how performance and stability depend on these design choices. (see Fig.6 and Fig.7). 34 Wasserstein Proximal Policy Gradient 
+
+Figure 6. Additional Ablation on Eta, Action Samples and Latent Dim with HalfCheetah-v5 Task 
+
+Figure 7. Additional Ablation on Eta, Action Samples and Latent Dim with Humanoid-v5 Task 
+
+35

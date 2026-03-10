@@ -1,0 +1,803 @@
+Title: A Constrained RL Approach for Cost-Efficient Delivery of Latency-Sensitive Applications
+
+URL Source: https://arxiv.org/pdf/2603.04353v1
+
+Published Time: Thu, 05 Mar 2026 02:27:11 GMT
+
+Number of Pages: 7
+
+Markdown Content:
+# A Constrained RL Approach for Cost-Efficient Delivery of Latency-Sensitive Applications 
+
+Ozan Ayg¨ un 1, Vincenzo Norman Vitale 2, Antonia M. Tulino 3, Hao Feng 4, Elza Erkip 5, and Jaime Llorca 61,3,5,6 New York University, NY, USA, Email: {ozan, atulino, elza, jllorca }@nyu.edu 
+
+> 2,3
+
+Universit` a degli Studi Napoli Federico II, Naples, Italy, Email: vincenzonorman.vitale@unina.it 
+
+> 4
+
+Intel Labs, Email: haofeng.fh666@gmail.com 
+
+> 6
+
+Universit` a degli Studi di Trento, Trento, Italy, Email: jaime.llorca@unitn.it 
+
+> 6
+
+Centre Tecnologic de Telecommunicacions de Catalunya (CTTC), Barcelona, Spain. 
+
+Abstract —Next-generation networks aim to provide perfor-mance guarantees to real-time interactive services that require timely and cost-efficient packet delivery. In this context, the goal is to reliably deliver packets with strict deadlines imposed by the application while minimizing overall resource allocation cost. A large body of work has leveraged stochastic optimization techniques to design efficient dynamic routing and schedul-ing solutions under average delay constraints; however, these methods fall short when faced with strict per-packet delay requirements. We formulate the minimum-cost delay-constrained 
+
+network control problem as a constrained Markov decision pro-cess and utilize constrained deep reinforcement learning (CDRL) techniques to effectively minimize total resource allocation cost while maintaining timely throughput above a target reliability level. Results indicate that the proposed CDRL-based solution can ensure timely packet delivery even when existing baselines fall short, and it achieves lower cost compared to other throughput-maximizing methods. 
+
+Index Terms —dynamic network control, timely throughput, cost minimization, constrained deep reinforcement learning 
+
+I. I NTRODUCTION 
+
+Next-generation (NextG) networks are designed to advance beyond 5G by supporting ultra-responsive and intelligent sys-tems for real-time interactive (RTI) applications such as remote surgery, autonomous driving, and immersive virtual reality [1]. Ultra-Reliable Low-Latency Communications is essential to meet the stringent low-latency performance requirements of such RTI services, while cost-efficient resource allocation is equally critical for sustainable network operation. RTI services impose strict per-packet latency constraints to ensure timely delivery, which is vital for quality of service (QoS). Mean-while, minimizing operational cost (e.g., power consumption) remains critical for network operators, necessitating efficient routing and scheduling strategies that carefully balance latency with resource efficiency. The dynamic packet routing and scheduling problem with bounded average delay constraints has been widely studied, with the backpressure (BP) algorithm providing distributed, throughput-optimal policies leveraging Lyapunov drift control 
+
+This material is based upon work supported in part by NYU Wireless, the National Science Foundation under grant no. 21482148315, and funds from federal agency and industry partners as specified in the Resilient & Intelligent NextG Systems (RINGS) program. 
+
+theory [2], [3]. However, BP-based methods often experience high delays due to packet cycling, a challenge addressed by centralized routing and distributed scheduling algorithms like universal max-weight (UMW) and universal cloud net-work control (UCNC) [4], [5]. These methods reduce delays by assigning acyclic routes at packet sources, maintaining throughput optimality. The approaches above address packet routing and schedul-ing with average delay constraints. However, packets in RTI services must be delivered within prescribed packet lifetimes ,or they are deemed outdated and ineffective to the applica-tion [6]. The minimum-cost delay-constrained network control 
+
+(MDNC) problem was examined in [7], where the authors designed a heuristic solution and showcased the challenge of applying stochastic optimization based algorithms due to the distinct nature of lifetime-based queueing dynamics. Instead, this problem can be modeled as a constrained Markov decision process (MDP), allowing reinforcement learning (RL) methods to be employed for the design of efficient solutions. RL-based techniques were proposed for packet routing and scheduling in networks modeled as MDPs [8], [9]. However, current RL approaches focus on queue backlog stabilization [10], maximizing timely packet delivery [11], reducing average delivery times [12], or resource allocation [13]. To the best of our knowledge, no existing RL methods address cost minimization while handling packet routing and scheduling with specific delivery deadlines. Our contributions in this paper are as follows:  
+
+> •
+
+We show that the MDNC problem can be modeled as a constrained MDP (CMDP) where the optimal policy can be learned through a constrained deep RL (CDRL) driven dual subgradient algorithm, which we refer to as CDRL-NC,  
+
+> •
+
+We propose a multi-agent CDRL-NC framework where a centralized routing agent and distributed scheduling agents can cooperatively learn feasible network control policies that ensure reliable timely packet delivery while minimizing the resource allocation cost,  
+
+> •
+
+We demonstrate through dynamic event-driven network simulations that CDRL-NC achieves significantly lower 
+
+> arXiv:2603.04353v1 [cs.NI] 4 Mar 2026
+
+resource allocation cost than state-of-the-art approaches while meeting stringent timely throughput constraints, and consistently satisfies these constraints even in sce-narios where existing methods fall short. II. S YSTEM MODEL 
+
+A. Network Model 
+
+We consider a communication network described by adirected graph G =( V, E), where V and E denote the set of nodes and links, respectively, (i, j )∈E denotes the link from node i ∈ V to node j ∈ V , and ρ− 
+
+> i
+
+and ρ+ 
+
+> i
+
+represent the incoming and outgoing set of neighbor nodes of node i ∈ V ,respectively. In order to support packet transmission, resource blocks (e.g., time-frequency blocks, optical wavelengths) can be al-located on each link (i, j ) ∈ E . We consider a time-slotted system with equal-sized slots t ∈ { 0, 1, . . . }, and denote by 
+
+Cbij the capacity per resource block (in packets per slot) on link (i, j ), Xmax ij the maximum number of available resource blocks on link (i, j ), and Cij = Cbij Xmax ij the link capacity of link (i, j ). We also denote by eij the cost (e.g., power consumption) of operating a resource block on link (i, j ).
+
+B. Service Model 
+
+The network can support multiple latency-sensitive service flows, or commodities , each requiring timely delivery of pack-ets across specific source-destination pairs, represented by the set C. QoS requirements are imposed by associating a lifetime 
+
+or time-to-live (TTL) to packets of each commodity. A packet is considered effective if it has positive lifetime, and outdated 
+
+otherwise. We define the timely throughput as the rate of effective packet delivery, i.e., the rate of packets delivered on time. Packets of commodity c ∈ C are associated with (i) source node sc ∈ V , (ii) destination node dc ∈ V ,(iii) initial lifetime Lc ∈ L = {1, . . . , L max } with Lmax 
+
+being the maximum possible lifetime, and (iv) reliability 
+
+(timely throughput divided by the mean arrival rate) target 
+
+δc ∈ [0 , 1] .In addition, the number of commodity-c packets arriving at source node sc at time t is denoted by a random variable 
+
+bc(t), with a mean arrival rate of ¯bc = Ebc(t). We use b(t) ≜bc(t), ∀c ∈ C to denote vector of packet arrivals at time t.
+
+C. Network Control Decisions 
+
+We consider network control policies that perform (i) rout-ing ( where packets should go), (ii) scheduling ( when packets should go), and (iii) resource allocation decisions. Routing and scheduling decisions are described by flow variables f (t) ≜ f (c,ℓ ) 
+
+> ij
+
+(t), ∀(i, j ) ∈ E , ∀c ∈ C , ∀ℓ ∈ L ,where f (c,ℓ ) 
+
+> ij
+
+(t) denotes the number of packets of commodity 
+
+c and lifetime ℓ sent over link (i, j ) at time t. For ease of notation, we also define f (c,ℓ ) 
+
+> i→
+
+(t) ≜ P
+
+> j∈ρ+
+> i
+
+f (c,ℓ ) 
+
+> ij
+
+(t) and 
+
+f (c,ℓ ) 
+
+> →i
+
+(t) ≜ P
+
+> j∈ρ−
+> i
+
+f (c,ℓ ) 
+
+> ji
+
+(t) as the total outgoing flow from node i to its outgoing neighbors of packets of commodity c,lifetime ℓ, at time t, and the total incoming flow to node i
+
+from its incoming neighbors, respectively. To account for policies that can proactively drop packets from the network before lifetime expiry, we define packet-dropping variables g(t) ≜ g(c,ℓ ) 
+
+> i
+
+(t), ∀i ∈ V , ∀c ∈ C , ∀ℓ ∈L , where g(c,ℓ ) 
+
+> i
+
+(t) denotes the number of commodity c,lifetime ℓ packets dropped by node i at time t.Finally, we define resource allocation variables x(t) ≜xij (t), ∀(i, j ) ∈ E , where xij (t) denotes the number of resource blocks allocated on link (i, j ) at time t, with 
+
+xij (t) ≤ Xmax ij .
+
+D. Lifetime-Based Queue Dynamics 
+
+Upon arrival, packets build up on network queues according to their remaining lifetime and the commodity they belong to. We define queue variables q(t) ≜ {q(c,ℓ ) 
+
+> i
+
+(t), ∀i ∈ V , ∀c ∈C, ∀ℓ ∈ L} where q(c,ℓ ) 
+
+> i
+
+(t) denotes the queue backlog of node i
+
+for packets of commodity c and lifetime ℓ at time t. Packets in the network experience progressive aging, which causes them to gradually deplete their lifetimes after every time slot. Queue dynamics are given as 
+
+q(c,ℓ ) 
+
+> i
+
+(t) = q(c,ℓ +1)  
+
+> i
+
+(t − 1) −f (c,ℓ +1)  
+
+> i→
+
+(t − 1) − g(c,ℓ +1)  
+
+> i
+
+(t − 1) +f (c,ℓ +1)  
+
+> →i
+
+(t − 1)+ b(c,ℓ ) 
+
+> i
+
+(t), (1) 
+
+∀i ∈ V , ∀c ∈ C , ∀ℓ ∈ L , ∀t, and we define b(c,ℓ ) 
+
+> i
+
+(t) as 
+
+b(c,ℓ ) 
+
+> i
+
+(t) = 
+
+(
+
+bc(t) if i = sc, ℓ = Lc
+
+0 otherwise We assume that expired (i.e., ineffective) packets are imme-diately dropped from the queue backlog, i.e., 
+
+q(c, 0)  
+
+> i
+
+(t) = 0 , ∀i ∈ V , ∀c ∈ C , ∀t, (2) and packets reaching their destination with positive remaining lifetime ℓ are immediately consumed, i.e., 
+
+q(c,ℓ ) 
+
+> dc
+
+(t) = 0 , dc ∈ V , ∀c ∈ C , ∀ℓ ∈ L , ∀t. (3) An illustration of the queueing dynamics is shown in Fig. 1. III. P ROBLEM FORMULATION 
+
+Objective Function: The objective is to minimize the long-term average resource allocation cost, 
+
+lim  
+
+> T→∞
+
+1
+
+T 
+
+> T−1
+
+X
+
+> t=0
+
+X
+
+> (i,j )∈E
+
+E[xij (t)eij ] (4) 
+
+Reliability (Timely Throughput) Constraint: Defining the timely throughput of commodity c as the rate of on-time packet delivery , i.e., ¯f→dc ≜ lim  
+
+> T→∞
+
+1
+
+T 
+
+> T−1
+
+X
+
+> t=0
+
+X
+
+> ℓ∈L
+
+E[f (c,ℓ ) 
+
+> →dc
+
+(t)] , ∀c ∈ C ,the reliability constraint imposes the timely throughput of commodity c to surpass a prescribed reliability level δc, i.e., 
+
+¯f→dc − δc¯bc ≥ 0, ∀c ∈ C (5) Source Node  i          
+
+> Commodity 1
+> Commodity c
+> …
+> 1
+> 2
+> Lc
+> …
+> …
+> 1
+> 2
+> L1
+> …
+> Commodity 1
+> Commodity c
+> …
+> 1
+> 2
+> -1 L1
+> …
+> L1
+> 1
+> 2
+> -1 Lc
+> …
+> Lc
+> …
+> Node j
+> b1(t)
+> bc(t)
+> f(c,2 )
+> ij(t−1)
+> f(1, L1)
+> ij(t−1)
+> f(c,Lc)
+> ij(t−1)
+> g(1,2 )
+> i(t−1)
+> Packet expiration
+
+Fig. 1: Illustration of lifetime-based queue dynamics: Packets turn from green to red as their lifetime decreases, blue arrows represent lifetime queue evolution, and packets without edges and with dashed edges indicate available packets at times t − 1 and t, respectively. 
+
+Availability Constraint: The total outgoing flow (sent and dropped packets) cannot exceed the existing queue backlog: 
+
+f (c,ℓ ) 
+
+> i→
+
+(t)+ g(c,ℓ ) 
+
+> i
+
+(t) ≤ q(c,ℓ ) 
+
+> i
+
+(t), ∀i ∈ V , ∀c ∈ C , ∀ℓ ∈ L , ∀t (6) 
+
+Capacity Constraint: The total flow on link (i, j ) is limited by the allocated capacity, and the number of allocated resource blocks s is bounded by Xmax ij , i.e., 
+
+X
+
+> ℓ∈L
+
+X
+
+> c∈C
+
+f (c,ℓ ) 
+
+> ij
+
+(t) ≤ Cbij xij (t) ∀(i, j ) ∈ E , ∀t (7) 
+
+xij (t) ≤ Xmax ij ∀(i, j ) ∈ E , ∀t (8) 
+
+Problem Formulation: The MDNC problem aims to find network control decisions that minimize resource allocation cost subject to queue dynamics, reliability, availability, and capacity constraints: min lim  
+
+> T→∞
+
+1
+
+T 
+
+> T−1
+
+X
+
+> t=0
+
+X
+
+> (i,j )∈E
+
+E[xij (t)eij ] (9a) s.t. ¯f→dc − δc¯bc ≥ 0, ∀c ∈ C (9b) Queues evolves by (1)-(3) (9c) 
+
+f (c,ℓ ) 
+
+> i→
+
+(t)+ g(c,ℓ ) 
+
+> i
+
+(t) ≤ q(c,ℓ ) 
+
+> i
+
+(t), ∀i ∈ V , ∀c ∈ C , ∀ℓ ∈ L , ∀t (9d) 
+
+X
+
+> ℓ∈L
+
+X
+
+> c∈C
+
+f (c,ℓ ) 
+
+> ij
+
+(t) ≤ Cbij xij (t) ∀(i, j ) ∈ E , ∀t (9e) 
+
+xij (t) ≤ Xmax ij ∀(i, j ) ∈ E , ∀t (9f) 
+
+f (c,ℓ ) 
+
+> ij
+
+(t) ≥ 0, g (c,ℓ ) 
+
+> i
+
+(t) ≥ 0, x ij (t) ∈ Z+ (9g) It is important to note that in network control problems that only require bounded average delays, such a requirement can be satisfied by imposing the stability of the underlying queuing system, which can in turn be satisfied by imposing flow conser-vation. This reduces the underlying network control problem to a stochastic optimization problem that admits efficient Lyapunov-based solutions [14]. However, in delay-constrained network control problems with lifetime-based queuing systems and associated packet drops, as in our MDNC problem, queue stability loses its purpose. As a result, the problem cannot be efficiently addressed via stochastic optimization methods, even though heuristic solutions have been designed as in [7]. However, the MDNC problem can be cast as a CMDP, which incorporates delay constraints directly into network decisions. This approach is better suited to handle the dynamic and time-sensitive nature of packet lifetimes in NextG networks, as illustrated in the following section. IV. CDRL FOR DYNAMIC NETWORK CONTROL 
+
+We now show how the MDNC problem stated in Section III can be modeled as a CMDP and solved via CDRL. A CMDP is characterized by its state transition probability distribution P(s(t), r (t) | s(t − 1) , a(t − 1)) , representing the probability of an agent reaching state s(t) and obtaining re-ward r(t) : S ×A → R after taking action a(t−1) ∈ A in state 
+
+s(t − 1) ∈ S , where reward r(t) quantifies the effectiveness of action a(t − 1) in state s(t − 1) . The agent selects actions based on a policy π, where π(s(t)) = a(t) ∈ A s(t). The goal of the agent is to maximize the return (i.e., expected sum of discounted rewards), defined as Es[P∞ 
+
+> t=0
+
+γtr(π(s(t)) , s(t))] ,where γ ∈ [0 , 1] is the discount factor. 
+
+State Space: The state of node i at time t includes corre-sponding exogenous packet arrivals and queue backlogs, given by si(t) = {b(c,ℓ ) 
+
+> i
+
+(t), q (c,ℓ ) 
+
+> i
+
+(t) : i ∈ V , ∀c ∈ C , ∀ℓ ∈ L} , and the overall network state becomes s(t) = {si(t) : ∀i ∈ V} .
+
+Action Space: Network actions consist of resource al-location variables x(t), and packet routing and scheduling decisions encoded into variables f (t) and g(t). The network action at time t is denoted by a(t) = x(t), f (t), g(t) , where the action space As(t) depends on the network state s(t), i.e., 
+
+As(t)=
+
+n
+
+xij (t), f (c,ℓ ) 
+
+> ij
+
+(t), g (c,ℓ ) 
+
+> i
+
+(t) : f (c,ℓ ) 
+
+> i→
+
+(t)+ g(c,ℓ ) 
+
+> i
+
+(t) ≤ q(c,ℓ ) 
+
+> i
+
+(t),
+
+0 ≤X
+
+> c∈C
+
+X
+
+> ℓ∈L
+
+f (c,ℓ ) 
+
+> ij
+
+(t) ≤ Cbij xij (t), 0 ≤ xij (t) ≤ Xmax ij , x ij ∈ Z+o
+
+,
+
+∀(i, j )∈E , ∀ℓ ∈ L , ∀i ∈ V , ∀c ∈ C .
+
+CDMP-Based Formulation: In our formulation, we con-sider weakly communicating MDPs, which is a common as-sumption in the study of infinite-horizon RL. While traditional MDP objectives typically focus on maximizing the expected sum of discounted rewards, the MDNC problem aims to minimize the infinite-horizon average expected cost. Theorem 1 in [15] establishes that even under the weaker assumption of weakly communicating MDPs, an optimal policy can still be learned by optimizing the infinite-horizon average expected re-ward instead of relying on discounted objectives. Therefore, in this paper, we shift our focus on the discounted average reward framework as the basis for our CMDP formulation. Based on this, we define the infinite-horizon discounted average as 
+
+bm0(π) ≜
+
+> ∞
+
+X
+
+> t=0
+
+γtEs [m0(s(t), a(t))] , (10) where m0(s(t), a(t)) ≜ P 
+
+> (i,j )∈E
+
+xij (t)eij 1.Using (10) as the objective function and rewriting the constraints in (9) in terms of state and actions, the CDMP-based MDNC problem becomes: min bm0(π) (11a) s.t. bmc(π) ≥ 0, ∀c ∈ C (11b) 
+
+π(s(t)) ∈ A s(t), ∀t (11c) where bmc(π) ≜
+
+> ∞
+
+X
+
+> t=0
+
+X
+
+> ℓ∈L
+
+γtE[f (c,ℓ ) 
+
+> →dc
+
+(t)] −δc¯bc, ∀c ∈ C .
+
+A. Dual Subgradient Algorithm 
+
+As shown in [16], the dual subgradient approach can be utilized to find an optimal policy for problem (11) iteratively. The Lagrangian for the problem can be written as 
+
+L(π, λ) ≜ bm0(π) − X
+
+> c∈C
+
+λc bmc(π), (12) where λ = {λc, ∀c ∈ C} is the vector of Lagrangian multipliers. Then, the dual problem becomes 
+
+max  
+
+> λ
+
+inf  
+
+> π
+
+L(π, λ) (13) 
+
+λc ≥ 0 ∀c ∈ C 
+
+Since the dual problem is convex in λ, we can use the dual subgradient method to find optimal λc’s iteratively. At each iteration k, the primal (i.e., policy) updates are performed as 
+
+πk+1 = arg min 
+
+> π
+
+L(π, λk). (14) Subsequently, using the updated policy, the dual (i.e., Lagrange multipliers) updates at iteration k are performed as 
+
+λck+1 =
+
+h
+
+λck − ηc bmc πk+1 
+
+i+
+
+, ∀c ∈ C (15) where ηc is the dual learning rate for commodity c and [.]+
+
+is the projection operator onto the positive orthant. 
+
+B. DRL-based Primal-Dual Update 
+
+The work in [16] showed that there is zero duality gap between primal and dual problems, enabling the dual subgra-dient algorithm to find the optimal policy. They also showed that while in setups with high-dimensional state-action spaces, memory and computational requirements to find the optimal policy grow exponentially, the policy can be learned through experience (e.g., via RL). Indeed, CDRL provides methods to learn optimal policies for CMDP-defined problems, where certain constraints must be met while maximizing the return. To this end, the policy is parameterized by a vector θ ∈ Rw with number of parameters      
+
+> 1Recall that xij (t)∈ A s(t), and hence depends on the chosen policy
+> π(s(t)) and the state s(t).
+
+w, learned by a DRL algorithm. The instantaneous reward for the parameterized policy becomes 
+
+rλ(s(t), a(t)) ≜ −m0(s(t), a(t)) + X
+
+> c∈C
+
+λcmc(s(t), a(t)) (16) Then, the return can be written as 
+
+Es
+
+ ∞X
+
+> t=0
+
+γtrλ(s(t), a(t)) 
+
+
+
+=
+
+> ∞
+
+X
+
+> t=0
+
+γtEs
+
+
+
+−m0(s(t),a(t))+ X
+
+> c∈C
+
+λcmc(s(t),a(t)) 
+
+
+
+= −L (πθ , λ) (17) This shows that the return can be expressed in terms of the parameterized Lagrangian, enabling the solution to the dual problem (i.e., minimizing the Lagrangian) to be obtained through a parameterized policy πθ via CDRL methods [16]. Using the parameterized Lagrangian, the DRL algorithm performs the policy parameters update at iteration k as 
+
+θk+1 ≈ arg min 
+
+> θ
+
+L(θ, λk), (18) Dual multipliers can be updated using the updated policy as 
+
+λck+1 = λck − ηc bmc(πθk+1 )+ , ∀c ∈ C (19) At each dual subgradient algorithm iteration k, we perform a primal update via DRL over V training episodes and a dual update. Each training episode lasts T steps, hence primal and dual updates are performed at every T V steps. The pseudocode of CDRL-NC is given in Algorithm 1. 
+
+Algorithm 1: CDRL-NC 
+
+Input: δ1, . . . , δ |C| , λ 10, . . . , λ |C| 
+
+> 0
+
+Initialize: θ0;for iteration k = 0,1,. . . do for episode v = 0,1,. . . , V do for step t = 0,1,. . . , T do 
+
+Observe s(t), take action a(t), get reward 
+
+rλ(s(t), a(t)) ;
+
+Sample from observations ;
+
+Perform primal update: θk+1 via DRL 2;for c = 1 , . . . , |C| do 
+
+Dual update: λck+1 = λck + ηc bmc(πθk+1 )+;for each k%K == 0 do 
+
+Save model if model checkpoint is satisfied 
+
+> 2Note that this step can be performed for multiple agents simultaneously.
+
+C. CDRL-NC Agents Design 
+
+We adopt the actor-critic based multi agent deep determinis-tic policy gradient (MADDPG) algorithm as the DRL method, allowing to train multiple agents in an offline manner serving different purposes [17]. During the training phase, each agent as an actor learns a policy, while the global critic aims to maximize the return. We focus on policies with centralized routing and distributed scheduling (akin to software-defined networking [18]), where a single routing agent makes routing decisions for all com-modities, whereas scheduling agents at every node take local scheduling actions. The scheduling agent at node i ∈ V learns a policy which uses the local information si(t), and the routing agent learns a policy using the network state s(t). Upon arrival at source node sc, packets of commodity c are assigned to a path p ∈ P c ⊂ P , with Pc denoting the set of feasible paths for commodity c, and P = S 
+
+> c∈C
+
+Pc. Given that each packet gets assigned to a path at the source, we denote the number of packets assigned to path p, with lifetime ℓ, held at node i at time t as q(p,ℓ ) 
+
+> i
+
+(t), with q(t) = {q(p,ℓ ) 
+
+> i
+
+(t), ∀i ∈ V , ℓ ∈ L , ∀p ∈P} , now denoting the path-based network queue backlog. The routing agent assigns a path to each packet upon its arrival to the network. At each time slot, the routing agent’s actor observes the path-based queue backlog q(t) and packet arrivals b(t), and for each commodity c, outputs a |P c| dimensional probability vector. Each entry in this vector, denoted by Pc{p}, specifies the proportion of packets of commodity c to be routed along path p ∈ P c. Accordingly, the number of packets of commod-ity c assigned to path p at time t is given by ⌊bc(t)Pc{p}⌋ .The scheduling agent actor at node i observes the aggre-gate local state for path p, given by qpi (t) = P|L|  
+
+> ℓ=1
+
+q(p,ℓ ) 
+
+> i
+
+(t),and outputs a three dimensional probability vector Ppi (x),where x is mapped to packet “send”, “drop”, or “hold” actions. Based on this, the number of packets sent (‘s’) and dropped (‘d’) for path p by node i at time t are computed as 
+
+Spi (t) = ⌊Ppi (‘s’ )qpi (t)⌋ , D pi (t) = ⌊Ppi (‘d’ )qpi (t)⌋, (20) which are mapped to network-level forwarding and dropping decisions, f (t) and g(t). Starting with packets in qpi (t) with the lowest lifetime, the agent at node i drops Dpi (t) packets, sends Spi (t) packets along path p, and retains the rest. The total number of packets sent over link (i, j ) at time t is given by Sij (t) = P 
+
+> p∈P ij
+
+Spi (t), where Pij is the set of paths using link (i, j ). Then, the number of resource blocks allocated to link (i, j ) at time t can be computed as 
+
+xij (t) = 
+
+ Sij (t)
+
+Cbij 
+
+
+
+. (21) Note that this decision-making process deliberately simplifies the observation space of scheduling agents by relying on aggregate path-based queue backlogs, qpi (t). Lifetime infor-mation is then used by a heuristic rule that favors sending packets more likely to reach their destinations. This hybrid design reduces inference complexity and promotes scalable, low-overhead scheduling decisions while striking a good balance between efficiency and performance. Investigating the complexity-performance tradeoff of more fine-grained scheduling policies that incorporate lifetime information in the observation space is part of our ongoing studies. Finally, the critic observes the network state s(t) and actions 
+
+a(t) at time t to estimate the expected sum of discounted reward for the state-action pair. Note that the reward r(t) is used by all agents. 
+
+D. Complexity Analysis 
+
+We now analyze the inference complexity to perform rout-ing and scheduling decisions, as well as the communication overhead of the proposed CDRL-NC algorithm. Let the neural networks used by each agent be modeled as multi-layer perceptrons (MLPs) with two hidden layers containing n1 and 
+
+n2 neurons, respectively. For the centralized routing agent, the input consists of the network queue backlog q(t) and packet arrivals b(t), while the output is a path assignment for each arriving packet, and its inference complexity is given by O(( |V||P||L| ) + |C| )n1 + n1n2 + n2|P| ). For the distributed scheduling agents, each node i observes only its local aggregate queue states qpi (t) as input and outputs flow decision variables for each path p. Therefore, the infer-ence complexity of each scheduling agent can be written by 
+
+O(|P| n1 + n1n2 + n23|P| ).In contrast to Lyapunov-based approaches, there is no com-munication overhead during packet scheduling since only the local state is used for scheduling decisions. On the other hand, the centralized router requires local states from each node to make routing decisions, incurring the same communication overhead as that of existing centralized routing policies, such as UMW [4]. 
+
+E. Practical Considerations of CDRL-NC 
+
+Convergence of both λ and θ can be time-intensive in some setups. To address this, we propose pseudo-convergence model checkpoint criteria to capture and save the best-performing model. The model at iteration k is said to show stable and satis-factory performance, and can be saved if 
+
+bmc(πθk ) ≥ 0 ∀c, (22a) 
+
+σK 
+
+> λ
+
+< σ Thr , (22b) 
+
+¯rK > ¯rmax , (22c) where σK 
+
+> λ
+
+denotes the standard deviation of λ over last K
+
+policy iterations, with σThr as a predefined threshold, ¯rK is the average reward over length-K sliding window, with ¯rmax being the maximum average reward observed in prior windows. When the timely throughput conditions are satisfied, λ
+
+shows low variability, and a high reward is achieved, the model is saved to indicate near-convergence performance. Core Cloud 
+
+> Edge Cloud
+> End Devices
+
+Fig. 2: Illustration of an edge network topology. 
+
+V. E XPERIMENTAL RESULTS 
+
+We now present experiments to evaluate the performance of CDRL-NC across different settings. We adopt the MAD-DPG algorithm with discount factor γ = 0.97 , and we apply ϵ-greedy strategy with a policy exploration probability of max((0 .99) k, 0.01) at iteration k in training to balance exploration and exploitation [19]. To further explore the state-action space, we divide policy training into train and improve 
+
+pheases, prior to policy evaluation, during which the ϵ-greedy strategy is applied at each phase to enable additional policy exploration. After training and improve phases, we evaluate the performance of the best performing policy in the test phase. Agents’ actors and the critic have MLP of two hidden layers with 64 neurons at each hidden layer, and Adam optimizer is applied with a learning rate of 10 −3 [20]. During simulations, the cost m0 and timely throughput values, mc, are normalized within [0 , 1] to maintain comparable orders of instantaneous cost and timely throughput values [21]. We perform experiments to evaluate the performance of CDRL-NC with competing algorithms, including BP, which uses distributed routing and scheduling, and UMW, which employs centralized routing and distributed scheduling [2], [4]. We employ the edge network architecture with two edge cloud servers in between, similar to what is presented in [22], shown in Fig. 2. The packet arrivals follow a Poisson distribution, links have a capacity of 10 packets per slot with equal link costs, i.e., eij = 1 , ∀(i, j ) ∈ E , ∀t.We set the dual learning rate to ηc = 0 .005 and initial Lagrangian multipliers to λc 
+
+> 0
+
+= 1 .25 √¯bcδc, c ∈ { 1, 2} to make the algorithm adaptive to varying timely throughput constraints. This approach al-lows commodities with more stringent constraints to prioritize timely throughput over minimizing total cost early in the experiment. After the commodity c meets mc, its λc decreases via dual updates, reducing the weight corresponding to the throughput, and shifting the focus of instantaneous reward to the total cost rather than achieving the reliability target. We simulate CDRL-NC on the edge network where packets are routed and sent from two end devices to the core cloud node with reliability constraints δ1 = 0 .7, δ2 = 0 .6, and initial lifetimes L1 = 6, L2 = 4, respectively, and with episode length T = 20 time steps. The experiments include 20000 training episodes, 10000 improve episodes, and 2000 test episodes. In Fig. 3, when ¯b1 = ¯b2 = 6 , we illustrate the progression of throughput and λc’s throughout training. Dashed lines represent λc values for both commodities, while solid lines show their throughput, and horizontal lines indi-cate their corresponding timely throughput targets. As agents proceed into the improve phase, the throughput remains above the threshold, and λc values gradually decrease, approaching an equilibrium point. In the test phase, the performance of the best model via model checkpoint is evaluated without further policy iterations. Fig. 4, presents the reliability levels, f→dc 
+
+> ¯bc
+
+, reliability thresh-olds δc¯bc, and network resource allocation cost per episode values for various commodities and arrival rates after policy training. In low arrival rate regime, all algorithms satisfy the timely throughput constraint, however, CDRL-NC consistently achieves a lower cost per episode. As the arrival rate increases, BP starts to fail achieving the reliability constraint for com-modity 1 when ¯b1 = ¯b2 = 10 . UMW consumes lower cost than BP but CDRL-NC still satisfies the reliability constraints at a much lower cost. 0 500 1000 1500 2000 2500 3000                       
+
+> Number of epochs
+> 0
+> 1
+> 2
+> 3
+> 4
+> 5
+> Timely Throughput and Progression for Edge Network
+> 1= 0.7, 2= 0.6, b1=b2= 6, 1= 6, 2= 4
+> 0
+> 2
+> 4
+> 6
+> 8
+> 10
+> Timely Throughput
+> 05000 10000 15000 20000 25000 30000
+> Number of episodes
+> Train Improve Test
+> 1
+> 2
+> fd1
+> fd2
+> 1b1
+> 2b2
+
+Fig. 3: Progression of λ and average timely throughput of commodi-ties as CDRL-NC agents train for the edge network. Solid curves represent the instantaneous timely throughput whose throughput constraints are marked with horizontal dotted dashed lines, and dashed curves represent the instantaneous λ values. When the timely throughput is low, λ values increase in order to prioritize timely throughput more in the reward function on Eq. (16). As the timely throughput targets are satisfied, the λ values become more stable since the rightmost term on Eq. (19) gets closer to zero. 
+
+VI. C ONCLUSION 
+
+In this paper, we have formulated the MDNC problem, where services are delay-sensitive and need to satisfy a pre-scribed reliability level, as a CMDP. To solve this problem, we have proposed a dual subgradient-based CDRL framework that learns cost and latency efficient routing and scheduling 4 6 8 10    
+
+> Arrival Rate (packets/slot)
+> 0.4
+> 0.5
+> 0.6
+> 0.7
+> 0.8
+> 0.9
+> Reliability
+> 0
+> 100
+> 200
+> 300
+> 400
+> 500
+> 600
+> Cost Per Episode
+> Edge Network: Reliability and Cost as a Function of Arrival Rate for Commodity 1
+> BP
+> UMW
+> CDRL-NC
+> Threshold
+> BP Cost
+> UMW Cost
+> CDRL-NC Cost (a) Commodity 1 of the edge network. 46810
+> Arrival Rate (packets/slot)
+> 0.4
+> 0.5
+> 0.6
+> 0.7
+> 0.8
+> 0.9
+> Reliability
+> 0
+> 100
+> 200
+> 300
+> 400
+> 500
+> 600
+> Cost Per Episode
+> Edge Network: Reliability and Cost as a Function of Arrival Rate for Commodity 2
+> BP
+> UMW
+> CDRL-NC
+> Threshold
+> BP Cost
+> UMW Cost
+> CDRL-NC Cost
+> (b) Commodity 2 of the edge network.
+
+Fig. 4: Reliability and cost per episode of two commodities in the edge network for reliability targets δ1 = 0 .7, δ2 = 0 .6 (marked with horizontal dashed black line) and initial lifetimes L1 = 4 . The arrival rates are kept the same for both commodities. Even though all approaches are able to stay above the reliability targets, CDRL-NC is able to perform timely packet delivery with less cost than both BP and UMW. When ¯b1 = ¯b2 = 10 , CDRL-NC is able to satisfy the reliability targets while BP fails to meet the reliability target for commodity 1. 
+
+policies. Through network simulations, we have demonstrated that the proposed CDRL-NC algorithm converges to feasible policies under various settings, effectively meeting target relia-bility levels while achieving significantly lower cost than alter-native approaches. Ongoing investigations include robustness analysis of CDRL-NC under different network topologies and service settings, as well as investigating various agent designs with different observation and action spaces, and compare their inference complexity-performance tradeoffs. REFERENCES [1] Y. Cai, J. Llorca, A. M. Tulino, and A. F. Molisch, “Compute-and data-intensive networks: The key to the metaverse,” in 2022 1st International Conference on 6G Networking (6GNet) , pp. 1–8, IEEE, 2022. [2] L. Tassiulas and A. Ephremides, “Stability properties of constrained queueing systems and scheduling policies for maximum throughput in multihop radio networks,” in 29th IEEE Conference on Decision and Control , pp. 2130–2132, IEEE, 1990. [3] M. Neely, Stochastic network optimization with application to commu-nication and queueing systems . Springer Nature, 2022. [4] A. Sinha and E. Modiano, “Optimal control for generalized network-flow problems,” IEEE/ACM Transactions on Networking , vol. 26, no. 1, pp. 506–519, 2017. [5] J. Zhang, A. Sinha, J. Llorca, A. M. Tulino, and E. Modiano, “Optimal control of distributed computing networks with mixed-cast traffic flows,” 
+
+IEEE/ACM Transactions on Networking , vol. 29, no. 4, pp. 1760–1773, 2021. [6] R. Singh and P. Kumar, “Throughput optimal decentralized scheduling of multihop networks with end-to-end deadline constraints: Unreliable links,” IEEE Transactions on Automatic Control , vol. 64, no. 1, pp. 127– 142, 2018. [7] Y. Cai, J. Llorca, A. M. Tulino, and A. F. Molisch, “Ultra-reliable distributed cloud network control with end-to-end latency constraints,” 
+
+IEEE/ACM Transactions on Networking , vol. 30, no. 6, pp. 2505–2520, 2022. [8] J. Boyan and M. Littman, “Packet routing in dynamically changing networks: A reinforcement learning approach,” Advances in Neural Information Processing Systems , vol. 6, 1993. [9] Z. Mammeri, “Reinforcement learning based routing in networks: Re-view and classification of approaches,” Ieee Access , vol. 7, pp. 55916– 55950, 2019. [10] B. Liu, Q. Xie, and E. Modiano, “Rl-qn: A reinforcement learning framework for optimal control of queueing systems,” ACM Transactions on Modeling and Performance Evaluation of Computing Systems , vol. 7, no. 1, pp. 1–35, 2022. [11] A. HasanzadeZonuzy, D. Kalathil, and S. Shakkottai, “Reinforcement learning for multi-hop scheduling and routing of real-time flows,” in 
+
+2020 18th International Symposium on Modeling and Optimization in Mobile, Ad Hoc, and Wireless Networks (WiOPT) , pp. 1–8, IEEE, 2020. [12] X. You, X. Li, Y. Xu, H. Feng, J. Zhao, and H. Yan, “Toward packet routing with fully distributed multiagent deep reinforcement learning,” 
+
+IEEE Transactions on Systems, Man, and Cybernetics: Systems , vol. 52, no. 2, pp. 855–868, 2020. [13] Q. Liu, N. Choi, and T. Han, “Constraint-aware deep reinforcement learning for end-to-end resource orchestration in mobile networks,” in 
+
+2021 IEEE 29th International Conference on Network Protocols (ICNP) ,pp. 1–11, IEEE, 2021. [14] M. J. Neely and S. Supittayapornpong, “Dynamic markov decision policies for delay constrained wireless scheduling,” IEEE Transactions on Automatic Control , vol. 58, no. 8, pp. 1948–1961, 2013. [15] C.-Y. Wei, M. J. Jahromi, H. Luo, H. Sharma, and R. Jain, “Model-free reinforcement learning in infinite-horizon average-reward markov decision processes,” in International conference on machine learning ,pp. 10170–10180, PMLR, 2020. [16] S. Paternain, L. Chamon, M. Calvo-Fullana, and A. Ribeiro, “Con-strained reinforcement learning has zero duality gap,” Advances in Neural Information Processing Systems , vol. 32, 2019. [17] R. Lowe, Y. I. Wu, A. Tamar, J. Harb, O. Pieter Abbeel, and I. Mordatch, “Multi-agent actor-critic for mixed cooperative-competitive environ-ments,” Advances in Neural Information Processing Systems , vol. 30, 2017. [18] G. Stampa, M. Arias, D. S´ anchez-Charles, V. Munt´ es-Mulero, and A. Cabellos, “A deep-reinforcement learning approach for software-defined networking routing optimization,” arXiv preprint arXiv:1709.07080 , 2017. [19] R. S. Sutton and A. G. Barto, Reinforcement Learning: An Introduction .MIT press, 2018. [20] D. P. Kingma and J. Ba, “Adam: A method for stochastic optimization,” 
+
+arXiv preprint arXiv:1412.6980 , 2014. [21] L. Engstrom, A. Ilyas, S. Santurkar, D. Tsipras, F. Janoos, L. Rudolph, and A. Madry, “Implementation matters in deep policy gradients: A case study on PPO and TRPO,” arXiv preprint arXiv:2005.12729 , 2020. [22] M. Alsabah, M. A. Naser, B. M. Mahmmod, S. H. Abdulhussain, M. R. Eissa, A. Al-Baidhani, N. K. Noordin, S. M. Sait, K. A. Al-Utaibi, and F. Hashim, “6g wireless communications networks: A comprehensive survey,” Ieee Access , vol. 9, pp. 148191–148243, 2021.

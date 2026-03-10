@@ -1,0 +1,1376 @@
+Title: Hybrid TD3: Overestimation Bias Analysis and Stable Policy Optimization for Hybrid Action Space
+
+URL Source: https://arxiv.org/pdf/2603.01302v1
+
+Published Time: Tue, 03 Mar 2026 02:43:07 GMT
+
+Number of Pages: 12
+
+Markdown Content:
+# Hybrid TD3: Overestimation Bias Analysis and Stable Policy Optimization for Hybrid Action Space 
+
+Thanh-Tuan Tran 1 , Thanh Nguyen Canh 2 , Nak Young Chong 2,3 and ∗Xiem HoangVan 1
+
+> 1
+
+University of Engineering and Technology, Vietnam National University, 10000, Hanoi, Vietnam. ({22023506, xiemhoang }@vnu.edu.vn) 
+
+> 2
+
+School of Information Science, Japan Advanced Institute of Science and Technology, Nomi, 923-1211, Ishikawa, Japan. ({thanhnc, nakyoung }@jaist.ac.jp) 
+
+> 3
+
+Department of Robotics, Hanyang University, Ansan, 15588, Gyeonggi, Korea. *Corresponding author: xiemhoang@vnu.edu.vn 
+
+Abstract —Reinforcement learning in discrete-continuous hy-brid action spaces presents fundamental challenges for robotic manipulation, where high-level task decisions and low-level joint-space execution must be jointly optimized. Existing approaches either discretize continuous components or relax discrete choices into continuous approximations, which suffer from scalability limitations and training instability in high-dimensional action spaces and under domain randomization. In this paper, we propose Hybrid TD3, an extension of Twin Delayed Deep Deterministic Policy Gradient (TD3) that natively handles pa-rameterized hybrid action spaces in a principled manner. We conduct a rigorous theoretical analysis of overestimation bias in hybrid action settings, deriving formal bounds under twin-critic architectures and establishing a complete bias ordering across five algorithmic variants. Building on this analysis, we introduce a weighted clipped Q-learning target that marginalizes over the discrete action distribution, achieving equivalent bias reduction to standard clipped minimization while improving policy smooth-ness. Experimental results demonstrate that Hybrid TD3 achieves superior training stability and competitive performance against state-of-the-art hybrid action baselines. 
+
+Index Terms —Discrete–continuous actions, Reinforcement learning, Overestimation bias, Robotic manipulation. 
+
+I. I NTRODUCTION 
+
+Deep reinforcement learning (DRL) has shown strong per-formance in sequential decision-making and continuous con-trol, making it a promising approach for robotic manipulation. Learned policies are expected to bridge high-level task objec-tives and low-level actuator commands, enabling adaptation to contact dynamics, uncertainty, and changing scenes. A funda-mental design choice is the control space in which actions are defined: task space (Cartesian end-effector objectives) versus 
+
+joint space (commands at the level of individual joints). Task-space control specifies goals in the robot workspace ( e.g ., end-effector position and orientation), whereas joint-space control directly outputs motor-level quantities such as joint torques, angles [1], or velocities [2], [3]. While both formulations are viable, the choice affects exploration, constraint handling, and robustness in unstructured manipulation settings. Conventional RL algorithms are designed for either purely discrete or purely continuous action spaces. Common exten-sions to hybrid settings involve discretizing continuous com-ponents [4], parameterizing action subspaces [5], or relaxing discrete choices into continuous approximations [6]. These conversions suffer from scalability limitations: discretization leads to exponential action blowup, while relaxation introduces approximation errors that degrade policy quality. More princi-pled approaches such as PADDPG [5] and P-DQN [7] directly model hybrid actions but overlook dependencies between discrete and continuous components, limiting convergence in high-dimensional settings. SAC-based hybrid variants [8]–[10] improve exploration but introduce redundancy in parameter modeling that exacerbates instability under aggressive domain randomization. A critical and underexplored source of instability in hybrid action RL is overestimation bias . In standard Q-learning, the maximization operator over noisy value estimates systemati-cally inflates target values [11], [12]. In hybrid settings, this bias is compounded: the agent must simultaneously maximize over a discrete action set and optimize continuous parameters, coupling two sources of approximation error into a self-reinforcing feedback loop. Under full domain randomization — where object poses, masses, and scene configurations vary at every episode reset — this instability becomes particularly severe, as distributional shifts prevent critics from converging reliably To address these challenges, we first conduct a systematic empirical comparison of four DRL algorithms — TD3 [13], SAC [14], DDPG [15], and PPO [16] — each adapted to hybrid action spaces under full domain randomization. TD3 consistently achieves superior stability and performance, ow-ing to its twin-critic architecture, delayed policy updates, and deterministic policy structure, which jointly mitigate overesti-mation bias and gradient variance. Motivated by this finding, we extend TD3 to hybrid action spaces and introduce aweighted clipped Q-learning target that marginalizes the Bell-man backup over the full discrete action distribution, rather than committing to a greedy discrete selection. We further provide a rigorous theoretical analysis establishing a complete ordering of expected estimation bias across five hybrid algo-rithmic variants, formally justifying clipped double Q-learning as the most stable bias mitigation strategy under dense rewards and heavy randomization. For experimental validation, we adopt the reward functions and state representations from our 
+
+> arXiv:2603.01302v1 [cs.RO] 1 Mar 2026
+
+prior work [17] and evaluate Hybrid TD3 on four manipulation tasks on a UF850 robotic arm in simulation.  
+
+> •
+
+A systematic empirical analysis identifying TD3 as the most stable backbone for hybrid action RL under full domain randomization, with a formal characterization of why competing baselines fail.  
+
+> •
+
+A weighted clipped Q-learning target for hybrid action spaces that marginalizes over the discrete action distri-bution, improving gradient smoothness while preserving the bias properties of standard TD3.  
+
+> •
+
+A rigorous theoretical bias ordering across five hybrid algorithmic variants, providing principled guidance for algorithm selection in hybrid action RL. II. P ROPOSED METHOD 
+
+This section presents our approach to learning hybrid ac-tion policies for robotic manipulation under full domain ran-domization. We begin by formulating the discrete-continuous hybrid action space and motivating the choice of TD3 as the most stable backbone through empirical baseline comparison. We then introduce our proposed modification — a weighted clipped Q-learning target — and provide a theoretical analysis of overestimation bias across five hybrid algorithmic variants. Finally, we describe the state representation, low-level control interface, and training protocol adopted for our manipulation tasks. 
+
+A. Problem formulation 
+
+We consider the robot manipulator setting in which an agent must make decisions spanning both discrete actions ( e.g. 
+
+grasp, release) and continuous joint-space parameterization (e.g. , joint velocities). This structure defines a parameterized hybrid action space , where an action a combines a discrete component ad ∈ A d = {0, 1} (selecting the suction mode) and a continuous component ac ∈ A c ⊆ Rmk (mode-specific joint-space parameters, where the dimensionality mk may vary per mode k). We adopt a factorized policy that models the two action components independently: 
+
+π(a | s) = Y
+
+> ai∈ad
+
+πd(ai | s) Y
+
+> ai∈ac
+
+πc(ai | s), (1) where the discrete part πd is parameterized as a categorical dis-tribution implemented via a softmax over logits from a shared network trunk, and the continuous part πc is a deterministic actor head producing joint velocities. This factorization allows each component to be trained with its appropriate objective while sharing a common state encoder. 
+
+1) RL baselines for hybrid action spaces: To identify the most stable algorithmic foundation for hybrid action learning, we evaluated four DRL baselines – TD3 [13], SAC [14] , DDPG [15], and PPO [16] – each adapted to the hybrid action space under full domain randomization , where object poses, masses, and scene configurations are independently randomized at every episode reset (Appendix A). As shown in Fig. 1, TD3 consistently achieves superior reward and more stable training curves compared to the other baselines. This empirical advantage is attributable to three structural properties of TD3: (i) its twin-critic architecture, which mitigates overestimation bias via clipped double Q-learning; (ii) delayed policy updates, which reduce the fre-quency of destructive gradient interference between actor and critic; and (iii) its deterministic policy, which avoids the entropy-regularization instability that hampers SAC under dis-tributional shifts induced by heavy randomization. In contrast, DDPG suffers from unmitigated overestimation bias due to its single critic, SAC struggles to maintain entropy-regularized convergence under non-stationary distributions, and the on-policy nature of PPO makes it sample-inefficient under high-variance randomized environments. Motivated by these results, we build our hybrid extension upon the TD3 framework, as detailed in the following subsection. 
+
+B. Hybrid TD3: Weighted Clipped Q-Learning 
+
+We extend the standard TD3 to the hybrid action space by defining twin critics: Qϕi (s, a c, a d), i ∈ { 1, 2}, that jointly evaluate both action components. Both critics share the same regression loss: 
+
+L(ϕ) = E(s,a c,a d,r,s ′)∼D 
+
+> 2
+
+X
+
+> i=1
+
+(Qϕi (s, a c, a d) − y)2 , (2) where D is the relay buffer and y is the bootstrapped regression target described below. The standard TD3 target selects the discrete action greedily and applies the clipped minimum over two target critics: 
+
+y = r + γ min  
+
+> i=1 ,2
+
+(Qϕ′ 
+
+> i
+
+(s′, a ′
+
+> c
+
+, a ′
+
+> d
+
+), (3) where a′ 
+
+> c
+
+= μθ′ (s′) + ϵ, ϵ ∼ N (0 , σ 2) is target policy smoothing noise, and a′ 
+
+> d
+
+= arg max k∈A d pd(k | s′) is the greedy discrete action under the target policy. Instead of committing to a single greedy discrete action, we propose to marginalize the clipped minimum target over the full discrete action distribution. The resulting weighted clipped Q-learning target is: 
+
+y = r + γ 1
+
+K
+
+> K
+
+X
+
+> k=1
+
+πd(a(k) 
+
+> d
+
+| s′) min  
+
+> i=1 ,2
+
+Qϕ′ 
+
+> i
+
+(s′, a ′
+
+> c
+
+, a (k) 
+
+> d
+
+). (4) This formulation propagates a soft, distribution-weighted value estimate rather than the hard-max target of standard TD3, providing smoother gradient signals during critic updates and reducing sensitivity to discrete action misclassification in early training. As established in Theorem 2.1, this modification preserves the same expected bias as the standard TD3 target while improving policy smoothness. To improve robustness in highly stochastic environments, we retain the clipped double-Q operator in the actor update, deviating from standard TD3, which relies on a single critic. Using a minimum of two critics reduces overestimation bias during policy improvement. In the parameterized hybrid action setting, the actor objective marginalizes over the discrete 0 10000 20000 30000 40000                
+
+> Episodes
+> −40
+> −20
+> 0
+> 20
+> 40
+> Average Return
+> Reach
+> 010000 20000 30000 40000
+> Episodes
+> −40
+> −20
+> 0
+> 20
+> 40
+> Pick
+> 010000 20000 30000 40000
+> Episodes
+> −40
+> −20
+> 0
+> 20
+> 40
+> Move
+> 010000 20000 30000 40000
+> Episodes
+> −40
+> −20
+> 0
+> 20
+> 40
+> Put
+> HyTD3 HySAC HyPPO HyDDPG
+
+Fig. 1: TD3 exhibits superior reward performance than SAC, PPO, and DDPG under aggressive domain randomization. action distribution while generating mode-conditioned contin-uous parameters. The objective is defined as: 
+
+Lθ = − Es∼D 
+
+"
+
+1
+
+K
+
+> K
+
+X
+
+> k=1
+
+πd(a(k) 
+
+> d
+
+| s) min  
+
+> i=1 ,2
+
+Qϕi
+
+ s, a (k) 
+
+> d
+
+, a c
+
+#
+
+.
+
+(5) By marginalizing over the discrete policy πd rather than applying a hard arg max selection, the objective enables differ-entiable credit assignment across all discrete modes. This soft aggregation improves optimization stability and accelerates convergence during early training stages, when the discrete policy remains diffuse. 
+
+C. Theoretical Analysis of Overestimation Bias 
+
+A central motivation for choosing TD3 as the backbone is its principled handling of overestimation bias. In stan-dard Q-learning [18], the greedy Bellman target: y = r +
+
+γ max a′∈A Q(s′, a ′) suffers from systematic overestimation because the maximization operator over noisy estimates sat-isfies E[max a′ ˆQ(s′, a ′)] ≥ max a′ Qπ (s′, a ′) by Jensen’s inequality applied to the convex max operator. In deep Q-learning, this effect is amplified when the same network is used for both action selection and evaluation, creating a self-reinforcing feedback loop that inflates value estimates across updates [11] In hybrid action spaces, overestimation is further com-pounded: the agent must simultaneously maximize over a dis-crete mode set and optimize continuous parameters, coupling two sources of approximation error. Under aggressive domain randomization, the resulting distributional shifts make this instability particularly severe. To rigorously characterize these effects, we derive formal bounds on the expected estimation bias for five hybrid algorithmic variants: Our proposed (Hybrid TD3), ACC [19], and DATD3 [20]. In addition, We formalize the robotic environment as a parameterized Markov Decision Process (MDP), denoted by M(ω), where the configuration vector ω ∈ Ω, representing object orientation, location, and target position, is sampled from a distribution P(Ω) at the onset of each episode. Since ω is randomized per episode, the agent perceives the transition dynamics P(s′ | s, a ) and reward functions R(s, a ) as non-stationary across the training set. This inherent environmental noise significantly increases the value function’s susceptibility to large estimation errors, thereby increasing the likelihood of substantial bias. 
+
+Theorem 2.1: Let Qπ denote the true Q function under the current target policy π, and let Qθ be its neural network approximation with estimation error ϵkϕ,ξ at stage k, where 
+
+ξ ∈ { 1, 2} indexes the critic networks. Assume the errors are independent of the state–action pair (sk, a k) under a fully ran-domized environment and have finite mean E[ϵkϕξ ] = μξ < ∞
+
+with synchronized bias shift μ1 ≈ μ. Let δQ denote the expected estimation bias of the Bellman target for each variant, as defined in Appendix B. Then the ordering of expected bias, from most negative (strongest underestimation) to least negative, is ( Proof. See Appendix C □)): 
+
+δQ Hybrid TD3 < δQ HyACC ≈ δQ HyTQC 
+
+< δQ HyDARC < δQ HyDATD3 . (6) Theorem 2.1 has two important implications. First, our proposed Hybrid TD3 achieves the lowest bias, confirming that the soft marginalization over the discrete distribution does not introduce additional pessimism. Second, the clipped dou-ble Q-learning target produces a tightly bounded, controlled underestimation that is more stable than the distributional methods (TQC, ACC) and less prone to overestimation than DATD3. This formally justifies TD3 as the most reliable backbone for hybrid action RL under dense rewards and heavy randomization. 
+
+D. Hybrid Action RL Formulation 1) State Representation: To enable effective decision mak-ing, the agent receives a structured state embedding st that captures both robot kinematics, object geometry, and task-relevant relational information. A 2-step history of joint po-sition jt−2: t provides implicit velocity information through temporal differences. Relative position vectors peo , pog , and 
+
+peg encode the geometric relationships between the end-effector, object, and goal, guiding reaching and manipulation while improving invariance to global coordinates. Suction observations su t include two binary indicators (activation and release) together with a continuously predicted continuous suction command, enabling joint reasoning over contact state and actuation intent. Previous actions at−3: t−1 are included Simulation Environment 
+
+Environment  
+
+> rt,st+1
+
+State st Actor μθ      
+
+> adt: mode
+> act: joint vel. R(·)dt PD Ctrl
+
+Replay Buffer D Hybrid TD3 Critics Qϕ1 , Q ϕ2
+
+Hybrid TD3 Framework  
+
+> st
+> jt
+> st+1
+> update ϕ1, ϕ 2
+> policy gradient
+> (s, a c, a d, r, s ′)
+
+Fig. 2: Our proposed DRL system deviates from the traditional Markov Decision Process (MDP) that not only relies on the current trajectory to decide the future but also combines the past trajectories to help the agent learns smoother. This model processes the environment observation ot that consists of the agent’s proprioceptive, exteroceptive, relational, and historical data. to promote temporal smoothness and mitigate abrupt control transitions. All state components are normalized using Welford’s algo-rithm, which maintains running estimates of the mean μt and variance σ2 
+
+> t
+
+:
+
+nt = nt−1 + 1 , δ t = xt − μt−1, μ t = μt−1 + δt
+
+nt
+
+,δ′ 
+
+> t
+
+= xt − μt, M 2t = M 2t−1 + δt ⊙ δ′
+
+> t
+
+.
+
+(7) The running variance and standard deviation are σ2 
+
+> t
+
+=
+
+M 2t/n t and σt = pσ2 
+
+> t
+
+. Each observation x is then stan-dardized as: 
+
+ˆx = x − μt
+
+σt + ϵ , ϵ = 1 e − 7, (8) ensuring all state elements remain within [−1, 1] throughout training 
+
+2) Action Representation: The continuous action at speci-fies predicted joint velocities ˙jt for all robot joints. Target joint positions are obtained by integrating these velocities over the simulation timestep dt :
+
+jt = jt−1 + ˙jt · dt. (9) The resulting joint targets are then tracked by a low-level PD controller that enforces velocity bounds and joint-limit constraints. Note that the inclusion of a PD controller breaks the strict Markov assumption, as the next state st+1 depends on (st, a t, a t−1); we handle this by including the previous action at−2: t−1.
+
+3) Reward & Penalty Design: We adopt the hierarchical reward and penalty formulation from our prior work [17] and summarize it here for completeness. The total reward at each timestep is a weighted combination of three reward terms and six penalty terms: 
+
+Rt(st, at) = 
+
+> 2
+
+X
+
+> i=0
+
+Wi · rti (st, at) −
+
+> 5
+
+X
+
+> j=0
+
+Wj · ctj (st, at), (10) normalized by a constant factor of 10 to stabilize critic gradient magnitudes. The reward terms provide stage-dependent supervision: r0,t 
+
+encourages safe end-effector approach to the target object; 
+
+r1,t measures goal-directed transport progress conditioned on established object contact; and r2,t rewards object velocity aligned with the goal direction. The penalty terms discourage collisions with the ground, the robot itself, or surrounding objects; penalize exceeding the maximum episode length; and constrain end-effector inclination, action jerkiness, object tilt, and workspace boundary violations 
+
+4) Training Protocol: The overall DRL framework is il-lustrated in Fig. 2. The agent is trained using Hybrid TD3 across four manipulation tasks: reach , pick , move , and put . At the start of each episode, the simulator randomly instantiates a scene containing more than 21 distinct object categories, with randomized poses, masses, and friction coefficients. For the reaching task, the agent must bring the end-effector to a target object. For the remaining tasks, success requires completing two sequential sub-goals: correctly approaching the target object and transporting it to the goal location. An episode terminates when the agent successfully com-pletes the required task, or upon any of the following failure conditions: end-effector collision with the ground or self-collision, a joint angle exceeding its allowable range, the object leaving the workspace, or the episode length exceeding a maximum of 100 steps. This termination scheme encourages the agent to develop safe, efficient trajectories while penalizing unstable behaviors. III. E XPERIMENTAL RESULTS 
+
+Fig. 3: Training (left) and test objects (right) used for zero-shot generalization evaluation. Test objects differ substantially from training objects in shape, size, color, and surface texture, constituting a meaningful out-of-distribution evaluation. This section evaluates Hybrid TD3 across four dimensions: (i) comparison against state-of-the-art hybrid action RL base-lines on four manipulation tasks; (ii) analysis of estimation bias versus average return to validate the theoretical bias order-ing derived in Theorem 2.1; and (iii) zero-shot generalization to novel object categories unseen during training. 
+
+A. Experimental Setup 1) Simulation Environment: All experiments are conducted in PyBullet [21] using a UF850 robotic arm equipped with a suction gripper. The agent operates in joint space, outputting 6-DOF joint velocities as the continuous action component and a binary suction mode as the discrete action component. To ensure the generalization capability enabled by full domain randomization, we test the trained policy on a set of novel object categories that were never encountered during training. As shown in Fig. 3, the test objects differ substantially from the training set in shape, size, color, and surface texture, constituting a meaningful out-of-distribution evaluation. 
+
+2) Baselines: We compare Hybrid TD3 against two groups of baselines. The first group consists of methods for mitigating overestimation bias in hybrid action spaces: HyDARC [20], HyDATD3 [20], HyACC [19], and HyTQC [22]. The second group consists of dedicated hybrid action RL algorithms from the literature: Hybrid-SAC [9], TD3AQ [23], TSMPDQN [24], PASAC [8], and ADSAC [10]. All baselines are adapted to the same parameterized hybrid action space (binary discrete mode, 6-DOF continuous joint velocities) and trained under identical domain randomization conditions for a fair comparison. 
+
+3) Training Details: Each agent is trained for 40 ,000 
+
+episodes with a maximum of 100 steps per episode. Per-formance is evaluated every epoch using the undiscounted cumulative reward over a held-out test episode. All results are reported as the mean and standard deviation across 4
+
+independent random seeds. The estimation bias is computed as the mean difference between the Monte Carlo return and the predicted Q-value for each state-action pair visited during test episodes. 
+
+B. Comparison Against Bias Mitigation Variants 
+
+Fig. 4 presents the estimation bias (top, middle rows) and average return (bottom row) for Hybrid TD3 and the four bias-mitigation baselines across all four tasks. These results provide direct empirical validation of the theoretical ordering established in Theorem 2.1. 
+
+a) Estimation bias: The top row of Fig. 4 reveals that HyACC and HyTQC exhibit substantially higher positive bias than all the variants - a consequence of their SAC-based, which introduces stochastic entropy-regularized update. As shown by the Stochastic-SAC baseline, which exhibits strong overestimation bias under full-domain randomization, this bias propagates directly into the HyACC and HyTQC targets despite their quantile-truncation correction. In contrast, deterministic TD3-based methods - our proposed Hybrid TD3 maintains tightly bounded, near-zero or small negative bias, and HyDARD, HyDATA3 in most tasks (because in action 1 column has indicated that these two methods have large overestimation bias below HyACC and HyTQC), consistent with the theoretical ordering. Although Eq. (6) places Hy-ACC and HyTQC between the TD3-based variant, the SAC-induced positive bias effectively shifts HyACC and HyTQC into the overestimation regime, placing them above the TD3-based group empirically. This highlights a practical limitation of the theoretical ordering: it characterizes the bias of the 
+
+Bellman target in isolation, whereas the observed estimation bias integrates over the actor’s own approximation error, which for stochastic SAC-based actors is substantially larger under aggressive domain randomization. For the Reach task, Deterministic-TD3, HyDARC, HyDATD3, and our proposed method all exhibit underestimation (negative bias). The Reach task is comparatively simple - it requires only an end-effector approach without contact establishment - so critics converge reliably, and the clipped double Q-learning target produces stable, tightly bounded underestimation as expected. 
+
+b) Average return: Hybrid TD3 achieves the highest final average return across all four tasks. The performance gap is most pronounced in the Pick and Put tasks, where the hierarchical nature of the reward and the precision require-ments of contact-rich manipulation amplify the consequences of Q-value overestimation. HyDATD3, despite having the least negative bias, exhibits unstable training with high variance, consistent with the hypothesis that moving bias toward over-estimation is detrimental under heavy domain randomization. HyACC and HyTQC achieve moderate performance but con-verge more slowly and with greater variance than Hybrid TD3, suggesting that their distributional corrections introduce additional instability under the non-stationary distributions induced by full randomization. HyDARC shows competitive performance in the simpler Reach task but degrades on the more complex manipulation sequences, indicating limited scal-ability to dense-reward, multi-stage tasks. 
+
+C. Comparison Against Hybrid Action Baselines 
+
+Fig. 5 and Fig. 6 compare Hybrid TD3 against dedicated hybrid action RL algorithms across the four manipulation tasks, evaluating both learning curves and final performance distributions. 0 1000 2000 3000 4000 
+
+> 0
+> 20
+> 40
+> Baseline Bias
+
+Reach     
+
+> 01000 2000 3000 4000
+> 0
+> 5
+> 10
+> 15
+> 20
+> 25
+
+Pick     
+
+> 01000 2000 3000 4000
+> 0
+> 10
+> 20
+> 30
+
+Move     
+
+> 01000 2000 3000 4000
+> 0
+> 5
+> 10
+> 15
+> 20
+
+Put                     
+
+> 01000 2000 3000 4000
+> −5
+> 0
+> 5
+> 10
+> Estimation Bias
+> 01000 2000 3000 4000
+> 0.0
+> 2.5
+> 5.0
+> 7.5
+> 10 .0
+> 01000 2000 3000 4000
+> 0
+> 2
+> 4
+> 6
+> 8
+> 10
+> 01000 2000 3000 4000
+> −2.5
+> 0.0
+> 2.5
+> 5.0
+> 7.5
+> 10 .0
+> 010000 20000 30000 40000
+
+Episodes     
+
+> −20
+> 0
+> 20
+> 40
+> Average Return
+> 010000 20000 30000 40000
+
+Episodes     
+
+> −20
+> 0
+> 20
+> 40
+> 010000 20000 30000 40000
+
+Episodes     
+
+> −20
+> 0
+> 20
+> 40
+> 010000 20000 30000 40000
+
+Episodes       
+
+> −20
+> 0
+> 20
+> Deterministic-TD3 Stochastic-SAC HyDARC HyDATD3 HyACC HyTQC Our proposed
+
+Fig. 4: Estimation bias of the baselines (top row), estimation bias of the proposed methods (middle row), and average return (bottom row) across four manipulation tasks. Solid curves represent mean performance, while shaded areas indicate standard deviations over four independent random seeds. 0 10000 20000 30000 40000 
+
+Episodes     
+
+> −40
+> −20
+> 0
+> 20
+> 40
+> Average Return
+> Reach
+> 010000 20000 30000 40000
+
+Episodes     
+
+> −40
+> −20
+> 0
+> 20
+> 40
+> Pick
+> 010000 20000 30000 40000
+
+Episodes     
+
+> −40
+> −20
+> 0
+> 20
+> 40
+> Move
+> 010000 20000 30000 40000
+
+Episodes      
+
+> −40
+> −20
+> 0
+> 20
+> 40
+> Put
+> Our proposed Hybrid SAC TD3AQ TSMPDQN PASAC ADSAC
+
+Fig. 5: Average return learning curves across four manipulation tasks. TABLE I: Success rate over 100 trials per action, averaged over 4 different seeds (mean ± std). 
+
+Object set Action 0 (%) Action 1 (%) Action 2 (%) Action 3 (%) 
+
+Standard set 94,25 ± 1,92 89,75 ± 4,66 80,75 ± 2,58 83,25 ± 3,56 Unseen set 94,25 ± 1,92 90,00 ± 5,15 81,75 ± 4,66 82,75 ± 2,58 
+
+a) Learning curves: As shown in Fig. 5, Hybrid TD3 achieves faster convergence and higher asymptotic reward compared to all hybrid action baselines across tasks. TSM-PDQN and PASAC exhibit volatile early training, frequently collapsing to near-zero reward in the Pick and Move tasks before recovering partially. Hybrid-SAC and ADSAC achieve Hybrid SAC      
+
+> TD3AQ
+> TSMPDQN
+> Our proposed
+> PASAC
+> ADSAC
+> −0.2
+> 0.0
+> 0.2
+> 0.4
+> 0.6
+> Average Return
+> (a) Reach
+> Hybrid SAC
+> TD3AQ
+> TSMPDQN
+> Our proposed
+> PASAC
+> ADSAC
+> −0.2
+> 0.0
+> 0.2
+> 0.4
+> 0.6
+> (b) Pick
+> Hybrid SAC
+> TD3AQ
+> TSMPDQN
+> Our proposed
+> PASAC
+> ADSAC
+> −0.2
+> −0.1
+> 0.0
+> 0.1
+> 0.2
+> 0.3
+> 0.4
+> (c) Move
+> Hybrid SAC
+> TD3AQ
+> TSMPDQN
+> Our proposed
+> PASAC
+> ADSAC
+> −0.6
+> −0.4
+> −0.2
+> 0.0
+> 0.2
+> 0.4
+> (d) Put
+> Our proposed Hybrid SAC TD3AQ TSMPDQN PASAC ADSAC
+
+Fig. 6: Distribution of final episode rewards across seeds and evaluation episodes for our proposed and hybrid action baselines 
+
+Fig. 7: Representative execution trajectories of our proposed approach across four manipulation tasks more stable learning but converge to substantially lower final rewards, particularly on the Put task, where precise placement precision is required. TD3AQ performs competitively on the Reach task but degrades on multi-stage tasks, suggesting that its discrete-action approximation struggles with the parame-terized structure of the pick-and-place sequence. 
+
+b) Performance distributions: The boxplots in Fig. 6 show the distribution of final episode rewards across seeds and evaluation episodes. Hybrid TD3 achieves the highest median reward and the smallest interquartile range across all four tasks, indicating both superior performance and greater consistency. The relatively tight reward distributions of Hybrid TD3 contrast sharply with the wide spreads of TSMPDQN and PASAC, further confirming that the weighted clipped Q-learning target and hybrid actor objective produce more reliable policies under randomized evaluation conditions. 
+
+D. Quantitative and Qualitative results 
+
+Table I reports the success rate of Hybrid TD3 over 100 trials per task, averaged across 4 seeds, for both the standard training object set and the unseen object set. The policy achieves consistently high success rates across all four tasks on the standard set, with 94 .25 ±1.92 % on Reach, 89 .75 ±4.66 %on Pick, 80 .75 ± 2.58 % on Move, and 83 .25 ± 3.56 % on Put. Notably, performance on the unseen object set remains comparable to the standard set across all tasks, with success rates of 94 .25 ± 1.92 %, 90 .00 ± 5.15 %, 81 .75 ± 4.66 %, and 
+
+82 .75 ± 2.58 % for Reach, Pick, Move, and Put respectively. The minimal degradation between the two sets confirms that full domain randomization during training enables genuine zero-shot generalization to novel object categories without task-specific adaptation. Fig. 7 illustrates representative execution trajectories of the trained Hybrid TD3 policy across all four manipulation tasks under full domain randomization. Each row corresponds to one task — reach, pick, move, and put — and each column shows an independent evaluation episode with a distinct randomized scene configuration, consistently demonstrating appropriate joint angles across varied object layouts and poses. IV. C ONCLUSION 
+
+This paper presented Hybrid TD3, a principled extension of TD3 to discrete-continuous hybrid action spaces for robotic manipulation under full domain randomization. We estab-lished a formal ordering of expected estimation bias across five hybrid algorithmic variants, proving that the proposed weighted clipped Q-learning target — which marginalizes over the discrete action distribution — provides smoother policy gradient signals. Our analysis further showed that the tightly bounded negative bias of clipped double Q-learning is actively beneficial under the non-stationary distributions induced by aggressive randomization, where methods that reduce this bias introduce additional variance and instability. Experiments on four manipulation tasks confirmed the theo-retical bias ordering and demonstrated superior performance over both dedicated hybrid action baselines and bias-mitigation variants. The policy also generalized zero-shot to novel object categories and transferred successfully to an alternative robot platform without retraining. Future work will focus on relaxing the independence assumption in the bias analysis to account for correlated critic errors, and on bridging the sim-to-real gap to enable direct deployment on physical hardware. APPENDIX ARL B ASELINES FOR HYBRID ACTION SPACES 
+
+All baseline reinforcement learning algorithms are adapted to support hybrid action spaces consisting of a continuous component ac ∈ A c and a discrete component ad ∈ A d, while preserving their original formulations as closely as possible. 
+
+A. Twin Delayed Deep Deterministic Policy Gradient (TD3) 
+
+For TD3, two critic networks Qϕi (s, a c, a d), i ∈ { 1, 2}, are employed. The critic loss is defined as 
+
+Lϕ =
+
+> 2
+
+X
+
+> i=1
+
+(Qϕi (s, a c, a d) − y)2 , (11) where the target value y is computed using the minimum of the target critics: 
+
+y = r + γ min  
+
+> i=1 ,2
+
+Qϕi (s′, a ′
+
+> c
+
+, a ′
+
+> d
+
+). (12) Target policy smoothing is applied to the continuous action, while the discrete action is selected greedily: 
+
+a′ 
+
+> c
+
+= μθ′ (s′) + ϵ, ϵ ∼ N (0 , σ 2), (13) 
+
+a′ 
+
+> d
+
+= arg max 
+
+> k∈A d
+
+pd(k | s′), (14) where μθ′ denotes the target actor network and pd(· | s′) is the discrete action distribution. The actor is trained to maximize the critic value with respect to the continuous policy while selecting the best discrete action: 
+
+Lθ = − max 
+
+> ad∈A d
+
+Qϕ1 (s, μ θ (s), a d). (15) 
+
+B. Deep Deterministic Policy Gradient (DDPG) 
+
+DDPG employs a single critic Q(s, a c, a d). The critic loss is 
+
+Lϕ = ( Q(s, a c, a d) − y)2 , (16) with target 
+
+y = r + γQ (s′, a ′
+
+> c
+
+, a ′
+
+> d
+
+), (17) where a′ 
+
+> c
+
+and a′ 
+
+> d
+
+are generated by the target policy. The actor objective follows the same hybrid maximization structure: 
+
+Lθ = − max 
+
+> ad∈A d
+
+Q(s, μ θ (s), a d). (18) 
+
+C. Soft Actor-Critic (SAC) 
+
+SAC maintains two critics Qϕi , i ∈ { 1, 2}, and augments the target with entropy regularization for both action components. The critic loss is 
+
+Lϕ =
+
+> 2
+
+X
+
+> i=1
+
+(Qϕi (s, a c, a d) − y)2 , (19) where the target value is 
+
+y = r + γ
+
+
+
+min  
+
+> i=1 ,2
+
+Qϕi (s′, a ′
+
+> c
+
+, a ′
+
+> d
+
+) − αc log pc(a′ 
+
+> c
+
+| s′)
+
+−αd log pd(a′ 
+
+> d
+
+| s′)
+
+
+
+.
+
+(20) Here, pc and pd denote the continuous and discrete policy distributions, and αc, αd are the corresponding entropy coef-ficients. The actor objective jointly optimizes both action components: 
+
+Lθ = Eac∼pc, a d∼pd
+
+
+
+αc log pc(ac | s) + αd log pd(ad | s)
+
+− min  
+
+> i=1 ,2
+
+Qϕi (s, a c, a d)
+
+
+
+.
+
+(21) 
+
+D. Proximal Policy Optimization (PPO) 
+
+For PPO, the hybrid policy factorizes into continuous and discrete components. The clipped surrogate objective is given by 
+
+Lθ = −E min ( rt(θ)A(s, a ), clip (rt(θ), 1 − ϵ, 1 + ϵ)A(s, a )) ,
+
+(22) where A(s, a ) denotes the advantage estimate and the impor-tance sampling ratio is 
+
+rt(θ) = pnew  
+
+> c
+
+(ac | s) pnew  
+
+> d
+
+(ad | s)
+
+pold  
+
+> c
+
+(ac | s) pold  
+
+> d
+
+(ad | s) . (23) APPENDIX BESTIMATION BIAS METHOD FOR HYBRID ACTION SPACES 
+
+All mentioning estimation bias methods are modified to sup-port hybrid action spaces 
+
+A. Hybrid TD3 
+
+The hybrid TD3 algorithm is built upon the standard TD3 framework and employs two critic networks Qϕi (s, a c, a d),
+
+i ∈ { 1, 2}. The critic loss is defined as 
+
+Lϕ =
+
+> 2
+
+X
+
+> i=1
+
+(Qϕi (s, a c, a d) − y)2 , (24) where the discrete action ad is selected greedily according to the discrete policy 
+
+ad = arg max 
+
+> a∈A d
+
+πd(a | s). (25) All hybrid TD3 variants employ two critic networks 
+
+Qϕi (s, a d, a c), i ∈ { 1, 2}, which are trained using a shared squared Bellman error objective. The critic loss follows Eq. (24). The actor update deviates from standard TD3 and is defined as in Eq. 5. 
+
+B. DATD3 Hybrid Action Adaptation 
+
+This variant follows the DATD3 principle by computing multiple candidate continuous actions and selecting the most optimistic target. The critic loss follows (24), while the target is defined as 
+
+y = r + γ max 
+
+
+
+T (a′
+
+> c1
+
+), T (a′
+
+> c2
+
+)
+
+
+
+, (26) with 
+
+T (a′
+
+> c
+
+) = 
+
+> K
+
+X
+
+> k=1
+
+pd(k | s′) min  Qϕ1 (s′, a ′
+
+> c
+
+, k ), Q ϕ2 (s′, a ′
+
+> c
+
+, k ),
+
+(27) where a′ 
+
+> c1
+
+and a′ 
+
+> c2
+
+are two independent samples from the target actor. The actor is updated in an alternating fashion, using the corresponding critic: 
+
+L(1)  
+
+> θ
+
+= − 1
+
+K
+
+> K
+
+X
+
+> k=1
+
+pd(k | s) Qϕ1 (s, a c, k ), (28) 
+
+L(2)  
+
+> θ
+
+= − 1
+
+K
+
+> K
+
+X
+
+> k=1
+
+pd(k | s) Qϕ2 (s, a c, k ). (29) Let Sj = Qπ + ηj , where ηj = PKk=1 pd(k) min( ϵj,k ϕ1 , ϵ j,k ϕ2 ),
+
+C. DARC Hybrid Action Adaptation 
+
+The DARC hybrid adaptation follows the same critic archi-tecture and loss defined in Eq. (24), while modifying the target computation to reduce overestimation bias via a convex combination of pessimistic and optimistic targets, as originally proposed in DARC. Specifically, the critic target is defined as 
+
+y = r + γ
+
+
+
+λ min( S1, S 2) + (1 − λ) max( S1, S 2)
+
+
+
+, (30) where λ ∈ [0 , 1] controls the trade-off between pessimism and optimism. 
+
+D. TQC Hybrid Action Adaptation 
+
+Building upon Soft Actor-Critic, the TQC hybrid method maintains M ensembles of critics, each producing N quantile estimates. The critic loss is defined as 
+
+Lϕ = 1
+
+kM N 
+
+> M
+
+X
+
+> m=1
+> kN
+
+X
+
+> i=1
+
+ Q(i) 
+
+> m
+
+(s, a c, a d) − y2, (31) where the target is obtained by truncating the top quantiles: 
+
+y = r + γ 1
+
+kN 
+
+> kN
+
+X
+
+> i=1
+
+Q(i)(s′, a ′
+
+> c
+
+, a ′
+
+> d
+
+). (32) The actor objective incorporates entropy regularization for both action types: 
+
+Lθ = Eac,a d
+
+
+
+αc log pc(ac | s) + αd log pd(ad | s)
+
+− 1
+
+M N 
+
+> M
+
+X
+
+> m=1
+> N
+
+X
+
+> i=1
+
+Q(i) 
+
+> m
+
+(s, a c, a d)
+
+
+
+.
+
+(33) 
+
+E. ACC Hybrid Action Adaptation 
+
+The ACC hybrid variant further truncates the critic target by removing an additional β highest quantiles: 
+
+y = r + γ 1
+
+kN − β 
+
+> kN −β
+
+X
+
+> i=1
+
+Q(i)(s′, a ′
+
+> c
+
+, a ′
+
+> d
+
+). (34) APPENDIX CESTIMATION ANALYSIS 
+
+To analyze the overestimation bias of the selected algorithms within hybrid action spaces, we first establish the statistical properties of the estimation errors. 
+
+Assumption 1 (Synchronized Bias Shift). Let Qπ denote the true Q function under the current target policy π, and let Qθ
+
+be its neural network approximation. And as we assume that the estimation error at stage k can be expressed as a step-wise random error ϵkϕ,ξ , where ξ ∈ { 1, 2} indexes the critic networks. This error is assumed to be independent of the state-action pair (sk, a k) under fully randomized environment and to have finite mean, i.e., E
+
+h
+
+ϵkϕξ
+
+i
+
+= μξ < ∞ for all k, and ξ ∈{1, 2}. Since all critics are trained on the same replay buffer D
+
+using identical architectures and update rules, they are subject to the same environmental dynamics. Consequently, in a non-stationary environment, the critics exhibit a synchronized bias shift relative to the Qπtrue , leading to the approximation, μ1 ≈
+
+μ2 ≈ ... ≈ μk ≈ μ.
+
+Lemma 1 (Expectation of Gaussian Min-Max Operators). 
+
+Let X and Y be independent random variables with X ∼N (μ1, σ 2) and Y ∼ N (μ2, σ 2). Using the identities 
+
+min( X, Y ) = X + Y − | X − Y |
+
+2 ,
+
+max( X, Y ) = X + Y + |X − Y |
+
+2 ,
+
+(35) we define Z = X − Y . Since X and Y are independent, 
+
+Z ∼ N (μz , σ 2 
+
+> z
+
+), μz = μ1 − μ2, σ2 
+
+> z
+
+= 2 σ2. (36) 
+
+E[|Z|] = 
+
+Z ∞−∞ 
+
+|z|fZ (z) dz =
+
+Z ∞
+
+> 0
+
+z fZ (z) + fZ (−z) dz, 
+
+(37) where fZ (z) denotes the probability density function of Z.Evaluating the integral yields 
+
+E[|Z|] = σz
+
+r 2
+
+π exp 
+
+
+
+− μ2
+
+> z
+
+2σ2
+
+> z
+
+
+
++ μz erf 
+
+ μz
+
+√2σz
+
+
+
+. (38) Substituting 36 this result yields 
+
+E[min( X, Y )] = μ1 + μ2
+
+2 − σ
+
+√π exp 
+
+
+
+− (μ1 − μ2)2
+
+4σ2
+
+
+
+− μ1 − μ2
+
+2 erf 
+
+ μ1 − μ2
+
+2σ
+
+
+
+.
+
+(39) Applying the assumption at C we simplify the expression to the expectation of min and max operators: 
+
+E[min( X, Y )] ≈ μ− σ
+
+√π , E[max( X, Y )] ≈ μ+ σ
+
+√π . (40) 
+
+Lemma 2 (Expectation of Nested Operators). Let X and 
+
+Y be independent random variables with X ∼ N (μ1, σ 2) and 
+
+Y ∼ N (μ2, σ 2). Let E and F be an independent copy of 
+
+(X, Y ), E ∼ N (μ1, σ 2) and F ∼ N (μ2, σ 2). Define 
+
+W1 = min( X, Y ), W2 = min( E, F ),
+
+where W1 and W2 are independent random variables. Using the results on the expectation of the minimum and maximum of Gaussian random variables C, the expectation of the nested minimum is given by 
+
+E[min( W1, W 2)] = μw − σw
+
+√π , (41) where μw and σw denote the mean and standard deviation of 
+
+W1 (and equivalently W2), respectively. The mean of W1 is 
+
+μw = E[min( X, Y )] = μ1 + μ2
+
+2 − σ
+
+√π exp 
+
+
+
+− (μ1 − μ2)2
+
+4σ2
+
+
+
+− μ1 − μ2
+
+2 erf 
+
+ μ1 − μ2
+
+2σ
+
+
+
+.
+
+(42) The variance of W1 is 
+
+σ2 
+
+> w
+
+= Var[min( X, Y )] = E[min( X, Y )2] − μ2
+
+> w
+
+. (43) Substituting the above expressions and assumption as C μ1 ≈
+
+μ2 ≈ μ, we obtain the following. 
+
+E[min( W1, W 2)] ≈ μ − σ
+
+√π − σw
+
+√π ,
+
+E[max( W1, W 2)] ≈ μ − σ
+
+√π + σw
+
+√π .
+
+(44) 
+
+Theorem 1. Under Assumption C, let δQ denote the expected estimation bias of the target value. Then, for δQ Hybrid T D 3,
+
+δQ HyT QC , δQ HyACC , δQ HyDARC , and δQ HyDAT D 3 as defined in B. The ordering of the expected bias from most negative (strongest underestimation) to least negative is: 
+
+δQ Hybrid T D 3 < δQ HyACC ≈ δQ HyT QC 
+
+< δQ HyDARC < δQ HyDAT D 3. (45) 
+
+Proof of Theorem 1. 
+
+Let the two critics be noisy estimators of the true action-value function, 
+
+Qϕi (s, a ) = Qπ (s, a ) + ϵϕi , i ∈ { 1, 2}, (46) where ϵϕ1 and ϵϕ2 are independent estimation errors. The expected 24 target can then be written as 
+
+E[y] = E[r] + γ Emin  Qπ (s′, a ′) + ϵϕ1 , Q π (s′, a ′) + ϵϕ2
+
+ 
+
+= E[r] + γ
+
+
+
+E[Qπ (s′, a ′)] + E[min( ϵϕ1 , ϵ ϕ2 )] 
+
+
+
+, (47) where the second equality follows from linearity of expecta-tion. Defining the target bias as 
+
+Bias = E[y] − Qπ 
+
+> true
+
+= E[min( ϵϕ1 , ϵ ϕ2 )] (48) and applying the result in Eq. (40) under the assumption μ ≈
+
+μ1 ≈ μ2, we obtain 
+
+Bias = μ − σ
+
+√π (49) 
+
+a) Hybrid TD3 B-A Let mk = min( ϵk 
+
+> 1
+
+, ϵ k 
+
+> 2
+
+) denote the per-action minimum error associated with discrete action k. By linearity of expectation and the normalization of the discrete policy pd(k) under the same assumption applied in 49, the resulting bias satisfies 
+
+δQ Hybrid T D 3 = E
+
+" KX
+
+> k=1
+
+pd(k) mk
+
+#
+
+= E[mk] = μ − σ
+
+√π .
+
+(50) 
+
+b) DATD3 Hybrid Action Adaptation B-B Following the notation in Section B-B, we define two independent target estimates as Sj = Qπ (s′, a ′)+ ηj , where the random variables 
+
+ηj capture the aggregated estimation error induced by the weighted discrete-action minimization. Based on Eqs. (C), the variables ηj are independent and satisfy E[ηj ] = − σ√π and 
+
+Var( ηj ) = τ 2, where τ 2 = σ2(1 − 1 
+
+> π
+
+) P 
+
+> k
+
+pd(k)2.Taking the maximum over the two independent target estimates yields 
+
+E[max( S1, S 2)] = Qπ (s′, a ′) + E[max( η1, η 2)] = Qπ (s′, a ′) + δQ DAT D 3 hybrid , (51) with the resulting bias term under the same assumption in 49 given by 
+
+δQ DAT D 3 = −
+
+
+
+μ − σ
+
+√π + τ
+
+√π
+
+
+
+. (52) Since τ < σ holds for all non-degenerate discrete action distributions, DATD3 hybrid yields a strictly less negative bias than the TD3-hybrid baseline. 
+
+c) DARC Hybrid Action Adaptation B-C 
+
+δQ HyDARC =Eλ min( η1, η 2) + (1 − λ) max( η1, η 2)
+
+= τ
+
+√π (1 − 2λ) + μ − σ
+
+√π . (53) Tuning λ > 0.5 shifts the bias to be less negative (closer to zero) than in the pure minimization case. 
+
+d) TQC Hybrid Quantile Adaptation B-D Following the target definition in Section B-D, we analyze the estimation error of the TQC target yTQC . The expected target value is given by: 
+
+E[yHyT QC ] = E[r] + γ · E
+
+"
+
+1
+
+kN 
+
+> kN
+
+X
+
+> i=1
+
+Q(i)(s′, a ′
+
+> c
+
+, a ′
+
+> d
+
+)
+
+#
+
+. (54) Under the assumption of a shifted Gaussian noise distri-bution N (μ, σ 2), μ adheres the assumption in 49 due to environmental dynamic, the sorted quantile values Q(i) can be decomposed into the true value Qπ , the systematic bias μ,and the sorted noise component. The expected average of the truncated quantiles is: 
+
+E
+
+"
+
+1
+
+kN 
+
+> kN
+
+X
+
+> i=1
+
+Q(i)
+
+#
+
+= Qπ + μ + σ E
+
+"
+
+1
+
+kN 
+
+> kN
+
+X
+
+> i=1
+
+Z(i)
+
+#! | {z }
+
+> δQ TQC-hybrid
+
+(55) where Z(i) denotes the i-th order statistic of N M i.i.d. standard normal variables (representing the pooled atoms from 
+
+N critics, each with M outputs). We compute the expected value of these order statistics using the Blom approximation: 
+
+E[Z(i)] ≈ Φ−1
+
+ i − 0.375 
+
+N M + 0 .25 
+
+
+
+. (56) We investigate the truncation penalty δQ HyT QC for a standard configuration of N = 5 and M = 25 (total pool size N M =125 ). Table II presents the calculated variance coefficients for varying numbers of kept atoms k ∈ [20 , 24] .TABLE II: TQC Hybrid Truncation Variance Coefficient (δQ HyT QC ) for varying k (N = 5 , M = 25 ).               
+
+> Atoms kept per critic ( k)Total atoms kept ( kN )Bias Coefficient ( δQ HyT QC )
+> 20 100 -0.3460 21 105 -0.2865 22 110 -0.2245 23 115 -0.1591 24 120 -0.0877
+
+e) ACC Hybrid Quantile Adaptation B-E For the Adaptive Critic Correction (ACC) hybrid adaptation, we introduce an additional dynamic truncation parameter β. The bias coeffi-cient is defined as the average of the lowest kN − β order statistics: 
+
+δQ HyACC = E
+
+"
+
+1
+
+kN − β 
+
+> kN −β
+
+X
+
+> i=1
+
+Z(i)
+
+#
+
+. (57) Table III illustrates the resulting variance coefficients with a fixed β = 2 . The additional truncation results in a stronger negative penalty, providing a more aggressive correction against the positive environmental lag μ.TABLE III: ACC hybrid Truncation Variance Coefficient (δQ HyACC ) with β = 2 (N = 5 , M = 25 ).                 
+
+> Base kEffective atoms kept ( kN −β)Bias Coefficient ( δQ HyACC )
+> 20 98 -0.3702 21 103 -0.3107 22 108 -0.2496 23 113 -0.1858 24 118 -0.1173
+
+Combining these inequalities yields the proposed ordering in Eq. (6). ACKNOWLEDGMENT 
+
+This work was supported by JST SPRING, Japan Grant Number JPMJSP2102. REFERENCES [1] Y. Wang and H. Kasaei, “Obstacle avoidance for robotic manipulator in joint space via improved proximal policy optimization,” arXiv preprint arXiv:2210.00803 , 2022. [2] A. Gupta, V. Kumar, C. Lynch, S. Levine, and K. Hausman, “Relay pol-icy learning: Solving long-horizon tasks via imitation and reinforcement learning,” arXiv preprint arXiv:1910.11956 , 2019. [3] V. Kumar, D. Hoeller, B. Sundaralingam, J. Tremblay, and S. Birchfield, “Joint space control via deep reinforcement learning,” in 2021 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS) .IEEE, 2021, pp. 3619–3626. [4] M. Hausknecht, P. Mupparaju, S. Subramanian, S. Kalyanakrishnan, and P. Stone, “Half field offense: An environment for multiagent learning and ad hoc teamwork,” in AAMAS Adaptive Learning Agents (ALA) Workshop , vol. 3. sn, 2016. [5] M. Hausknecht and P. Stone, “Deep reinforcement learning in parame-terized action space,” arXiv preprint arXiv:1511.04143 , 2015. [6] S. Massaroli, M. Poli, S. Bakhtiyarov, A. Yamashita, H. Asama, and J. Park, “Neural ordinary differential equation value networks for parametrized action spaces,” in ICLR 2020 Workshop on Integration of Deep Neural Models and Differential Equations , 2020. [7] J. Xiong, Q. Wang, Z. Yang, P. Sun, L. Han, Y. Zheng, H. Fu, T. Zhang, J. Liu, and H. Liu, “Parametrized deep q-networks learning: Reinforcement learning with discrete-continuous hybrid action space,” 
+
+arXiv preprint arXiv:1810.06394 , 2018. [8] Y. Lin, X. Liu, and Z. Zheng, “Discretionary lane-change decision and control via parameterized soft actor–critic for hybrid action space,” 
+
+Machines , vol. 12, no. 4, p. 213, 2024. [9] O. Delalleau, M. Peter, E. Alonso, and A. Logut, “Discrete and continu-ous action representation for practical rl in video games,” arXiv preprint arXiv:1912.11077 , 2019. [10] Y. Xu, Y. Wei, K. Jiang, L. Chen, D. Wang, and H. Deng, “Action decoupled sac reinforcement learning with discrete-continuous hybrid action spaces,” Neurocomputing , vol. 537, pp. 141–151, 2023. [11] H. Hasselt, “Double q-learning,” Advances in neural information pro-cessing systems , vol. 23, 2010. [12] N. Turcato, A. Sinigaglia, A. Dalla Libera, R. Carli, and G. A. Susto, “Exploiting estimation bias in clipped double q-learning for continous control reinforcement learning tasks,” IFAC-PapersOnLine , vol. 59, no. 26, pp. 1–6, 2025. [13] S. Fujimoto, H. Hoof, and D. Meger, “Addressing function approxi-mation error in actor-critic methods,” in International conference on machine learning . PMLR, 2018, pp. 1587–1596. [14] T. Haarnoja, A. Zhou, P. Abbeel, and S. Levine, “Soft actor-critic: Off-policy maximum entropy deep reinforcement learning with a stochastic actor,” in International conference on machine learning . Pmlr, 2018, pp. 1861–1870. [15] T. P. Lillicrap, J. J. Hunt, A. Pritzel, N. Heess, T. Erez, Y. Tassa, D. Silver, and D. Wierstra, “Continuous control with deep reinforcement learning,” arXiv preprint arXiv:1509.02971 , 2015. [16] J. Schulman, F. Wolski, P. Dhariwal, A. Radford, and O. Klimov, “Prox-imal policy optimization algorithms,” arXiv preprint arXiv:1707.06347 ,2017. [17] T. N. Canh, T.-T. Tran, H. Zhang, Z. Gao, N. Y. Chong, and X. Hoang-Van, “Human-to-robot interaction: Learning from video demonstration for robot imitation,” arXiv preprint arXiv:2602.19184 , 2026. [18] C. J. Watkins and P. Dayan, “Q-learning,” Machine learning , vol. 8, no. 3, pp. 279–292, 1992. [19] N. Dorka, T. Welschehold, J. B¨ odecker, and W. Burgard, “Adaptively cal-ibrated critic estimates for deep reinforcement learning,” IEEE Robotics and Automation Letters , vol. 8, no. 2, pp. 624–631, 2022. [20] J. Lyu, X. Ma, J. Yan, and X. Li, “Efficient continuous control with double actors and regularized critics,” in Proceedings of the AAAI Conference on Artificial Intelligence , vol. 36, no. 7, 2022, pp. 7655– 7663. [21] E. Coumans and Y. Bai, “Pybullet, a python module for physics simulation for games, robotics and machine learning,” 2016. [22] A. Kuznetsov, P. Shvechikov, A. Grishin, and D. Vetrov, “Controlling overestimation bias with truncated mixture of continuous distributional quantile critics,” in International conference on machine learning .PMLR, 2020, pp. 5556–5566. [23] J. Xu and Y. Lin, “Mixed-integer optimal control via reinforcement learning: A case study on hybrid vehicle energy management,” arXiv: 2305.01461 , 2023. [24] X. Zhang, S. Jin, C. Wang, X. Zhu, and M. Tomizuka, “Learning insertion primitives with discrete-continuous hybrid action space for robotic assembly tasks,” in 2022 International conference on robotics and automation (ICRA) . IEEE, 2022, pp. 9881–9887.

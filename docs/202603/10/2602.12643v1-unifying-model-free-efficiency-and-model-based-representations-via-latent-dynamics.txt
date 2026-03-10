@@ -1,0 +1,1269 @@
+Title: Unifying Model-Free Efficiency and Model-Based Representations via Latent Dynamics
+
+URL Source: https://arxiv.org/pdf/2602.12643v1
+
+Published Time: Mon, 16 Feb 2026 01:27:21 GMT
+
+Number of Pages: 13
+
+Markdown Content:
+# Unifying Model-Free Efficiency and Model-Based Representations via Latent Dynamics 
+
+# Jashaswimalya Acharjee 
+
+Wadhwani School of Data Science and AI Indian Institute of Technology Madras Chennai, India jashaswimalya.acharjee@dsai.iitm.ac.in 
+
+# Balaraman Ravindran 
+
+Wadhwani School of Data Science and AI Indian Institute of Technology Madras Chennai, India ravi@dsai.iitm.ac.in 
+
+## ABSTRACT 
+
+We present Unified Latent Dynamics (ULD), a novel reinforce-ment learning algorithm that unifies the efficiency of model-free methods with the representational strengths of model-based ap-proaches, without incurring planning overhead. By embedding state-action pairs into a latent space in which the true value func-tion is approximately linear, our method supports a single set of hyperparameters across diverse domains — from continuous control with low-dimensional and pixel inputs to high-dimensional Atari games. We prove that, under mild conditions, the fixed point of our embedding-based temporal-difference updates coincides with that of a corresponding linear model-based value expansion, and we derive explicit error bounds relating embedding fidelity to value approximation quality. In practice, ULD employs synchronized up-dates of encoder, value, and policy networks, auxiliary losses for short-horizon predictive dynamics, and reward-scale normaliza-tion to ensure stable learning under sparse rewards. Evaluated on 80 environments spanning Gym locomotion, DeepMind Control (proprioceptive and visual), and Atari, our approach matches or exceeds the performance of specialized model-free and general model-based baselines — achieving cross-domain competence with minimal tuning and a fraction of the parameter footprint. These results indicate that value-aligned latent representations alone can deliver the adaptability and sample efficiency traditionally attrib-uted to full model-based planning. 
+
+## KEYWORDS 
+
+Reinforcement Learning;Latent Dynamics;Model-Based Methods;Value Function Approximation;Sample Efficiency;Representation Learn-ing 
+
+ACM Reference Format: 
+
+Jashaswimalya Acharjee and Balaraman Ravindran. 2026. Unifying Model-Free Efficiency and Model-Based Representations via Latent Dynamics. In 
+
+Proc. of the 25th International Conference on Autonomous Agents and Multia-gent Systems (AAMAS 2026), Paphos, Cyprus, May 25 – 29, 2026 , IFAAMAS, 13 pages. https://doi.org/10.65109/OSSS8091   
+
+> This work is licensed under a Creative Commons Attribution Inter-national 4.0 License.
+> Proc. of the 25th International Conference on Autonomous Agents and Multiagent Systems (AAMAS 2026), C. Amato, L. Dennis, V. Mascardi, J. Thangarajah (eds.), May 25 – 29, 2026, Paphos, Cyprus .©2026 International Foundation for Autonomous Agents and Multiagent Systems (www.ifaamas.org). https://doi.org/10.65109/OSSS8091
+
+## 1 INTRODUCTION 
+
+Reinforcement learning (RL) is built on a powerful yet simple idea: an agent learns optimal behaviour by interacting with its environ-ment while guided by a reward signal. In theory, this framework is universal — given a clear objective and sufficient interaction data, an RL agent should be able to adapt to any task. However, in practice, most RL algorithms are far from general-purpose. Instead, they are highly specialized architectures, set of hyperparameters, while incorporating certain training strategies depending on the problem domain. A pertinent example includes algorithms like Rainbow [ 12 ] (de-signed for Atari games [ 2] ) and TD3 [ 9 ] (optimized for MuJoCo control tasks [ 23 ]) share little in common beyond their RL foun-dations. Their hyperparameters differ significantly, and neither performs well when applied to the other’s domain. This special-ization undermines RL’s promise of a unified learning framework, forcing practitioners to redesign solutions for each new problem. Some RL methods do claim generality — policy gradient and evolutionary algorithms, for instance, make minimal assumptions about the environment. However, they often suffer from poor sam-ple efficiency and subpar or asymptotic performance compared to specialized domain-specific methods. Worse, they frequently re-quire laborious hyperparameter tuning, making them impractical for real-world use. Recently, model-based RL techniques like DreamerV3 [ 10 ] and TD-MPC2 [ 11 ] have demonstrated impressive generalization, achiev-ing strong performance across diverse benchmarks without task-specific tuning. However, these methods come with high computa-tional costs and added complexity, limiting their accessibility. This paper introduces ULD, a novel model-free algorithm that leverages learned representations inspired by model-based RL while avoiding its computational overhead. The key insight is that the true advantage of model-based methods may not lie in their explicit environment models, but in the rich feature representations they implicitly learn. ULD maps state-action pairs into a unified embedding space where their relationship to the value predictions is approximately linear. This approach draws from modern representation learning techniques that encode environment dynamics, as well as the theo-retical work of Parr et al . showing that model-based and model-free methods converge to similar solutions in linear settings. By abstracting away environment-specific details, ULD enables a single set of hyperparameters to work across vastly different tasks — from image observation based environments to proprioceptive or vector-based robotic control environemnts. 
+
+> arXiv:2602.12643v1 [cs.LG] 13 Feb 2026
+
+We evaluated our algorithm, ULD, on 80 environments span-ning across major RL benchmarks. Without any algorithmic or hyperparameter adjustments, it achieves competitive performance against both specialized model-free methods, as well as general model-based approaches. This suggests that model-based repre-sentations alone, without full dynamics modeling, can provide the sufficient sample efficiency and adaptability of model-based RL while retaining the simplicity of model-free methods. By decoupling the benefits of model-based representations from their traditional learning framework, we have developed an algo-rithm that works out-of-the-box across domains without excessive tuning or computational demands. 
+
+## 2 RELATED WORK 
+
+Learning latent embeddings from environment dynamics has emerged as a powerful paradigm for improving RL robustness. Model-free approaches predict future states using learned features (Schwarzer et al., 2023; Guo et al., 2022), while model-based methods like PlaNet (Hafner et al., 2019) and TD-MPC (Hansen et al., 2024) use dynamics models for planning. These efforts share a core insight: predictive representations simplify value estimation and policy optimization. Our work builds on these principles but introduces critical inno-vations. Unlike TD7 (Fujimoto et al., 2024) — which processes raw inputs — ULD operates exclusively in a learned embedding space, discarding environment-specific input structures. We further incor-porate couple of auxiliary losses and integrate multi-step returns and categorical distributional learning component for cross-domain stability. 
+
+## 2.1 Theoretical Foundations for State Abstraction 
+
+Linear MDP frameworks [ 1 , 13 ] and linear spectral representation methods [ 19 ] formalize low-dimensional spaces where value func-tions behave linearly. They aim to learn a low-rank decomposition of the transition dynamics of the MDP and to establish a linear cor-respondence between an embedding and its corresponding value function. Similarly, bisimulation metrics [ 4 , 6 , 7 ] and MDP homomor-phisms [ 18 , 20 , 26 , 27 ] cluster states by behavioral equivalence, enabling efficient abstraction. Two-stage RL approaches [ 5, 14 ] de-couple representation learning from the RL policy, aligning closely with our methodology. ULD extends these ideas by learning a state-action embedding that approximates linear value dynamics while accommodating both discrete and continuous tasks. Unlike model-based general-ists (e.g., DreamerV3), we avoid simulated rollouts; unlike prior model-free representation learners (e.g., TD7), we fully abstract environment-specific inputs. 
+
+## 3 BACKGROUND 
+
+The general notion of Reinforcement Learning problems are de-scribed by a Markov Decision Process (MDP), which is typically defined by a tuple consisting of (𝑆, 𝐴, 𝑝, 𝑅, 𝛾 ), where the state space is denoted by 𝑆 , action space by 𝐴 , the transition dynamics function as 𝑝 , reward function by 𝑅 and finally the discount factor as 𝛾 . In addition to the above, the value-based RL methods learn a value function, 𝑄 𝜋 (𝑠, 𝑎 ) := E𝜋 [Í∞  
+
+> 𝑡 =0
+
+𝛾 𝑡 𝑟 𝑡 |𝑠 0 = 𝑠, 𝑎 0 = 𝑎 ] which models the expected discounted sum of rewards 𝑟 𝑡 ∼ 𝑅 (𝑠 𝑡 , 𝑎 𝑡 ), following a policy 𝜋 .The true value function 𝑄 𝜋 in our work is estimated by an approx-imate value function 𝑄 𝜃 — subscripts are used to indicate network parameters 𝜃 . The target networks have parameters denoted by with parameters of the form 𝑄 𝜃 ′ , which are intended to introduce stationarity in the predictions. The parameters are periodically synced with current network parameters ( 𝜃 ′ ← 𝜃 ). 
+
+## 4 MODEL-BASED REPRESENTATIONS 4.1 Linear Value Decomposition 
+
+We consider a linear decomposition of the action-value function 
+
+𝑄 (𝑠, 𝑎 ) using state-action embeddings z𝑠𝑎 and linear weights w:
+
+𝑄 (𝑠, 𝑎 ) = z⊤ 
+
+> 𝑠𝑎
+
+w (1) Our primary objective is to learn embeddings z𝑠𝑎 that maintain an approximately linear relationship with the true value function 
+
+𝑄 𝜋 . Since this relationship may not be exact, we ultimately employ these features as inputs to a non-linear function ˆ𝑄 (z𝑠𝑎 ) rather than relying solely on linear approximation. 
+
+## 4.2 Learning Approaches 
+
+Given a dataset D of transitions (𝑠, 𝑎, 𝑟, 𝑠 ′, 𝑎 ′), we analyze two learn-ing paradigms: 
+
+Model-Free Approach: Semi-gradient temporal difference learn-ing: 
+
+w ← w − 𝛼 ED
+
+
+
+∇w
+
+
+
+z⊤ 
+
+> 𝑠𝑎
+
+w − 𝑟 + 𝛾 z⊤ 
+
+> 𝑠 ′𝑎 ′
+
+w
+
+> sg
+
+2 
+
+(2) where [·] sg denotes the stop-gradient operator. 
+
+Model-Based Approach: Dynamics-based rollout approxima-tion: 
+
+wmb :=
+
+> ∞
+
+∑︁ 
+
+> 𝑡 =0
+
+𝛾 𝑡 W𝑡 𝑝 w𝑟 (3) with reward and transition weights: 
+
+w𝑟 := arg min  
+
+> w
+
+ED
+
+h z⊤ 
+
+> 𝑠𝑎
+
+w − 𝑟 2 i
+
+(4) 
+
+W𝑝 := arg min  
+
+> W
+
+ED
+
+h
+
+z⊤ 
+
+> 𝑠𝑎
+
+W − z𝑠 ′𝑎 ′ 2 i
+
+(5) 
+
+## 4.3 Equivalence of Approaches 
+
+Following foundational work in linear RL, we establish the equiva-lence between these paradigms: 
+
+Theorem 4.1 (Solution Eqivalence). The fixed point of the model-free update (2) and the model-based solution (3) are identical. 
+
+Proof. See Appendix A.1 for the complete derivation. □
+
+4.3.1 Value Error Bound. From Theorem 4.1, we establish a bound on the approximation error of the value function, which may be defined in the following manner: VE (𝑠, 𝑎 ) := 𝑄 (𝑠, 𝑎 ) − 𝑄 𝜋 (𝑠, 𝑎 ) (6) Theorem 4.2 (Error Bound). The value error for the solution in Theorem 4.1 is bounded by: 
+
+|VE (𝑠, 𝑎 )| ≤ 11 − 𝛾 max  
+
+> (𝑠,𝑎 ) ∈ S× A
+
+z⊤ 
+
+> 𝑠𝑎
+
+w𝑟 − E[𝑟 |𝑠, 𝑎 ]
+
++ max  
+
+> 𝑖
+
+|𝑤 𝑖 |∑︁ z⊤ 
+
+> 𝑠𝑎
+
+W𝑝 − E𝑠 ′𝑎 ′ [z𝑠 ′𝑎 ′ ]
+
+! (7) 
+
+In other words it is bounded by the accuracy of the estimated dynamics and reward. 
+
+Proof. The complete proof appears in Appendix A.2. □
+
+## 4.4 Practical Limitations and Adjustments 
+
+While theoretically sound, the joint optimization objective: 
+
+L( z𝑠𝑎 , w𝑟 , W𝑝 ) = ED
+
+h z⊤ 
+
+> 𝑠𝑎
+
+w𝑟 − 𝑟 2 i
+
++ 𝜆 ED
+
+h
+
+z⊤ 
+
+> 𝑠𝑎
+
+W𝑝 − z𝑠 ′𝑎 ′ 2 i (8) encounters two significant practical limitations: (1) Policy Dependency : The target z𝑠 ′𝑎 ′ depends on actions 𝑎 ′ ∼
+
+𝜋 , creating coupling between policy updates and representa-tion learning. (2) Optimization Challenges : Joint optimization can lead to de-generate solutions similar to Bellman residual minimization, particularly with sparse rewards or incomplete state cover-age. To address these issues, we propose a modified objective: 
+
+L( z𝑠𝑎 , w𝑟 , W𝑝 ) = ED
+
+h z⊤ 
+
+> 𝑠𝑎
+
+w𝑟 − 𝑟 2 i
+
++ 𝜆 ED
+
+h
+
+z⊤ 
+
+> 𝑠𝑎
+
+W𝑝 − ¯z𝑠 ′ 2 i (9) with two key modifications: (1) Use state-only embeddings z𝑠 ′ as dynamics targets instead of z𝑠 ′𝑎 ′
+
+(2) Employ a target network 𝜙 ′ 
+
+> 𝑠
+
+(𝑠 ′) with slowly updated param-eters 𝜃 ′ to generate ¯z𝑠 ′
+
+## 4.5 Non-Linear Value Representation 
+
+Although our adjustments break the theoretical linear relationship between the embedding z𝑠𝑎 and the value function, we establish conditions for non-linear representability: 
+
+Theorem 4.3 (Non-Linear Representation). Given state en-coder 𝜙 𝑠 (𝑠 ) = z𝑠 and action embedding function 𝜙 𝑠𝑎 (z𝑠 , 𝑎 ) = z𝑠𝑎 , if there exist functions ˆ𝑝 and ˆ𝑅 satisfying: 
+
+E ˆ𝑅 [ ˆ𝑅 (z𝑠𝑎 )] = E𝑅 [𝑅 (𝑠, 𝑎 )] (10) 
+
+ˆ𝑝 (z𝑠 ′ |z𝑠𝑎 ) =∑︁    
+
+> ˆ𝑠 :𝜙 (ˆ𝑠 )=z𝑠 ′
+
+𝑝 ( ˆ𝑠 |𝑠, 𝑎 ) (11) 
+
+then for any policy 𝜋 with corresponding ˆ𝜋 (𝑎 |z𝑠 ) = 𝜋 (𝑎 |𝑠 ), there exists ˆ𝑄 such that: 
+
+ˆ𝑄 (z𝑠𝑎 ) = 𝑄 𝜋 (𝑠, 𝑎 ) ∀( 𝑠, 𝑎 ) ∈ S × A (12) 
+
+Moreover, equation 12 guarantees that there exists an optimal policy 
+
+ˆ𝜋 ∗ (𝑎 |z𝑠 ) = 𝜋 ∗ (𝑎 |𝑠 ).
+
+Proof. See Appendix A.3 for the constructive proof. □
+
+This theoretical foundation motivates our practical algorithm to learn embeddings using the adjusted objective (9), which capture approximately the linear value relationships, then employ a non-linear ˆ𝑄 function to compensate for approximation errors. 
+
+## 5 ALGORITHM 
+
+We now present ULD, our practical algorithm that implements the aforementioned theoretical insights. The core principle is to learn state-action embeddings z𝑠𝑎 that maintain an approximately linear relationship with the true value function 𝑄 𝜋 , while using these embeddings as inputs to non-linear function approximators to handle approximation errors. 
+
+## 5.1 Architecture Overview 
+
+ULD consists of three main components trained end-to-end: (1) State Encoder 𝜙 𝑠 (𝑠 ) → z𝑠 : Maps observations to state em-beddings (2) State-Action Encoder 𝜙 𝑠𝑎 (z𝑠 , 𝑎 ) → z𝑠𝑎 : Combines state embeddings with actions (3) Environment Model m: Linear predictor for next state, reward, and termination The state encoder 𝜙 𝑠 (𝑠 ) is modular and can be adapted to dif-ferent observation modalities by changing its architecture while keeping the remaining components unchanged. Since z𝑠 is a fixed-size vector, all downstream networks use standard feedforward architectures regardless of the input observation space. 
+
+## 5.2 Learning Objective 
+
+Given a transition tuple (𝑠, 𝑎, 𝑟, 𝑑, 𝑠 ′) from the replay buffer, where 
+
+𝑑 indicates episode termination, our learning objective consists of three components: 
+
+5.2.1 Representation Learning. Following the adjusted loss from Equation 9, we learn representations by unrolling the learned model over a finite horizon 𝐻 𝑒𝑛𝑐 . Starting from an initial state 𝑠 (0) , we recursively apply: 
+
+˜z𝑠 𝑡 , ˜𝑟 𝑡 , ˜𝑑 𝑡 = 𝜙 𝑠𝑎 ( ˜z𝑠 𝑡 −1 , 𝑎 𝑡 −1)𝑇 m (13) where ˜z𝑠 0 = 𝜙 𝑠 (𝑠 0) and m is the linear environment model. The representation loss combines three terms: 
+
+L𝑟𝑒𝑝 (𝜙 𝑠 , 𝜙 𝑠𝑎 , m) =
+
+> 𝐻 𝑒𝑛𝑐
+
+∑︁  
+
+> 𝑡 =1
+
+[𝜆 𝑟 L𝑟𝑒𝑤𝑎𝑟𝑑 ( ˜𝑟 𝑡 , 𝑟 𝑡 ) (14) 
+
++ 𝜆 𝑑 L𝑑𝑦𝑛𝑎𝑚𝑖𝑐𝑠 ( ˜z𝑠 𝑡 , ¯z𝑠 𝑡 ) (15) 
+
++𝜆 𝑡 L𝑡𝑒𝑟𝑚𝑖𝑛𝑎𝑙 ( ˜𝑑 𝑡 , 𝑑 𝑡 )
+
+i
+
+(16) 
+
+Reward Loss: To handle sparse rewards and varying magnitudes robustly, we use a categorical representation with cross-entropy loss: 
+
+L𝑟𝑒𝑤𝑎𝑟𝑑 ( ˜𝑟, 𝑟 ) = CrossEntropy ( ˜𝑟, TwoHot (𝑟 )) (17) The two-hot encoding uses non-uniform spacing based on symexp (𝑥 ) =
+
+sign (𝑥 )( exp (| 𝑥 |) − 1) to handle diverse reward scales. Dynamics Loss: We minimize the squared error between pre-dicted and target state embeddings: 
+
+L𝑑𝑦𝑛𝑎𝑚𝑖𝑐𝑠 ( ˜z𝑠 , ¯z𝑠 ) = ∥ ˜z𝑠 − ¯z𝑠 ∥22 (18) where ¯z𝑠 = 𝜙 ′ 
+
+> 𝑠
+
+(𝑠 ) comes from the target encoder with slowly-updated parameters. 
+
+Terminal Loss: We predict episode termination using mean squared error: 
+
+L𝑡𝑒𝑟𝑚𝑖𝑛𝑎𝑙 ( ˜𝑑, 𝑑 ) = ( ˜𝑑 − 𝑑 )2 (19) The terminal loss coefficient 𝜆 𝑡 is set to zero until the first ter-minal transition is observed, following standard practice in model-based RL. 
+
+5.2.2 Value Function Learning. We employ a modified TD3-style approach with several enhancements for cross-domain stability. We train two critic networks 𝑄 𝜃 1 and 𝑄 𝜃 2 that operate on state-action embeddings: 
+
+L𝑣𝑎𝑙𝑢𝑒 ( ˜𝑄 ) = Huber 
+
+
+
+˜𝑄, 1¯𝑟 
+
+ 𝐻 𝑄 −1∑︁ 
+
+> 𝑘 =0
+
+𝛾 𝑘 𝑟 (𝑡 +𝑘 ) + 𝛾 𝐻 𝑄 ˜𝑄 ′
+
+> 𝑗
+
+  
+
+(20) where ˜𝑄 ′ 
+
+> 𝑗
+
+= ¯𝑟 ′ min 𝑗 =1,2 𝑄 𝜃 ′ 
+
+> 𝑗
+
+(z𝑠𝑎 𝜋 ) represents the target value scaled by the target reward normalization factor ¯𝑟 ′.Key modifications include: 
+
+• Multi-step Returns: We use 𝐻 𝑄 -step returns for improved sample efficiency. 
+
+• Huber Loss: Reduces bias from prioritized experience re-play. 
+
+• Reward Normalization: Targets are scaled by ¯𝑟 , the run-ning average of absolute rewards, for consistent loss magni-tudes across domains The target action 𝑎 (𝜋 ) is computed using the target policy 𝜋 ′ with added noise: 
+
+𝑎 (𝜋 ) =
+
+(
+
+clip (𝜋 ′ (z𝑠 ′ ) + 𝜖, −1, 1) continuous actions 
+
+𝜋 ′ (z𝑠 ′ ) discrete actions (21) where 𝜖 ∼ N ( 0, 𝜎 2) is clipped Gaussian noise. 
+
+5.2.3 Policy Learning. The policy operates on state embeddings z𝑠 
+
+and is trained using the deterministic policy gradient algorithm: 
+
+L𝑝𝑜𝑙𝑖𝑐𝑦 (𝑎 𝜋 ) = − 12∑︁ 𝑖 =1,2
+
+˜𝑄 𝑖 (z𝑠𝑎 𝜋 ) + 𝜆 𝑝𝑟𝑒 u𝜋 2 (22) where 𝑎 𝜋 = activation (u𝜋 ) and u𝜋 represents the pre-activation values of the state. To handle both continuous and discrete action spaces uniformly, we use: 
+
+• Continuous actions: Tanh activation with Gaussian explo-ration noise 
+
+• Discrete actions: Gumbel-Softmax activation with noise added to one-hot encodings The pre-activation regularization term 𝜆 𝑝𝑟𝑒 u𝜋 2 helps avoid local minima in sparse reward environments. 
+
+## 5.3 Training Protocol 
+
+ULD follows a synchronized update schedule to reduce non-stationarity: 
+
+Algorithm 1 Agent Evaluation Protocol 
+
+Require: Policy 𝜋 , Evaluation environment E𝑒𝑣𝑎𝑙 , Episodes 𝑁 𝑒𝑣𝑎𝑙  
+
+> 1:
+
+Initialize: R ← zeros( 𝑁 𝑒𝑣𝑎𝑙 ) 
+
+> 2:
+
+for ep = 0 to 𝑁 𝑒𝑣𝑎𝑙 − 1 do  
+
+> 3:
+
+𝑠 0, 𝑑 0 ← E 𝑒𝑣𝑎𝑙 .𝑟𝑒𝑠𝑒𝑡 () , 𝐹𝑎𝑙𝑠𝑒  
+
+> 4:
+
+𝑡 ← 0 
+
+> 5:
+
+while NOT 𝑑 𝑡 do  
+
+> 6:
+
+𝑎 𝑡 ← 𝜋 (z𝑠 𝑡 ) {Deterministic policy}  
+
+> 7:
+
+𝑠 𝜏 +1, 𝑟 𝜏 , 𝑑 𝑡 ← E 𝑒𝑣𝑎𝑙 .𝑠𝑡𝑒𝑝 (𝑎 𝑡 ) 
+
+> 8:
+
+𝜏 ← 𝜏 + 1 
+
+> 9:
+
+end while  
+
+> 10:
+
+R[𝑒𝑝 ] ← Í𝑇 𝑒𝑝  
+
+> 𝜏 =0
+
+𝑟 (𝜏 ) 
+
+> 11:
+
+end for  
+
+> 12:
+
+J𝑒𝑣𝑎𝑙 ← 1
+
+> 𝑁 𝑒𝑣𝑎𝑙
+
+Í𝑁 𝑒𝑣𝑎𝑙 −1 
+
+> 𝑖 =0
+
+R[𝑖 ] 
+
+> 13:
+
+Store evaluation score: J𝑒𝑣𝑎𝑙 
+
+Algorithm 2 ULD Training Loop  
+
+> 1:
+
+Initialize: 𝑡 ← 0, start_time ← current_time()  
+
+> 2:
+
+Initialize networks: 𝜙 𝑠 , 𝜙 𝑠𝑎 , m, 𝑄 𝜃 1 , 𝑄 𝜃 2 , 𝜋  
+
+> 3:
+
+Initialize target networks: 𝜙 ′ 
+
+> 𝑠
+
+← 𝜙 𝑠 , 𝜙 ′ 
+
+> 𝑠𝑎
+
+← 𝜙 𝑠𝑎 , 𝑄 ′ 
+
+> 𝜃 1
+
+← 𝑄 𝜃 1 ,
+
+𝑄 ′ 
+
+> 𝜃 2
+
+← 𝑄 𝜃 2 , 𝜋 ′ ← 𝜋  
+
+> 4:
+
+Initialize replay buffer D and reward scaling ¯𝑟 ← 0 
+
+> 5:
+
+𝑠 ← E 𝑡𝑟𝑎𝑖𝑛 .𝑟𝑒𝑠𝑒𝑡 ()  
+
+> 6:
+
+while 𝑡 ≤ 𝑇 𝑡𝑜𝑡𝑎𝑙 do  
+
+> 7:
+
+if 𝑡 mod 𝑓 𝑒𝑣𝑎𝑙 = 0 then  
+
+> 8:
+
+call EVALUATE( 𝜋 ′, E𝑒𝑣𝑎𝑙 , 𝑁 𝑒𝑣𝑎𝑙 ) 
+
+> 9:
+
+end if  
+
+> 10:
+
+𝑎 ← 𝜋 (z(𝑡 ) 
+
+> 𝑠
+
+) + 𝜖 (𝑡 ) 
+
+> 11:
+
+𝑠 ′, 𝑟, 𝑑𝑜𝑛𝑒 ← E 𝑡𝑟𝑎𝑖𝑛 .𝑠𝑡𝑒𝑝 (𝑎 ) 
+
+> 12:
+
+replay_buffer.add( 𝑠, 𝑎, 𝑠 ′, 𝑟 , done) to D 
+
+> 13:
+
+𝑠 ← 𝑠 ′ 
+
+> 14:
+
+Sample batch B from D 
+
+> 15:
+
+Update ¯𝑟 ← running average of |𝑟 | over B 
+
+> 16:
+
+Compute: L𝑟𝑒𝑝 , L𝑣𝑎𝑙𝑢𝑒 and L𝑝𝑜𝑙𝑖𝑐𝑦  
+
+> 17:
+
+if 𝑡 mod 𝑇 𝑡𝑎𝑟𝑔𝑒𝑡 = 0 then  
+
+> 18:
+
+Update target networks: 𝜙 ′ 
+
+> 𝑠
+
+← 𝜙 𝑠 , 𝜙 ′ 
+
+> 𝑠𝑎
+
+← 𝜙 𝑠𝑎 , 𝑄 ′ 
+
+> 𝜃 1
+
+← 𝑄 𝜃 1 ,
+
+𝑄 ′ 
+
+> 𝜃 2
+
+← 𝑄 𝜃 2 , 𝜋 ′ ← 𝜋  
+
+> 19:
+
+Update target reward scaling: ¯𝑟 ′ ← ¯𝑟  
+
+> 20:
+
+end if  
+
+> 21:
+
+𝑡 ← 𝑡 + 1 
+
+> 22:
+
+end while 
+
+We use prioritized experience replay with priorities based on TD errors, and update target networks every 𝑇 𝑡𝑎𝑟𝑔𝑒𝑡 steps to main-tain training stability. The reward scaling factor ¯𝑟 is computed as the running average of absolute rewards and helps normalize loss magnitudes across different environments. Table 1: TD3-Normalised Benchmark comparison summary 
+
+Method Gym DMC-P DMC-V Atari TD7 1.00 0.87 - -TD-MPC2 0.92 0.95 0.85 0.78 DreamerV3 0.76 0.82 0.76 1.00 
+
+PPO 0.68 0.71 0.62 0.82 ULD 0.97 0.96 0.92 0.94 
+
+## 5.4 Computational Complexity 
+
+ULD maintains the computational efficiency of model-free methods while benefiting from model-based representations. The additional overhead consists of: 
+
+• Forward passes through the environment model during rep-resentation learning 
+
+• Unrolling predictions over horizon 𝐻 𝑒𝑛𝑐 (typically 3-5 steps) 
+
+• Computing auxiliary losses for reward, dynamics, and ter-minal prediction Unlike full model-based methods, we do not perform explicit planning or long-horizon rollouts, keeping the computational cost manageable while achieving the representational benefits of dy-namics modeling. 
+
+## 6 EXPERIMENTS 
+
+We assess ULD’s effectiveness across four established reinforce-ment learning benchmarks comprising 80 distinct environments. Our comparative analysis includes: (1) Domain-specialized meth-ods that represent current state-of-the-art in each benchmark, (2) General model-based approaches (DreamerV3 [ 10 ], TD-MPC2 [ 11 ]), and (3) A widely adopted model-free algorithm (PPO [ 21 ]). Rather than pursuing benchmark-specific state-of-the-art results, our pri-mary objective is to demonstrate consistent competence across diverse domains using identical hyperparameters. All baselines em-ploy author-recommended configurations without domain-specific tuning. 
+
+## 6.1 Benchmark Performance 
+
+Figure 1 presents aggregated learning curves, with comprehensive results detailed in Appendix B. 
+
+Continuous Control - Gym Locomotion: We evaluate on 5 MuJoCo locomotion tasks [ 24 ] with continuous actions and low-dimensional states within the Gym framework [ 3, 25 ]. Agents train for 1M environment steps without specialized preprocess-ing. Comparative baselines include: TD7 [ 8] (near state-of-the-art), TD-MPC2, DreamerV3, and PPO. Performance is normalized against TD3 [9]. 
+
+Robotics Control - Proprioceptive DMC: Using the Deep-Mind Control suite [ 22 ], we examine 23 robotics tasks with vector observations. Episode rewards are capped at 1000 for standardized comparison. Agents train for 500k steps (equivalent to 1M envi-ronment frames due to action repetition). Baselines include TD7, TD-MPC2 (near state-of-the-art), DreamerV3, and PPO. 
+
+Vision-Based Control - Visual DMC: Employing identical tasks to the proprioceptive benchmark but with pixel observations, agents train for 500k steps. Comparative methods include: DrQ-v2 [ 28 ] (model-free state-of-the-art), TD-MPC2, DreamerV3, and PPO. 
+
+Discrete Decision-Making - Atari: Using the Arcade Learning Environment [ 2 ], we evaluate on 43 games with pixel observa-tions and discrete actions. Standard preprocessing includes sticky actions [ 15 ]. Agents train for 2.5M steps (10M frames). Baselines include: DreamerV3, DQN [ 16 ], Rainbow [ 12 ], and PPO. Scores are normalized relative to human performance. 
+
+## 6.2 Analysis 
+
+Our results reveal the characteristic “no free lunch” tradeoff — top-performing methods in one benchmark typically underperform in others. Despite this, ULD demonstrates exceptional versatility: 
+
+• Achieves superior performance on both proprioceptive and visual DMC benchmarks, demonstrating effective cross-modal representation learning. 
+
+• Maintains competitive performance on Gym locomotion tasks, trailing only the specialized TD7 approach. 
+
+• Delivers strongest overall performance across continuous control domains. 
+
+• Outperforms well-known model-free baselines (PPO, Dream-erV3, Rainbow) on discrete-action Atari games. Notably, while DreamerV3 excels on Atari, this comes with sub-stantial computational overhead and diminished performance on other benchmarks. ULD achieves its cross-domain competence with-out such tradeoffs, validating our design philosophy. Table 1 summarizes normalized performance across domains, illustrating ULD’s balanced competence. The algorithm’s consistent performance across observation spaces (vector vs. pixel) and action types (continuous vs. discrete) confirms its general-purpose utility. 
+
+## 7 DISCUSSION AND CONCLUSION 
+
+This work presented ULD , a general-purpose model-free deep re-inforcement learning algorithm that achieves consistently strong performance across diverse continuous control and visual bench-marks. Inspired by insights from model-based representation learn-ing, ULD demonstrates that model-free deep RL—when equipped with powerful representation objectives and well-grounded design choices—can match or even surpass model-based approaches, while remaining computationally efficient and conceptually simple. 
+
+Bridging model-based and model-free paradigms. Although ULD 
+
+is entirely model-free during execution, it draws upon principles traditionally associated with model-based methods, particularly in its representation learning stage. This hybrid perspective shows that the benefits often attributed to model-based RL may, in fact, arise primarily from effective latent representations rather than explicit planning or trajectory simulation. Unlike algorithms such as DreamerV3 and TD-MPC2, which rely on short-horizon rollouts and planning, ULD achieves competitive or superior performance without these computationally expensive components. This ob-servation suggests that, for many standard benchmarks, learning robust state-action embeddings may be sufficient to close the per-formance gap between model-based and model-free RL. 
+
+Benchmark generalization. Our experimental results reveal a pro-nounced lack of positive transfer between common RL benchmarks. Despite similar underlying dynamics (e.g., Gym and DMC both 0 0.2 0.4 0.6 0.8 1            
+
+> 0
+> 0.5
+> 1
+> 1.5
+> Time Steps (1M)
+> TD3-Normalized
+> Gym - Locomotion (5 tasks)
+> 00.20.4
+> 0
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> Time Steps (1M)
+> Total Reward (1kx)
+> DMC - Proprioceptive (23 tasks)
+> 00.20.4
+> 0
+> 0.2
+> 0.4
+> 0.6
+> Time Steps (1M)
+> Total Reward (1kx)
+> DMC - Visual (8 tasks)
+> 012
+> 0
+> 1
+> 2
+> 3
+> 4
+> Time Steps (1M)
+> Human-Normalized
+> Atari (43 tasks)
+> ULD DreamerV3 TD-MPC2 PPO TD7 DrQ-v2 Rainbow DQN
+
+Figure 1: Aggregate learning curves. Average performance over each benchmark. Results are over 10 seeds. Due to action repeat, 500k time steps in DMC correspond to 1M frames in the original environment and 2.5M time steps in Atari corresponds to 10M frames in the original environment. 
+
+Mean Median IQM 
+
+0
+
+0.5
+
+1
+
+1.5
+
+> TD3-Normalized Score
+
+Gym Locomotion   
+
+> TD7 PPO
+> TD-MPC2 DreamerV3
+> ULD
+
+Mean Median IQM 
+
+0
+
+200 
+
+400 
+
+600 
+
+800 
+
+1,000 
+
+> Reward
+
+DMC Proprioceptive   
+
+> TD7 PPO
+> TD-MPC2 DreamerV3
+> ULD
+
+Figure 2: Aggregate metrics comparison: (Left) Gym Locomotion, (Right) DMC Proprioceptive. 
+
+using the MuJoCo simulator), methods that dominate one domain often fail to generalize to the other. In particular, while DreamerV3 performs strongly on Atari, it underperforms in continuous con-trol tasks, struggling in complex locomotion environments such as DMC-Dog and DMC-Humanoid. Conversely, algorithms tuned for proprioceptive control, including TD-MPC2, fail to replicate their advantage in visual or high-dimensional observation spaces. These findings reinforce that progress on a single benchmark does not imply broader generalization, highlighting the need for more comprehensive, cross-domain evaluation protocols. 
+
+Limitations and future directions. ULD represents one of the early step towards scalable and general model-free deep RL. Never-theless, several challenges remain. The current formulation does not explicitly address tasks requiring long-horizon reasoning, hard exploration, or non-Markovian dependencies. Moreover, our evalu-ation is limited to widely adopted RL benchmarks for controlled comparison. Extending these methods to real-world domains — such as multi-agent coordination, robotics, or language-conditioned con-trol — will be necessary to demonstrate true generality. Established baselines like PPO have already proven adaptable in such domains, from complex team games to drone racing and large language mod-els. Achieving comparable versatility remains an open frontier for future model-free algorithms. 
+
+Conclusion. In summary, ULD challenges the conventional di-vide between model-based and model-free RL, showing that strong representation learning and architectural regularization can yield general-purpose, high-performance agents. The results across Gym, DMC-Proprioceptive, DMC-Visual, and Atari benchmarks demon-strate the promise of pursuing simplicity without sacrificing gener-ality, paving the way for a new generation of unified RL algorithms. 
+
+## ACKNOWLEDGMENTS 
+
+The authors gratefully acknowledge the support received from the Prime Minister’s Research Fellowship (PMRF), Ministry of Educa-tion, Government of India, for providing necessary funding and resources to carry out this research. REFERENCES 
+
+[1] Alekh Agarwal, Sham Kakade, Akshay Krishnamurthy, and Wen Sun. 2020. Flambe: Structural complexity and representation learning of low rank mdps. 
+
+Advances in neural information processing systems 33 (2020), 20095–20107. [2] Marc G Bellemare, Yavar Naddaf, Joel Veness, and Michael Bowling. 2013. The arcade learning environment: An evaluation platform for general agents. Journal of artificial intelligence research 47 (2013), 253–279. [3] Greg Brockman, Vicki Cheung, Ludwig Pettersson, Jonas Schneider, John Schul-man, Jie Tang, and Wojciech Zaremba. 2016. OpenAI Gym. arXiv preprint arXiv:1606.01540 (2016). [4] Pablo Samuel Castro. 2020. Scalable methods for computing state similarity in deterministic Markov decision processes. In Proceedings of the AAAI Conference on Artificial Intelligence , Vol. 34. 10069–10076. [5] Wesley Chung, Somjit Nath, Ajin Joseph, and Martha White. 2019. Two-timescale networks for nonlinear value function approximation. In International Conference on Learning Representations (ICLR) .[6] Norm Ferns, Prakash Panangaden, and Doina Precup. 2004. Metrics for finite Markov decision processes. In Proceedings of the 20th Conference on Uncertainty in Artificial Intelligence (UAI) . 162–169. [7] Norm Ferns, Prakash Panangaden, and Doina Precup. 2011. Bisimulation metrics for continuous Markov decision processes. SIAM J. Comput. 40, 6 (2011), 1662– 1714. [8] Scott Fujimoto, David Guo, and David Meger. 2024. TD7: Transformer-based Representation for Continuous Control. arXiv preprint arXiv:2406.08672 (2024). [9] Scott Fujimoto, Herke Hoof, and David Meger. 2018. Addressing function ap-proximation error in actor-critic methods. In International conference on machine learning . PMLR, 1587–1596. [10] Danijar Hafner, Jurgis Pasukonis, Jimmy Ba, and Timothy Lillicrap. 2023. Mas-tering Diverse Domains through World Models. arXiv preprint arXiv:2301.04104 
+
+(2023). [11] Nicklas Hansen, Hao Su, and Xiaolong Wang. 2024. TD-MPC2: Scalable, Robust World Models for Continuous Control. arXiv preprint arXiv:2405.17577 (2024). [12] Matteo Hessel, Joseph Modayil, Hado Van Hasselt, Tom Schaul, Georg Ostro-vski, Will Dabney, Dan Horgan, Bilal Piot, Mohammad Azar, and David Silver. 2018. Rainbow: Combining improvements in deep reinforcement learning. In 
+
+Proceedings of the AAAI conference on artificial intelligence , Vol. 32. [13] Chi Jin, Zhuoran Yang, Zhaoran Wang, and Michael I Jordan. 2023. Provably efficient reinforcement learning with linear function approximation. Mathematics of Operations Research 48, 3 (2023), 1496–1521. [14] Nir Levine, Tom Zahavy, Daniel J Mankowitz, Aviv Tamar, and Shie Mannor. 2017. Shallow updates for deep reinforcement learning. In Advances in Neural Information Processing Systems (NeurIPS) , Vol. 30. [15] Marlos C Machado, Marc G Bellemare, Erik Talvitie, Joel Veness, Matthew Hausknecht, and Michael Bowling. 2018. Revisiting the Arcade Learning Envi-ronment: Evaluation protocols and open problems for general agents. JAIR 61 (2018). [16] Volodymyr Mnih, Koray Kavukcuoglu, David Silver, Andrei A Rusu, Joel Veness, Marc G Bellemare, Alex Graves, Martin Riedmiller, Andreas K Fidjeland, Georg Ostrovski, et al . 2015. Human-level control through deep reinforcement learning. 
+
+Nature 518, 7540 (2015). [17] Ronald Parr, Lihong Li, Gavin Taylor, Christopher Painter-Wakefield, and Michael L. Littman. 2008. An analysis of linear models, linear value-function approximation, and feature selection for reinforcement learning. In Proceedings of the 25th International Conference on Machine Learning (Helsinki, Finland) 
+
+(ICML ’08) . Association for Computing Machinery, New York, NY, USA, 752–759. https://doi.org/10.1145/1390156.1390251 [18] Balaraman Ravindran. 2004. An algebraic approach to abstraction in reinforcement learning . PhD thesis. University of Massachusetts Amherst. [19] Tongzheng Ren, Tianjun Zhang, Csaba Szepesvári, and Bo Dai. 2022. A free lunch from the noise: Provable and practical exploration for representation learning. In 
+
+Uncertainty in Artificial Intelligence . PMLR, 1686–1696. [20] Sahand Rezaei-Shoshtari, Rosie Zhao, Prakash Panangaden, David Meger, and Doina Precup. 2022. Continuous MDP homomorphisms and homomorphic policy gradient. In Advances in Neural Information Processing Systems (NeurIPS) .[21] John Schulman, Filip Wolski, Prafulla Dhariwal, Alec Radford, and Oleg Klimov. 2017. Proximal policy optimization algorithms. In Proceedings of the 34th ICML .[22] Yuval Tassa, Yotam Doron, Alistair Muldal, Tom Erez, Yazhe Li, Diego de Las Casas, David Budden, Abbas Abdolmaleki, Josh Merel, Andy Lefrancq, et al . 2018. DeepMind Control Suite. arXiv preprint arXiv:1801.00690 (2018). [23] Emanuel Todorov, Tom Erez, and Yuval Tassa. 2012. MuJoCo: A physics engine for model-based control. In 2012 IEEE/RSJ International Conference on Intelligent Robots and Systems . 5026–5033. https://doi.org/10.1109/IROS.2012.6386109 [24] Emanuel Todorov, Tom Erez, and Yuval Tassa. 2012. MuJoCo: A physics engine for model-based control. In 2012 IEEE/RSJ IROS .[25] Mark Towers, Jordan K Terry, Ariel Kwiatkowski, John Balis, Gianluca de Cola, Tristan Deleu, Manuel Goulão, Andreas Kallinteris, Arjun KG, Markus Krimmel, et al. 2024. Gymnasium. arXiv preprint arXiv:2401.12961 (2024). [26] Elise van der Pol, Thomas Kipf, Frans A Oliehoek, and Max Welling. 2020. Plannable approximations to MDP homomorphisms: Equivariance under ac-tions. In Proceedings of the 19th International Conference on Autonomous Agents and MultiAgent Systems (AAMAS) . 1431–1439. [27] Elise van der Pol, Daniel Worrall, Herke van Hoof, Frans Oliehoek, and Max Welling. 2020. MDP homomorphic networks: Group symmetries in reinforcement learning. In Advances in Neural Information Processing Systems (NeurIPS) , Vol. 33. 4199–4210. [28] Denis Yarats, Rob Fergus, Alessandro Lazaric, and Lerrel Pinto. 2022. DrQ-v2: Improved Data-Augmented Deep Reinforcement Learning. arXiv preprint arXiv:2205.12730 (2022). SUPPLEMENTARY MATERIAL A PROOFS 
+
+Theorem A.1 (Solution Eqivalence). The fixed point of the model-free approach (Equation 2) and the solution of the model-based approach (Equation 3) are identical. 
+
+Proof. Let Z ∈ R| S× A | × 𝑑 be the matrix of state-action embed-dings z𝑠𝑎 for all state-action pairs (𝑠, 𝑎 ) ∈ S × A . Let Z′ be the corresponding matrix of next state-action embeddings z𝑠 ′𝑎 ′ , and r
+
+the reward vector with components 𝑟 (𝑠, 𝑎 ).The semi-gradient TD update is: 
+
+w𝑡 +1 := w𝑡 − 𝛼 Z⊤ (Zw 𝑡 − ( r + 𝛾 Z′w𝑡 )) (23) 
+
+= w𝑡 − 𝛼 Z⊤Zw 𝑡 + 𝛼 Z⊤r + 𝛼𝛾 Z⊤Z′w𝑡 (24) 
+
+=  I − 𝛼 (Z⊤Z − 𝛾 Z⊤Z′) w𝑡 + 𝛼 Z⊤r (25) 
+
+= (I − 𝛼 A)w𝑡 + 𝛼 B (26) where A := Z⊤Z − 𝛾 Z⊤Z′ and B := Z⊤r.The fixed point satisfies: 
+
+wmf = (I − 𝛼 A)wmf + 𝛼 B (27) 
+
+𝛼 Aw mf = 𝛼 B (28) 
+
+wmf = A−1B (29) The model-based solution is obtained via: 
+
+W𝑝 := (Z⊤Z)−1Z⊤Z′ (30) 
+
+w𝑟 := (Z⊤Z)−1Z⊤r (31) with the value function: 
+
+Q := Zw mb = Z
+
+> ∞
+
+∑︁ 
+
+> 𝑡 =0
+
+𝛾 𝑡 W𝑡 𝑝 w𝑟 (32) Simplifying wmb :
+
+wmb :=
+
+> ∞
+
+∑︁ 
+
+> 𝑡 =0
+
+𝛾 𝑡 W𝑡 𝑝 w𝑟 (33) 
+
+= (I − 𝛾 W𝑝 )−1w𝑟 (34) 
+
+=  I − 𝛾 (Z⊤Z)−1Z⊤Z′  −1 (Z⊤Z)−1Z⊤r (35) Multiplying both sides by Z⊤Z:
+
+Z⊤Z  I − 𝛾 (Z⊤Z)−1Z⊤Z′  wmb = Z⊤r (36) 
+
+(Z⊤Z − 𝛾 Z⊤Z′)wmb = Z⊤r (37) 
+
+Aw mb = B (38) 
+
+wmb = A−1B (39) Thus wmf = wmb = A−1B. □
+
+Theorem A.2 (Error Bound). The value error for the solution in Theorem 4.1 is bounded by: 
+
+| VE (𝑠, 𝑎 )| ≤ 11 − 𝛾 max  
+
+> (𝑠,𝑎 ) ∈ S× A
+
+z⊤ 
+
+> 𝑠𝑎
+
+w𝑟 − E[𝑟 |𝑠, 𝑎 ]
+
++ max  
+
+> 𝑖
+
+|𝑤 𝑖 |
+
+> 𝑑
+
+∑︁ 
+
+> 𝑙 =1
+
+z⊤ 
+
+> 𝑠𝑎
+
+W(𝑙 ) 
+
+> 𝑝
+
+− E𝑠 ′,𝑎 ′ |𝑠,𝑎 [z(𝑙 ) 
+
+> 𝑠 ′𝑎 ′
+
+]
+
+! (40) 
+
+where W(𝑙 ) 
+
+> 𝑝
+
+and z(𝑙 ) 
+
+> 𝑠 ′𝑎 ′
+
+denote the 𝑙 -th column and component respec-tively. 
+
+Proof. Let w be the solution from Theorem 4.1, and 𝑑 𝜋 (𝑠, 𝑎 )
+
+the discounted state-action visitation distribution under policy 𝜋 
+
+starting from (𝑠, 𝑎 ). Also, 𝑄 𝜋 (𝑠, 𝑎 ) := E𝜋 [Í∞ 
+
+> 𝑡 =0
+
+𝛾 𝑡 𝑟 𝑡 |𝑠 0 = 𝑠, 𝑎 0 = 𝑎 ].From Theorem 4.1, we have: 
+
+w = (I − 𝛾 W𝑝 )−1w𝑟 (41) 
+
+(I − 𝛾 W𝑝 )w = w𝑟 (42) 
+
+w − 𝛾 W𝑝 w = w𝑟 (43) The value error is defined as: 
+
+VE (𝑠, 𝑎 ) := 𝑄 (𝑠, 𝑎 ) − 𝑄 𝜋 (𝑠, 𝑎 ) (44) 
+
+= z⊤ 
+
+> 𝑠𝑎
+
+w − E𝑟,𝑠 ′,𝑎 ′ [𝑟 + 𝛾𝑄 𝜋 (𝑠 ′, 𝑎 ′)] (45) 
+
+= z⊤ 
+
+> 𝑠𝑎
+
+w − E𝑟,𝑠 ′,𝑎 ′ [𝑟 + 𝛾 (𝑄 (𝑠 ′, 𝑎 ′) − VE (𝑠 ′, 𝑎 ′))] (46) 
+
+= z⊤ 
+
+> 𝑠𝑎
+
+w − E𝑟,𝑠 ′,𝑎 ′ [𝑟 + 𝛾𝑄 (𝑠 ′, 𝑎 ′)] + 𝛾 E𝑠 ′,𝑎 ′ [VE (𝑠 ′, 𝑎 ′)] 
+
+(47) Substituting the model approximations: 
+
+VE (𝑠, 𝑎 ) = z⊤ 
+
+> 𝑠𝑎
+
+w − E𝑟,𝑠 ′,𝑎 ′
+
+𝑟 − z⊤ 
+
+> 𝑠𝑎
+
+w𝑟 + z⊤ 
+
+> 𝑠𝑎
+
+w𝑟 (48) 
+
++ 𝛾  z⊤ 
+
+> 𝑠 ′𝑎 ′
+
+w − z⊤ 
+
+> 𝑠𝑎
+
+W𝑝 w + z⊤ 
+
+> 𝑠𝑎
+
+W𝑝 w (49) 
+
++ 𝛾 E𝑠 ′,𝑎 ′ [VE (𝑠 ′, 𝑎 ′)] (50) Using the model error definitions and following the arguments of Parr et al. [17]: 
+
+VE (𝑠, 𝑎 ) = −E𝑟 
+
+𝑟 − z⊤ 
+
+> 𝑠𝑎
+
+w𝑟 
+
+ − 𝛾 E𝑠 ′,𝑎 ′
+
+z⊤ 
+
+> 𝑠 ′𝑎 ′
+
+w − z⊤ 
+
+> 𝑠𝑎
+
+W𝑝 w (51) 
+
++ 𝛾 E𝑠 ′,𝑎 ′ [VE (𝑠 ′, 𝑎 ′)] (52) 
+
+=  z⊤ 
+
+> 𝑠𝑎
+
+w𝑟 − E[𝑟 |𝑠, 𝑎 ] + 𝛾  z⊤ 
+
+> 𝑠𝑎
+
+W𝑝 − E𝑠 ′,𝑎 ′ |𝑠,𝑎 [z𝑠 ′𝑎 ′ ] w
+
+(53) 
+
++ 𝛾 E𝑠 ′,𝑎 ′ |𝑠,𝑎 [VE (𝑠 ′, 𝑎 ′)] (54) Unrolling recursively over the state-action visitation distribution 
+
+𝑑 𝜋 :
+
+VE (𝑠, 𝑎 ) = E(𝑠 𝑡 ,𝑎 𝑡 )∼ 𝑑 𝜋 (𝑠,𝑎 )
+
+" ∞∑︁  
+
+> 𝑡 =0
+
+𝛾 𝑡  z⊤  
+
+> 𝑠 𝑡 𝑎 𝑡
+
+w𝑟 − E[𝑟 𝑡 |𝑠 𝑡 , 𝑎 𝑡 ] (55) 
+
++ 𝛾 𝑡  z⊤  
+
+> 𝑠 𝑡 𝑎 𝑡
+
+W𝑝 − E𝑠 𝑡 +1,𝑎 𝑡 +1 |𝑠 𝑡 ,𝑎 𝑡 [z𝑠 𝑡 +1𝑎 𝑡 +1 ] w (56) Taking absolute values and bounding: 
+
+| VE (𝑠, 𝑎 )| ≤ 11 − 𝛾 max  
+
+> (𝑠,𝑎 )
+
+z⊤ 
+
+> 𝑠𝑎
+
+w𝑟 − E[𝑟 |𝑠, 𝑎 ] (57) 
+
++ 11 − 𝛾 max 
+
+> (𝑠,𝑎 )
+
+ z⊤ 
+
+> 𝑠𝑎
+
+W𝑝 − E𝑠 ′,𝑎 ′ |𝑠,𝑎 [z𝑠 ′𝑎 ′ ] w (58) 
+
+≤ 11 − 𝛾 
+
+
+
+max  
+
+> (𝑠,𝑎 )
+
+z⊤ 
+
+> 𝑠𝑎
+
+w𝑟 − E[𝑟 |𝑠, 𝑎 ] (59) 
+
++ max  
+
+> 𝑖
+
+|𝑤 𝑖 |
+
+> 𝑑
+
+∑︁ 
+
+> 𝑙 =1
+
+z⊤ 
+
+> 𝑠𝑎
+
+W(𝑙 ) 
+
+> 𝑝
+
+− E𝑠 ′,𝑎 ′ |𝑠,𝑎 [z(𝑙 ) 
+
+> 𝑠 ′𝑎 ′
+
+]
+
+!
+
+(60) 
+
+□Theorem A.3 (Non-Linear Representation). Given state en-coder 𝜙 𝑠 (𝑠 ) = z𝑠 and action embedding function 𝜙 𝑠𝑎 (z𝑠 , 𝑎 ) = z𝑠𝑎 , if there exist functions ˆ𝑝 and ˆ𝑅 satisfying: 
+
+E ˆ𝑅 [ ˆ𝑅 (z𝑠𝑎 )] = E𝑅 [𝑅 (𝑠, 𝑎 )] (61) 
+
+ˆ𝑝 (z𝑠 ′ |z𝑠𝑎 ) =∑︁    
+
+> ˜𝑠 :𝜙 𝑠 (˜𝑠 )=z𝑠 ′
+
+𝑝 ( ˜𝑠 |𝑠, 𝑎 ) (62) 
+
+then for any policy 𝜋 with corresponding ˆ𝜋 (𝑎 |z𝑠 ) = 𝜋 (𝑎 |𝑠 ), there exists ˆ𝑄 such that: 
+
+ˆ𝑄 (z𝑠𝑎 ) = 𝑄 𝜋 (𝑠, 𝑎 ) ∀( 𝑠, 𝑎 ) ∈ S × A (63) 
+
+Moreover, there exists an optimal policy ˆ𝜋 ∗ (𝑎 |z𝑠 ) = 𝜋 ∗ (𝑎 |𝑠 ).
+
+Proof. Define the ℎ-step value functions: 
+
+𝑄 𝜋 ℎ (𝑠, 𝑎 ) :=
+
+> ℎ
+
+∑︁ 
+
+> 𝑡 =0
+
+𝛾 𝑡 E𝜋 [𝑅 (𝑠 𝑡 , 𝑎 𝑡 )| 𝑠 0 = 𝑠, 𝑎 0 = 𝑎 ] (64) 
+
+ˆ𝑄 ℎ (z𝑠𝑎 ) :=
+
+> ℎ
+
+∑︁ 
+
+> 𝑡 =0
+
+𝛾 𝑡 E𝜋 [ ˆ𝑅 (z𝑠 𝑡 𝑎 𝑡 )| 𝑠 0 = 𝑠, 𝑎 0 = 𝑎 ] (65) For the base case ( ℎ = 0): 
+
+𝑄 𝜋  
+
+> 0
+
+(𝑠, 𝑎 ) = E𝑅 [𝑅 (𝑠, 𝑎 )] = E ˆ𝑅 [ ˆ𝑅 (z𝑠𝑎 )] = ˆ𝑄 0 (z𝑠𝑎 ) (66) Assume 𝑄 𝜋 ℎ−1 (𝑠, 𝑎 ) = ˆ𝑄 ℎ−1 (z𝑠𝑎 ) for all (𝑠, 𝑎 ). Then: 
+
+𝑄 𝜋 ℎ (𝑠, 𝑎 ) = E𝑅 [𝑅 (𝑠, 𝑎 )] + 𝛾 E𝑠 ′,𝑎 ′ [𝑄 𝜋 ℎ−1 (𝑠 ′, 𝑎 ′)] (67) 
+
+= E ˆ𝑅 [ ˆ𝑅 (z𝑠𝑎 )] + 𝛾 E𝑠 ′,𝑎 ′ [ ˆ𝑄 ℎ−1 (z𝑠 ′𝑎 ′ )] (68) 
+
+= E ˆ𝑅 [ ˆ𝑅 (z𝑠𝑎 )] + 𝛾 ∑︁ 
+
+> 𝑠 ′
+
+𝑝 (𝑠 ′ |𝑠, 𝑎 )∑︁ 
+
+> 𝑎 ′
+
+𝜋 (𝑎 ′ |𝑠 ′) ˆ𝑄 ℎ−1 (z𝑠 ′𝑎 ′ )
+
+(69) 
+
+= E ˆ𝑅 [ ˆ𝑅 (z𝑠𝑎 )] + 𝛾 ∑︁ 
+
+> z𝑠 ′
+
+ˆ𝑝 (z𝑠 ′ |z𝑠𝑎 )∑︁ 
+
+> 𝑎 ′
+
+ˆ𝜋 (𝑎 ′ |z𝑠 ′ ) ˆ𝑄 ℎ−1 (z𝑠 ′𝑎 ′ )
+
+(70) 
+
+= ˆ𝑄 ℎ (z𝑠𝑎 ) (71) Thus 𝑄 𝜋 ℎ (𝑠, 𝑎 ) = ˆ𝑄 ℎ (z𝑠𝑎 ) for all ℎ, and in the limit ℎ → ∞ :
+
+ˆ𝑄 (z𝑠𝑎 ) = lim 
+
+> ℎ→∞
+
+ˆ𝑄 ℎ (z𝑠𝑎 ) = 𝑄 𝜋 (𝑠, 𝑎 ) (72) For the optimal policy: 
+
+𝑄 ∗ 
+
+> ℎ
+
+(𝑠, 𝑎 ) = E𝑅 [𝑅 (𝑠, 𝑎 )] + 𝛾 E𝑠 ′
+
+
+
+max  
+
+> 𝑎 ′
+
+𝑄 ∗ 
+
+> ℎ−1
+
+(𝑠 ′, 𝑎 ′)
+
+
+
+(73) 
+
+= E ˆ𝑅 [ ˆ𝑅 (z𝑠𝑎 )] + 𝛾 ∑︁ 
+
+> 𝑠 ′
+
+𝑝 (𝑠 ′ |𝑠, 𝑎 ) max  
+
+> 𝑎 ′
+
+𝑄 ∗ 
+
+> ℎ−1
+
+(𝑠 ′, 𝑎 ′) (74) 
+
+= E ˆ𝑅 [ ˆ𝑅 (z𝑠𝑎 )] + 𝛾 ∑︁ 
+
+> z𝑠 ′
+
+ˆ𝑝 (z𝑠 ′ |z𝑠𝑎 ) max 
+
+> 𝑎 ′
+
+ˆ𝑄 ∗ 
+
+> ℎ−1
+
+(z𝑠 ′𝑎 ′ ) (75) 
+
+= ˆ𝑄 ∗ 
+
+> ℎ
+
+(z𝑠𝑎 ) (76) Thus ˆ𝑄 ∗ (z𝑠𝑎 ) = 𝑄 ∗ (𝑠, 𝑎 ), and the optimal policy satisfies: 
+
+ˆ𝜋 ∗ (𝑎 |z𝑠 ) = arg max 
+
+> 𝑎
+
+ˆ𝑄 ∗ (z𝑠𝑎 ) = 𝜋 ∗ (𝑎 |𝑠 ) (77) 
+
+□
+
+## B COMPLETE RESULTS B.1 BASELINES 
+
+The baselines have been formulated from: 
+
+• DreamerV3. [10 ]. Results for Gym and DMC were obtained by re-running the authors’ code (https://github.com/danijar/ dreamerv3) over 10 seeds, using the author-suggested hyper-parameters from the DMC benchmark. Code was modified slightly to match our evaluation protocol. Atari results are based on the authors’ reported results. 
+
+• DrQ-v2 . [ 28 ]. We use the authors’ reported results whenever possible. 
+
+• DQN . [ 16 ]. Results were obtained from the Dopamine frame-work (Castro et al.,2018). 
+
+• PPO . [ 21 ]. Results were gathered using Stable Baselines 3 (Raffin et al., 2021) and default hyperparameters. 
+
+• Rainbow . [ 12 ]. Results were obtained from the Dopamine framework (Castro et al.,2018). 
+
+• TD-MPC2 . [ 11 ]. Results for DMC were obtained by re-running the authors’ code on their main branch (https://github.com/ nicklashansen/tdmpc2). 
+
+• TD7 . [ 8 ] Results for Gym were obtained from the authors. Results for DMC were obtained by re-running the authors’ code (https://github.com/sfujim/TD7) using our setup for DMC. All experiments were run for 10 seeds and use the default hyper-parameters for all tasks. B.2 GYM-Locomotion 
+
+Ant HalfCheetah Hopper Humanoid Walker2d 
+
+0
+
+0.5
+
+1
+
+1.5
+
+·10 4
+
+> Return
+
+TD7 PPO TD-MPC2 DreamerV3 ULD 
+
+Figure 3: Performance comparison across Gym-Locomotion tasks. Bars show final average return at 1M time steps over 10 seeds. Error bars represent 95% bootstrap confidence intervals. Table 2: Gym - Locomotion final results. Final average performance at 1M time steps over 10 seeds. The [bracketed values] represent a 95% bootstrap confidence interval. The aggregate mean, median and interquartile mean (IQM) are computed over the TD3-normalized score. Task TD7 PPO TD-MPC2 DreamerV3 ULD 
+
+Ant 8509 [8164, 8852] 1584 [1355, 1802] 4751 [3012, 6261] 1947 [1121, 2751] 6901 [6261, 7482] HalfCheetah 17433 [17284, 17550] 1744 [1525, 2120] 15078 [14050, 16012] 5502 [3887, 7117] 12939 [11663, 13762] Hopper 3511 [3245, 3746] 3022 [2587, 3356] 2081 [1233, 2916] 2666 [2071, 3201] 2692 [2131, 3309] Humanoid 7428 [7300, 7555] 477 [431, 522] 6071 [5767, 6327] 4217 [2791, 5481] 10223 [9929, 10498] Walker2d 6096 [5535, 6521] 2487 [1875, 3067] 3008 [1659, 4220] 4519 [3746, 5190] 6039 [5644, 6386] Mean 1.57 [1.54, 1.60] 0.45 [0.41, 0.48] 1.04 [0.90, 1.16] 0.76 [0.67, 0.85] 1.46 [1.41, 1.52] Median 1.55 [1.45, 1.63] 0.41 [0.36, 0.47] 1.18 [0.80, 1.23] 0.81 [0.56, 0.90] 1.53 [1.43, 1.61] IQM 1.54 [1.49, 1.58] 0.41 [0.35, 0.46] 1.05 [0.87, 1.19] 0.72 [0.62, 0.85] 1.50 [1.44, 1.55] B.3 DMC-Proprioceptive 
+
+> acrobot-swingup
+> ball_in_cup-catch
+> cartpole-balance
+> cartpole-balance_sparse
+> cartpole-swingup
+> cartpole-swingup_sparse
+> cheetah-run
+
+0
+
+500 
+
+1,000 
+
+> Return
+> dog-run
+> dog-stand
+> dog-trot
+> dog-walk
+> finger-spin
+> finger-turn_easy
+> finger-turn_hard
+
+0
+
+500 
+
+1,000 
+
+> Return
+> fish-swim
+> hopper-hop
+> hopper-stand
+> humanoid-run
+> humanoid-stand
+> humanoid-walk
+> pendulum-swingup
+
+0
+
+500 
+
+1,000 
+
+> Return
+> quadruped-run
+> quadruped-walk
+> reacher-easy
+> reacher-hard
+> walker-run
+> walker-stand
+> walker-walk
+
+0
+
+500 
+
+1,000 
+
+> Return
+
+TD7 PPO TD-MPC2 DreamerV3 ULD 
+
+Figure 4: Performance comparison across all 28 DMC-Proprioceptive tasks. Bars show final average return at 500k time steps over 10 seeds. Error bars represent 95% bootstrap confidence intervals. Table 3: DMC - Proprioceptive final results. Final average performance at 500k time steps (1M time steps in the original environment due to action repeat) over 10 seeds. The [bracketed values] represent a 95% bootstrap confidence interval. The aggregate mean, median and interquartile mean (IQM) are computed over the default reward. 
+
+Task TD7 PPO TD-MPC2 DreamerV3 ULD acrobot-swingup 58 [38, 75] 39 [33, 45] 584 [551, 615] 230 [193, 266] 567 [523, 616] ball_in_cup-catch 983 [981, 985] 769 [689, 841] 984 [982, 986] 968 [965, 973] 986 [937, 1035] cartpole-balance 999 [998, 1000] 999 [1000, 1000] 996 [995, 998] 998 [997, 1000] 999 [999, 1000] cartpole-balance_sparse 1000 [1000, 1000] 1000 [1000, 1000] 1000 [1000, 1000] 999 [1000, 1000] 1000 [950, 1050] cartpole-swingup 869 [866, 873] 776 [661, 853] 875 [870, 880] 736 [591, 838] 865 [822, 908] cartpole-swingup_sparse 573 [333, 806] 391 [159, 625] 845 [839, 849] 702 [560, 792] 798 [780, 818] cheetah-run 821 [642, 913] 269 [247, 295] 917 [915, 920] 699 [655, 744] 748 [711, 786] dog-run 69 [36, 101] 26 [26, 28] 265 [166, 342] 4 [4, 5] 569 [547, 595] dog-stand 582 [432, 741] 129 [122, 139] 506 [266, 715] 22 [20, 27] 992 [942, 1042] dog-trot 21 [13, 30] 31 [30, 34] 407 [265, 530] 10 [6, 17] 800 [760, 840] dog-walk 52 [19, 116] 40 [37, 43] 486 [240, 704] 17 [15, 21] 766 [728, 805] finger-spin 335 [99, 596] 459 [420, 497] 986 [986, 988] 666 [577, 763] 937 [917, 956] finger-turn_easy 912 [774, 983] 182 [153, 211] 979 [975, 983] 906 [883, 927] 953 [931, 974] finger-turn_hard 470 [199, 727] 58 [35, 79] 947 [916, 977] 864 [812, 900] 950 [910, 974] fish-swim 86 [64, 120] 103 [84, 128] 659 [615, 706] 813 [808, 819] 792 [773, 810] hopper-hop 87 [25, 160] 10 [0, 23] 425 [368, 500] 116 [66, 165] 298 [283, 312] hopper-stand 670 [466, 829] 128 [56, 216] 952 [944, 958] 747 [669, 806] 955 [907, 1003] humanoid-run 57 [23, 92] 0 [1, 1] 181 [121, 231] 0 [1, 1] 278 [264, 292] humanoid-stand 317 [117, 516] 5 [5, 6] 658 [506, 745] 5 [5, 6] 868 [822, 903] humanoid-walk 176 [42, 320] 1 [1, 2] 754 [725, 791] 1 [1, 2] 883 [839, 927] pendulum-swingup 500 [251, 743] 115 [70, 164] 846 [830, 862] 774 [740, 802] 927 [881, 973] quadruped-run 645 [567, 713] 144 [122, 170] 942 [938, 947] 130 [92, 169] 768 [730, 806] quadruped-walk 949 [939, 957] 122 [103, 142] 963 [959, 967] 193 [137, 243] 968 [920, 1017] reacher-easy 970 [951, 982] 367 [188, 558] 983 [980, 986] 966 [964, 970] 988 [939, 1038] reacher-hard 898 [861, 936] 125 [40, 234] 960 [936, 979] 919 [864, 955] 974 [925, 1022] walker-run 804 [783, 825] 97 [91, 104] 854 [851, 859] 510 [430, 588] 748 [711, 786] walker-stand 983 [974, 989] 431 [363, 495] 991 [990, 994] 941 [934, 948] 992 [943, 1042] walker-walk 977 [975, 980] 283 [253, 312] 981 [979, 984] 898 [875, 919] 985 [936, 1034] Mean 566 [544, 590] 254 [241, 267] 783 [769, 797] 530 [520, 539] 835 [829, 842] Median 613 [548, 718] 127 [112, 145] 896 [893, 899] 700 [644, 741] 927 [914, 934] IQM 612 [569, 657] 154 [135, 167] 868 [860, 880] 577 [557, 594] 907 [903, 914] B.4 Atari 
+
+Table 4: Atari final results. Final average performance at 2.5M time steps (10M time steps in the original environment due to action repeat) over 10 seeds. The [bracketed values] represent a 95% bootstrap confidence interval. The aggregate mean, median and interquartile mean (IQM) are computed over the human-normalized score. Task DQN Rainbow PPO DreamerV3 ULD 
+
+Alien 925 [879, 968] 1220 [1191, 1268] 320 [251, 383] 4838 [3863, 5813] 2834 [2241, 3388] Amidar 178 [169, 186] 301 [280, 330] 126 [90, 167] 470 [419, 524] 595 [525, 657] Assault 988 [957, 1011] 1430 [1392, 1475] 423 [271, 581] 3518 [2969, 4179] 1296 [1254, 1343] Asterix 2381 [2313, 2469] 2699 [2598, 2783] 296 [216, 403] 7319 [6251, 8354] 3358 [3004, 3797] Asteroids 423 [408, 436] 754 [711, 816] 206 [180, 232] 1359 [1243, 1482] 715 [638, 796] Atlantis 7365 [6893, 7742] 80837 [51139, 126780] 2000 [2000, 2000] 664529 [197588, 973362] 556845 [469425, 660043] BankHeist 474 [448, 493] 895 [889, 901] 187 [41, 421] 801 [691, 1002] 809 [639, 960] BattleZone 3598 [3235, 3878] 20209 [17157, 22375] 2200 [1460, 3100] 22599 [21055, 24669] 19880 [13450, 26060] BeamRider 869 [728, 1065] 5082 [5664, 6268] 479 [348, 581] 5635 [3161, 7962] 2299 [1921, 2813] Berzerk 488 [466, 508] 443 [413, 484] 384 [310, 469] 758 [681, 823] 523 [456, 588] Bowling 29 [27, 32] 44 [36, 52] 51 [38, 60] 101 [69, 138] 59 [45, 72] Boxing 37 [31, 44] 68 [66, 71] -3 [-6, 0] 97 [97, 99] 96 [95, 97] Breakout 21 [19, 25] 41 [40, 44] 9 [8, 11] 137 [110, 162] 34 [28, 42] Centipede 2832 [2418, 3215] 4992 [4784, 5138] 4239 [2222, 6622] 20067 [17410, 22758] 17835 [6161, 19817] ChopperCommand 997 [971, 1022] 2265 [2160, 2357] 688 [501, 878] 15172 [12940, 17219] 5748 [4822, 6651] CrazyClimber 64611 [46203, 78709] 103539 [99749, 106850] 896 [174, 1727] 132811 [128446, 135930] 116954 [111371, 122032] Defender 116954 [111371, 122032] 116954 [11371, 122032] 1333 [705, 2094] 34187 [29814, 39261] 40457 [36892, 43638] DemonAttack 1503 [1282, 1690] 2477 [2269, 2678] 139 [116, 165] 4836 [3443, 6231] 5924 [4491, 7289] DoubleDunk -18 [-20, -18] -18 [-19, -19] -1 [-3, 0] 21 [20, 22] -10 [-15, -9] Enduro 589 [567, 617] 1601 [1555, 1635] 13 [9, 17] 476 [175, 782] 1845 [1758, 1938] FishingDerby -42 [-62, -17] 10 [5, 15] -89 [-91, -87] 40 [32, 47] 10 [2, 18] Freeway 8 [0, 19] 32 [32, 32] 15 [11, 18] 19 [6, 32] 32 [32, 32] Frostbite 269 [238, 294] 2510 [2040, 2823] 245 [231, 259] 5183 [2151, 8291] 4561 [3299, 5740] Gopher 1470 [1316, 1590] 4279 [4139, 4425] 126 [80, 174] 38711 [26066, 48187] 19174 [14932, 23587] Gravitar 167 [153, 183] 202 [184, 218] 63 [31, 98] 831 [768, 900] 397 [320, 490] Hero 2679 [2404, 2945] 9323 [7914, 10863] 1741 [1062, 2302] 20582 [19845, 21583] 13450 [11915, 14781] IceHockey -9 [-10, -9] -5 [-6, -5] -8 [-10, -8] 14 [13, 16] 0 [-1, 2] Jamesbond -47 [-42, -52] -514 [-509, -520] 85 [62, 106] 836 [568, 1119] 624 [588, 662] Kangaroo 539 [525, 553] 5501 [3853, 7151] 402 [280, 520] 8825 [5234, 12418] 9807 [7851, 11591] Krull 4229 [3942, 4490] 5972 [5903, 6047] 421 [136, 735] 322092 [14679, 28172] 9309 [8646, 9953] KungFuMaster 15997 [13182, 18813] 18074 [16041, 20864] 52 [18, 95] 707003 [501114, 945578] 293609 [269543, 315953] MontezumaRevenge 0 [0, 0] 0 [0, 0] 0 [0, 0] 1310 [598, 2180] 50 [0, 140] MsPacman 2187 [2121, 2247] 2347 [2292, 2403] 457 [352, 578] 4484 [3539, 5511] 4922 [4191, 5843] NameThisGame 4000 [3814, 4187] 8604 [8252, 8931] 1084 [663, 1501] 15742 [14542, 17103] 8693 [8071, 9199] Phoenix 4948 [4236, 5627] 4830 [4707, 4968] 101 [81, 120] 15827 [14903, 16429] 5173 [5025, 5322] Pitfall -60 [-89, -35] -14 [-29, -6] -16 [-38, -2] 0 [0, 0] -20 [-60, 0] Pong -4 [-14, -3] 15 [14, 16] -5 [-8, -3] 16 [16, 17] 17 [16, 19] PrivateEye 118 [78, 181] 111 [78, 166] -17 [-592, -762] 3046 [975, 5118] 100 [100, 100] Qbert 1658 [1246, 2139] 5353 [4363, 6783] 484 [393, 570] 16807 [16073, 17564] 3938 [3210, 4327] Riverraid 3198 [3167, 3222] 4272 [4060, 4440] 1045 [833, 1241] 9160 [8177, 10077] 10791 [9307, 12511] RoadRunner 27980 [27269, 28692] 33412 [32459, 34435] 723 [454, 940] 66453 [40696, 104163] 49579 [47425, 51426] Robotank 4 [4, 5] 19 [18, 20] 4 [2, 6] 51 [47, 55] 13 [12, 15] Seaquest 299 [277, 318] 1641 [1621, 1661] 250 [214, 282] 3416 [2665, 4426] 3522 [2401, 4850] Skiing -19568 [-19793, -19362] -24070 [-25305, -22667] -27901 [-30000, -23704] -30043 [-30394, -29764] -30000 [-30000, -30000] Solaris 1645 [1480, 1804] 1289 [1143, 1451] 0 [0, 2] 2340 [1882, 2799] 1103 [799, 1430] SpaceInvaders 665 [651, 675] 743 [721, 764] 294 [235, 354] 1433 [1039, 1943] 701 [626, 768] StarGunner 692 [662, 719] 1488 [1470, 1506] 415 [316, 499] 2090 [1678, 2649] 3488 [1032, 8241] Surround 3488 [1032, 8241] 3488 [1032, 8241] -9 [-10, -10] 5 [4, 7] -2 [-4, -2] Tennis -21 [-24, -19] -1 [-2, 0] -20 [-22, -19] -3 [-11, 0] 0 [0, 0] TimePilot 1539 [1479, 1613] 2703 [2627, 2787] 548 [450, 690] 7179 [3128, 13016] 4382 [4208, 4528] Tutankham 112 [97, 123] 179 [165, 191] 29 [17, 43] 253 [240, 269] 164 [145, 185] UpNDown 7669 [7116, 8147] 12397 [11489, 13312] 595 [428, 737] 284807 [17861, 391388] 73095 [40836, 108810] Venture 25 [6, 45] 19 [14, 25] 2 [0, 6] 0 [0, 0] 112 [0, 304] VideoPinball 5129 [4611, 5649] 26245 [23075, 29067] 1005 [0, 2485] 22345 [20669, 23955] 53826 [40600, 67972] WizardOfWor 481 [396, 542] 2213 [1827, 2617] 225 [185, 264] 7086 [6518, 7330] 2599 [2259, 2942] YarsRevenge 9426 [9177, 9656] 10708 [10405, 11071] 1891 [925, 2964] 62209 [57783, 67113] 34861 [29734, 40020] Zaxxon 112 [15, 230] 3661 [3131, 4192] 0 [0, 0] 17347 [15320, 19385] 8850 [8045, 9740] Mean 0.25 [0.24, 0.26] 1.08 [1.02, 1.14] -0.09 [-0.10, -0.07] 3.74 [3.29, 4.13] 2.54 [2.34, 2.75] Median 0.12 [0.10, 0.12] 0.40 [0.40, 0.47] 0.01 [0.00, 0.01] 1.25 [1.11, 1.47] 0.96 [0.78, 0.98] IQM 0.17 [0.16, 0.17] 0.61 [0.60, 0.62] 0.02 [0.01, 0.02] 1.46 [1.34, 1.51] 0.90 [0.88, 0.94]
