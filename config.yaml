@@ -25,3 +25,41 @@ subscriptions:
     stage: A
     diff_threshold_pct: 15
   keyword_recall_mode: or
+  intent_profiles:
+    - tag: DRL JSP
+      description: 深度强化学习解决作业车间调度问题 (JSP)
+      enabled: true
+      keywords:
+        - keyword: Deep Reinforcement Learning
+          keyword_cn: 深度强化学习
+          query: Deep Reinforcement Learning for scheduling
+        - keyword: job shop schedule problem
+          keyword_cn: 作业车间调度问题
+          query: s
+      intent_queries:
+        - query: Deep reinforcement learning approaches for job shop scheduling problems
+          query_cn: 深度强化学习解决作业车间调度问题的方法
+          enabled: true
+          source: manual
+          note: ''
+        - query: Solving flexible job shop scheduling using deep reinforcement learning
+          query_cn: 利用深度强化学习解决柔性作业车间调度
+          enabled: true
+          source: manual
+          note: ''
+        - query: End to end deep reinforcement learning for production scheduling
+          query_cn: 端到端深度强化学习在生产调度中的应用
+          enabled: true
+          source: manual
+          note: ''
+        - query: Comparison of DRL algorithms for manufacturing scheduling
+          query_cn: 制造调度中深度强化学习算法的比较
+          enabled: true
+          source: manual
+          note: ''
+        - query: Dynamic job shop scheduling via deep reinforcement learning
+          query_cn: 基于深度强化学习的动态作业车间调度
+          enabled: true
+          source: manual
+          note: ''
+      updated_at: '2026-03-10T15:49:00.856Z'
