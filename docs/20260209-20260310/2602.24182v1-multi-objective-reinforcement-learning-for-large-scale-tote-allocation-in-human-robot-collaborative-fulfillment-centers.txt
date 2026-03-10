@@ -1,0 +1,1226 @@
+Title: Multi-Objective Reinforcement Learning for Large-Scale Tote Allocation in Human-Robot Collaborative Fulfillment Centers
+
+URL Source: https://arxiv.org/pdf/2602.24182v1
+
+Published Time: Mon, 02 Mar 2026 02:19:39 GMT
+
+Number of Pages: 15
+
+Markdown Content:
+# Multi-Objective Reinforcement Learning for Large-Scale Tote Allocation in Human-Robot Collaborative Fulfillment Centers 
+
+Sikata Sengupta 1 * Guangyi Liu 2 * Omer Gottesman 2
+
+Joseph W Durham 2 Michael Kearns 1 2 Aaron Roth 1 2 Michael Caldara 2
+
+# Abstract 
+
+Optimizing the consolidation process in container-based fulfillment centers requires trading off com-peting objectives such as processing speed, re-source usage, and space utilization while adhering to a range of real-world operational constraints. This process involves moving items between con-tainers via a combination of human and robotic workstations to free up space for inbound inven-tory and increase container utilization. We formu-late this problem as a large-scale Multi-Objective Reinforcement Learning (MORL) task with high-dimensional state spaces and dynamic system behavior. Our method builds on recent theoreti-cal advances in solving constrained RL problems via best-response and no-regret dynamics in zero-sum games, enabling principled minimax policy learning. Policy evaluation on realistic warehouse simulations shows that our approach effectively trades off objectives, and we empirically observe that it learns a single policy that simultaneously satisfies all constraints, even if this is not theoret-ically guaranteed. We further introduce a theo-retical framework to handle the problem of error cancellation, where time-averaged solutions dis-play oscillatory behavior. This method returns a single iterate whose Lagrangian value is close to the minimax value of the game. These results demonstrate the promise of MORL in solving complex, high-impact decision-making problems in large-scale industrial systems. 
+
+# 1. Introduction and Background 
+
+Modern warehouses (Figure 1, left) increasingly rely on human-robot collaboration to manage large-scale inventory 
+
+> *
+
+Equal contribution 1Department of Computer and In-formation Science, University of Pennsylvania, Philadelphia, PA, USA 2Amazon. Correspondence to: Sikata Sengupta 
+
+<sikata@seas.upenn.edu >.
+
+Preprint. March 2, 2026. 
+
+operations. For example, Amazon’s robotic fulfillment sys-tem, “Sequoia,” leverages these collaborations to store in-ventory 75% faster and process customer orders 25% faster than its prior generation fulfillment system through the in-tegration of multiple robotic products used to containerize inventory and present it at an ergonomic height for pro-cessing at an employee workstation. Key to unlocking these speed-ups is efficient resource management within the storage system. In this work, we focus on a particular space management process called “consolidation,” wherein items are moved between containers to improve utilization (Figure 1, right) and free up space for new inbound items. Items are stored in containers, known as “totes”, which are cyclically inbounded into storage shelves, consolidated to reclaim space, and picked from to fulfill customer orders. Efficient tote selection for consolidation is thus central to optimizing both storage utilization and throughput in this environment, but requires careful management of multiple operational objectives. For illustration purposes, we assume the following stylized consolidation process: (1) totes can be processed by both humans and robots, each with different manipulation ca-pabilities. We assume that humans are capable of safely manipulating any item, whereas robots are only capable of safely manipulating some items. The task of both operators is to transfer items from a “source” tote to one or more “des-tination” totes. Source totes are ejected when emptied, and destination totes are ejected when full. A range of factors influence whether a tote is better suited for a human or robot to consolidate including the particular items in the source tote, the destination tote fullness, and the tote properties (e.g., we assume two types of totes “smaller” and “larger” of differing dimensions). Employee workstations typically handle a broader range of item types, but use up processing capacity from other workflow, whereas robotic stations ex-cel at consistency but may be restricted by item properties. As such, consolidation decisions must not only maximize throughput and space utilization, but also intelligently allo-cate workloads between humans and robots to leverage their respective strengths. Operational goals for consolidation are similarly multi-faceted and often conflicting. Key perfor-mance indicators (KPIs) include throughput efficiency, in-1
+
+> arXiv:2602.24182v1 [cs.LG] 27 Feb 2026 Multi-Objective Reinforcement Learning for Large-Scale Tote Allocation in Human-Robot Collaborative Fulfillment Centers
+
+ventory tote type balance, and space utilization. Optimizing across these dimensions requires managing complex trade offs under dynamic conditions and real-world constraints. Due to the complexity of this decision, we expect that heuris-tics and single-objective optimization strategies will fail to generalize or scale beyond some small number of trade offs. A common approach to handle such scenarios is scalariza-tion , where the different objectives are combined into a sin-gle objective function using predefined weights. However, in one-shot settings, these weights must be fixed in advance, making the approach sensitive to weight selection and ill-suited for environments with shifting priorities. Moreover, they typically optimize for one KPI at the expense of oth-ers, resulting in suboptimal system-wide performance. In contrast, our work avoids the need for manual weight speci-fication by employing an adaptive procedure that iteratively adjusts the objective weights during training. This enables the learning process to naturally converge toward a mini-max solution that balances objectives under dynamic and uncertain conditions, as we elaborate later in the paper. In this work, we address this problem by framing the tote consolidation and allocation problem as a large-scale Multi-Objective Reinforcement Learning (MORL) task. Our for-mulation captures the dynamic and stochastic nature of ware-house operations while explicitly modeling the trade offs between conflicting KPIs and the heterogeneous capabilities of human and robotic stations. Building on recent theoreti-cal advances in constrained RL, particularly best-response and no-regret learning in zero-sum games, we develop a principled and scalable approach for minimax policy learn-ing in complex multi-objective settings. Our contributions are threefold: (i) we propose a novel MORL formulation for real -world consolidation problems in human–robot collaborative fulfillment centers, explic-itly modeling heterogeneous station capabilities; (ii) we develop a theoretical framework that reformulates the multi -objective problem as a zero - sum Lagrangian game and prove that we can select a single iterate from the time -averaged approximate minimax mixture whose La-grangian value is close to the minimax value of the game; and (iii) we demonstrate strong empirical performance on realistic warehouse simulations, where our approach out-performs baselines across KPIs. These results provide com-pelling evidence that MORL is a viable and impactful ap-proach to optimizing high - dimensional, high - stakes indus-trial decision making systems. 
+
+# 2. Related Work 
+
+We organize our related work mainly into two categories– theoretical works related to multi-objective or constrained RL, and empirical works related to this domain of large- 
+
+> Figure 1. Left: High-throughput container-based fulfillment center with dense human-robot collaboration. Right: Robotic consolida-tion station autonomously transferring items between totes.
+
+scale industrial applications like inventory management. Hayes et al. (2022) provides a comprehensive overview of general multi-objective RL approaches that have been ex-plored. As noted in (Yang et al., 2019), MORL methods can often be divided into two main categories: single-policy and multiple-policy methods. Single policy methods often require knowledge of preferences in advance, so in this pa-per we take a multiple policy approach. Constrained RL problems can be modeled as a multi-objective problem with constraint violation terms written as additional objectives. Constrained RL is of interest in many domains ranging from safety to fairness, where one wants to learn a policy that opti-mizes some global reward subject to various trustworthiness constraints. (Calvo-Fullana et al., 2024) utilize primal-dual methods (via optimizing single objective RL for the learner) and utilizing dual descent for the regulator. Especially for zero-sum games, one can relate game-theoretic notions of best-response and no-regret to primal-dual style algorithms. (Miryoosefi et al., 2019) use best-response vs. no-regret dynamics with convex constraints and provide safety guar-antees on the time-averaged strategies of each player. (Eaton et al., 2025) provide oracle-efficient algorithms similarly utilizing best-response vs. no-regret dynamics to solve for a minimax solution of the Lagrangian of this problem even when the number of objectives (groups in the context of fair-ness) is exponentially large for both tabular and large state space MDPs. We choose to utilize this repeated game frame-work because it does not require us to know preferences over objectives in advance and because it does not make strong assumptions on the structure/geometry of multi-objective problem. On the application side, (El Shar et al., 2023) consider a Multi-Objective RL approach to sustainable supply-chain optimization. They learn policies to try to approximate the Pareto Frontier. They make use of an outer-inner loop procedure where the outer loop makes use of evolutionary strategy updates and the inner loop uses Envelope Multi-Objective Q-Learning (Yang et al., 2019). 2Multi-Objective Reinforcement Learning for Large-Scale Tote Allocation in Human-Robot Collaborative Fulfillment Centers  
+
+> Figure 2. Human-robot collaborative fulfillment center workflow.
+
+# 3. Problem Setting and Model 
+
+We study the decision-making problem underlying tote con-solidation in human-robot collaborative fulfillment centers, illustrated in Figure 2. Consolidation operates alongside inbound and pick processes and involves transferring items from partially filled source totes into destination totes to reclaim storage capacity. Employee and robot stations dif-fer in their manipulation capabilities: employee stations can handle complex or irregular items, while robot stations are limited in their reach, perception, and handling of de-formable and reflective products. Effective consolidation therefore requires allocating work across heterogeneous sta-tions while respecting operational constraints. At each decision point, the system selects a source tote and a compatible destination tote based on tote-level attributes such as fill level and item complexity, as well as floor-level signals, such as the current distribution of tote types. The ob-jective is to balance multiple, often competing, KPIs, includ-ing maintaining high overall processing efficiency, making effective use of available empty capacity during consolida-tion, and preserving a healthy distribution of tote types due to the warehouse configuration. We model this as a multi-objective sequential decision-making problem and address it using constrained multi-objective reinforcement learn-ing (MORL), which enables the learning of station-aware tote prioritization policies that adapt to dynamic warehouse conditions. 
+
+3.1. Preliminaries 
+
+We consider an episodic RL setting modeled as a Markov Decision Process (MDP) M = X , A, {Ph}H−1 
+
+> h=0
+
+, {ri,h }m, H −1
+
+> i=0 , h =0
+
+, μ, H , where X is the state space, A is the action space, Ph : X × A → ∆( X )
+
+is the transition function at step h, ri,h : X × A → [0 , R ]
+
+is the reward function for objective i ∈ { 0, . . . , m } at step h, μ is the initial-state distribution, and H is the episode horizon. Here, ∆( X ) denotes the probability simplex over X . A non-stationary policy is a sequence 
+
+π = {πh}H−1 
+
+> h=0
+
+, where each πh : X → ∆( A) maps states to distributions over actions. We use [H] := {0, . . . , H − 1}
+
+to denote the set of time indices. Given a policy π,the trajectory (x0, a0, . . . , xH−1, aH−1) is generated by 
+
+x0 ∼ μ, ah ∼ πh(xh), and xh+1 ∼ Ph(· | xh, ah) for all 
+
+h ∈ [H − 1] . For objective i, the value function under policy π is 
+
+V πi,h (x) = Eπ
+
+"H−1X
+
+> t=h
+
+ri,t (xt, π t(xt)) xh = x
+
+#
+
+.
+
+We cast our setting as a constrained RL problem (Paternain et al., 2019; Eaton et al., 2025) of the form 
+
+max  
+
+> D∈∆(Π)
+
+Eπ∼D
+
+Ex∼μ
+
+V π
+
+> 0,0
+
+(x) 
+
+s.t. Eπ∼D
+
+Ex∼μ
+
+V πi, 0(x) ≤ αi,
+
+(1) for all i ∈ { 1, . . . , m }, where Π is the policy class and D ∈
+
+∆(Π) denotes a distribution over policies. Here, V πi, 0(x)
+
+is the value function at the initial time step for objective 
+
+i, with i = 0 denoting the primary objective and i ≥ 1
+
+corresponding to constraint objectives. To solve the constrained optimization problem (1) , we intro-duce its Lagrangian: 
+
+L(D, λ ) = Eπ∼D
+
+Ex∼μ
+
+V π
+
+> 0,0
+
+(x) 
+
++
+
+> m
+
+X
+
+> i=1
+
+λi
+
+ αi − Eπ∼D
+
+Ex∼μ
+
+V πi, 0(x) , (2) where λ ∈ Rm 
+
+> ≥0
+
+are the Lagrange multipliers. This formu-lation can be interpreted as a zero-sum game between: (i) a Learner selecting a distribution over policies D ∈ ∆(Π) 
+
+to maximize L, and (ii) a Regulator selecting nonnegative multipliers to minimize L. The regulator’s strategy space is the compact set Λ = λ ∈ Rm 
+
+> ≥0
+
+: ∥λ∥1 ≤ C . Under these conditions, by (Sion, 1958)’s minimax theorem, 
+
+L∗ := min  
+
+> λ∈Λ
+
+max  
+
+> D∈∆(Π)
+
+L(D, λ ) = max  
+
+> D∈∆(Π)
+
+min  
+
+> λ∈Λ
+
+L(D, λ ).
+
+Note that because the learner’s objective is linear in D, a best-response to any fixed λt is attained at an extreme point of 
+
+∆(Π) , and thus each Dt corresponds to a single policy. We can define an approximate minimax equilibrium as follows. 
+
+Definition 1 (ν-approximate Minimax Equilibrium) . ( ˆD, ˆλ)
+
+is a ν-approximate minimax equilibrium if: 
+
+max  
+
+> D∈∆(Π)
+
+L(D, ˆλ) − ν ≤ L ( ˆD, ˆλ) ≤ min  
+
+> λ∈Λ
+
+L( ˆD, λ ) + ν. 
+
+To compute an approximate solution (as is shown in Definition 1) to the minimax problem 
+
+min λ∈Λ max D∈∆(Π) L(D, λ ) in practice, we adopt arepeated game perspective. In this view, the learner 3Multi-Objective Reinforcement Learning for Large-Scale Tote Allocation in Human-Robot Collaborative Fulfillment Centers 
+
+and the regulator iteratively update their strategies over 
+
+T rounds, and the average strategies converge to an approximate equilibrium. Our approach builds on the seminal best-response vs. no-regret result of (Freund & Schapire, 1996): 
+
+Theorem 3.1 ((Informal) Best-Response vs. No-Regret (Freund & Schapire, 1996)) . Let (D1, . . . , D T ) be the se-quence of best-response (distributions over) policies and let 
+
+(λ1, . . . , λ T ) be the corresponding sequence of Lagrangian weights maintained by the learner and regulator respec-tively. Then ( ¯D, ¯λ) form an approximate minimax equilib-rium of the game defined by L, where ¯D = 1
+
+> T
+
+PTt=1 Dt and 
+
+¯λ = 1
+
+> T
+
+PTt=1 λt.
+
+We next quantify the learner’s ability to produce an approxi-mate best-response policy, following (Eaton et al., 2025): 
+
+Definition 2 (ϵ-approximate best-response ) . A distribution over policies D∗ is an ϵ-best-response if for a given λ ∈ Λ,
+
+L(D∗, λ ) ≥ max  
+
+> D∈∆(Π)
+
+L(D, λ ) − ϵ. 
+
+Given a fixed λ ∈ Λ from the regulator, the learner’s best-response problem can be expressed as optimizing a scalar-ized reward function (Eaton et al., 2025): 
+
+rλ(x, a ) = r0(x, a ) + 
+
+> m
+
+X
+
+> i=1
+
+λi
+
+ αi
+
+H − ri(x, a )
+
+
+
+.
+
+Thus, in practice, the best-response reduces to solving a single-objective RL problem parameterized by λ. In this pa-per, we implement this step using Deep Q-Learning (DQN) (Mnih et al., 2015), although many other deep RL algo-rithms (Mnih et al., 2013; Schulman et al., 2017; Haarnoja et al., 2018) could be used in its place. For the regulator, we define its regret with respect to Λ as follows: Reg (λ1: T ) = 
+
+> T
+
+X
+
+> t=1
+
+L(Dt, λ t) − min 
+
+> λ∈Λ
+> T
+
+X
+
+> t=1
+
+L(Dt, λ ). (3) If the regret of an algorithm is sublinear in T , equivalently, if the average regret tends to 0 as T → ∞ , we refer to it as a no-regret algorithm throughout this paper. One concrete example is Online Gradient Descent (OGD): 
+
+Theorem 3.2 (Online Gradient Descent No-Regret (Zinke-vich, 2003)) . For a sequence of differentiable functions 
+
+f 1, . . . , f T : S → R such that ∥∇ f t(x)∥ ≤ G for any 
+
+1 ≤ t ≤ T, x ∈ S, i.e., G is an upper bound on the gradient magnitudes. Then, for the following sequence x1, . . . , x T
+
+built according to 
+
+xt+1 = Π S (xt − η∇f t(xt)) ,
+
+where η = DG√T and D is an upper bound on the diameter of the closed convex set S, the regret is bounded as: 
+
+> T
+
+X
+
+> t=1
+
+f t(xt) ≤ min 
+
+> x∈S
+
+ TX
+
+> t=1
+
+f t(x)
+
+
+
++ DG √T . 
+
+Having introduced best-response and no-regret strategies in Definition 2 and (3) , it is important to note that the guar-antee in Theorem 3.1 applies to the performance of the time-averaged solution ¯D in expectation. As a result, indi-vidual policies drawn from the support of ¯D may violate constraints, as long as such violations are offset on average across the mixture. Consequently, closeness of the mixture to the minimax value does not imply that any single policy in its support satisfies all constraints. To illustrate this phenomenon, consider a simple MDP with state space X = Xsafe ∪ Xleft ∪ Xright , where deviations to either side correspond to entering a danger region. While an ideal policy would remain in the safe region at all times, a mixture policy could alternate between left and right, consis-tently violating constraints yet appearing feasible in expec-tation due to cancellation. In Appendix A, we build on the framework of Eaton et al. (2025) to reformulate the problem and show that, when the mixture is near-minimax, it is nev-ertheless possible to probabilistically extract a single iterate whose Lagrangian value is close to the minimax value. With this theoretical motivation in place, we now describe the MDP model used to capture the dynamics of the fulfillment center. 
+
+3.2. MDP Model of Warehouse Floor 
+
+We begin by defining the state space, followed by the action space, transition dynamics, and reward structure. The warehouse floor F has capacity for floor max totes, which we assume to be large. Each state x ∈ X corre-sponds to a specific tote slot, which may be occupied or empty, together with aggregate information describing the global state of the floor. We represent x as a feature vector comprising the following task relevant quantities: 
+
+xt =
+
+
+
+Nlarge , ETPH , L HS , L HD , L RS , L RD ,Ok, LTE , n item , n pick , GCU , t 
+
+ (4) We describe each component below: • Nlarge ∈ Z+: Total number of larger totes on the floor. • ETPH ∈ R+: Empty Totes Per Hour, which measures the number of source totes emptied via consolidation per hour. • LHS , L HD , L RS , L RD ∈ Z+: Queue lengths of source (S)
+
+and destination (D) totes at human (H) and robotic (R)
+
+stations. 4Multi-Objective Reinforcement Learning for Large-Scale Tote Allocation in Human-Robot Collaborative Fulfillment Centers 
+
+• Ok: Occupancy; 0 if empty, 1 if occupied by a larger tote, 
+
+2 if occupied by a smaller tote. • nitem ∈ Z+: Number of items in the tote. • LTE ∈ (0 , 1] : Likelihood to be successfully emptied by robot stations, approximated by 1/n item .• npick ∈ Z+: Number of items in the tote scheduled to be picked that day. • GCU ∈ R+: Gross Cubic Utilization, approximated as the estimated rectangular volume of all items in the tote. • t ∈ [0 , H ]: Current time step in the episode. The action space is given by     
+
+> A=
+> ignore not ignore
+> 
+> ×
+> source destination
+> 
+> ×
+> human robot
+> 
+> ,
+
+which encodes the decision for a given tote slot, to either skip it or assign the tote it contains to a human or robotic station, and to designate it as either a source or destination tote. State transitions are determined by the environment’s update rules for floor and station states. Specifically: (i) the number of larger totes decreases when one is sent as a source tote to a station and increases when new larger totes are stored on the floor; (ii) ETPH evolves according to the aggregate outcomes of consolidation operations across all stations, depending on the assigned station type, tote composition, and other operational factors; (iii) station queue lengths are updated based on the action’s station and role assignment. After each action, the next floor slot is selected via linear traversal of the remaining slots. At the end of each day, the stow and pick processes (by which new totes are added to the floor and items from totes are removed to fulfill order demands) are simulated and we shuffle the tote orderings. The reward functions {ri}mi=0 correspond to the key perfor-mance indicators (KPIs) of interest, such as ETPH , Nlarge ,Source to Destination tote ( S/D ) ratio, and consolidation station capacity compliance. Some rewards directly cap-ture operational constraints specified in our optimization problem. The primary objective reward is 
+
+r0(xt, a t, x t+1 ) = xt+1 [ETPH ], (5) which captures the throughput efficiency achieved by the current consolidation decision. Since in our setting, the state includes some floor-wide summary statistics , we use 
+
+ETPH as both part of the state space and the reward signal 
+
+r0 we are optimizing over. We use the shorthand xt[ETPH ]
+
+to corresponding to the value of that floor-wide statistic at time t in state xt. The first constraint-based reward is 
+
+r1(xt, a t, x t+1 ) = 1
+
+H
+
+
+
+α1 − xt+1 [Nlarge ]
+
+floor max 
+
+
+
+, (6) which penalizes deviations from a desired fraction of larger totes on the floor, reflecting structural constraints imposed by the fulfillment center layout. The second constraint-based reward is 
+
+r2(xt, a t, x t+1 ) = 1
+
+> H
+
+
+
+−α2 + xt+1 [LHS ]+ xt+1 [LRS ]1+ xt+1 [LHD ]+ xt+1 [LRD ]
+
+
+
+(7) which encourages a balanced S/D assignment across sta-tions. By limiting excessive usage of destination totes, this constraint reduces downstream swapping and improves over-all consolidation efficiency. The third and fourth constraint-based rewards are: 
+
+r3(xt, a t, x t+1 ) = 1
+
+H
+
+ α3 −  xt+1 [LHS ] + xt+1 [LHD ] ,
+
+(8) 
+
+r4(xt, a t, x t+1 ) = 1
+
+H
+
+ α4 −  xt+1 [LRS ] + xt+1 [LRD ] ,
+
+(9) which enforce capacity constraints at human and robotic stations by penalizing excessive queue lengths, thereby pre-venting overload and ensuring stable operation. We aim to maintain the Markov property in our MDP for-mulation. However, in practice, certain modeling simplifi-cations, which introduced to reduce the dimensionality of the state and action spaces, may introduce mild deviations. We formulate the following constrained RL problem based upon the MDP and problem described above. 
+
+max  
+
+> D∼∆(Π)
+
+Eπ∼D
+
+h H−1X
+
+> t=0
+
+ETPH t(π)
+
+i
+
+s.t. Eπ∼D
+
+h H−1X
+
+> t=0
+
+Nlarge ,t (π)
+
+i
+
+≤ α1,
+
+Eπ∼D
+
+h
+
+−
+
+> H−1
+
+X
+
+> t=0
+
+(S/D )t(π)
+
+i
+
+≤ − α2,
+
+Eπ∼D
+
+h H−1X
+
+> t=0
+
+ LHS,t (π) + LHD,t (π)i
+
+≤ α3,
+
+Eπ∼D
+
+h H−1X
+
+> t=0
+
+ LRS,t (π) + LRD,t (π)i
+
+≤ α4.
+
+(10) We can label the bounds in (10) , for example, as α1 = L,
+
+α2 = SD , α3 = BH , and α4 = BR, where L stands for an upper bound on the number of large totes on the floor, SD stands for a lower bound on the source to destination ratio, and BH , B R stand for the human and robotic budget capacities. Let f (π) ∈ Rm denote the vector of constraint values corresponding to policy π, and let α ∈ Rm be the cor-responding bound vector, adjusted for the constraint signs. The Lagrangian can then be expressed as 
+
+L(D, λ ) = Eπ∼D
+
+ETPH (π) + 
+
+> m
+
+X
+
+> i=1
+
+λi
+
+ αi − fi(π) .
+
+5Multi-Objective Reinforcement Learning for Large-Scale Tote Allocation in Human-Robot Collaborative Fulfillment Centers 
+
+Algorithm 1 Repeated Game: Learner vs Regulator  
+
+> 1:
+
+Initialize: λ0 ∈ Λ, total rounds T , step size η 
+
+> 2:
+
+¯D ← 0, ¯λ ← 0 {Time averaged strategies } 
+
+> 3:
+
+for t = 1 to T do  
+
+> 4:
+
+Learner: Dt ← DQN Best Response (λt−1) 
+
+> 5:
+
+gt ← EvaluatePolicy( Dt) {Constraint slacks } 
+
+> 6:
+
+Regulator: λt ← Proj Λ(λt−1 − ηg t) {Online gra-dient descent } 
+
+> 7:
+
+¯D ← 1
+
+> t
+
+ (t − 1) ¯D + Dt
+
+ {Update time average } 
+
+> 8:
+
+¯λ ← 1
+
+> t
+
+ (t − 1) ¯λ + λt
+
+ 
+
+> 9:
+
+end for  
+
+> 10:
+
+Return: ( ¯D, ¯λ) {Time averaged strategies } 
+
+> Figure 3. Episodic returns for DQN in the single-objective ETPH setting, showing unnormalized performance of a best-response policy optimizing ETPH.
+
+# 4. MORL via Best-Response vs. No-Regret Dynamics 
+
+To solve the constrained optimization problem in (10) , we adopt a repeated game perspective between two players: a learner and a regulator . This framework follows the best-response versus no-regret paradigm used in prior work on constrained and multi-objective reinforcement learning (Eaton et al., 2025; Calvo-Fullana et al., 2024; Miryoosefi et al., 2019). At each round, the regulator specifies a vec-tor of Lagrange multipliers λt, which defines a scalarized reward function. The learner then computes an approxi-mate best-response policy to this reward. The resulting policy is evaluated to estimate constraint satisfaction, and this feedback is used to update the regulator’s multipliers via a no-regret procedure (here we use Online Gradient Descent). This interaction is repeated over multiple rounds, and the time-averaged strategies of the learner and regulator are returned. Under standard no-regret guarantees, this proce-dure converges to an approximate minimax equilibrium of the underlying Lagrangian game, yielding policies that bal-ance throughput maximization with constraint enforcement. Algorithm 1 summarizes this repeated game procedure, ex-plicitly detailing the interaction between the learner’s best-response updates and the regulator’s no-regret multiplier updates.      
+
+> Figure 4. Average Lagrange multipliers ¯λover training rounds. The Nlarge and robot capacity multipliers remain at zero, while the remaining constraints exhibit significant oscillations.
+
+# 5. Experiments 
+
+We evaluate our approach using an abstract, event-driven simulator that captures the key operational dynamics of a large-scale human-robot collaborative fulfillment center. The simulator models tote consolidation, station-level capac-ity constraints, heterogeneous human and robotic capabili-ties, and evolving floor-level state variables, while abstract-ing away low-level physical details. This design allows us to isolate the decision-making problem of tote selection and assignment, stress test constraint satisfaction under realistic load conditions, and conduct controlled comparisons across algorithms at scale. 
+
+5.1. Single-Objective Optimization 
+
+To validate the learning capability of the base RL algorithm, we first evaluate DQN in a single-objective setting using the heuristic ETPH reward. Each simulated day consists of 
+
+60 × 24 = 1440 decision steps, and a single episode spans 
+
+Ndays = 10 . The agent is trained for 30 episodes per run, corresponding to one learner update round in the repeated game procedure. As shown in Figure 3, the learned policy exhibits steady performance improvement, with episodic returns increasing substantially over the course of training. 
+
+5.2. Multi-Objective Optimization with MORL 
+
+As shown in Figures 4 and 5a, the regulator steers the learner through the Lagrange multipliers λt in a repeated game be-tween the learner and the regulator, with C = 20 ,000 in this experiment. Each round in Figure 5a corresponds to one interaction. In the objective and constraint plots, the horizontal line at y = 0 denotes zero constraint violation, with values ≥ 0 indicating satisfaction and negative values indicating violation; for clarity, all quantities are shifted and plotted under the constrained formulation in (1) . In this experiment, the Nlarge and robot capacity constraints are 6Multi-Objective Reinforcement Learning for Large-Scale Tote Allocation in Human-Robot Collaborative Fulfillment Centers    
+
+> (a) Single round policies
+> (b) Time averaged policies
+> Figure 5. Policy performance over repeated game rounds. (a) Performance of individual policies at each round. (b) Performance of time averaged policies. Each plot shows the global ETPH objective and four constraint values. Black horizontal lines denote constraint thresholds, red markers indicate violations, and green vertical regions indicate rounds where all constraints are simultaneously satisfied.
+
+largely satisfied across rounds, and the corresponding multi-pliers remain near zero, indicating that these constraints are typically inactive, whereas tightening the manual capacity and S/D constraints incurs a reduction in ETPH, reflecting the inherent trade off between throughput and constraint enforcement. The oscillations in λt closely track transitions between constraint satisfaction and violation, highlighting the tight coupling between regulator updates and policy per-formance. Although feasibility is only guaranteed for the time averaged policy distribution, we empirically observe rounds in which the single policy learned at that round satis-fies all constraints; we defer a detailed analysis of feasible stationary policies to Section 5.3. Figure 5b and Figure 6 illustrate the behavior of the time-averaged (mixture) policies produced by the repeated game dynamics. In line with the minimax and time-averaging guarantees established in Section 3, the averaged policy dis-tribution converges toward satisfying the S/D and manual capacity constraints, at the expense of some global ETPH. Consistent with this guarantee, Figure 7 shows that, when evaluated with respect to the averaged multipliers ¯λ, the performance of the time-averaged policies improves as con-straint satisfaction stabilizes. In practice, if exact feasibility is required, conservative slack can be introduced into the constraint thresholds. Given our theoretical guarantees on the near-minimax optimality of the time-averaged solution, such slack increases the probability that the resulting oper-ating point satisfies the true desired constraints. 
+
+5.3. Feasible Stationary Policy via MORL 
+
+While our theoretical guarantees ensure feasibility only for the time-averaged policy distribution, we empirically ob-serve that the repeated game dynamics often produce indi-vidual stationary policies that satisfy all constraints simulta-neously. Figure 8 summarizes this behavior by reporting the best, average, and worst cases over 20 random seeds for the cumulative number of feasible single policies encountered across training rounds. Across runs, feasible stationary poli-7Multi-Objective Reinforcement Learning for Large-Scale Tote Allocation in Human-Robot Collaborative Fulfillment Centers    
+
+> Figure 6. Phase diagram of ETPH versus constraint satisfaction across rounds. Color indicates training rounds, red dashed lines denote constraint thresholds. As training progresses, time aver-aged policies trade ETPH for improved S/D and manual capacity satisfaction.
+> Figure 7. Average episodic return over rounds for time averaged policies parameterized by ¯λ, showing improved performance as policies are mixed across rounds.
+
+cies arise consistently, indicating that the learning dynamics frequently traverse regions of the policy space that satisfy all constraints, despite feasibility not being enforced at the level of individual iterates. To assess the quality of such policies, Table 1 compares a representative feasible policy learned via MORL against random and unconstrained baselines. Although the uncon-strained policy attains higher ETPH, it does so by severely violating capacity constraints, particularly manual capacity. In contrast, the MORL-derived policy achieves a balanced trade off, maintaining positive slack across all constraints while substantially outperforming the random baseline. Ap-pendix A formalizes this empirical observation by introduc-ing a modified theoretical framework that mitigates some of the effects of error cancellation and enables extraction of a single iterate from the sequence of learned iterates that                      
+
+> Figure 8. Feasible stationary policies over training rounds. Al-though feasibility is guaranteed only in distribution, many individ-ual policies are feasible in practice. Best, average, and worst over 20 seeds are shown.
+> Table 1. Comparison of ETPH and constraint satisfaction across MORL, random, and unconstrained policies. The unconstrained policy attains higher ETPH at the cost of severe capacity violations.
+> MORL (single policy) Random Actions Unconstrained Satisfies all constraints?
+> √××
+> ETPH 20.52 9.19 61.81
+> Nlarge Slack 362.62 359.15 370.62 S/D Slack 10.81 0.49 -0.37
+> Manual Cap. Slack 83.21 -32.99 -563.23
+> Robot Cap. Slack 258.23 571.01 743.68
+
+achieves close to the value of the game. 
+
+# 6. Conclusion 
+
+We have explored a Multi-Objective RL framework for large-scale tote allocation and consolidation under realistic operational constraints. Our approach leverages theoreti-cal results on best-response versus no-regret dynamics in zero-sum games, adapting them to the RL setting and in-troducing efficient implementation strategies to bridge the gap between theory and practice. Using a simulator that captures the core dynamics of fulfillment center operations, we demonstrate that our method is able to learn policies that effectively balance trade offs of KPIs. This work opens several promising directions for future research. From a modeling perspective, exploring alterna-tive MDP formulations and state/action space abstractions could yield further gains in scalability and realism. Al-gorithmically, initializing the learner with policies trained individually on each of the m + 1 objectives, rather than retraining from scratch, may improve convergence speed and stability. Finally, incorporating strategic interactions and incentive structures between human and robotic agents presents an intriguing avenue for understanding and enhanc-ing complementarity in hybrid fulfillment systems. 8Multi-Objective Reinforcement Learning for Large-Scale Tote Allocation in Human-Robot Collaborative Fulfillment Centers 
+
+# References 
+
+Calvo-Fullana, M., Paternain, S., Chamon, L. F. O., and Ribeiro, A. State augmented constrained reinforcement learning: Overcoming the limitations of learning with rewards. IEEE Transactions on Automatic Control , 69(7): 4275–4290, 2024. doi: 10.1109/TAC.2023.3319070. Eaton, E., Hussing, M., Kearns, M., Roth, A., Sengupta, S. B., and Sorrell, J. Intersectional fairness in reinforce-ment learning with large state and constraint spaces, 2025. URL https://arxiv.org/abs/2502.11828 .El Shar, I., Wang, H., and Gupta, C. Multi-objective re-inforcement learning for sustainable supply chain opti-mization. In 2023 IEEE 19th International Conference on Automation Science and Engineering (CASE) , pp. 1–7. IEEE, 2023. Freund, Y. and Schapire, R. E. Game theory, on-line pre-diction and boosting. In Proceedings of the ninth annual conference on Computational learning theory , pp. 325– 332. ACM Press, 1996. Geist, M. et al. Concave utility reinforcement learning, 2021. URL https://arxiv.org/abs/2106.03787 .Haarnoja, T., Zhou, A., Abbeel, P., and Levine, S. Soft actor-critic: Off-policy maximum entropy deep reinforce-ment learning with a stochastic actor. In International conference on machine learning , pp. 1861–1870. Pmlr, 2018. Hayes, C. F., R ˘adulescu, R., Bargiacchi, E., K ¨allstr ¨om, J., Macfarlane, M., Reymond, M., Verstraeten, T., Zintgraf, L. M., Dazeley, R., Heintz, F., et al. A practical guide to multi-objective reinforcement learning and planning. 
+
+Autonomous Agents and Multi-Agent Systems , 36(1):26, 2022. Jaggi, M. Revisiting frank–wolfe: Projection-free sparse convex optimization. In Proceedings of the Interna-tional Conference on Machine Learning (ICML) , 2013. URL https://proceedings.mlr.press/v28/ jaggi13.html .Kearns, M., Neel, S., Roth, A., and Wu, Z. S. Preventing fair-ness gerrymandering: Auditing and learning for subgroup fairness. In Dy, J. and Krause, A. (eds.), Proceedings of the 35th International Conference on Machine Learn-ing , volume 80 of Proceedings of Machine Learning Re-search , pp. 2564–2572, Stockholm, Sweden, 10–15 Jul 2018. PMLR. URL https://proceedings.mlr. press/v80/kearns18a.html .Miryoosefi, S., Brantley, K., Daume III, H., Dudik, M., and Schapire, R. E. Reinforcement learning with convex constraints. Advances in neural information processing systems , 32, 2019. Mnih, V., Kavukcuoglu, K., Silver, D., Graves, A., Antonoglou, I., Wierstra, D., and Riedmiller, M. Playing atari with deep reinforcement learning. arXiv preprint arXiv:1312.5602 , 2013. Mnih, V., Kavukcuoglu, K., Silver, D., Rusu, A. A., Veness, J., Bellemare, M. G., Graves, A., Riedmiller, M., Fidje-land, A. K., Ostrovski, G., et al. Human-level control through deep reinforcement learning. nature , 518(7540): 529–533, 2015. Paternain, S., Chamon, L., Calvo-Fullana, M., and Ribeiro, A. Constrained reinforcement learning has zero duality gap. Advances in Neural Information Processing Systems ,32, 2019. Schulman, J., Wolski, F., Dhariwal, P., Radford, A., and Klimov, O. Proximal policy optimization algorithms. 
+
+arXiv preprint arXiv:1707.06347 , 2017. Sion, M. On general minimax theorems, 1958. Yang, R., Sun, X., and Narasimhan, K. A generalized al-gorithm for multi-objective reinforcement learning and policy adaptation. Advances in neural information pro-cessing systems , 32, 2019. Zahavy, T., O’Donoghue, B., Desjardins, G., and Singh, S. Reward is enough for convex MDPs. In Advances in Neural Information Processing Systems (NeurIPS) , 2021. URL https://arxiv.org/abs/2106.00661 .Zinkevich, M. Online convex programming and general-ized infinitesimal gradient ascent. In Proceedings of the Twentieth International Conference on International Con-ference on Machine Learning , ICML’03, pp. 928–935. AAAI Press, 2003. ISBN 1577351894. 9Multi-Objective Reinforcement Learning for Large-Scale Tote Allocation in Human-Robot Collaborative Fulfillment Centers 
+
+# A. Error Cancellations 
+
+Here, we will argue that if we have convergence of the randomized mixture of policies from the repeated game of no-regret vs. best-response dynamics from the learner and regulator, then there must be at least one policy in that set which we can select that approximately achieves the value of the game for this reformulated optimization problem. The broad intuition of this reformulation is that best-response vs. no-regret guarantees we satisfy the constraints on average for arbitrary convex constraints when feasible. The max of the constraint violations and 0 is still convex if the constraints are individually convex. Now, the constraint value is never negative under this reformulation, so satisfying the constraint on average is only possible if we satisfy on most iterates and hence on some iterate. A.0.1. R EFORMULATED OPTIMIZATION PROBLEM 
+
+In the original formulation both negative and positive values of the constraint violation were included, which enabled a phenomenon known as error cancellation to occur where on average, the constraints are close to satisfied, but individual policies violate different constraints. Here, we reformulate the constraints using the positive part so that feasibility in expectation cannot be achieved via cancellations across different constraints, and violations of any single constraint are penalized uniformly. 
+
+max  
+
+> D∼∆(Π)
+
+Eπ∼D
+
+" H−1X
+
+> t=0
+
+ETPH t(π)
+
+#
+
+s.t. max 
+
+n
+
+Eπ∼D
+
+" H−1X
+
+> t=0
+
+Nlarge ,t (π)
+
+#
+
+− α1, 0
+
+o
+
+≤ 0,
+
+max 
+
+n
+
+Eπ∼D
+
+"
+
+−
+
+> H−1
+
+X
+
+> t=0
+
+(S/D )t(π)
+
+#
+
++ α2, 0
+
+o
+
+≤ 0,
+
+max 
+
+n
+
+Eπ∼D
+
+" H−1X
+
+> t=0
+
+ LHS,t (π) + LHD,t (π)#
+
+− α3, 0
+
+o
+
+≤ 0,
+
+max 
+
+n
+
+Eπ∼D
+
+" H−1X
+
+> t=0
+
+ LRS,t (π) + LRD,t (π)#
+
+− α4, 0
+
+o
+
+≤ 0,
+
+This can be even further reduced to 
+
+max  
+
+> D∼∆(Π)
+
+Eπ∼D
+
+" H−1X
+
+> t=0
+
+ETPH t(π)
+
+#
+
+s.t. max 
+
+n
+
+Eπ∼D
+
+" H−1X
+
+> t=0
+
+Nlarge ,t (π)
+
+#
+
+− α1, Eπ∼D
+
+"
+
+−
+
+> H−1
+
+X
+
+> t=0
+
+(S/D )t(π)
+
+#
+
++ α2,
+
+Eπ∼D
+
+" H−1X
+
+> t=0
+
+ LHS,t (π) + LHD,t (π)#
+
+− α3, Eπ∼D
+
+" H−1X
+
+> t=0
+
+ LRS,t (π) + LRD,t (π)#
+
+− α4, 0
+
+o
+
+≤ 0,
+
+10 Multi-Objective Reinforcement Learning for Large-Scale Tote Allocation in Human-Robot Collaborative Fulfillment Centers 
+
+A.0.2. A LGORITHM 
+
+Algorithm 2 Repeated Game: Learner vs Regulator  
+
+> 1:
+
+Initialize: λ0 ∈ Λ, total rounds T , step size η 
+
+> 2:
+
+¯D ← 0, ¯λ ← 0 {Time averaged strategies } 
+
+> 3:
+
+for t = 1 to T do  
+
+> 4:
+
+Learner: Dt ← DQNBestResponse( λt−1) 
+
+> 5:
+
+gt ← EvaluatePolicy( Dt) {Constraint slacks } 
+
+> 6:
+
+Regulator: λt ← Proj Λ(λt−1 − ηg t) {Online gradient descent } 
+
+> 7:
+
+¯λ ← 1
+
+> t
+
+ (t − 1) ¯λ + λt
+
+ 
+
+> 8:
+
+end for  
+
+> 9:
+
+Return: Best  {Dt}t∈[T ], ¯λ {Best single strategy under ¯λ}
+
+A.0.3. F INDING THE ESTIMATED BEST ITERATE 
+
+We select the best Dt from the algorithm based upon an estimated Lagrangian with respect to ¯λ. Let L(D, λ ) = 
+
+Eπ∼D
+
+V π 
+
+> 0
+
+(μ) − λ [ g(D) ] +, where g(D) := max i∈[m](Eπ∼D[V πi (μ)] − αi) and λ ≥ 0. In this presentation, it is worth noting that we are assuming that without loss of generality (WLOG) we can formulate our constrained optimization problem to be of this form and that all signs are taken into account in the assignment of αi. Note that we could modify our reward/value function bounds to take into account possible negative values, but this would not change the analysis our bounds much so we use the following WLOG formulation for clarity. We are interested in finding arg max t∈[T ] L(Dt, ¯λ).However, we do not have an exact estimate of the Lagrangian. Instead, we compute ˆL as follows: suppose we form Monte Carlo estimates from n i.i.d. episodes per iterate: bV0(Dt) = 1
+
+> n
+
+Pnj=1 ˆV j 
+
+> 0
+
+(τt,j ), bci(Dt) = 1
+
+> n
+
+Pnj=1 ˆV ji (τt,j ),
+
+bg(Dt) := max i(bci(Dt) − αi), and bL(Dt, ¯λ) := bV0(Dt) − ¯λ [bg(Dt)] +.A.0.4. L EARNER ’S BEST -R ESPONSE CONVEX RL Earlier we discussed approximate best-response for the learner in terms of the ability to approximately solve single-objective RL problems. In this section, we discuss this notion when the objective functions are concave in the variable D corresponding to the distribution over policies. 
+
+Definition 3 (Episodic Occupancy Measure) .
+
+qπh (s, a ) = Pr π,μ (sh = s, a h = a)
+
+Define d = PH−1 
+
+> h=0
+
+qπh . In practice, we may have a policy π specified by a D ∈ ∆(Π) , so we may use the shorthand notation 
+
+μD to denote this summed over time occupancy measure over the given policy. In an episodic RL setting especially with fixed rewards over time, we can denote Eπ∼D [V π (μ)] = ⟨r, μ D ⟩ (or ⟨r, d ⟩ using our notation above) as will be shown below. 11 Multi-Objective Reinforcement Learning for Large-Scale Tote Allocation in Human-Robot Collaborative Fulfillment Centers 
+
+V πi (μ) = Eπ,μ 
+
+h H−1X
+
+> h=0
+
+r(sh, a h)
+
+i
+
+= Eπ,μ 
+
+h H−1X
+
+> h=0
+
+X
+
+> s,a
+
+r(s, a )I(sh = s, a h = a)
+
+i
+
+=
+
+> H−1
+
+X
+
+> h=0
+
+X
+
+> s,a
+
+r(s, a )Eπ [I(sh = s, a h = a)] =
+
+> H−1
+
+X
+
+> h=0
+
+X
+
+> s,a
+
+r(s, a )Pr π,μ (sh = s, a h = a)=
+
+> H−1
+
+X
+
+> h=0
+
+X
+
+> s,a
+
+r(s, a )qπh (s, a )= X
+
+> s,a
+
+r(s, a )
+
+> H−1
+
+X
+
+> h=0
+
+qπh (s, a )= ⟨r, d ⟩
+
+Let r(s, a ) denote the per-step reward . For each constraint i = 1 , . . . , m , let ri(s, a ) denote the per-step constraint signal .For a distribution over policies D with occupancy measure μD , define 
+
+ri(D) := ⟨μD , r i⟩ = Eπ∼D
+
+h H−1X
+
+> h=0
+
+ri(sh, a h)
+
+i
+
+.
+
+Given thresholds αi, the constraint violation for constraint i is gi(D) := ri(D) − αi, and the aggregate violation is 
+
+g(D) := max  
+
+> i∈[m]
+
+gi(D), [x]+ := max {0, x }.
+
+The Lagrangian at multiplier λ ≥ 0 is thus 
+
+L(D, λ ) = r(D) − λ [ g(D) ] +.
+
+For fixed λt ≥ 0 and current iterate Dt, write 
+
+L(D, λ t) = ⟨μD , r ⟩ − λt [max  
+
+> i
+
+{⟨ μD , r i⟩ − αi}]+.
+
+Because D 7 → L(D, λ t) is concave, any supergradient at Dt yields an affine upper bound .More directly, for a given λt ∈ Λ, we can write 
+
+f (d) = L(d, λ t) = ⟨d, r ⟩ − λt [max  
+
+> i
+
+{⟨ d, r i⟩ − αi}]+.
+
+Let 
+
+∂dL(d, λ ) = 
+
+(
+
+r0 if [g(d)] + ≤ 0
+
+r0 − λt
+
+P 
+
+> j
+
+pj rj if [g(d)] + ≥ 0 where j ∈ arg max gi(d) and pj ≥ 0 ∀j, P 
+
+> j
+
+pj = 1 
+
+In practice, to evaluate this we would take the given policy specified by D, evaluate the performance of the policy over all the constraints, then compute the gradient based upon the above. Then with st := r − λt
+
+P 
+
+> i
+
+pt,i ri where pt is set according to the supergradient, we have, for all D,
+
+L(D, λ t) ≤ L(Dt, λ t) + ⟨μD − μDt , s t⟩.
+
+12 Multi-Objective Reinforcement Learning for Large-Scale Tote Allocation in Human-Robot Collaborative Fulfillment Centers 
+
+(Maximizing the linear form ⟨μD , s t⟩ is the standard linear minimization oracle / RL call used in Frank–Wolfe and convex RL (Jaggi, 2013; Zahavy et al., 2021; Geist et al., 2021). ) Thus the learner’s ε-best-response can be implemented by solving the single linear problem 
+
+max  
+
+> D
+
+⟨μD , s t⟩ ⇐⇒ max  
+
+> D
+
+Eπ∼D
+
+h X 
+
+> h
+
+ r(sh, a h) − λt
+
+X
+
+> i
+
+pt,i ri(sh, a h)| {z }
+
+rλt (sh, a h)
+
+i
+
+up to additive error ε. Therefore, we have that if ⟨μD∗ , s t⟩ − ⟨ μDt+1 , s t⟩ ≤ ε, then 
+
+max  
+
+> D
+
+L(D, λ t) − L(Dt+1 , λ t) ≤ ε. 
+
+A.0.5. F RANK WOLFE PROCEDURE 
+
+For every λ selected by the regulator, the learner will have to solve a sequence of RL problems over linearized reward functions in order to approximately best respond to the regulator’s strategy. This will be done by computing super-gradients of the Lagrangian. In this setting, though the objective is concave in D and no longer linear, each Dt corresponds to a representative policy based upon the single policies returned from the FW linear oracles. 
+
+Algorithm 3 Learner Concave Best-Response 
+
+1: Receive: λ ∈ Λ, step size α, tolerance ϵ
+
+2: Initialize occupancy measure: x(1) ∈ O { Current iterate (occupancy measure) }
+
+3: for w = 1 to W do 
+
+4: αw ← 21+ w
+
+5: d(w) ← arg max d∈O ∂L x(w) , d {DQN with scalarized reward induced by λ}
+
+6: g(w) ← ∂L x(w) , d (w) − x(w)
+
+7: if g(w) ≤ ϵ then 
+
+8: break 
+
+9: end if 
+
+10: x(w+1) ← (1 − αw) x(w) + αw d(w) {Convex update }
+
+11: end for 
+
+12: Compute policy: π(s, a ) ← x(w⋆)(s, a )
+
+P 
+
+> a′∈A
+
+x(w⋆)(s, a ′) {w⋆ is final iterate }
+
+13: Assign D ∈ ∆(Π) accordingly 
+
+14: Return: D {Learner best-response }
+
+A.0.6. T HEORETICAL RESULTS 
+
+We now present our theoretical results on the single round’s Dt selected out of this procedure. Let V πi (μ) denote the (episodic) return for objective/constraint i under policy π from initial distribution μ. Define the per-policy worst-constraint violation 
+
+g(D) := max 
+
+> i∈[m]
+
+
+
+Eπ∼D [V πi (μ)] − αi
+
+
+
+, [x]+ := max {0, x }.
+
+For a distribution D ∈ ∆(Π) over policies and scalar multiplier λ ∈ [0 , C ], define the reformulated Lagrangian 
+
+L(D, λ ) := Eπ∼D [V π 
+
+> 0
+
+(μ)] − λ [g(D)] +. (11) Let L⋆ := min λ∈[0 ,C ] max D∈∆(Π) L(D, λ ) be the minimax value of the reformulated game. Assume the repeated game dynamics produce a time-average pair ( ¯D, ¯λ) that is a ν-approximate minimax equilibrium in the sense of Definition 1 (applied to (11) ). Papers like (Eaton et al., 2025) and (Kearns et al., 2018) have already proven that the time-averaged 13 Multi-Objective Reinforcement Learning for Large-Scale Tote Allocation in Human-Robot Collaborative Fulfillment Centers 
+
+solution satisfies this property, so we are building on the basis of those results and this is not truly a separate assumption. We simply abstract away that analysis since it has been done elsewhere. In particular, we will use the learner-side condition 
+
+L( ¯D, ¯λ) ≥ max  
+
+> D∈∆(Π)
+
+L(D, ¯λ) − ν ≥ L⋆ − ν. (12) We assume constraint thresholds satisfy αi ∈ [−H, H ]. Since per-step rewards lie in [0 , 1] and the horizon is H, this implies 
+
+V πi (μ) ∈ [0 , H ] and hence 
+
+gi(D) = Eπ∼D[V πi (μ)] − αi ∈ [−H, 2H], [gi(D)] + ∈ [0 , 2H].
+
+Lemma A.1 (Uniform Concentration for bL). Assume per-step rewards and per-step constraint signals are bounded in [0 , 1] ,so that for every policy π,
+
+0 ≤ V π 
+
+> 0
+
+(μ) ≤ H, 0 ≤ V πi (μ) ≤ H (i ∈ [m]) ,
+
+and assume αi ∈ [−H, H ] for all i, so that 
+
+0 ≤ [g(D)] + ≤ 2H. 
+
+Fix ¯λ ∈ [0 , C ] and iterates {Dt}Tt=1 . For each t, form bL(Dt, ¯λ) from n i.i.d. rollouts of a policy π ∼ Dt (sampling π once per rollout, then generating one episode), using the unbiased Monte Carlo estimates of V π 
+
+> 0
+
+(μ) and V πi (μ) to compute estimates of [g(D)] + and V π 
+
+> 0
+
+(μ). Then for any ε, δ ∈ (0 , 1) ,
+
+Pr 
+
+
+
+max  
+
+> t∈[T]
+
+bL(Dt, ¯λ) − L(Dt, ¯λ) ≤ ε
+
+
+
+≥ 1 − δ
+
+whenever 
+
+n ≥ (1 + 2 ¯λ)2H2
+
+2ε2 ln 2Tδ . (13) 
+
+Proof. For a single rollout of (π, τ ) with π ∼ Dt, define the bounded random variable 
+
+Z := V π 
+
+> 0
+
+(μ) − ¯λ [g(π)] + ∈ [−2¯λH, H ],
+
+so the range is at most (1 + 2 ¯λ)H. The estimator bL(Dt, ¯λ) is the empirical mean of n i.i.d. copies of Z, hence Hoeffding’s inequality gives 
+
+Pr  |bL(Dt, ¯λ) − L(Dt, ¯λ)| > ε  ≤ 2 exp 
+
+
+
+− 2nε 2
+
+(1 + 2 ¯λ)2H2
+
+
+
+.
+
+A union bound over t ∈ [T ] yields the claim under (13). Define the iterate–average Jensen gap at ¯λ:
+
+Javg (¯λ) := L( ¯D, ¯λ) − 1
+
+T
+
+> T
+
+X
+
+> t=1
+
+L(Dt, ¯λ) ≥ 0, (14) which is nonnegative because D 7 → L(D, ¯λ) is concave. 
+
+Theorem A.1 (Single Iterate Extraction) . Assume ( ¯D, ¯λ) satisfies (12) for the reformulated Lagrangian (11) . Let t⋆ ∈
+
+arg max t∈[T ] bL(Dt, ¯λ), using bL as in Lemma A.1. Then with probability at least 1 − δ,
+
+L(Dt⋆ , ¯λ) ≥ L⋆ − (ν + 2 ε + Javg (¯λ)) . (15) 
+
+Moreover, there exists a policy π⋆ in the support of Dt⋆ such that 
+
+L(Dπ⋆ , ¯λ) ≥ L⋆ − (ν + 2 ε + Javg (¯λ)) . (16) 14 Multi-Objective Reinforcement Learning for Large-Scale Tote Allocation in Human-Robot Collaborative Fulfillment Centers 
+
+Proof. On the uniform concentration event of Lemma A.1, for all t we have 
+
+L(Dt, ¯λ) ≤ bL(Dt, ¯λ) + ε ≤ bL(Dt⋆ , ¯λ) + ε ≤ L(Dt⋆ , ¯λ) + 2 ε, 
+
+so max t L(Dt, ¯λ) ≤ L(Dt⋆ , ¯λ) + 2 ε and hence 
+
+L(Dt⋆ , ¯λ) ≥ max   
+
+> t∈[T]
+
+L(Dt, ¯λ) − 2ε. (17) Because L(·, ¯λ) is concave in D and by definition of the Jensen gap, 
+
+L( ¯D, ¯λ) ≤ 1
+
+T
+
+> T
+
+X
+
+> t=1
+
+Dt + Javg (¯λ) ≤ max   
+
+> t∈[T]
+
+L(Dt, ¯λ) + Javg (¯λ).
+
+Combining with (17) and (12) yields 
+
+L(Dt⋆ , ¯λ) ≥ L( ¯D, ¯λ) − 2ε − Javg (¯λ) ≥ L⋆ − (ν + 2 ε + Javg (¯λ)) ,
+
+which is (15). Note that the FW oracle is already returning a representative single policy, but another way to see the single policy statement is as follows. For the single-policy statement, expand (11) at (Dt⋆ , ¯λ):
+
+L(Dt⋆ , ¯λ) = Eπ∼Dt⋆ L(π, ¯λ).
+
+Therefore there exists π⋆ in the support of Dt⋆ with L(Dπ⋆ , ¯λ) ≥ L(Dt⋆ , ¯λ), giving (16). While the Jensen gap can be nonzero due to concavity, in our setting the Lagrangian is piecewise linear in D, making the gap empirically smaller than the worst-case. To analyze constraint violations, we can use a bound on the average constraint violation level coupled with non-negativity to reason about the constraint violation level of a single iterate. 15

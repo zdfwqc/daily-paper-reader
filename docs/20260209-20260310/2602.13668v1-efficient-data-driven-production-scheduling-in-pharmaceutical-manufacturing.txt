@@ -1,0 +1,243 @@
+Title: 2602.13668v1.pdf
+
+URL Source: https://arxiv.org/pdf/2602.13668v1
+
+Published Time: Tue, 17 Feb 2026 01:30:54 GMT
+
+Number of Pages: 23
+
+Markdown Content:
+# Efficient Data-Driven Production Scheduling in Pharmaceutical Manufacturing 
+
+Ioannis Balatsos b, Athanasios Liakos b, Panagiotis Karakostas c, Tao Song a,Vassilios Pantazopoulos a, Christos Papalitsas b
+
+> aPfizer, Scientific Computing & HPC, Cambridge MA 02139, USA,
+> bPfizer, Scientific Computing & HPC, Thessaloniki 55535, Greece,
+> cDepartment of Applied Informatics, School of Information Sciences, University of Macedonia, 156 Egnatia Str., Thessaloniki 54636, Greece,
+
+Abstract 
+
+This paper develops a data-driven, constraint-based optimization framework for a complex industrial job shop scheduling problem variant in pharma-ceutical manufacturing. The formulation captures fixed routings and des-ignated machines, explicit resource calendars with weekends and planned maintenance, and campaign sequencing through sequence-dependent clean-ing times derived from site tables. The model is implemented with an open source constraint solver and evaluated on deterministic snapshots from a solid oral dosage facility under three objective formulations: makespan, makespan plus total tardiness, and makespan plus average tardiness. On three indus-trial instances of increasing size (10, 30, and 84 jobs) the proposed schedules dominate reference plans that solve a simplified variant without the added site rules. Makespan reductions reach 88 .1%, 77 .6%, and 54 .9% and total tardiness reductions reach 72 .1%, 58 .7%, and 18 .2%, respectively. The com-posite objectives further decrease late job counts with negligible makespan change on the smaller instances and a modest increase on the largest in-stance. Optimality is proven on the small case, with relative gaps of 0 .77% and 14 .92% on the medium and large cases under a fixed time limit. The results show that a compact constraint programming formulation can de-liver feasible, transparent schedules that respect site rules while improving adherence to due dates on real industrial data. 
+
+Keywords: 
+
+Production Scheduling, Optimization, Job Shop Scheduling, Mathematical  
+
+> Preprint submitted to Computers and Industrial Engineering February 14, 2026
+
+Modeling, Constraint Programming, Pharmaceuticals 
+
+1. Introduction 
+
+The pharmaceutical industry constitutes an important sector of the chem-ical process industry, playing a pivotal role in both global healthcare and the economy [1]. This industry is characterized by high regulatory standards, complex production processes, and stringent quality control requirements [2]. The increased need to develop and produce new safe and effective drugs re-quires significant investments in research and development operations, while economic growth must be achieved simultaneously [3]. Additionally, given the increasing demand for efficiency and compliance with Good Manufactur-ing Practices for biological products of the World Health Organization [4, 5], pharmaceutical manufacturing faces significant challenges in optimizing pro-duction schedules [6]. Therefore, efficient scheduling in pharmaceutical pro-duction is essential to reduce lead times, minimize costs, and ensure timely drug availability while maintaining high product quality and adherence to strict regulations [7, 8]. Pharmaceutical manufacturing involves a diverse set of processes, includ-ing raw material preparation, granulation, blending, compression, filtration, coating, packaging, and quality control testing. These processes often require shared resources, such as specialized machinery, cleanrooms, and skilled per-sonnel, making scheduling highly complex [9]. Additionally, pharmaceutical production is constrained by factors such as batch processing requirements, machine cleaning and setup times, campaign scheduling for different drug formulations, and regulatory compliance constraints [10]. This complexity makes traditional scheduling approaches inefficient, necessitating the use of advanced optimization techniques . Combinatorial optimization plays a crucial role in addressing the chal-lenges of production scheduling in pharmaceutical manufacturing [11]. Among the various combinatorial optimization problems, the Job Shop Scheduling Problem (JSSP) is particularly relevant due to its applicability in environ-ments where multiple jobs must be processed on a set of machines with specific operational constraints. JSSP is known to be NP-hard, making it computationally challenging to solve optimally for large-scale instances. In industrial practice, such as pharmaceutical manufacturing, job-shop formula-tions must model sequence-dependent setup times due to cleaning, machine-2availability calendars [12], and campaign scheduling for enhanced operational efficiency. To tackle these challenges, researchers and industry practitioners employ mathematical programming techniques such as Mixed-Integer Linear Pro-gramming, Constraint Programming [13, 14], and heuristic and metaheuristic approaches. This paper develops a data-driven, constraint-based optimiza-tion framework for a rich job shop scheduling problem in pharmaceutical manufacturing. The formulation captures fixed routings and designated ma-chines, explicit machine-availability calendars with weekends and planned maintenance, and sequence-dependent cleaning times that induce campaign sequencing. Inputs are deterministic snapshots extracted from manufactur-ing systems. The model is implemented with an open-source solver (OR-Tools) and evaluated on real site data under three objective formulations: makespan, makespan plus total tardiness, and makespan plus average tardi-ness. The results show that a compact constraint programming formulation can deliver feasible, transparent schedules that respect site rules while im-proving adherence to due dates. The remainder of the paper is organized as follows. Section 2 states the industrial scheduling setting and the scope of the data snapshots. Section 3 presents the constraint-based model, including time discretization, decision variables, constraints, and the objective formulations. Section 4 reports com-putational studies on real site data, covering model validation, scaling across instance sizes, and the impact of the objective function. Section 5 concludes with key insights and directions for future research. 
+
+2. Problem statement 
+
+Scheduling is a key operational activity in manufacturing, directly influ-encing both the effectiveness and efficiency of production systems. Optimiz-ing such complex decision-making processes requires robust methodologies from Operations Research, particularly combinatorial optimization. One of the most extensively studied problems in this context is the Job Shop Scheduling Problem (JSSP) [15], which models the sequencing of operations on multiple machines to optimize performance measures such as makespan, total completion time, or tardiness [16]. The classical JSSP assumes that each job follows a predefined processing sequence across a fixed set of ma-chines, with no flexibility in machine assignment [17]. 3Despite advancements in production scheduling models, real facilities re-quire formulations that reflect site-specific policies and calendars beyond the basic job shop abstraction. At a site of a global pharmaceutical manufacturer producing solid oral dosage forms, scheduling must respect fixed routings per job, eligible machines per operation, machine calendars with weekends and planned maintenance, and sequence-dependent cleaning between consecutive operations. The inputs used in this study are deterministic snapshots of released orders and resource calendars. Demand and supply variability are handled upstream and are outside the scope of this work. The industrial data therefore, describes a flexible job shop with eligible machines defined for many operations. Machine choice is resolved in a pre-processing step through a load spreading heuristic that assigns each operation to one eligible machine in order to control per-machine task counts and to reduce sequencing complexity. After preprocessing, the resulting instance is a rich job shop with fixed machine assignments, sequence-dependent cleaning derived from site rules based on product family, active ingredient strength, and operation family, and resource calendars with global non-working days and machine-specific maintenance. The decision is to set start and finish times for all operations and to select a feasible order on each machine while respecting calendars and cleaning requirements, and while evaluating the performance criteria stated below. Within this setting, the manufacturing team must generate large-scale schedules within practical time limits while enforcing the following opera-tional constraints: 
+
+• precedence within each job that mandates a strict, predefined order of operations 
+
+• machine capacity with at most one operation processed at a time 
+
+• campaign sequencing on each machine with sequence-dependent clean-ing times between consecutive operations 
+
+• maintenance windows that reflect the actual availability of specific ma-chines 
+
+• calendar exclusions for non-working days such as weekends and sched-uled vacations 4Incorporating these elements into a unified optimization framework is essen-tial for improving production efficiency and meeting the high operational standards of the global pharmaceutical manufacturer under study In this study the baseline performance criterion is the makespan of the pro-duction plan. Makespan is a standard efficiency metric that captures the total duration of the plan. To reflect adherence to due dates we also analyze one alternative criterion defined on the same feasible set, namely the sum of the makespan and the total tardiness across all jobs. Tardiness is the positive deviation of a job completion time from its due date, and earliness is not rewarded. All terms use the same time units, so the sum is directly interpretable without ad hoc weights. 
+
+2.1. Industrial manufacturing scheduling context 
+
+The study is located at the site of a global pharmaceutical manufacturer that produces solid oral dosage forms. Over time the site has progressed from manual spreadsheet practices and physical visual boards to a commercial scheduling platform. This transition increased baseline discipline, yet the platform provides limited control over the full set of shop floor rules and limited transparency for analytical review. These limitations motivate a formal model that is faithful to plant policies and that can be audited by operations, planning, and quality. Scheduling at the site operates on deterministic snapshots of released orders and resource calendars. Jobs follow fixed routings and many opera-tions have eligible machines recorded in the manufacturing systems. Machine choice is resolved before optimization by a preprocessing heuristic that as-signs each operation to one eligible machine so that per-machine load is controlled and sequencing complexity is reduced. Non-working days and planned maintenance are known in advance and must be respected. Consec-utive operations on the same machine require sequence-dependent cleaning times that follow site rules and tables. Within this setting, the scheduling task is to produce large-scale timetables within practical time limits while maintaining full traceability to the underlying data and procedures. To meet these needs, the site is pursuing a constraint-based schedul-ing capability developed in collaboration with the Scientific Computing and High-Performance Computing team of the manufacturer under study. The approach encodes site-specific calendars and data-driven cleaning times in a single rigorous formulation that connects directly to manufacturing data 5Figure 1: Synopsis of the work under consideration 
+
+sources. Execution on high-performance infrastructure enables turnaround times that align with operational decision cycles and supports frequent up-dates when new snapshots become available. The intended outcome is a reliable and transparent scheduling process that delivers compact and feasible production plans, improves adherence to due dates, and makes explicit the trade-offs induced by cleaning requirements and calendar restrictions. The capability is designed to support rapid re-optimization and to provide schedules that can be reviewed and approved within the existing governance of the site. As a concise summary of the industrial context and the modelling roadmap, Figure 1 illustrates the current state, key challenges, proposed approach, and target state. 
+
+3. Constraint programming model formulation 
+
+This section presents a self-contained constraint based formulation for the scheduling setting described above. Jobs consist of ordered tasks (opera-tions). A preprocessing step resolves machine choice among eligible alterna-tives through a data-driven load-spreading heuristic, after which each task is assigned to a designated machine. Machines have non-working periods, including weekends, holidays, and planned maintenance. Consecutive tasks processed on the same machine require sequence-dependent cleaning or setup time that depends on the ordered pair of tasks through product family, active 6ingredient strength, and operation family. The formulation is expressed in discrete time. 
+
+3.1. Time discretisation and horizon 
+
+All time quantities are represented as integers using a scaling factor s =10 L, where L is the maximum number of decimal digits observed in the input data. Let H ∈ Z>0 denote an upper bound on the planning horizon, computed as the sum of processing times with a conservative allowance for sequence-dependent cleaning. The time origin t = 0 corresponds to the start timestamp of the scheduling, and all due dates and calendar intervals are assigned and scaled to this origin. 
+
+3.2. Sets and indices 
+
+• J = {1, . . . , n }: set of jobs (index j). 
+
+• For each j, Tj = {1, . . . , |Tj |} : ordered set of tasks of job j (index t). 
+
+• M : set of machines (index m). 
+
+• For each task ( j, t ), the execution machine is fixed after preprocessing and is denoted m(j, t ) ∈ M .
+
+• W : set of global non-working intervals applied to all machines (for example, weekends and holidays). 
+
+• For each m, Rm: set of planned maintenance intervals specific to ma-chine m.
+
+3.3. Parameters 
+
+• pj,t ∈ Z>0: processing time of task ( j, t ) (already scaled by s). 
+
+• H ∈ Z>0: time horizon upper bound. 
+
+• For each w ∈ W , a fixed interval [ aw, b w) ⊂ [0 , H ] represents a global non-working period. 
+
+• For each m ∈ M and r ∈ Rm, a fixed interval [ am,r , b m,r ) ⊂ [0 , H ]represents the maintenance of the machine m.
+
+• dj ∈ Z: due date of the job j measured on the same time scale; every job has a due date. 7• κα→β ∈ Z≥0: sequence dependent cleaning or setup time when task 
+
+β immediately follows task α on the same machine. The value is computed by a data-driven function CleanCost( α, β ) that uses the at-tributes noted above, with default categories when a specific entry is not available. 
+
+3.4. Decision variables Task–level variables.. For each task ( j, t ) introduce start and end times and a non–non-preemptive interval: 
+
+Sj,t ∈ [0 , H ], start time of task ( j, t ),Ej,t ∈ [0 , H ], end time of task ( j, t ),Ij,t = [ Sj,t , E j,t ), non–preemptive interval ,Ej,t = Sj,t + pj,t .
+
+Job– and plan–level variables.. For each job j,
+
+Cj := Ej, |Tj |, Tj ≥ 0,
+
+and the makespan satisfies 
+
+Cmax ∈ [0 , H ], Cmax ≥ Cj ∀j ∈ J. 
+
+Machine–level sequencing variables.. For each machine m and each ordered pair of distinct tasks α̸ = β with m(α) = m(β) = m, introduce 
+
+zα→β ∈ { 0, 1},
+
+which indicates that β is scheduled immediately after α on machine m.Dummy start and end nodes are included in the usual way. 
+
+3.5. Constraints (a) Intra job precedence. 
+
+Sj,t +1 ≥ Ej,t , ∀j ∈ J, t = 1 , . . . , |Tj | − 1. (1) 8(b) Machine capacity and calendars. Tasks assigned to the same machine cannot overlap in time and must respect global non-working periods and ma-chine maintenance windows. This is enforced with a NoOverlap constraint: For each machine m, define 
+
+Tm := { Ij,t : m(j, t ) = m },
+
+Wm := { Iidle  
+
+> w,m
+
+:= [ aw, b w) : w ∈ W },
+
+Rm := { Imnt  
+
+> m,r
+
+:= [ am,r , b m,r ) : r ∈ Rm }.
+
+Non-overlap with calendars and maintenance is then enforced by the num-bered constraint NoOverlap  Tm ∪ W m ∪ R m
+
+, ∀m ∈ M. (2) Here Iidle  
+
+> w,m
+
+denotes the replication of each global non-working interval on machine m.
+
+(c) Campaign sequencing with sequence dependent setups. For each machine 
+
+m, the chosen order of its tasks forms a single directed circuit: Circuit  {zα→β }, on all tasks with m(α) = m(β) = m. (3) Sequence-dependent cleaning or setup times are imposed through reified precedences: 
+
+zα→β = 1 ⇒ Sβ ≥ Eα + κα→β , ∀α̸ = β : m(α) = m(β). (4) The combination of (2)–(3)–(4) ensures non-overlap on each machine, a unique processing order, and proper inclusion of sequence-dependent clean-ing without big M constants. The function CleanCost( α, β ) is machine-dependent and asymmetric in general, since it is defined on ordered pairs of tasks. 
+
+(d) Makespan. 
+
+Cmax ≥ Cj , ∀j ∈ J. (5) 
+
+(e) Tardiness. 
+
+Tj ≥ Cj − dj , Tj ≥ 0, ∀j ∈ J. (6) 93.6. Objective functions 
+
+Three objectives are considered on the same feasible set. The primary criterion is the minimization of makespan, which measures the overall length of the schedule. Two alternative criteria retain the makespan term and add a tardiness component to capture due-date performance, namely, total tardi-ness and average tardiness. Keeping the makespan term preserves incentives for schedule compaction and guards against solutions that satisfy due dates by unnecessarily dilating the plan. 
+
+(1) Makespan . 
+
+min Cmax . (7) 
+
+(2) Makespan plus total tardiness . 
+
+min Cmax + X
+
+> j∈J
+
+Tj . (8) 
+
+(3) Makespan plus average tardiness . 
+
+min Cmax + 1
+
+|J|
+
+X
+
+> j∈J
+
+Tj . (9) All terms use the same time scale, and earliness is not rewarded. We adopt simple additive forms without weights to maintain transparent interpretation and avoid ad hoc parameter tuning. 
+
+3.7. Data-driven cleaning and setup times 
+
+The quantity κα→β is obtained from the function CleanCost( α, β ) that (i) identifies the operation family from the machine, (ii) queries site tables parameterised by product family and active ingredient strength, and (iii) falls back to default categories when a specific pair is not present. All cleaning times are scaled by s and treated as nonnegative integers. 
+
+4. Case studies & results 
+
+4.1. Experimental Setup 
+
+All experiments were executed on an enterprise-grade compute node within a secured industrial computing environment made available to the project team. The host includes a Dell PowerEdge R760xa chassis provisioned with 10 four NVIDIA A100 GPUs. However, the solver and model are CPU-bound, and no computation was offloaded to GPUs. Jobs were launched via the site scheduler (Slurm 24.05.4) as single-node runs under identical policy settings. The implementation is in Python 3.10.6 using OR-Tools 9.14 for constraint programming. Time is discretized via an integer scaling factor determined by the maximum number of decimal digits in the input data, and the same codebase and parameters are used across all experiments. Time is discretized via an integer scaling factor determined by the maxi-mum number of decimal digits in the input data, and the same codebase and parameters are used across all experiments. Unless otherwise specified, the CPU time limit is 7 ,200 seconds for the medium and large instances, while the small snapshot proves optimality within seconds. The evaluation uses three industrial snapshots with 10, 30, and 84 jobs. Each snapshot is a deterministic extract of released orders and resource cal-endars (weekends, site holidays, and machine-specific maintenance). A data-driven preprocessing step assigns each operation to an eligible designated machine. Sequence-dependent cleaning times are derived from site tables pa-rameterised by product family, active ingredient strength, and operation fam-ily. Every job has a due date. On this common feasible set we compare three objective formulations—makespan (primary), makespan plus total tardiness, and makespan plus average tardiness—in order to quantify the trade-off be-tween schedule compactness and due-date adherence without confounding factors. For context, we also report the metrics of the site planning system in the same snapshots when available; these reference plans solve a simplified variant that omits some of the shop floor rules enforced here, so comparisons are indicative rather than strictly like-for-like. We report makespan (days), total/average/maximum tardiness (days), count of late jobs, solver wall-clock time (seconds), the objective value and best bound (model time units), and the relative optimality gap at termination 
+
+4.2. Model validation 
+
+The formulation is validated on a small industrial snapshot with 10 jobs from a solid oral dosage line. The instance carries the full constraint structure used at scale, including ordered operations within each job, designated ma-chines after preprocessing, sequence-dependent cleaning between consecutive operations executed on the same machine, global non-working periods such as weekends and site holidays, machine-specific maintenance windows, and due dates for all jobs. Validation is carried out under the primary objective 11 of makespan. Because the feasible region does not depend on the objective, the same checks apply to the alternative criteria. An automated post-processing routine verifies that all precedence rela-tions hold, that no two operations overlap on the same machine, that no operation is scheduled within global idle intervals or maintenance windows, and that the idle gap between consecutive operations on the same machine is at least the prescribed sequence-dependent cleaning time for the ordered pair. Tardiness is recomputed per job from due dates and completion times to con-firm consistency with reported aggregates. Visual inspection of machine-level Gantt and campaign views corroborates the absence of capacity conflicts and the explicit presence of cleaning gaps. All checks pass with no violations. The solver establishes optimality for this instance, and the resulting schedule is compact and compliant with site rules. Table 1 reports metrics for the validated schedule and for a reference schedule on the same problem instance.                   
+
+> Table 1: Validation metrics for the small industrial instance with 10 jobs under the makespan objective.
+> Makespan Total tard. Avg. tard. Max tard. [d] Late jobs Runtime [s] Validated schedule 3.67 54.19 5.42 53.24 335 Reference schedule 30.89 194.48 19.45 68.64 8–
+
+Figure 2 shows the machine-level Gantt for the 10-job instance, illustrating the final sequencing and the compactness of the plan. 12 Figure 2: The Gantt-chart of the optimal production plan for the small-sized instance 
+
+These results indicate that the proposed formulation produces an optimal plan for the small-scale industrial case under consideration, while enforcing calendars, maintenance, and sequence-dependent cleaning by construction. The same automated checks were applied to all schedules reported in the present Section, and no feasibility violations were detected. 
+
+4.3. Computational scaling on site data snapshots 
+
+To assess computational scalability, the proposed model is evaluated on three real data snapshots of increasing size with 10, 30, and 84 jobs. All instances are built with the same preprocessing and calendar rules, and all runs use identical solver settings. The analysis focuses on the makespan objective, which aligns with the current operational target at the site. Table 2 reports the quality of the schedule for the proposed model and for the reference plans, computed on the same snapshots. The proposed sched-ules exhibit systematically smaller makespans at all sizes. This observation is particularly significant because the reference plans solve a simplified vari-ant that omits several site rules, whereas the proposed formulation enforces 13 Table 2: Schedule quality across site data snapshots under the makespan objective                                           
+
+> Instance Makespan [d] Total tard. [d] Avg. tard. [d] Max tard. [d] Late jobs Plan 10 jobs 3.67 54.19 5.42 53.24 3Proposed 10 jobs 30.89 194.48 19.45 68.64 8Reference 30 jobs 8.98 192.60 6.42 59.94 11 Proposed 30 jobs 40.07 466.25 15.54 68.64 23 Reference 84 jobs 18.09 1717.92 20.45 176.11 48 Proposed 84 jobs 40.07 2100.31 25.00 190.29 50 Reference
+
+them. Achieving lower makespans within a stricter feasible region indicates more effective use of capacity and sequencing. Tardiness measures are also reduced while the model enforces sequence-dependent cleaning and machine calendars by construction. The reductions are substantial on the two smaller snapshots and remain positive on the largest. Late-job counts drop from 8 to 3 jobs at 10 jobs and from 23 to 11 jobs at 30 jobs, with a modest improvement from 50 to 48 at 84 jobs. Figure 3 aggregates the performance gains as percentage reductions rel-ative to the reference. Makespan falls by 88 .1%, 77 .6%, and 54 .9% on the 10, 30, and 84 job snapshots, respectively. Total tardiness drops by 72 .1% and 58 .7% on the two smaller snapshots and by 18 .2% on the largest. The diminishing marginal improvement with instance size is consistent with a fixed time limit and the increased sequencing complexity on heavily loaded machines. Nevertheless, the gains remain substantial across all sizes. 14 Figure 3: Relative improvement over the reference on the same snapshots 
+
+Table 3 summarises model size and solver outcomes. The count of campaign-sequencing literals increases from 236 at 10 jobs to 2 ,225 at 30 jobs and 7,850 at 84 jobs, which follows the quadratic growth in per-machine ordering choices. Optimality is certified on the 10-job snapshot. The medium snap-shot stops at the time limit with a relative optimality gap of 0 .77%. The large snapshot stops at the time limit with a gap of 14 .92%. These gaps are consistent with the growth in the search space. 
+
+Table 3: Model size and solver outcomes under the makespan objective.                         
+
+> Instance Seq. literals Tasks/machine (min–avg–max) Runtime [s] Status Best bound Gap [%] 10 jobs 236 1–2.78–8 35 Optimal 8802 0.00 30 jobs 2225 1–6.61–25 7200 Feasible 21386 0.77 84 jobs 7850 1–10.59–45 7200 Feasible 36935 14.92
+
+To clarify, sequencing literals are the per-machine arc variables used in cam-paign ordering. Figure 4 plots the relative optimality gap of the solver against the number of literals of sequencing. The monotone pattern links proof quality directly to model size: as the number of campaign arcs grows, more reified precedences 15 become candidates, bound tightening slows, and the remaining gap at a fixed time limit increases. This structural relationship explains why optimality is easy at 10 jobs, nearly proven at 30 jobs, and harder at 84 jobs. 
+
+> Figure 4: Relative optimality gap versus sequencing literals
+
+Figure 5 shows the min–mean–max tasks per machine across snapshots. The average load rises from 2 .78 to 6 .61 and 10 .59 tasks per machine, while the maximum rises from 8 to 25 and 45. Higher per-machine load implies more candidate successors per task, increasing the number of arcs nm(nm −1) and the associated reified setup constraints. This load-driven expansion of the campaign search space aligns with the observed increase in optimality gaps and the gradual attenuation of percentage improvements as problem size grows. 16 Figure 5: Per-machine task load across snapshots 
+
+In aggregate, the results indicate favourable scaling under site rules. The model delivers compact plans with sizable reductions in makespan and tar-diness relative to the reference across all sizes. As instance size grows, the number of binary arc variables for campaign sequencing and the per-machine loads increase, which expands the ordering space and makes optimality cer-tification harder within a fixed time budget. However, the quality of the solution remains strong, and all schedules comply with sequence-dependent cleaning requirements and site calendars. 
+
+4.4. Impact of objective function formulation 
+
+This subsection provides the analysis of how alternative objective func-tions affect the quality of the production schedule, under an identical feasi-ble set. We examine three objective cases, one considering a pure makespan objective function, one combining makespan with average tardiness, and a combination between makespan and total tardiness. All other aspects of the experimental setup remain fixed, so observed differences reflect only the choice of objective. The analysis clarifies the trade-off between plan com-pactness and due-date adherence and indicates which formulation offers the best balance at each problem size. 17 Table 4 reports the main schedule metrics. On the small snapshot the composite objectives reduce late jobs from 3 to 2 with essentially unchanged makespan. On the medium snapshot they reduce total tardiness by 7 .4%–9 .5% and late jobs from 11 to 7, again with no makespan increase. On the large snapshot they reduce total tardiness by 8 .6%–9 .3% and late jobs by 23% (from 48 to 37) at a modest makespan increase of 2 .3%–3 .2%. Figure 6 visualizes total tardiness in days across objectives and instance sizes, and Figure 7 summarizes late-job counts. 
+
+Table 4: Schedule metrics by instance size and objective.                                                                       
+
+> Jobs Objective Makespan [d] Total tard. [d] Avg. tard. [d] Max tard. [d] Late jobs Runtime [s] 10 Makespan 3.67 54.19 5.42 53.24 335 10 Makespan + Avg tard. 3.67 53.91 5.39 53.24 234 10 Makespan + Total tard. 3.79 53.61 5.36 52.94 233 30 Makespan 8.98 192.60 6.42 59.94 11 7200 30 Makespan + Avg tard. 8.98 174.35 5.81 55.94 77200 30 Makespan + Total tard. 8.98 178.44 5.95 56.00 77200 84 Makespan 18.09 1717.92 20.45 176.11 48 7200 84 Makespan + Avg tard. 18.67 1569.92 18.69 175.60 37 7200 84 Makespan + Total tard. 18.50 1559.08 18.56 174.74 37 7200
+
+Table 5 reports objective values, best bounds, and gaps. As instance size increases and as the objective aggregates more terms, optimality certificates become harder under the fixed wall-clock limit, but the solutions remain of high quality. 
+
+Table 5: Solver bounds and optimality gaps (objective values are in model time units). 
+
+Jobs Objective Objective value Best bound Gap [%] Status 10 Makespan 8,802 8,802 0.00 Optimal 10 Makespan + Avg tard. 11,928 11,928 0.00 Optimal 10 Makespan + Total tard. 40,007 40,007 0.00 Optimal 30 Makespan 21,551 21,386 0.77 Feasible 30 Makespan + Avg tard. 25,455 23,656 7.07 Feasible 30 Makespan + Total tard. 139,862 95,018 32.06 Feasible 84 Makespan 43,411 36,935 14.92 Feasible 84 Makespan + Avg tard. 76,589 62,389 18.54 Feasible 84 Makespan + Total tard. 2,720,555 2,171,893 20.17 Feasible 
+
+18 Figure 6: Total tardiness in days across objectives and instance sizes (hatch patterns aid grayscale print). 
+
+Figure 7: Late jobs across objectives and instance sizes. 
+
+19 Two systematic effects are observed across instance sizes. When ma-chine loads are moderate (10 and 30 jobs), calendar exclusions and sequence-dependent cleaning leave exploitable slack. The composite objectives reallo-cate this slack to critical operations on due date, which reduces total tardiness and the number of late jobs without an increase in the makepan. When loads are high (84 jobs), the same reallocation requires extending campaign blocks or accepting longer idle gaps, so the makespan rises modestly while the tar-diness still falls. The relative behavior of the two composite formulations is consistent with their emphasis, as the average-tardiness variant tends to spread improvements across many jobs and is effective at lowering the late-job count, whereas the total-tardiness variant prioritizes cutting aggregate delay and achieves the smallest total tardiness on the largest snapshot. Fi-nally, the larger optimality gaps for the composite formulations at fixed CPU time are expected, since the richer objective introduces additional trade-offs that slow bound progress; this does not alter the qualitative improvements in due-date adherence. 
+
+5. Conclusion 
+
+This work presented a data-driven, constraint-based formulation for a complex job-shop scheduling problem that arises in pharmaceutical manufac-turing. The model encodes fixed routings and designated machines, machine calendars with weekends and planned maintenance, and campaign sequencing through sequence-dependent cleaning times derived from site rules. Three ob-jective formulations were examined on real industrial snapshots: makespan, makespan plus total tardiness, and makespan plus average tardiness. Computational studies on instances with 10, 30, and 84 jobs showed con-sistent improvements over reference plans created on the same data snap-shots. The proposed schedules achieve markedly shorter makespans, even though they respect a stricter feasible region that includes cleaning and cal-endar constraints. Tardiness measures also decrease with size. The composite objectives reduce late job counts with essentially unchanged makespan on the smaller instances and with a modest increase on the largest instance, which reflects the tighter capacity and the additional trade-offs implied by campaign sequencing. Optimality is certified for the small case, and medium and large cases terminate with small to moderate gaps under a fixed time limit, which is consistent with the growth in the number of campaign ordering choices. 20 The main practical insight is that a compact constraint programming model, fed by production data and site rules, can produce feasible and trans-parent schedules that improve both plan compactness and due-date adher-ence. The approach remains interpretable, as all scheduling elements are linked to plant calendars, routings, and cleaning tables. There are several avenues for future work. First, machine learning can be integrated with the current pipeline to support enhanced data-driven clustering and decomposition [18, 19], for example by grouping products or sequences with similar cleaning behavior or by learning effective cam-paign blocks, which can reduce model size and speed convergence. Second, problem-specific heuristic components can be developed using adaptive effi-cient metaheuristic optimization frameworks [20, 21, 22]. 
+
+References 
+
+[1] M.-H. Le, W.-M. Lu, An integrated multiple objective decision making approach for exploring the competitiveness of pharmaceutical multina-tional enterprises, Annals of Operations Research 341 (1) (2024) 401– 426. [2] M. Sarkis, A. Bernardi, N. Shah, M. M. Papathanasiou, Emerging chal-lenges and opportunities in pharmaceutical manufacturing and distribu-tion, Processes 9 (3) (2021) 457. [3] C. M. Marques, S. Moniz, J. P. de Sousa, Strategic decision-making in the pharmaceutical industry: A unified decision-making framework, Computers & Chemical Engineering 119 (2018) 171–189. [4] W. H. Organization, S. WHO Expert Committee on Biological Stan-dardization (2015: Geneva, WHO Expert Committee on Biological Stan-dardization, sixty-sixth report, WHO technical report series;999, World Health Organization, 2016. [5] W. H. Organization, S. WHO Expert Committee on Biological Stan-dardization (2024: Geneva, WHO Expert Committee on Biological Stan-dardization, seventy-ninth report, WHO technical report series;1059, World Health Organization, 2024. 21 [6] G. P. Georgiadis, A. P. Elekidis, M. C. Georgiadis, Optimization-based scheduling for the process industries: From theory to real-life industrial applications, Processes 7 (7) (2019). [7] C. Ge, Z. Yuan, Production scheduling for the reconfigurable modular pharmaceutical manufacturing processes, Computers Chemical Engi-neering 151 (2021) 107346. [8] S. Misra, C. T. Maravelias, Overview of Scheduling Methods for Phar-maceutical Production, Springer International Publishing, Cham, 2022, pp. 355–371. [9] T. Sandle, Chapter 12 - cleanroom microbiota, in: T. Sandle (Ed.), Bio-contamination Control for Pharmaceuticals and Healthcare, Academic Press, 2019, pp. 199–212. [10] M. Vieira, T. Pinto-Varela, S. Moniz, A. P. Barbosa-P´ ovoa, L. G. Pa-pageorgiou, Optimal planning and campaign scheduling of biopharma-ceutical processes using a continuous-time formulation, Computers & Chemical Engineering 91 (2016) 422–444. [11] M. Liu, J. Lv, S. Du, Y. Deng, X. Shen, Y. Zhou, Multi-resource con-strained flexible job shop scheduling problem with fixture-pallet com-binatorial optimisation, Computers Industrial Engineering 188 (2024) 109903. [12] L. Zhang, H. Wang, W. Liu, C. Liang, X. Wen, H. Wang, X. Zhao, L. Chen, Integrated optimization of production and maintenance scheduling with third-party worker resource constraints in distributed parallel machines environment, Computers & Industrial Engineering 198 (2024) 110647. [13] M. Awad, K. Mulrennan, J. Donovan, R. Macpherson, D. Tormey, A constraint programming model for makespan minimisation in batch manufacturing pharmaceutical facilities, Computers & Chemical Engi-neering 156 (2022) 107565. [14] G. Ziadlou, S. Emami, E. Asadi-Gangraj, Network configuration dis-tributed production scheduling problem: A constraint programming ap-proach, Computers & Industrial Engineering 188 (2024) 109916. 22 [15] E. Yuan, S. Cheng, L. Wang, S. Song, F. Wu, Solving job shop scheduling problems via deep reinforcement learning, Applied Soft Computing 143 (2023) 110436. [16] G. Da Col, E. C. Teppan, Industrial-size job shop scheduling with constraint programming, Operations Research Perspectives 9 (2022) 100249. [17] E. Yuan, L. Wang, S. Cheng, S. Song, W. Fan, Y. Li, Solving flexible job shop scheduling problems via deep reinforcement learning, Expert Systems with Applications 245 (2024) 123019. [18] M. E. Samouilidou, N. Passalis, G. P. Georgiadis, M. C. Georgiadis, En-hancing industrial scheduling through machine learning: A synergistic approach with predictive modeling and clustering, Computers Chemical Engineering 200 (2025) 109174. [19] K. A. Ben Hamou, Z. Jarir, S. Elfirdoussi, Using machine learning for production scheduling problems in the supply chain: A review, Com-puters Industrial Engineering 206 (2025) 111243. [20] P. Karakostas, A. Sifaleras, A double-adaptive general variable neighbor-hood search algorithm for the solution of the traveling salesman problem, Applied Soft Computing 121 (2022) 108746. [21] I. Krimi, R. Benmansour, Self-adaptive general variable neighborhood search algorithm for parallel machine scheduling with unrelated servers, Computers Operations Research 163 (2024) 106480. [22] P. Karakostas, A. Sifaleras, Learning-assisted improvements in adaptive variable neighborhood search, Swarm and Evolutionary Computation 94 (2025) 101887. 23

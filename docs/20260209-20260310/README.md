@@ -1,35 +1,34 @@
 # 日报 · 2026-02-09 ~ 2026-03-10
 
-- 生成时间：2026-03-10 15:59:45 UTC
-- 当次推荐总数：17
-- 精读区：6
+- 生成时间：2026-03-10 17:10:19 UTC
+- 当次推荐总数：16
+- 精读区：5
 - 速读区：11
 
 ## 今日简报（AI）
-深度探索柔性车间调度与神经组合优化，重点攻克复杂约束下的序列建模与求解效率难题。
-满分论文揭示了 Mamba 模型在高效调度中的巨大潜力，并针对有限缓冲区等实战约束给出了创新方案。
-建议优先研读 Mamba 与调度结合的前沿成果，并关注离线自博弈范式对提升求解器性能的启发。
+本期精选 16 篇调度领域前沿论文，深度解析 Mamba 架构与强化学习在柔性车间调度（FJSP）中的创新应用。
+重点推荐 Mamba 在高效序列建模上的突破，以及针对有限缓冲区和物料配套等复杂工业约束的深度学习方案。
+建议关注如何利用新型神经网络架构解决大规模多目标优化问题，以提升医药制造等实战场景的调度效率。
 
 ## 精读区
 1. [Mamba Meets Scheduling: Learning to Solve Flexible Job Shop Scheduling with Efficient Sequence Modeling](/20260209-20260310/2602.21546v1-mamba-meets-scheduling-learning-to-solve-flexible-job-shop-scheduling-with-efficient-sequence-modeling) （10.0/10）
 2. [Learning Flexible Job Shop Scheduling under Limited Buffers and Material Kitting Constraints](/20260209-20260310/2602.24180v1-learning-flexible-job-shop-scheduling-under-limited-buffers-and-material-kitting-constraints) （10.0/10）
 3. [Learning Memory-Enhanced Improvement Heuristics for Flexible Job Shop Scheduling](/20260209-20260310/2603.02846v1-learning-memory-enhanced-improvement-heuristics-for-flexible-job-shop-scheduling) （10.0/10）
 4. [RESCHED: Rethinking Flexible Job Shop Scheduling from a Transformer-based Architecture with Simplified States](/20260209-20260310/2603.07020v1-resched-rethinking-flexible-job-shop-scheduling-from-a-transformer-based-architecture-with-simplified-states) （10.0/10）
-5. [It Takes Two to Tango: A Holistic Simulator for Joint Order Scheduling and Multi-Agent Path Finding in Robotic Warehouses](/20260209-20260310/2602.13999v1-it-takes-two-to-tango-a-holistic-simulator-for-joint-order-scheduling-and-multi-agent-path-finding-in-robotic-warehouses) （8.0/10）
-6. [Transformer Actor-Critic for Efficient Freshness-Aware Resource Allocation](/20260209-20260310/2602.22774v1-transformer-actor-critic-for-efficient-freshness-aware-resource-allocation) （8.0/10）
+5. [Transformer Actor-Critic for Efficient Freshness-Aware Resource Allocation](/20260209-20260310/2602.22774v1-transformer-actor-critic-for-efficient-freshness-aware-resource-allocation) （8.0/10）
 
 ## 速读区
-1. [Breaking the Grid: Distance-Guided Reinforcement Learning in Large Discrete and Hybrid Action Spaces](/20260209-20260310/2602.08616v1-breaking-the-grid-distance-guided-reinforcement-learning-in-large-discrete-and-hybrid-action-spaces) （8.0/10）
-2. [An effective Genetic Programming Hyper-Heuristic for Uncertain Agile Satellite Scheduling](/20260209-20260310/2602.15070v1-an-effective-genetic-programming-hyper-heuristic-for-uncertain-agile-satellite-scheduling) （8.0/10）
-3. [Rethink Efficiency Side of Neural Combinatorial Solver: An Offline and Self-Play Paradigm](/20260209-20260310/2602.20730v1-rethink-efficiency-side-of-neural-combinatorial-solver-an-offline-and-self-play-paradigm) （8.0/10）
-4. [TempoNet: Slack-Quantized Transformer-Guided Reinforcement Scheduler for Adaptive Deadline-Centric Real-Time Dispatchs](/20260209-20260310/2602.18109v1-temponet-slack-quantized-transformer-guided-reinforcement-scheduler-for-adaptive-deadline-centric-real-time-dispatchs) （7.0/10）
-5. [Dynamic Repair and Maintenance of Heterogeneous Machines Dispersed on a Network: A Rollout Method for Online Reinforcement Learning](/20260209-20260310/2602.19277v1-dynamic-repair-and-maintenance-of-heterogeneous-machines-dispersed-on-a-network-a-rollout-method-for-online-reinforcement-learning) （7.0/10）
-6. [GauS: Differentiable Scheduling Optimization via Gaussian Reparameterization](/20260209-20260310/2602.20427v1-gaus-differentiable-scheduling-optimization-via-gaussian-reparameterization) （7.0/10）
-7. [A Granularity Characterization of Task Scheduling Effectiveness](/20260209-20260310/2602.20561v2-a-granularity-characterization-of-task-scheduling-effectiveness) （7.0/10）
-8. [Construct, Merge, Solve & Adapt with Reinforcement Learning for the min-max Multiple Traveling Salesman Problem](/20260209-20260310/2602.23579v1-construct-merge-solve--adapt-with-reinforcement-learning-for-the-min-max-multiple-traveling-salesman-problem) （7.0/10）
-9. [Neuro-symbolic Action Masking for Deep Reinforcement Learning](/20260209-20260310/2602.10598v1-neuro-symbolic-action-masking-for-deep-reinforcement-learning) （6.0/10）
-10. [Divide and Learn: Multi-Objective Combinatorial Optimization at Scale](/20260209-20260310/2602.11346v1-divide-and-learn-multi-objective-combinatorial-optimization-at-scale) （6.0/10）
-11. [Combinatorial Perpetual Scheduling](/20260209-20260310/2602.11826v1-combinatorial-perpetual-scheduling) （6.0/10）
+1. [Divide and Learn: Multi-Objective Combinatorial Optimization at Scale](/20260209-20260310/2602.11346v1-divide-and-learn-multi-objective-combinatorial-optimization-at-scale) （7.0/10）
+2. [Efficient Data-Driven Production Scheduling in Pharmaceutical Manufacturing](/20260209-20260310/2602.13668v1-efficient-data-driven-production-scheduling-in-pharmaceutical-manufacturing) （7.0/10）
+3. [TempoNet: Slack-Quantized Transformer-Guided Reinforcement Scheduler for Adaptive Deadline-Centric Real-Time Dispatchs](/20260209-20260310/2602.18109v1-temponet-slack-quantized-transformer-guided-reinforcement-scheduler-for-adaptive-deadline-centric-real-time-dispatchs) （7.0/10）
+4. [Dynamic Repair and Maintenance of Heterogeneous Machines Dispersed on a Network: A Rollout Method for Online Reinforcement Learning](/20260209-20260310/2602.19277v1-dynamic-repair-and-maintenance-of-heterogeneous-machines-dispersed-on-a-network-a-rollout-method-for-online-reinforcement-learning) （7.0/10）
+5. [Green or Fast? Learning to Balance Cold Starts and Idle Carbon in Serverless Computing](/20260209-20260310/2602.23935v1-green-or-fast-learning-to-balance-cold-starts-and-idle-carbon-in-serverless-computing) （7.0/10）
+6. [Multi-Objective Reinforcement Learning for Large-Scale Tote Allocation in Human-Robot Collaborative Fulfillment Centers](/20260209-20260310/2602.24182v1-multi-objective-reinforcement-learning-for-large-scale-tote-allocation-in-human-robot-collaborative-fulfillment-centers) （7.0/10）
+7. [Combinatorial Perpetual Scheduling](/20260209-20260310/2602.11826v1-combinatorial-perpetual-scheduling) （6.0/10）
+8. [Hierarchical Reinforcement Learning for Cooperative Air-Ground Delivery in Urban System](/20260209-20260310/2602.12913v1-hierarchical-reinforcement-learning-for-cooperative-air-ground-delivery-in-urban-system) （6.0/10）
+9. [PhGPO: Pheromone-Guided Policy Optimization for Long-Horizon Tool Planning](/20260209-20260310/2602.13691v1-phgpo-pheromone-guided-policy-optimization-for-long-horizon-tool-planning) （6.0/10）
+10. [Modeling and Optimizing the Provisioning of Exhaustible Capabilities for Simultaneous Task Allocation and Scheduling](/20260209-20260310/2602.13866v1-modeling-and-optimizing-the-provisioning-of-exhaustible-capabilities-for-simultaneous-task-allocation-and-scheduling) （6.0/10）
+11. [It Takes Two to Tango: A Holistic Simulator for Joint Order Scheduling and Multi-Agent Path Finding in Robotic Warehouses](/20260209-20260310/2602.13999v1-it-takes-two-to-tango-a-holistic-simulator-for-joint-order-scheduling-and-multi-agent-path-finding-in-robotic-warehouses) （6.0/10）
 
 ---
 使用键盘方向键可在日报/论文之间快速切换。

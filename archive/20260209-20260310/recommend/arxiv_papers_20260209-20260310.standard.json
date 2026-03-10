@@ -1,13 +1,13 @@
 {
   "mode": "standard",
-  "generated_at": "2026-03-10T15:55:10.167628+00:00",
+  "generated_at": "2026-03-10T17:05:20.706359+00:00",
   "stats": {
     "mode": "standard",
     "tag_count": 1,
-    "deep_divecandidates": 9,
+    "deep_divecandidates": 5,
     "deep_cap": 6,
-    "deep_selected": 6,
-    "quick_candidates": 41,
+    "deep_selected": 5,
+    "quick_candidates": 34,
     "quick_skim_target": 11,
     "quick_selected": 11
   },
@@ -35,12 +35,12 @@
       ],
       "llm_score": 10.0,
       "llm_evidence_en": "Learning to solve Flexible Job Shop Scheduling with Mamba architecture",
-      "llm_evidence_cn": "使用 Mamba 架构学习解决柔性作业车间调度问题",
-      "llm_evidence": "使用 Mamba 架构学习解决柔性作业车间调度问题",
-      "canonical_evidence": "使用 Mamba 架构学习解决柔性作业车间调度问题",
-      "llm_tldr_en": "Applies the Mamba state-space model to capture long-range dependencies in Flexible Job Shop Scheduling Problems.",
-      "llm_tldr_cn": "应用 Mamba 状态空间模型来捕获柔性作业车间调度问题中的远程依赖关系。",
-      "llm_tldr": "应用 Mamba 状态空间模型来捕获柔性作业车间调度问题中的远程依赖关系。",
+      "llm_evidence_cn": "利用Mamba架构学习解决柔性作业车间调度问题",
+      "llm_evidence": "利用Mamba架构学习解决柔性作业车间调度问题",
+      "canonical_evidence": "利用Mamba架构学习解决柔性作业车间调度问题",
+      "llm_tldr_en": "Introduces a Mamba-based architecture for FJSP to capture long-range dependencies in scheduling.",
+      "llm_tldr_cn": "引入基于Mamba的架构来解决FJSP问题，有效捕捉调度中的长程依赖关系。",
+      "llm_tldr": "引入基于Mamba的架构来解决FJSP问题，有效捕捉调度中的长程依赖关系。",
       "llm_tags": [
         "query:drl-jsp"
       ],
@@ -73,13 +73,13 @@
         "query:DRL JSP"
       ],
       "llm_score": 10.0,
-      "llm_evidence_en": "Flexible Job Shop Scheduling using deep reinforcement learning with heterogeneous graphs",
-      "llm_evidence_cn": "使用异构图深度强化学习解决柔性作业车间调度",
-      "llm_evidence": "使用异构图深度强化学习解决柔性作业车间调度",
-      "canonical_evidence": "使用异构图深度强化学习解决柔性作业车间调度",
-      "llm_tldr_en": "Applies DRL with heterogeneous graph networks to solve FJSP with limited buffers and material constraints.",
-      "llm_tldr_cn": "采用异构图网络的深度强化学习解决具有有限缓冲区和物料约束的柔性作业车间调度问题。",
-      "llm_tldr": "采用异构图网络的深度强化学习解决具有有限缓冲区和物料约束的柔性作业车间调度问题。",
+      "llm_evidence_en": "Solving flexible job shop scheduling using deep reinforcement learning with graph networks",
+      "llm_evidence_cn": "利用带有图网络的深度强化学习解决柔性作业车间调度问题",
+      "llm_evidence": "利用带有图网络的深度强化学习解决柔性作业车间调度问题",
+      "canonical_evidence": "利用带有图网络的深度强化学习解决柔性作业车间调度问题",
+      "llm_tldr_en": "Uses DRL with heterogeneous graph networks to solve FJSP with limited buffers and material kitting constraints.",
+      "llm_tldr_cn": "利用异构图神经网络的深度强化学习解决具有有限缓冲区和物料配套约束的柔性作业车间调度问题。",
+      "llm_tldr": "利用异构图神经网络的深度强化学习解决具有有限缓冲区和物料配套约束的柔性作业车间调度问题。",
       "llm_tags": [
         "query:drl-jsp"
       ],
@@ -114,12 +114,12 @@
       ],
       "llm_score": 10.0,
       "llm_evidence_en": "DRL-based improvement heuristics for Flexible Job Shop Scheduling",
-      "llm_evidence_cn": "基于深度强化学习的柔性作业车间调度改进启发式算法",
-      "llm_evidence": "基于深度强化学习的柔性作业车间调度改进启发式算法",
-      "canonical_evidence": "基于深度强化学习的柔性作业车间调度改进启发式算法",
-      "llm_tldr_en": "Proposes a memory-enhanced DRL improvement heuristic to solve complex Flexible Job Shop Scheduling Problems.",
-      "llm_tldr_cn": "提出一种增强记忆的深度强化学习改进启发式算法，用于解决复杂的柔性作业车间调度问题。",
-      "llm_tldr": "提出一种增强记忆的深度强化学习改进启发式算法，用于解决复杂的柔性作业车间调度问题。",
+      "llm_evidence_cn": "基于深度强化学习的柔性作业车间调度改进启发式方法",
+      "llm_evidence": "基于深度强化学习的柔性作业车间调度改进启发式方法",
+      "canonical_evidence": "基于深度强化学习的柔性作业车间调度改进启发式方法",
+      "llm_tldr_en": "Develops a memory-enhanced DRL approach for improvement-based flexible job shop scheduling.",
+      "llm_tldr_cn": "开发了一种增强记忆的深度强化学习方法，用于改进式柔性作业车间调度。",
+      "llm_tldr": "开发了一种增强记忆的深度强化学习方法，用于改进式柔性作业车间调度。",
       "llm_tags": [
         "query:drl-jsp"
       ],
@@ -150,57 +150,19 @@
         "query:DRL JSP"
       ],
       "llm_score": 10.0,
-      "llm_evidence_en": "Minimalist DRL framework for Flexible Job Shop Scheduling",
-      "llm_evidence_cn": "用于柔性作业车间调度的极简深度强化学习框架",
-      "llm_evidence": "用于柔性作业车间调度的极简深度强化学习框架",
-      "canonical_evidence": "用于柔性作业车间调度的极简深度强化学习框架",
-      "llm_tldr_en": "Introduces ReSched, a Transformer-based DRL framework that simplifies state representation for FJSP.",
-      "llm_tldr_cn": "引入了ReSched，一种基于Transformer的DRL框架，简化了FJSP的状态表示。",
-      "llm_tldr": "引入了ReSched，一种基于Transformer的DRL框架，简化了FJSP的状态表示。",
+      "llm_evidence_en": "Minimalist DRL framework for Flexible Job Shop Scheduling Problem (FJSP)",
+      "llm_evidence_cn": "用于柔性作业车间调度问题 (FJSP) 的极简深度强化学习框架",
+      "llm_evidence": "用于柔性作业车间调度问题 (FJSP) 的极简深度强化学习框架",
+      "canonical_evidence": "用于柔性作业车间调度问题 (FJSP) 的极简深度强化学习框架",
+      "llm_tldr_en": "ReSched simplifies FJSP states and uses a Transformer architecture to improve DRL-based scheduling efficiency.",
+      "llm_tldr_cn": "ReSched 通过简化 FJSP 状态空间和 Transformer 架构提升了基于深度强化学习的调度效率。",
+      "llm_tldr": "ReSched 通过简化 FJSP 状态空间和 Transformer 架构提升了基于深度强化学习的调度效率。",
       "llm_tags": [
         "query:drl-jsp"
       ],
       "matched_query_tag": "query:drl-jsp",
       "matched_query_text": "Solving flexible job shop scheduling using deep reinforcement learning",
       "matched_requirement_id": "req-4",
-      "selection_source": "fresh_fetch"
-    },
-    {
-      "id": "2602.13999v1",
-      "title": "It Takes Two to Tango: A Holistic Simulator for Joint Order Scheduling and Multi-Agent Path Finding in Robotic Warehouses",
-      "abstract": "The prevailing paradigm in Robotic Mobile Fulfillment Systems (RMFS) typically treats order scheduling and multi-agent pathfinding as isolated sub-problems. We argue that this decoupling is a fundamental bottleneck, masking the critical dependencies between high-level dispatching and low-level congestion. Existing simulators fail to bridge this gap, often abstracting away heterogeneous kinematics and stochastic execution failures. We propose WareRover, a holistic simulation platform that enforces a tight coupling between OS and MAPF via a unified, closed-loop optimization interface. Unlike standard benchmarks, WareRover integrates dynamic order streams, physics-aware motion constraints, and non-nominal recovery mechanisms into a single evaluation loop. Experiments reveal that SOTA algorithms often falter under these realistic coupled constraints, demonstrating that WareRover provides a necessary and challenging testbed for robust, next-generation warehouse coordination. The project and video is available at https://hhh-x.github.io/WareRover/.",
-      "authors": [
-        "Haozheng Xu",
-        "Wenhao Li",
-        "Zifan Wei",
-        "Bo Jin",
-        "Hongxing Bai",
-        "Ben Yang",
-        "Xiangfeng Wang"
-      ],
-      "primary_category": "cs.RO",
-      "categories": [
-        "cs.RO"
-      ],
-      "published": "2026-02-15T05:51:58+00:00",
-      "link": "https://arxiv.org/pdf/2602.13999v1",
-      "tags": [
-        "query:DRL JSP"
-      ],
-      "llm_score": 8.0,
-      "llm_evidence_en": "Joint order scheduling and path finding in warehouses",
-      "llm_evidence_cn": "仓库中的联合订单调度与路径规划",
-      "llm_evidence": "仓库中的联合订单调度与路径规划",
-      "canonical_evidence": "仓库中的联合订单调度与路径规划",
-      "llm_tldr_en": "A holistic simulator for coupling high-level order scheduling with low-level multi-agent pathfinding.",
-      "llm_tldr_cn": "一个将高层订单调度与底层多智能体路径规划紧密结合的整体模拟平台。",
-      "llm_tldr": "一个将高层订单调度与底层多智能体路径规划紧密结合的整体模拟平台。",
-      "llm_tags": [
-        "query:drl-jsp"
-      ],
-      "matched_query_tag": "query:drl-jsp",
-      "matched_query_text": "End to end deep reinforcement learning for production scheduling",
-      "matched_requirement_id": "req-5",
       "selection_source": "fresh_fetch"
     },
     {
@@ -220,16 +182,17 @@
       "published": "2026-02-26T09:10:43+00:00",
       "link": "https://arxiv.org/pdf/2602.22774v1",
       "tags": [
+        "keyword:DRL JSP",
         "query:DRL JSP"
       ],
       "llm_score": 8.0,
-      "llm_evidence_en": "DRL framework for resource allocation and user scheduling in industrial automation",
-      "llm_evidence_cn": "用于工业自动化资源分配和用户调度的深度强化学习框架",
-      "llm_evidence": "用于工业自动化资源分配和用户调度的深度强化学习框架",
-      "canonical_evidence": "用于工业自动化资源分配和用户调度的深度强化学习框架",
-      "llm_tldr_en": "Uses a Transformer-enhanced PPO framework for efficient resource allocation and scheduling in wireless networks.",
-      "llm_tldr_cn": "采用增强型Transformer PPO框架，实现无线网络中高效的资源分配和调度。",
-      "llm_tldr": "采用增强型Transformer PPO框架，实现无线网络中高效的资源分配和调度。",
+      "llm_evidence_en": "DRL for resource allocation and user scheduling",
+      "llm_evidence_cn": "深度强化学习用于资源分配与用户调度",
+      "llm_evidence": "深度强化学习用于资源分配与用户调度",
+      "canonical_evidence": "深度强化学习用于资源分配与用户调度",
+      "llm_tldr_en": "A Transformer-based DRL framework for efficient resource allocation and scheduling.",
+      "llm_tldr_cn": "一种基于Transformer的深度强化学习框架，用于高效的资源分配与调度。",
+      "llm_tldr": "一种基于Transformer的深度强化学习框架，用于高效的资源分配与调度。",
       "llm_tags": [
         "query:drl-jsp"
       ],
@@ -241,33 +204,36 @@
   ],
   "quick_skim": [
     {
-      "id": "2602.08616v1",
-      "title": "Breaking the Grid: Distance-Guided Reinforcement Learning in Large Discrete and Hybrid Action Spaces",
-      "abstract": "Reinforcement Learning is increasingly applied to logistics, scheduling, and recommender systems, but standard algorithms struggle with the curse of dimensionality in such large discrete action spaces. Existing algorithms typically rely on restrictive grid-based structures or computationally expensive nearest-neighbor searches, limiting their effectiveness in high-dimensional or irregularly structured domains. We propose Distance-Guided Reinforcement Learning (DGRL), combining Sampled Dynamic Neighborhoods (SDN) and Distance-Based Updates (DBU) to enable efficient RL in spaces with up to 10$^\\text{20}$ actions. Unlike prior methods, SDN leverages a semantic embedding space to perform stochastic volumetric exploration, provably providing full support over a local trust region. Complementing this, DBU transforms policy optimization into a stable regression task, decoupling gradient variance from action space cardinality and guaranteeing monotonic policy improvement. DGRL naturally generalizes to hybrid continuous-discrete action spaces without requiring hierarchical dependencies. We demonstrate performance improvements of up to 66% against state-of-the-art benchmarks across regularly and irregularly structured environments, while simultaneously improving convergence speed and computational complexity.",
+      "id": "2602.11346v1",
+      "title": "Divide and Learn: Multi-Objective Combinatorial Optimization at Scale",
+      "abstract": "Multi-objective combinatorial optimization seeks Pareto-optimal solutions over exponentially large discrete spaces, yet existing methods sacrifice generality, scalability, or theoretical guarantees. We reformulate it as an online learning problem over a decomposed decision space, solving position-wise bandit subproblems via adaptive expert-guided sequential construction. This formulation admits regret bounds of $O(d\\sqrt{T \\log T})$ depending on subproblem dimensionality \\(d\\) rather than combinatorial space size. On standard benchmarks, our method achieves 80--98\\% of specialized solvers performance while achieving two to three orders of magnitude improvement in sample and computational efficiency over Bayesian optimization methods. On real-world hardware-software co-design for AI accelerators with expensive simulations, we outperform competing methods under fixed evaluation budgets. The advantage grows with problem scale and objective count, establishing bandit optimization over decomposed decision spaces as a principled alternative to surrogate modeling or offline training for multi-objective optimization.",
       "authors": [
-        "Heiko Hoppe",
-        "Fabian Akkerman",
-        "Wouter van Heeswijk",
-        "Maximilian Schiffer"
+        "Esha Singh",
+        "Dongxia Wu",
+        "Chien-Yi Yang",
+        "Tajana Rosing",
+        "Rose Yu",
+        "Yi-An Ma"
       ],
       "primary_category": "cs.LG",
       "categories": [
         "cs.LG",
         "cs.AI"
       ],
-      "published": "2026-02-09T13:05:07+00:00",
-      "link": "https://arxiv.org/pdf/2602.08616v1",
+      "published": "2026-02-11T20:29:35+00:00",
+      "link": "https://arxiv.org/pdf/2602.11346v1",
       "tags": [
+        "keyword:DRL JSP",
         "query:DRL JSP"
       ],
-      "llm_score": 8.0,
-      "llm_evidence_en": "RL for scheduling in large discrete action spaces",
-      "llm_evidence_cn": "强化学习用于大规模离散动作空间的调度问题",
-      "llm_evidence": "强化学习用于大规模离散动作空间的调度问题",
-      "canonical_evidence": "强化学习用于大规模离散动作空间的调度问题",
-      "llm_tldr_en": "Proposes a distance-guided RL method to handle large action spaces in logistics and scheduling.",
-      "llm_tldr_cn": "提出了一种距离引导的强化学习方法，用于处理物流和调度中的大规模动作空间。",
-      "llm_tldr": "提出了一种距离引导的强化学习方法，用于处理物流和调度中的大规模动作空间。",
+      "llm_score": 7.0,
+      "llm_evidence_en": "Multi-objective combinatorial optimization via online learning",
+      "llm_evidence_cn": "通过在线学习解决多目标组合优化",
+      "llm_evidence": "通过在线学习解决多目标组合优化",
+      "canonical_evidence": "通过在线学习解决多目标组合优化",
+      "llm_tldr_en": "Reformulates multi-objective combinatorial optimization as an online learning problem for better scalability.",
+      "llm_tldr_cn": "将多目标组合优化重新表述为在线学习问题，以提高可扩展性。",
+      "llm_tldr": "将多目标组合优化重新表述为在线学习问题，以提高可扩展性。",
       "llm_tags": [
         "query:drl-jsp:composite"
       ],
@@ -275,7 +241,125 @@
       "matched_query_text": "Papers central to 深度强化学习解决作业车间调度问题 (JSP), especially work that connects or combines: Deep Reinforcement Learning for scheduling; s; Deep reinforcement learning approaches for job shop scheduling problems; Solving flexible job shop scheduling using deep reinforcement learning; End to end deep reinforcement learning for production scheduling; Comparison of DRL algorithms for manufacturing scheduling; Dynamic job shop scheduling via deep reinforcement learning.",
       "matched_requirement_id": "req-composite-drl-jsp",
       "selection_source": "fresh_fetch",
-      "quick_tier": "8plus"
+      "quick_tier": "7"
+    },
+    {
+      "id": "2602.11826v1",
+      "title": "Combinatorial Perpetual Scheduling",
+      "abstract": "This paper introduces a framework for combinatorial variants of perpetual-scheduling problems. Given a set system $(E,\\mathcal{I})$, a schedule consists of an independent set $I_t \\in \\mathcal{I}$ for every time step $t \\in \\mathbb{N}$, with the objective of fulfilling frequency requirements on the occurrence of elements in $E$. We focus specifically on combinatorial bamboo garden trimming, where elements accumulate height at growth rates $g(e)$ for $e \\in E$ given as a convex combination of incidence vectors of $\\mathcal{I}$ and are reset to zero when scheduled, with the goal of minimizing the maximum height attained by any element.   Using the integrality of the matroid-intersection polytope, we prove that, when $(E,\\mathcal{I})$ is a matroid, it is possible to guarantee a maximum height of at most 2, which is optimal. We complement this existential result with efficient algorithms for specific matroid classes, achieving a maximum height of 2 for uniform and partition matroids, and 4 for graphic and laminar matroids. In contrast, we show that for general set systems, the optimal guaranteed height is $Θ(\\log |E|)$ and can be achieved by an efficient algorithm. For combinatorial pinwheel scheduling, where each element $e\\in E$ needs to occur in the schedule at least every $a_e \\in \\mathbb{N}$ time steps, our results imply bounds on the density sufficient for schedulability.",
+      "authors": [
+        "Mirabel Mendoza-Cadena",
+        "Arturo Merino",
+        "Mads Anker Nielsen",
+        "Kevin Schewior"
+      ],
+      "primary_category": "cs.DS",
+      "categories": [
+        "cs.DS"
+      ],
+      "published": "2026-02-12T11:11:11+00:00",
+      "link": "https://arxiv.org/pdf/2602.11826v1",
+      "tags": [
+        "query:DRL JSP"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "Framework for combinatorial perpetual scheduling problems",
+      "llm_evidence_cn": "组合永续调度问题的框架",
+      "llm_evidence": "组合永续调度问题的框架",
+      "canonical_evidence": "组合永续调度问题的框架",
+      "llm_tldr_en": "Introduces a framework for combinatorial perpetual scheduling to minimize maximum height in growth systems.",
+      "llm_tldr_cn": "引入组合永续调度框架，旨在最小化增长系统中的最大高度。",
+      "llm_tldr": "引入组合永续调度框架，旨在最小化增长系统中的最大高度。",
+      "llm_tags": [
+        "query:drl-jsp"
+      ],
+      "matched_query_tag": "query:drl-jsp",
+      "matched_query_text": "Deep Reinforcement Learning for scheduling",
+      "matched_requirement_id": "req-1",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    },
+    {
+      "id": "2602.13668v1",
+      "title": "Efficient Data-Driven Production Scheduling in Pharmaceutical Manufacturing",
+      "abstract": "This paper develops a data-driven, constraint-based optimization framework for a complex industrial job shop scheduling problem variant in pharmaceutical manufacturing. The formulation captures fixed routings and designated machines, explicit resource calendars with weekends and planned maintenance, and campaign sequencing through sequence-dependent cleaning times derived from site tables. The model is implemented with an open source constraint solver and evaluated on deterministic snapshots from a solid oral dosage facility under three objective formulations: makespan, makespan plus total tardiness, and makespan plus average tardiness. On three industrial instances of increasing size (10, 30, and 84 jobs) the proposed schedules dominate reference plans that solve a simplified variant without the added site rules. Makespan reductions reach \\(88.1\\%\\), \\(77.6\\%\\), and \\(54.9\\%\\) and total tardiness reductions reach \\(72.1\\%\\), \\(58.7\\%\\), and \\(18.2\\%\\), respectively. The composite objectives further decrease late job counts with negligible makespan change on the smaller instances and a modest increase on the largest instance. Optimality is proven on the small case, with relative gaps of \\(0.77\\%\\) and \\(14.92\\%\\) on the medium and large cases under a fixed time limit. The results show that a compact constraint programming formulation can deliver feasible, transparent schedules that respect site rules while improving adherence to due dates on real industrial data.",
+      "authors": [
+        "Ioannis Balatsos",
+        "Athanasios Liakos",
+        "Panagiotis Karakostas",
+        "Tao Song",
+        "Vassilios Pantazopoulos",
+        "Christos Papalitsas"
+      ],
+      "primary_category": "cs.PF",
+      "categories": [
+        "cs.PF"
+      ],
+      "published": "2026-02-14T08:31:22+00:00",
+      "link": "https://arxiv.org/pdf/2602.13668v1",
+      "tags": [
+        "keyword:DRL JSP",
+        "query:DRL JSP"
+      ],
+      "llm_score": 7.0,
+      "llm_evidence_en": "Constraint-based optimization for industrial job shop scheduling",
+      "llm_evidence_cn": "工业作业车间调度的约束优化框架",
+      "llm_evidence": "工业作业车间调度的约束优化框架",
+      "canonical_evidence": "工业作业车间调度的约束优化框架",
+      "llm_tldr_en": "Develops a data-driven constraint-based framework for complex pharmaceutical job shop scheduling.",
+      "llm_tldr_cn": "为复杂的制药作业车间调度开发了一个数据驱动的约束优化框架。",
+      "llm_tldr": "为复杂的制药作业车间调度开发了一个数据驱动的约束优化框架。",
+      "llm_tags": [
+        "query:drl-jsp"
+      ],
+      "matched_query_tag": "query:drl-jsp",
+      "matched_query_text": "Deep reinforcement learning approaches for job shop scheduling problems",
+      "matched_requirement_id": "req-3",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "7"
+    },
+    {
+      "id": "2602.12913v1",
+      "title": "Hierarchical Reinforcement Learning for Cooperative Air-Ground Delivery in Urban System",
+      "abstract": "Cooperative air-ground delivery has emerged as a promising logistics paradigm by leveraging the complementary strengths of UAVs and ground carriers. However, effective dispatching in such heterogeneous systems faces two critical challenges: i) the heterogeneity between flight and road dynamics, ii) the scalability bottleneck raised by the exponential decision variables in large-scale fleets. To address these challenges, we propose HRL4AG, a Hierarchical Reinforcement Learning framework for cooperative Air-Ground delivery. Specifically, HRL4AG employs a high-level manager to tackle the scalability bottleneck by decomposing the joint action space, and mode-specific workers that encode distinct flight and road dynamics to address the heterogeneity. Furthermore, a novel internal reward mechanism is designed to guide the hierarchical policy learning, addressing the credit assignment problem in sparse-reward settings. Extensive experiments on two real-world datasets and an evaluation platform demonstrate that HRL4AG significantly outperforms state-of-the-art baselines, improving the delivery success rate by up to 26% while achieving an 80-fold increase in computational efficiency.",
+      "authors": [
+        "Songxin Lei",
+        "Chunming Ma",
+        "Haomin Wen",
+        "Yexin Li",
+        "Lizhenghe Chen",
+        "Qianyu Yang",
+        "Fugee Tsung",
+        "Lei Chen",
+        "Sijie Ruan",
+        "Yuxuan Liang"
+      ],
+      "primary_category": "cs.CY",
+      "categories": [
+        "cs.CY"
+      ],
+      "published": "2026-02-13T13:19:59+00:00",
+      "link": "https://arxiv.org/pdf/2602.12913v1",
+      "tags": [
+        "keyword:DRL JSP",
+        "query:DRL JSP"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "Hierarchical RL for logistics dispatching and scheduling",
+      "llm_evidence_cn": "用于物流调度和排程的分层强化学习",
+      "llm_evidence": "用于物流调度和排程的分层强化学习",
+      "canonical_evidence": "用于物流调度和排程的分层强化学习",
+      "llm_tldr_en": "Proposes a hierarchical RL framework for cooperative air-ground delivery to solve large-scale fleet dispatching.",
+      "llm_tldr_cn": "提出一种用于空地协同配送的分层强化学习框架，解决大规模车队调度问题。",
+      "llm_tldr": "提出一种用于空地协同配送的分层强化学习框架，解决大规模车队调度问题。",
+      "llm_tags": [
+        "query:drl-jsp"
+      ],
+      "matched_query_tag": "query:drl-jsp",
+      "matched_query_text": "Deep Reinforcement Learning for scheduling",
+      "matched_requirement_id": "req-1",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
     },
     {
       "id": "2602.18109v1",
@@ -302,6 +386,7 @@
       "published": "2026-02-20T09:56:23+00:00",
       "link": "https://arxiv.org/pdf/2602.18109v1",
       "tags": [
+        "keyword:DRL JSP",
         "query:DRL JSP"
       ],
       "llm_score": 7.0,
@@ -309,9 +394,9 @@
       "llm_evidence_cn": "用于实时任务调度的强化学习调度器",
       "llm_evidence": "用于实时任务调度的强化学习调度器",
       "canonical_evidence": "用于实时任务调度的强化学习调度器",
-      "llm_tldr_en": "TempoNet uses a Transformer-guided RL approach for adaptive real-time task scheduling and multicore mapping.",
-      "llm_tldr_cn": "TempoNet 采用 Transformer 引导的强化学习方法，实现自适应实时任务调度和多核映射。",
-      "llm_tldr": "TempoNet 采用 Transformer 引导的强化学习方法，实现自适应实时任务调度和多核映射。",
+      "llm_tldr_en": "TempoNet uses a Transformer-guided RL approach for adaptive real-time task scheduling and dispatching.",
+      "llm_tldr_cn": "TempoNet 采用 Transformer 引导的强化学习方法进行自适应实时任务调度与分派。",
+      "llm_tldr": "TempoNet 采用 Transformer 引导的强化学习方法进行自适应实时任务调度与分派。",
       "llm_tags": [
         "query:drl-jsp"
       ],
@@ -322,70 +407,37 @@
       "quick_tier": "7"
     },
     {
-      "id": "2602.10598v1",
-      "title": "Neuro-symbolic Action Masking for Deep Reinforcement Learning",
-      "abstract": "Deep reinforcement learning (DRL) may explore infeasible actions during training and execution. Existing approaches assume a symbol grounding function that maps high-dimensional states to consistent symbolic representations and a manually specified action masking techniques to constrain actions. In this paper, we propose Neuro-symbolic Action Masking (NSAM), a novel framework that automatically learn symbolic models, which are consistent with given domain constraints of high-dimensional states, in a minimally supervised manner during the DRL process. Based on the learned symbolic model of states, NSAM learns action masks that rules out infeasible actions. NSAM enables end-to-end integration of symbolic reasoning and deep policy optimization, where improvements in symbolic grounding and policy learning mutually reinforce each other. We evaluate NSAM on multiple domains with constraints, and experimental results demonstrate that NSAM significantly improves sample efficiency of DRL agent while substantially reducing constraint violations.",
+      "id": "2602.13691v1",
+      "title": "PhGPO: Pheromone-Guided Policy Optimization for Long-Horizon Tool Planning",
+      "abstract": "Recent advancements in Large Language Model (LLM) agents have demonstrated strong capabilities in executing complex tasks through tool use. However, long-horizon multi-step tool planning is challenging, because the exploration space suffers from a combinatorial explosion. In this scenario, even when a correct tool-use path is found, it is usually considered an immediate reward for current training, which would not provide any reusable information for subsequent training. In this paper, we argue that historically successful trajectories contain reusable tool-transition patterns, which can be leveraged throughout the whole training process. Inspired by ant colony optimization where historically successful paths can be reflected by the pheromone, we propose Pheromone-Guided Policy Optimization (PhGPO), which learns a trajectory-based transition pattern (i.e., pheromone) from historical trajectories and then uses the learned pheromone to guide policy optimization. This learned pheromone provides explicit and reusable guidance that steers policy optimization toward historically successful tool transitions, thereby improving long-horizon tool planning. Comprehensive experimental results demonstrate the effectiveness of our proposed PhGPO.",
       "authors": [
-        "Shuai Han",
-        "Mehdi Dastani",
-        "Shihan Wang"
+        "Yu Li",
+        "Guangfeng Cai",
+        "Shengtian Yang",
+        "Han Luo",
+        "Shuo Han",
+        "Xu He",
+        "Dong Li",
+        "Lei Feng"
       ],
       "primary_category": "cs.AI",
       "categories": [
-        "cs.AI",
-        "cs.LG"
+        "cs.AI"
       ],
-      "published": "2026-02-11T07:42:53+00:00",
-      "link": "https://arxiv.org/pdf/2602.10598v1",
+      "published": "2026-02-14T09:24:55+00:00",
+      "link": "https://arxiv.org/pdf/2602.13691v1",
       "tags": [
         "keyword:DRL JSP",
         "query:DRL JSP"
       ],
       "llm_score": 6.0,
-      "llm_evidence_en": "Action masking for DRL in constrained domains",
-      "llm_evidence_cn": "受限领域中深度强化学习的动作掩码",
-      "llm_evidence": "受限领域中深度强化学习的动作掩码",
-      "canonical_evidence": "受限领域中深度强化学习的动作掩码",
-      "llm_tldr_en": "Learns symbolic models to provide action masks that rule out infeasible actions in DRL.",
-      "llm_tldr_cn": "学习符号模型以提供动作掩码，在深度强化学习中排除不可行操作。",
-      "llm_tldr": "学习符号模型以提供动作掩码，在深度强化学习中排除不可行操作。",
-      "llm_tags": [
-        "query:drl-jsp"
-      ],
-      "matched_query_tag": "query:drl-jsp",
-      "matched_query_text": "Dynamic job shop scheduling via deep reinforcement learning",
-      "matched_requirement_id": "req-7",
-      "selection_source": "fresh_fetch",
-      "quick_tier": "6"
-    },
-    {
-      "id": "2602.15070v1",
-      "title": "An effective Genetic Programming Hyper-Heuristic for Uncertain Agile Satellite Scheduling",
-      "abstract": "This paper investigates a novel problem, namely the Uncertain Agile Earth Observation Satellite Scheduling Problem (UAEOSSP). Unlike the static AEOSSP, it takes into account a range of uncertain factors (e.g., task profit, resource consumption, and task visibility) in order to reflect the reality that the actual information is inherently unknown beforehand. An effective Genetic Programming Hyper-Heuristic (GPHH) is designed to automate the generation of scheduling policies. The evolved scheduling policies can be utilized to adjust plans in real time and perform exceptionally well. Experimental results demonstrate that evolved scheduling policies significantly outperform both well-designed Look-Ahead Heuristics (LAHs) and Manually Designed Heuristics (MDHs). Specifically, the policies generated by GPHH achieve an average improvement of 5.03% compared to LAHs and 8.14% compared to MDHs.",
-      "authors": [
-        "Yuning Chen",
-        "Junhua Xue",
-        "Wangqi Gu",
-        "Mingyan Shao"
-      ],
-      "primary_category": "cs.NE",
-      "categories": [
-        "cs.NE",
-        "cs.AI"
-      ],
-      "published": "2026-02-15T02:09:57+00:00",
-      "link": "https://arxiv.org/pdf/2602.15070v1",
-      "tags": [
-        "query:DRL JSP"
-      ],
-      "llm_score": 8.0,
-      "llm_evidence_en": "Hyper-heuristic for real-time uncertain scheduling policies",
-      "llm_evidence_cn": "用于实时不确定调度策略的超启发式算法",
-      "llm_evidence": "用于实时不确定调度策略的超启发式算法",
-      "canonical_evidence": "用于实时不确定调度策略的超启发式算法",
-      "llm_tldr_en": "Uses Genetic Programming to evolve real-time scheduling policies for uncertain satellite tasks.",
-      "llm_tldr_cn": "利用遗传编程演化出针对不确定卫星任务的实时调度策略，优于手动设计的启发式方法。",
-      "llm_tldr": "利用遗传编程演化出针对不确定卫星任务的实时调度策略，优于手动设计的启发式方法。",
+      "llm_evidence_en": "Pheromone-guided policy optimization for long-horizon tool planning and combinatorial spaces",
+      "llm_evidence_cn": "用于长时程工具规划和组合空间的费洛蒙引导策略优化",
+      "llm_evidence": "用于长时程工具规划和组合空间的费洛蒙引导策略优化",
+      "canonical_evidence": "用于长时程工具规划和组合空间的费洛蒙引导策略优化",
+      "llm_tldr_en": "Combines ant colony optimization with RL to solve long-horizon planning problems in combinatorial spaces.",
+      "llm_tldr_cn": "将蚁群算法与强化学习结合，解决组合空间中的长时程规划问题。",
+      "llm_tldr": "将蚁群算法与强化学习结合，解决组合空间中的长时程规划问题。",
       "llm_tags": [
         "query:drl-jsp:composite"
       ],
@@ -393,7 +445,7 @@
       "matched_query_text": "Papers central to 深度强化学习解决作业车间调度问题 (JSP), especially work that connects or combines: Deep Reinforcement Learning for scheduling; s; Deep reinforcement learning approaches for job shop scheduling problems; Solving flexible job shop scheduling using deep reinforcement learning; End to end deep reinforcement learning for production scheduling; Comparison of DRL algorithms for manufacturing scheduling; Dynamic job shop scheduling via deep reinforcement learning.",
       "matched_requirement_id": "req-composite-drl-jsp",
       "selection_source": "fresh_fetch",
-      "quick_tier": "8plus"
+      "quick_tier": "6"
     },
     {
       "id": "2602.19277v1",
@@ -410,16 +462,17 @@
       "published": "2026-02-22T17:19:42+00:00",
       "link": "https://arxiv.org/pdf/2602.19277v1",
       "tags": [
+        "keyword:DRL JSP",
         "query:DRL JSP"
       ],
       "llm_score": 7.0,
-      "llm_evidence_en": "Online reinforcement learning for dynamic machine repair and maintenance",
-      "llm_evidence_cn": "用于动态机器维修和维护的在线强化学习",
-      "llm_evidence": "用于动态机器维修和维护的在线强化学习",
-      "canonical_evidence": "用于动态机器维修和维护的在线强化学习",
-      "llm_tldr_en": "Develops a rollout method for online RL to optimize the scheduling of a repairer across heterogeneous machines.",
-      "llm_tldr_cn": "开发了一种在线强化学习的展开方法，以优化维修人员在异构机器间的调度。",
-      "llm_tldr": "开发了一种在线强化学习的展开方法，以优化维修人员在异构机器间的调度。",
+      "llm_evidence_en": "Online reinforcement learning for dynamic machine maintenance and repair scheduling",
+      "llm_evidence_cn": "在线强化学习用于动态机器维护和修理调度",
+      "llm_evidence": "在线强化学习用于动态机器维护和修理调度",
+      "canonical_evidence": "在线强化学习用于动态机器维护和修理调度",
+      "llm_tldr_en": "Develops an online RL rollout method for the dynamic repair and maintenance of machines on a network.",
+      "llm_tldr_cn": "开发了一种在线强化学习展开方法，用于网络中机器的动态维修和保养。",
+      "llm_tldr": "开发了一种在线强化学习展开方法，用于网络中机器的动态维修和保养。",
       "llm_tags": [
         "query:drl-jsp"
       ],
@@ -430,146 +483,33 @@
       "quick_tier": "7"
     },
     {
-      "id": "2602.11346v1",
-      "title": "Divide and Learn: Multi-Objective Combinatorial Optimization at Scale",
-      "abstract": "Multi-objective combinatorial optimization seeks Pareto-optimal solutions over exponentially large discrete spaces, yet existing methods sacrifice generality, scalability, or theoretical guarantees. We reformulate it as an online learning problem over a decomposed decision space, solving position-wise bandit subproblems via adaptive expert-guided sequential construction. This formulation admits regret bounds of $O(d\\sqrt{T \\log T})$ depending on subproblem dimensionality \\(d\\) rather than combinatorial space size. On standard benchmarks, our method achieves 80--98\\% of specialized solvers performance while achieving two to three orders of magnitude improvement in sample and computational efficiency over Bayesian optimization methods. On real-world hardware-software co-design for AI accelerators with expensive simulations, we outperform competing methods under fixed evaluation budgets. The advantage grows with problem scale and objective count, establishing bandit optimization over decomposed decision spaces as a principled alternative to surrogate modeling or offline training for multi-objective optimization.",
+      "id": "2602.13866v1",
+      "title": "Modeling and Optimizing the Provisioning of Exhaustible Capabilities for Simultaneous Task Allocation and Scheduling",
+      "abstract": "Deploying heterogeneous robot teams to accomplish multiple tasks over extended time horizons presents significant computational challenges for task allocation and planning. In this paper, we present a comprehensive, time-extended, offline heterogeneous multi-robot task allocation framework, TRAITS, which we believe to be the first that can cope with the provisioning of exhaustible traits under battery and temporal constraints. Specifically, we introduce a nonlinear programming-based trait distribution module that can optimize the trait-provisioning rate of coalitions to yield feasible and time-efficient solutions. TRAITS provides a more accurate feasibility assessment and estimation of task execution times and makespan by leveraging trait-provisioning rates while optimizing battery consumption -- an advantage that state-of-the-art frameworks lack. We evaluate TRAITS against two state-of-the-art frameworks, with results demonstrating its advantage in satisfying complex trait and battery requirements while remaining computationally tractable.",
       "authors": [
-        "Esha Singh",
-        "Dongxia Wu",
-        "Chien-Yi Yang",
-        "Tajana Rosing",
-        "Rose Yu",
-        "Yi-An Ma"
+        "Jinwoo Park",
+        "Harish Ravichandar",
+        "Seth Hutchinson"
       ],
-      "primary_category": "cs.LG",
+      "primary_category": "cs.RO",
       "categories": [
-        "cs.LG",
-        "cs.AI"
+        "cs.RO",
+        "cs.MA"
       ],
-      "published": "2026-02-11T20:29:35+00:00",
-      "link": "https://arxiv.org/pdf/2602.11346v1",
+      "published": "2026-02-14T19:55:15+00:00",
+      "link": "https://arxiv.org/pdf/2602.13866v1",
       "tags": [
+        "keyword:DRL JSP",
         "query:DRL JSP"
       ],
       "llm_score": 6.0,
-      "llm_evidence_en": "Multi-objective combinatorial optimization for large-scale decision spaces",
-      "llm_evidence_cn": "大规模决策空间的多目标组合优化",
-      "llm_evidence": "大规模决策空间的多目标组合优化",
-      "canonical_evidence": "大规模决策空间的多目标组合优化",
-      "llm_tldr_en": "Reformulates multi-objective combinatorial optimization as online learning for improved efficiency.",
-      "llm_tldr_cn": "将多目标组合优化重新表述为在线学习，以提高求解效率。",
-      "llm_tldr": "将多目标组合优化重新表述为在线学习，以提高求解效率。",
-      "llm_tags": [
-        "query:drl-jsp:composite"
-      ],
-      "matched_query_tag": "query:drl-jsp:composite",
-      "matched_query_text": "Papers central to 深度强化学习解决作业车间调度问题 (JSP), especially work that connects or combines: Deep Reinforcement Learning for scheduling; s; Deep reinforcement learning approaches for job shop scheduling problems; Solving flexible job shop scheduling using deep reinforcement learning; End to end deep reinforcement learning for production scheduling; Comparison of DRL algorithms for manufacturing scheduling; Dynamic job shop scheduling via deep reinforcement learning.",
-      "matched_requirement_id": "req-composite-drl-jsp",
-      "selection_source": "fresh_fetch",
-      "quick_tier": "6"
-    },
-    {
-      "id": "2602.20730v1",
-      "title": "Rethink Efficiency Side of Neural Combinatorial Solver: An Offline and Self-Play Paradigm",
-      "abstract": "We propose ECO, a versatile learning paradigm that enables efficient offline self-play for Neural Combinatorial Optimization (NCO). ECO addresses key limitations in the field through: 1) Paradigm Shift: Moving beyond inefficient online paradigms, we introduce a two-phase offline paradigm consisting of supervised warm-up and iterative Direct Preference Optimization (DPO); 2) Architecture Shift: We deliberately design a Mamba-based architecture to further enhance the efficiency in the offline paradigm; and 3) Progressive Bootstrapping: To stabilize training, we employ a heuristic-based bootstrapping mechanism that ensures continuous policy improvement during training. Comparison results on TSP and CVRP highlight that ECO performs competitively with up-to-date baselines, with significant advantage on the efficiency side in terms of memory utilization and training throughput. We provide further in-depth analysis on the efficiency, throughput and memory usage of ECO. Ablation studies show rationale behind our designs.",
-      "authors": [
-        "Zhenxing Xu",
-        "Zeyuan Ma",
-        "Weidong Bao",
-        "Hui Yan",
-        "Yan Zheng",
-        "Ji Wang"
-      ],
-      "primary_category": "cs.LG",
-      "categories": [
-        "cs.LG"
-      ],
-      "published": "2026-02-24T09:53:24+00:00",
-      "link": "https://arxiv.org/pdf/2602.20730v1",
-      "tags": [
-        "query:DRL JSP"
-      ],
-      "llm_score": 8.0,
-      "llm_evidence_en": "Neural Combinatorial Optimization for TSP and CVRP using offline self-play",
-      "llm_evidence_cn": "使用离线自我博弈的神经组合优化用于TSP和CVRP",
-      "llm_evidence": "使用离线自我博弈的神经组合优化用于TSP和CVRP",
-      "canonical_evidence": "使用离线自我博弈的神经组合优化用于TSP和CVRP",
-      "llm_tldr_en": "Proposes ECO, an offline self-play paradigm for efficient neural combinatorial optimization.",
-      "llm_tldr_cn": "提出ECO，一种用于高效神经组合优化的离线自我博弈范式。",
-      "llm_tldr": "提出ECO，一种用于高效神经组合优化的离线自我博弈范式。",
-      "llm_tags": [
-        "query:drl-jsp:composite"
-      ],
-      "matched_query_tag": "query:drl-jsp:composite",
-      "matched_query_text": "Papers central to 深度强化学习解决作业车间调度问题 (JSP), especially work that connects or combines: Deep Reinforcement Learning for scheduling; s; Deep reinforcement learning approaches for job shop scheduling problems; Solving flexible job shop scheduling using deep reinforcement learning; End to end deep reinforcement learning for production scheduling; Comparison of DRL algorithms for manufacturing scheduling; Dynamic job shop scheduling via deep reinforcement learning.",
-      "matched_requirement_id": "req-composite-drl-jsp",
-      "selection_source": "fresh_fetch",
-      "quick_tier": "8plus"
-    },
-    {
-      "id": "2602.20427v1",
-      "title": "GauS: Differentiable Scheduling Optimization via Gaussian Reparameterization",
-      "abstract": "Efficient operator scheduling is a fundamental challenge in software compilation and hardware synthesis. While recent differentiable approaches have sought to replace traditional ones like exact solvers or heuristics with gradient-based search, they typically rely on categorical distributions that fail to capture the ordinal nature of time and suffer from a parameter space that scales poorly. In this paper, we propose a novel differentiable framework, GauS, that models operator scheduling as a stochastic relaxation using Gaussian distributions, which fully utilize modern parallel computing devices like GPUs. By representing schedules as continuous Gaussian variables, we successfully capture the ordinal nature of time and reduce the optimization space by orders of magnitude. Our method is highly flexible to represent various objectives and constraints, which provides the first differentiable formulation for the complex pipelined scheduling problem. We evaluate our method on a range of benchmarks, demonstrating that Gaus achieves Pareto-optimal results.",
-      "authors": [
-        "Yaohui Cai",
-        "Vesal Bakhtazad",
-        "Cunxi Yu",
-        "Zhiru Zhang"
-      ],
-      "primary_category": "cs.LG",
-      "categories": [
-        "cs.LG",
-        "cs.AR"
-      ],
-      "published": "2026-02-23T23:58:32+00:00",
-      "link": "https://arxiv.org/pdf/2602.20427v1",
-      "tags": [
-        "query:DRL JSP"
-      ],
-      "llm_score": 7.0,
-      "llm_evidence_en": "Differentiable scheduling optimization for operator scheduling",
-      "llm_evidence_cn": "算子调度的可微调度优化",
-      "llm_evidence": "算子调度的可微调度优化",
-      "canonical_evidence": "算子调度的可微调度优化",
-      "llm_tldr_en": "Introduces a differentiable framework using Gaussian reparameterization for efficient operator scheduling.",
-      "llm_tldr_cn": "引入一种使用高斯重参数化的可微框架，用于高效的算子调度优化。",
-      "llm_tldr": "引入一种使用高斯重参数化的可微框架，用于高效的算子调度优化。",
-      "llm_tags": [
-        "query:drl-jsp"
-      ],
-      "matched_query_tag": "query:drl-jsp",
-      "matched_query_text": "Deep Reinforcement Learning for scheduling",
-      "matched_requirement_id": "req-1",
-      "selection_source": "fresh_fetch",
-      "quick_tier": "7"
-    },
-    {
-      "id": "2602.11826v1",
-      "title": "Combinatorial Perpetual Scheduling",
-      "abstract": "This paper introduces a framework for combinatorial variants of perpetual-scheduling problems. Given a set system $(E,\\mathcal{I})$, a schedule consists of an independent set $I_t \\in \\mathcal{I}$ for every time step $t \\in \\mathbb{N}$, with the objective of fulfilling frequency requirements on the occurrence of elements in $E$. We focus specifically on combinatorial bamboo garden trimming, where elements accumulate height at growth rates $g(e)$ for $e \\in E$ given as a convex combination of incidence vectors of $\\mathcal{I}$ and are reset to zero when scheduled, with the goal of minimizing the maximum height attained by any element.   Using the integrality of the matroid-intersection polytope, we prove that, when $(E,\\mathcal{I})$ is a matroid, it is possible to guarantee a maximum height of at most 2, which is optimal. We complement this existential result with efficient algorithms for specific matroid classes, achieving a maximum height of 2 for uniform and partition matroids, and 4 for graphic and laminar matroids. In contrast, we show that for general set systems, the optimal guaranteed height is $Θ(\\log |E|)$ and can be achieved by an efficient algorithm. For combinatorial pinwheel scheduling, where each element $e\\in E$ needs to occur in the schedule at least every $a_e \\in \\mathbb{N}$ time steps, our results imply bounds on the density sufficient for schedulability.",
-      "authors": [
-        "Mirabel Mendoza-Cadena",
-        "Arturo Merino",
-        "Mads Anker Nielsen",
-        "Kevin Schewior"
-      ],
-      "primary_category": "cs.DS",
-      "categories": [
-        "cs.DS"
-      ],
-      "published": "2026-02-12T11:11:11+00:00",
-      "link": "https://arxiv.org/pdf/2602.11826v1",
-      "tags": [
-        "query:DRL JSP"
-      ],
-      "llm_score": 6.0,
-      "llm_evidence_en": "Combinatorial framework for perpetual scheduling problems",
-      "llm_evidence_cn": "永续调度问题的组合框架",
-      "llm_evidence": "永续调度问题的组合框架",
-      "canonical_evidence": "永续调度问题的组合框架",
-      "llm_tldr_en": "Introduces a framework for combinatorial perpetual scheduling to minimize maximum height in growth systems.",
-      "llm_tldr_cn": "引入组合永续调度框架，旨在最小化增长系统中的最大高度。",
-      "llm_tldr": "引入组合永续调度框架，旨在最小化增长系统中的最大高度。",
+      "llm_evidence_en": "Simultaneous task allocation and scheduling for robot teams",
+      "llm_evidence_cn": "机器人团队的同步任务分配与调度",
+      "llm_evidence": "机器人团队的同步任务分配与调度",
+      "canonical_evidence": "机器人团队的同步任务分配与调度",
+      "llm_tldr_en": "Presents TRAITS, a framework for multi-robot task allocation and scheduling under resource constraints.",
+      "llm_tldr_cn": "提出TRAITS框架，用于在资源约束下进行多机器人任务分配与调度。",
+      "llm_tldr": "提出TRAITS框架，用于在资源约束下进行多机器人任务分配与调度。",
       "llm_tags": [
         "query:drl-jsp"
       ],
@@ -580,66 +520,117 @@
       "quick_tier": "6"
     },
     {
-      "id": "2602.20561v2",
-      "title": "A Granularity Characterization of Task Scheduling Effectiveness",
-      "abstract": "Task-based runtime systems provide flexible load balancing and portability for parallel scientific applications, but their strong scaling is highly sensitive to task granularity. As parallelism increases, scheduling overhead may transition from negligible to dominant, leading to rapid drops in performance for some algorithms, while remaining negligible for others. Although such effects are widely observed empirically, there is a general lack of understanding how algorithmic structure impacts whether dynamic scheduling is always beneficial. In this work, we introduce a granularity characterization framework that directly links scheduling overhead growth to task-graph dependency topology. We show that dependency structure, rather than problem size alone, governs how overhead scales with parallelism. Based on this observation, we characterize execution behavior using a simple granularity measure that indicates when scheduling overhead can be amortized by parallel computation and when scheduling overhead dominates performance. Through experimental evaluation on representative parallel workloads with diverse dependency patterns, we demonstrate that the proposed characterization explains both gradual and abrupt strong-scaling breakdowns observed in practice. We further show that overhead models derived from dependency topology accurately predict strong-scaling limits and enable a practical runtime decision rule for selecting dynamic or static execution without requiring exhaustive strong-scaling studies or extensive offline tuning.",
+      "id": "2602.23935v1",
+      "title": "Green or Fast? Learning to Balance Cold Starts and Idle Carbon in Serverless Computing",
+      "abstract": "Serverless computing simplifies cloud deployment but introduces new challenges in managing service latency and carbon emissions. Reducing cold-start latency requires retaining warm function instances, while minimizing carbon emissions favors reclaiming idle resources. This balance is further complicated by time-varying grid carbon intensity and varying workload patterns, under which static keep-alive policies are inefficient. We present LACE-RL, a latency-aware and carbon-efficient management framework that formulates serverless pod retention as a sequential decision problem. LACE-RL uses deep reinforcement learning to dynamically tune keep-alive durations, jointly modeling cold-start probability, function-specific latency costs, and real-time carbon intensity. Using the Huawei Public Cloud Trace, we show that LACE-RL reduces cold starts by 51.69% and idle keep-alive carbon emissions by 77.08% compared to Huawei's static policy, while achieving better latency-carbon trade-offs than state-of-the-art heuristic and single-objective baselines, approaching Oracle performance.",
       "authors": [
-        "Sana Taghipour Anvari",
-        "David Kaeli"
+        "Bowen Sun",
+        "Christos D. Antonopoulos",
+        "Evgenia Smirni",
+        "Bin Ren",
+        "Nikolaos Bellas",
+        "Spyros Lalis"
       ],
       "primary_category": "cs.DC",
       "categories": [
-        "cs.DC"
+        "cs.DC",
+        "cs.AI",
+        "cs.PF"
       ],
-      "published": "2026-02-24T05:20:18+00:00",
-      "link": "https://arxiv.org/pdf/2602.20561v2",
+      "published": "2026-02-27T11:35:15+00:00",
+      "link": "https://arxiv.org/pdf/2602.23935v1",
       "tags": [
+        "keyword:DRL JSP",
         "query:DRL JSP"
       ],
       "llm_score": 7.0,
-      "llm_evidence_en": "Characterization of dynamic task scheduling effectiveness",
-      "llm_evidence_cn": "动态任务调度有效性的特征刻画",
-      "llm_evidence": "动态任务调度有效性的特征刻画",
-      "canonical_evidence": "动态任务调度有效性的特征刻画",
-      "llm_tldr_en": "Analyzes how task-graph dependency topology impacts the effectiveness of dynamic scheduling in parallel systems.",
-      "llm_tldr_cn": "分析任务图依赖拓扑如何影响并行系统中动态调度的有效性。",
-      "llm_tldr": "分析任务图依赖拓扑如何影响并行系统中动态调度的有效性。",
+      "llm_evidence_en": "Deep reinforcement learning for serverless pod retention scheduling",
+      "llm_evidence_cn": "深度强化学习用于无服务器Pod保留调度",
+      "llm_evidence": "深度强化学习用于无服务器Pod保留调度",
+      "canonical_evidence": "深度强化学习用于无服务器Pod保留调度",
+      "llm_tldr_en": "Applies DRL to balance latency and carbon emissions in serverless computing resource management.",
+      "llm_tldr_cn": "应用深度强化学习在无服务器计算中平衡延迟与碳排放的资源调度。",
+      "llm_tldr": "应用深度强化学习在无服务器计算中平衡延迟与碳排放的资源调度。",
       "llm_tags": [
-        "query:drl-jsp:composite"
+        "query:drl-jsp"
       ],
-      "matched_query_tag": "query:drl-jsp:composite",
-      "matched_query_text": "Papers central to 深度强化学习解决作业车间调度问题 (JSP), especially work that connects or combines: Deep Reinforcement Learning for scheduling; s; Deep reinforcement learning approaches for job shop scheduling problems; Solving flexible job shop scheduling using deep reinforcement learning; End to end deep reinforcement learning for production scheduling; Comparison of DRL algorithms for manufacturing scheduling; Dynamic job shop scheduling via deep reinforcement learning.",
-      "matched_requirement_id": "req-composite-drl-jsp",
+      "matched_query_tag": "query:drl-jsp",
+      "matched_query_text": "End to end deep reinforcement learning for production scheduling",
+      "matched_requirement_id": "req-5",
       "selection_source": "fresh_fetch",
       "quick_tier": "7"
     },
     {
-      "id": "2602.23579v1",
-      "title": "Construct, Merge, Solve & Adapt with Reinforcement Learning for the min-max Multiple Traveling Salesman Problem",
-      "abstract": "The Multiple Traveling Salesman Problem (mTSP) extends the Traveling Salesman Problem to m tours that start and end at a common depot and jointly visit all customers exactly once. In the min-max variant, the objective is to minimize the longest tour, reflecting workload balance. We propose a hybrid approach, Construct, Merge, Solve & Adapt with Reinforcement Learning (RL-CMSA), for the symmetric single-depot min-max mTSP. The method iteratively constructs diverse solutions using probabilistic clustering guided by learned pairwise q-values, merges routes into a compact pool, solves a restricted set-covering MILP, and refines solutions via inter-route remove, shift, and swap moves. The q-values are updated by reinforcing city-pair co-occurrences in high-quality solutions, while the pool is adapted through ageing and pruning. This combination of exact optimization and reinforcement-guided construction balances exploration and exploitation. Computational results on random and TSPLIB instances show that RL-CMSA consistently finds (near-)best solutions and outperforms a state-of-the-art hybrid genetic algorithm under comparable time limits, especially as instance size and the number of salesmen increase.",
+      "id": "2602.13999v1",
+      "title": "It Takes Two to Tango: A Holistic Simulator for Joint Order Scheduling and Multi-Agent Path Finding in Robotic Warehouses",
+      "abstract": "The prevailing paradigm in Robotic Mobile Fulfillment Systems (RMFS) typically treats order scheduling and multi-agent pathfinding as isolated sub-problems. We argue that this decoupling is a fundamental bottleneck, masking the critical dependencies between high-level dispatching and low-level congestion. Existing simulators fail to bridge this gap, often abstracting away heterogeneous kinematics and stochastic execution failures. We propose WareRover, a holistic simulation platform that enforces a tight coupling between OS and MAPF via a unified, closed-loop optimization interface. Unlike standard benchmarks, WareRover integrates dynamic order streams, physics-aware motion constraints, and non-nominal recovery mechanisms into a single evaluation loop. Experiments reveal that SOTA algorithms often falter under these realistic coupled constraints, demonstrating that WareRover provides a necessary and challenging testbed for robust, next-generation warehouse coordination. The project and video is available at https://hhh-x.github.io/WareRover/.",
       "authors": [
-        "Guillem Rodríguez-Corominas",
-        "Maria J. Blesa",
-        "Christian Blum"
+        "Haozheng Xu",
+        "Wenhao Li",
+        "Zifan Wei",
+        "Bo Jin",
+        "Hongxing Bai",
+        "Ben Yang",
+        "Xiangfeng Wang"
       ],
-      "primary_category": "cs.AI",
+      "primary_category": "cs.RO",
       "categories": [
-        "cs.AI",
+        "cs.RO"
+      ],
+      "published": "2026-02-15T05:51:58+00:00",
+      "link": "https://arxiv.org/pdf/2602.13999v1",
+      "tags": [
+        "keyword:DRL JSP",
+        "query:DRL JSP"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "Joint order scheduling and path finding in robotic warehouses",
+      "llm_evidence_cn": "机器人仓库中的订单调度与路径规划联合优化",
+      "llm_evidence": "机器人仓库中的订单调度与路径规划联合优化",
+      "canonical_evidence": "机器人仓库中的订单调度与路径规划联合优化",
+      "llm_tldr_en": "WareRover provides a holistic simulator for joint optimization of scheduling and logistics in warehouses.",
+      "llm_tldr_cn": "WareRover 为仓库订单调度与物流路径规划的联合优化提供了一个整体模拟平台。",
+      "llm_tldr": "WareRover 为仓库订单调度与物流路径规划的联合优化提供了一个整体模拟平台。",
+      "llm_tags": [
+        "query:drl-jsp"
+      ],
+      "matched_query_tag": "query:drl-jsp",
+      "matched_query_text": "End to end deep reinforcement learning for production scheduling",
+      "matched_requirement_id": "req-5",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    },
+    {
+      "id": "2602.24182v1",
+      "title": "Multi-Objective Reinforcement Learning for Large-Scale Tote Allocation in Human-Robot Collaborative Fulfillment Centers",
+      "abstract": "Optimizing the consolidation process in container-based fulfillment centers requires trading off competing objectives such as processing speed, resource usage, and space utilization while adhering to a range of real-world operational constraints. This process involves moving items between containers via a combination of human and robotic workstations to free up space for inbound inventory and increase container utilization. We formulate this problem as a large-scale Multi-Objective Reinforcement Learning (MORL) task with high-dimensional state spaces and dynamic system behavior. Our method builds on recent theoretical advances in solving constrained RL problems via best-response and no-regret dynamics in zero-sum games, enabling principled minimax policy learning. Policy evaluation on realistic warehouse simulations shows that our approach effectively trades off objectives, and we empirically observe that it learns a single policy that simultaneously satisfies all constraints, even if this is not theoretically guaranteed. We further introduce a theoretical framework to handle the problem of error cancellation, where time-averaged solutions display oscillatory behavior. This method returns a single iterate whose Lagrangian value is close to the minimax value of the game. These results demonstrate the promise of MORL in solving complex, high-impact decision-making problems in large-scale industrial systems.",
+      "authors": [
+        "Sikata Sengupta",
+        "Guangyi Liu",
+        "Omer Gottesman",
+        "Joseph W Durham",
+        "Michael Kearns",
+        "Aaron Roth",
+        "Michael Caldara"
+      ],
+      "primary_category": "cs.LG",
+      "categories": [
         "cs.LG"
       ],
-      "published": "2026-02-27T01:07:59+00:00",
-      "link": "https://arxiv.org/pdf/2602.23579v1",
+      "published": "2026-02-27T17:04:57+00:00",
+      "link": "https://arxiv.org/pdf/2602.24182v1",
       "tags": [
+        "keyword:DRL JSP",
         "query:DRL JSP"
       ],
       "llm_score": 7.0,
-      "llm_evidence_en": "Reinforcement learning for multiple traveling salesman problem",
-      "llm_evidence_cn": "强化学习解决多旅行商问题",
-      "llm_evidence": "强化学习解决多旅行商问题",
-      "canonical_evidence": "强化学习解决多旅行商问题",
-      "llm_tldr_en": "Combines RL with CMSA to solve the min-max Multiple Traveling Salesman Problem efficiently.",
-      "llm_tldr_cn": "结合强化学习与CMSA算法，高效解决最小最大多旅行商问题。",
-      "llm_tldr": "结合强化学习与CMSA算法，高效解决最小最大多旅行商问题。",
+      "llm_evidence_en": "Multi-objective RL for large-scale allocation and resource usage in fulfillment centers",
+      "llm_evidence_cn": "用于履行中心大规模分配和资源利用的多目标强化学习",
+      "llm_evidence": "用于履行中心大规模分配和资源利用的多目标强化学习",
+      "canonical_evidence": "用于履行中心大规模分配和资源利用的多目标强化学习",
+      "llm_tldr_en": "Applies MORL to optimize resource allocation and space utilization in complex fulfillment center environments.",
+      "llm_tldr_cn": "应用多目标强化学习优化履行中心的大规模资源分配与空间利用。",
+      "llm_tldr": "应用多目标强化学习优化履行中心的大规模资源分配与空间利用。",
       "llm_tags": [
         "query:drl-jsp:composite"
       ],

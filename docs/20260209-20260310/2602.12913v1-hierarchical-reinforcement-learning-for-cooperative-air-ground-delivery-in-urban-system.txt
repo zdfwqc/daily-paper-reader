@@ -1,0 +1,641 @@
+Title: Hierarchical Reinforcement Learning for Cooperative Air-Ground Delivery in Urban System
+
+URL Source: https://arxiv.org/pdf/2602.12913v1
+
+Published Time: Mon, 16 Feb 2026 02:00:20 GMT
+
+Number of Pages: 11
+
+Markdown Content:
+# Hierarchical Reinforcement Learning for Cooperative Air-Ground Delivery in Urban System 
+
+## Songxin Lei 1, Chunming Ma 1, Haomin Wen 2, Yexin Li 4, Lizhenghe Chen 1,Qianyu Yang 3, Fugee Tsung 5, Lei Chen 1, Sijie Ruan 3,∗, Yuxuan Liang 1,∗
+
+1The Hong Kong University of Science and Technology (Guangzhou), Guangzhou, China 
+
+2Carnegie Mellon University, Pittsburgh, USA 
+
+3Beijing Institute of Technology, Beijing, China 
+
+4Beijing Institute for General Artificial Intelligence, Beijing, China 
+
+5The Hong Kong University of Science and Technology, Hong Kong SAR, China {slei924,cma859}@connect.hkust-gz.edu.cn;wenhaomin.whm@gmail.com;yliby@connect.ust.hk; lizhenghec@hkust-gz.edu.cn;{yangqy,sjruan}@bit.edu.cn;season@ust.hk;leichen@cse.ust.hk;yuxliang@outlook.com 
+
+Abstract 
+
+Cooperative air-ground delivery has emerged as a promising lo-gistics paradigm by leveraging the complementary strengths of UAVs and ground carriers. However, effective dispatching in such heterogeneous systems faces two critical challenges: 𝑖 ) the het-erogeneity between flight and road dynamics, 𝑖𝑖 ) the scalability bottleneck raised by the exponential decision variables in large-scale fleets. To address these challenges, we propose HRL4AG, a H ierarchical Reinforcement Learning framework for cooperative A ir- G round delivery. Specifically, HRL4AG employs a high-level manager to tackle the scalability bottleneck by decomposing the joint action space, and mode-specific workers that encode distinct flight and road dynamics to address the heterogeneity. Further-more, a novel internal reward mechanism is designed to guide the hierarchical policy learning, addressing the credit assignment problem in sparse-reward settings. Extensive experiments on two real-world datasets and an evaluation platform demonstrate that HRL4AG significantly outperforms state-of-the-art baselines, im-proving the delivery success rate by up to 26% while achieving an 80-fold increase in computational efficiency. 
+
+1 Introduction 
+
+The rapid proliferation of on-demand logistics has catalyzed the exploration of novel delivery paradigms to satisfy the growing ex-pectations for efficiency and timeliness [ 16 ] [ 14 ]. Among these, the Cooperative Air-Ground Delivery system has emerged as a promising solution, leveraging the synergy between Unmanned Aerial Vehicles (UAVs) and ground carriers [ 10 ]. As illustrated in 
+
+Figure 1(a) , UAVs offer high-speed, direct aerial transport unaf-fected by ground traffic but are constrained by battery capacity and payload limits [ 37 ]. Conversely, ground carriers possess supe-rior endurance and payload capacity yet suffer from road network congestion. In that sense, the dispatching system are required to solving a sequential decision-making problem [ 44 ] with heteroge-neous transportation mode and complex spatio-temporal constrains, where the system must continuously assign orders to suitable vehi-cles to maximize the overall delivery quality. Order dispatching is often formulated as a dynamic combinato-rial optimization problem [ 3 ], and existing solutions typically em-ploy exact solvers or heuristic algorithms [ 21 ]. While exact solvers 
+
+* Corresponding authors: Sijie Ruan and Yuxuan Liang. Scene1: UAV-Based Delivery Scene2: Carrier-Based Delivery      
+
+> (a) UAV-Based Delivery v.s. Carrier-Based Delivery
+> (b) Limitation1: Heterogeneity Gap
+> （c）Limitation2: Scalability Bottleneck
+> UAV
+> Carrier
+> Distance Calculation
+> State
+> Information Battery and Weight Limitation Direct Aerial Delivery Recharge-Free High-Payload Transport Network-Constrained Delivery
+> ...
+> ... ... ... ... ...
+> ... ...
+> UAV Workers Carrier Workers
+> Manager
+> Effectiveness
+> Scaling
+> up
+> ... ...
+> Large Scale
+> ... ...
+> Worker
+> Effectiveness Efficiency
+> Small Scale
+> ...
+> Text
+> Efficiency
+
+Figure 1: Characteristics and Limitations of Cooperative Air-Ground Delivery. (a) Complementary nature of heteroge-neous transportation modes. (b) Limitation 1: Heterogeneity gap. (c) Limitation 2: Scalability bottleneck. 
+
+ensure optimality, they suffer from prohibitive computational costs in large-scale settings [ 2 ]. Conversely, heuristics, such as greedy ap-proaches or meta-heuristics, offer computational efficiency but are often myopic [ 8], failing to optimize long-term utility in dynamic environments [ 35 ]. In contrast, RL-based methods have demon-strated superior capability in capturing temporal dependencies and maximizing cumulative rewards [ 40 ]. However, directly applying existing RL frameworks faces two significant limitations: 
+
+1) Heterogeneity in diverse agents . As in Figure 1(b), most existing RL-based dispatching approaches treat all vehicles with unified state representations and policy networks [ 43 ] [ 42 ] (a.k.a. homogeneous). However, UAVs and carriers are inherently hetero-geneous in terms of mobility logic (3D flight vs. 2D road network),  
+
+> arXiv:2602.12913v1 [cs.CY] 13 Feb 2026 Conference’17, July 2017, Washington, DC, USA Trovato et al.
+
+energy constraints (battery vs. fuel), and distance metrics (Euclidean vs. Route distance) [ 17 ]. A unified embedding fails to capture these distinct characteristics, increasing the risk of suboptimal decisions, such as assigning long-distance orders to UAVs with insufficient battery or time-critical orders to carriers in congested zones. 
+
+2) Scalability bottleneck as the vehicle size expands. As in Fig-ure 1(c), in real-world logistics, the number of vehicles and orders can be substantial. Traditional centralized RL architectures face an exponential explosion in the action space as the number of UAVs and carriers increases [ 40 ]. Similarly, Multi-Agent RL paradigms, restricted by their flat coordination structures, also struggle to man-age the combinatorial explosion of the joint action space in large-scale heterogeneous fleets [ 26 ]. This curse of dimensionality leads to inefficient exploration, slow convergence during training, and unacceptable latency during inference, hindering the deployment of such models in large-scale, real-time response scenarios [30]. To tackle these challenges, we propose a framework called Hierar-chical Reinforcement Learning for cooperative A ir-G round delivery (HRL4AG). To address the first limitation, HRL4AG employs mode-specific Worker Agents that utilize distinct embedding layers to encode the heterogeneous state information and distance metrics of UAVs and carriers separately. This allows the model to learn specialized scoring functions for feasible order-delivery (O-D) pairs tailored to each delivery mode. To address the second limitation, we introduce a high-level Manager Agent that decides whether an order should be assigned to the UAV fleet or the carrier fleet. By decomposing the massive search space into a hierarchical structure, HRL4AG reduces the action space by more than half per decision step. Furthermore, we design a novel internal reward mechanism where the Manager provides guidance to the Workers, significantly improving training stability and exploration efficiency. Our contributions are summarized as follows: 
+
+• Cooperative Air-Ground Delivery Framework : To the best of our knowledge, we are the first to propose a framework from dis-patching to execution for heterogeneous cooperative air-ground delivery, considering both road-network constraints and low-altitude flight characteristics. 
+
+• Hierarchical Decision-Making with Internal Incentives : We develop the HRL4AG algorithm which effectively addresses the limita-tions of heterogeneity gaps and scalability bottlenecks . We further propose an internal incentive mechanism combined with reward shaping to enhance the effectiveness and efficiency of the dis-patching policy. 
+
+• Comprehensive empirical evidence and Platform Evaluation : We conduct extensive experiments two real-world datasets and de-ploy our algorithms on an evaluation platform. The results demon-strate that HRL4AG significantly outperforms representative baselines, improving the delivery success rate by up to 26% while achieving an 80-fold increase in computational efficiency .
+
+2 Preliminary 
+
+The cooperative air-ground delivery problem is formulated as an Integer Linear Programming model aiming to maximize the total number of delivered orders. Let P, U, and V denote the sets of pending orders, UAVs, and carriers, respectively. We define two binary decision variables: 𝑥 𝑝,𝑢 indicates whether the order 𝑝 is assigned to the UAV 𝑢 , and 𝑦 𝑝,𝑣 indicates whether the order 𝑝 is assigned to the carrier 𝑣 . The problem is formulated as follows: 
+
+P𝑜𝑝𝑡 : max ∑︁  
+
+> 𝑝 ∈ P
+
+ ∑︁ 𝑢 ∈ U 
+
+𝑥 𝑝,𝑢 +∑︁  
+
+> 𝑣 ∈ V
+
+𝑦 𝑝,𝑣 
+
+!
+
+(1) 
+
+𝑠.𝑡 . 𝐶 1 : 𝑥 𝑝,𝑢 , 𝑦 𝑝,𝑣 ∈ { 0, 1}, ∀𝑝, 𝑢, 𝑣 (1a) 
+
+𝐶 2 :∑︁  
+
+> 𝑢 ∈ U
+
+𝑥 𝑝,𝑢 +∑︁  
+
+> 𝑣 ∈ V
+
+𝑦 𝑝,𝑣 ≤ 1, ∀𝑝 ∈ P (1b) 
+
+𝐶 3 : 𝑦 𝑝,𝑣 ≤ 𝑆 (𝑣, 𝑝 ), ∀𝑝 ∈ P , 𝑣 ∈ V (1c) 
+
+𝐶 4 : 𝑥 𝑝,𝑢 ≤ 𝑆 (𝑢, 𝑝 ), ∀𝑝 ∈ P , 𝑢 ∈ U (1d) where 𝐶 1 ensures the binary nature of decision variables. 𝐶 2 guar-antees that each order is served by at most one vehicle (either a UAV or a carrier). Constraints 𝐶 3 and 𝐶 4 enforce the feasibility of the assignment, where 𝑆 (· , ·) is a binary indicator representing whether a vehicle has the capability to deliver an order. Specifically, for car-riers ( 𝐶 3), 𝑆 (𝑣, 𝑝 ) = 1 only if the order deadline (DDL) can be met under ground traffic conditions. For UAVs ( 𝐶 4), 𝑆 (𝑢, 𝑝 ) = 1 requires satisfying both the DDL and the Safe Return Energy Constraint :
+
+𝐸 𝑢 𝑐𝑢𝑟𝑟 ≥ 𝜂 · ( 𝑑 (𝑙𝑜𝑐 𝑢 , 𝑙𝑜𝑐 𝑝 ) + 𝑑 (𝑙𝑜𝑐 𝑝 , C𝑛𝑒𝑎𝑟𝑒𝑠𝑡 )) , (2) where 𝐸 𝑢 𝑐𝑢𝑟𝑟 is the current battery level, 𝜂 is the energy consumption rate per unit distance, 𝑑 (·) denotes the distance, and C𝑛𝑒𝑎𝑟𝑒𝑠𝑡 is the nearest charging station to the order’s destination. 
+
+3 Cooperative Air-Ground Delivery Framework 
+
+To bridge the gap between theoretical algorithms and real-world deployment, we propose a framework that orchestrates the lifecycle of cooperative air-ground delivery [ 34 ]. As shown in Figure 2 , the system operates through three phases at each decision epoch: 
+
+Phase 1: Active Check. This phase constructs the candidate pools for the current step. The system filters for active orders (unserved requests within valid time windows) and idle vehicles (UAVs and carriers not currently occupied). Only these valid entities are passed to the subsequent dispatching phase [12]. 
+
+Phase 2: Order Dispatch. This core phase matches orders with suitable vehicles via Feasibility Pruning and Assignment .
+
+Feasibility Pruning. To reduce the search space and ensure physical viability, we apply distinct constraint filters: 
+
+• Dual-level DDL Check: We first apply a Euclidean-based dead-line check to filter obvious mismatches for all vehicles. For carri-ers specifically, a rigorous Road Network-based verification fol-lows to account for traffic tortuosity and real-world constraints. 
+
+• UAV Energy Safety Check: For UAVs, we enforce a critical Safe Return constraint [ 27 ]. A match is valid only if the UAV’s bat-tery supports the full loop: Current →Pickup →Delivery →Nearest Charging Station , ensuring mission safety. 
+
+Scoring and Assignment. Feasible pairs are then evaluated by a scoring function (derived from our RL policy or heuristics) and assigned via a greedy matching strategy to maximize global utility, ensuring one-to-one mapping constraints [38]. 
+
+Phase 3: Execution and State Transition. Upon assignment, the matched vehicles transition to the working state and physically per-form the delivery task [ 11 ]. Crucially, the system handles delivery state transitions heterogeneously based on vehicle type: Hierarchical Reinforcement Learning for Cooperative Air-Ground Delivery in Urban System Conference’17, July 2017, Washington, DC, USA System 
+
+Active Check  
+
+> Not Matched &
+> Before the DDL Not Matched
+
+Active Sets 
+
+…
+
+> Active UAV List
+
+…
+
+> Active Carrier List
+> Active Order List
+
+…   
+
+> Feasibility Pruning
+> a) Rough DDL: Straight -line distance
+> b) Precise DDL: Road network distance
+> c) UAV Energy: Three -stage energy consumption
+> The available set
+> for each order
+
+Scoring Stage    
+
+> The available set
+> for each order Policy Network Rule -Based Well -scored
+> O-D Pair
+
+Dispatch Stage 
+
+> Select the Highest Score
+
+Optimal O -D pair  
+
+> Current
+> Location Merchant
+> Destination Merchant
+
+Delivery 
+
+Picking -up  
+
+> Delivery
+> Completed
+> Delivery
+> Failed
+> a) Get shortest path
+> b) Fly to CG
+> c) Charging
+> d) Update state
+> Destination Charging
+> Station
+> Battery less
+> than 40%
+
+Order Dispatch  Execution 
+
+OR 
+
+Figure 2: Cooperative Air-Ground Delivery Framework. 
+
+• Carriers: Upon completion, carriers immediately become idle at the destination to await new orders [22]. 
+
+• UAVs: The system triggers a residual battery check. If energy falls below a safety threshold (e.g., 40%), the UAV is routed to the nearest charging station and remains unavailable until fully replenished; otherwise, it becomes idle at the current location. 
+
+4 Methodology 4.1 Order Dispatch Modeled as Markov Decision Process 
+
+We formulate the cooperative air-ground delivery problem as an Order-Delivery oriented Markov Decision Process (OD-MDP), mod-eled by the tuple ⟨T , S, A, 𝑃, 𝑅, 𝛾 ⟩. In this framework, the entire system, including the central dispatching platform and the hetero-geneous fleet, is viewed as a unified learning agent. The definitions of each component are detailed as follows. 
+
+State Space S. We construct the global state 𝑠 𝑡 ∈ S as a fixed-length single vector composed of four concatenated segments. All features are normalized to [0, 1] to improve training stability. 
+
+• Global Order Info ( 𝑠 𝑜𝑟𝑑𝑒𝑟 𝑡 ): Features of the active orders. Each order 𝑜 𝑖 is encoded as [𝑙 𝑠𝑡𝑎𝑟𝑡 𝑖 , 𝑙 𝑒𝑛𝑑 𝑖 , 𝜏 𝑠𝑡𝑎𝑟𝑡 𝑖 , 𝜏 𝑑𝑑𝑙 𝑖 ], which means the locations, start time, and deadline. 
+
+• UAV Fleet ( 𝑠 𝑢𝑎𝑣 𝑡 ): States of 𝑁 𝑢 UAVs. Each UAV 𝑣 𝑗 is represented by [𝑙 𝑐𝑢𝑟𝑟 𝑗 , 𝜈 𝑗 , 𝛿 𝑗 , 𝑒 𝑗 ], denoting location, speed, availability ( 𝛿 𝑗 ∈{0, 1}), and battery ratio, respectively. 
+
+• Carrier Fleet ( 𝑠 𝑐𝑎𝑟 𝑡 ): States of 𝑁 𝑐 carriers, represented by [𝑙 𝑐𝑢𝑟𝑟 𝑘 , 𝜈 𝑘 , 𝛿 𝑘 ].Unlike UAVs, carriers do not include energy constraints in their state as they are assumed to have sufficient fuel for operations. 
+
+• System Statistics ( 𝑠 𝑠𝑦𝑠 𝑡 ): An 8-dimensional vector tracking macro-scopic dynamics: timestep, order ratio, matching rate, fleet utiliza-tion, UAV failure rate, charging frequency, and UAV proportion. Formally, the global state is: 𝑠 𝑡 = 𝑠 𝑜𝑟𝑑𝑒𝑟 𝑡 ⊕ 𝑠 𝑢𝑎𝑣 𝑡 ⊕ 𝑠 𝑐𝑎𝑟 𝑡 ⊕ 𝑠 𝑠𝑦𝑠 𝑡 .
+
+Action Space A. Given the dynamic number of active orders and available vehicles, the feasible action space varies across time steps. We define a unified action space with a maximum capacity and employ an action masking mechanism to handle invalid pairs. Under our setting, the action space is decomposed into two levels: 
+
+• Manager Action 𝑎 𝑚 𝑡 : For each active order 𝑜 𝑖 , the manager outputs a binary selection 𝑎 𝑚 𝑡,𝑖 ∈ { 0, 1}, directing the order to either the UAV fleet or the Carrier fleet. This serves as a high-level goal 𝑔 𝑡 .
+
+• Worker Action 𝑎 𝑤 𝑡 : Based on the manager’s directive, the workers assign a continuous score 𝑤 𝑖,𝑗 ∈ [0, 1] to each feasible O-D pair (𝑜 𝑖 , 𝑣 𝑗 ). The final dispatching decision is made by greedily selecting pairs with the highest scores. The dimension of 𝑎 𝑤 𝑡 is bounded by 𝑁 𝑚𝑎𝑥 × 𝑀 , where 𝑁 𝑚𝑎𝑥 is the maximum concurrent orders. Invalid or pruned pairs are masked with −∞ scores. 
+
+Transition 𝑃 . The transition probability 𝑃 (𝑠 𝑡 +1 |𝑠 𝑡 , 𝑎 𝑡 ) describes the system dynamics [ 32 ]. Upon executing the dispatching action 
+
+𝑎 𝑡 , the environment updates the locations and status of assigned vehicles (e.g., from idle to busy), decreases the battery of flying UAVs, and removes completed or expired orders from the active set. 
+
+Reward Function 𝑅 . To address the credit assignment problem in cooperative tasks, we design a hierarchical reward structure: 
+
+• Extrinsic Reward 𝑟 𝑒𝑥 𝑡 : The manager receives the global extrinsic reward, which aims to maximize long-term service performance. It is defined as a weighted sum of successfully matched, picked-up, and delivered orders at time 𝑡 , augmented by reward shaping 
+
+to alleviate sparsity (detailed in Section 4.6). 
+
+• Intrinsic Reward 𝑟 𝑖𝑛 𝑡 : The workers receive a hybrid reward com-bining the extrinsic signal and an intrinsic reward generated by the Manager. 𝑟 𝑖𝑛 𝑡 incentivizes the workers to align their scoring behavior with the Manager’s group-selection goals (detailed in Section 4.4 and Section4.5). Conference’17, July 2017, Washington, DC, USA Trovato et al. Heterogeneous  State  Encoding               
+
+> 𝑼 𝒕 𝑶 𝒕
+> Concat
+> 𝑮 𝒕
+> 𝑼 𝒕
+> 𝒐 𝑪 𝒕
+> 𝒐
+> 𝑼 𝒕 Type -specific
+> Transformers UA V
+> Feature
+> 𝑪 𝒕 Type -specific
+> Transformers
+> 𝑶 𝒕 Type -specific
+> Transformers
+> Carrie r
+> Feature
+> Orde r
+> Feature
+> Contextual
+> Concatenation
+> Manager & Worker Module
+> v
+> Manager Module: Mode Selection
+> 𝑮 𝒕 Global
+> Feature v
+> Worke rModule: Precision Scoring
+> Carrie rWorke r
+> LayerNorm
+> MLP
+> ReL U
+> Softma x
+> UAV Worke r
+> 𝑪 𝑶 𝒕
+> Concat
+> 𝑮 𝒕
+> 𝑼 𝒕
+> 𝒐
+> LayerNorm
+> MLP
+> ReL U
+> Softma x
+> 𝑪 𝒕
+> 𝒐
+> High -level Policy
+> UAV Fleet
+> Goal
+> Carrie rFleet
+> Goal
+> 𝒈 𝒕
+> 𝒐
+> 𝒒 𝒕
+> 𝒐
+> Action
+> Replay Buffer
+> Reward Shaping
+> Critic 𝜽 𝒄
+> 𝒃 𝜽 𝒄 ,𝜽 𝒂 (𝒔 𝟏 ,𝒕 )
+> 𝒃 𝜽 𝒄 ,𝜽 𝒂 (𝒔 𝟐 ,𝒕 )
+> ...
+> 𝒃 𝜽 𝒄 ,𝜽 𝒂 (𝒔 𝒏 ,𝒕 )
+> Raw
+> Rewards
+> Trajectory -driven
+> Reward Shaping
+> Shaped
+> Rewards
+> Sample
+> Update
+> Tan h
+> Actio n& Reward Shaping
+
+Figure 3: Architecture of HRL4AG. 
+
+4.2 Overview of HRL4AG 
+
+The primary objective of HRL4AG is to learn a joint policy that coordinates heterogeneous fleets to maximize the long-term deliv-ery throughput. As illustrated in Figure 3 , the framework operates through three tightly coupled modules: 
+
+• Heterogeneous State Encoding. To tackle the inputs from dis-tinct domains, this module employs type-specific transformers to extract permutation-invariant features for UAVs, carriers, and orders. These features are then fused with global context to con-struct representations for different levels of the hierarchy. 
+
+• Manager & Worker Module. This core module decomposes the intractable joint action space. A high-level Manager first determines the optimal transportation mode (Air vs. Ground) for each order based on global states. Conditioned on this goal, low-level Workers then compute fine-grained matching scores for specific O-D pairs within the selected mode, executing the final dispatch via a greedy assignment strategy. 
+
+• Trajectory-driven Reward Shaping. To address the sparse feedback inherent in long-horizon delivery tasks, this module constructs a dense reward signal following the order’s lifecy-cle [ 33 ]. It guides the agents by evaluating intermediate mile-stones (e.g., matching, pickup) and execution efficiency, ensuring stable convergence towards the global objective. During training, agents interact with the environment and get experience. We sample mini-batches from the experience and refine the strategy using DDPG [28] until convergence. 
+
+4.3 Heterogeneous State Encoding 
+
+To handle the variable number of vehicles and maintain permutation invariance within each homogeneous fleet, we employ three parallel transformer encoders (without positional embeddings) to extract features for UAVs, carriers, and orders, denoted as U𝑡 , C𝑡 , and O𝑡 , re-spectively [ 4 ]. The omission of positional encoding ensures that the learned embeddings rely solely on entity attributes and interactions rather than arbitrary input order [39]. To support the hierarchical decision-making, we fuse these entity embeddings with the global system context G𝑡 to construct distinct inputs for different levels. For the low-level workers, we generate mode-specific contexts to evaluate internal matching feasibility: 
+
+U𝑜 𝑡 = U𝑡 ⊕ O𝑡 ⊕ G𝑡 , C𝑜 𝑡 = C𝑡 ⊕ O𝑡 ⊕ G𝑡 . (3) For the high-level manager, we concatenate all features to form a comprehensive unified representation [13]: 
+
+Z𝑜 𝑡 = U𝑡 ⊕ C𝑡 ⊕ O𝑡 ⊕ G𝑡 , (4) where ⊕ denotes the concatenation operation. These representa-tions ( Z𝑜 𝑡 , U𝑜 𝑡 , C𝑜 𝑡 ) serve as the inputs for the subsequent parts. 
+
+4.4 Manager Agent: High-Level Mode Selection 
+
+The manager agent operates at the upper level of the hierarchy, acting as a global strategist to decompose the massive joint ac-tion space [ 23 ]. Its core responsibility is to determine the optimal transportation mode (i.e., UAV fleet or Ground Carrier fleet) for each active order based on the macroscopic environment, without getting entangled in specific vehicle-level matching details. Based on the global order-conditioned representation Z𝑜 𝑡 derived in Section 4.3, the Manager employs a policy network 𝜋 𝑚 (composed of LayerNorm and an MLP) to generate a high-level goal: 
+
+h𝑜 𝑡 = MLP 𝑚 
+
+ LN (Z𝑜 𝑡 ) , g𝑜 𝑡 = Softmax (h𝑜 𝑡 ), (5) where g𝑜 𝑡 ∈ [ 0, 1]2 represents the distribution over the two modes. This distribution serves as the intrinsic goal passed to the worker, guiding lower-level agents to prioritize the selected candidate set. To maximize long-term throughput, the manager is trained to op-timize the global extrinsic reward 𝑟 𝑒𝑥 𝑡 . However, relying solely on sparse delivery completion signals often leads to slow convergence. Therefore, instead of using raw statistics directly, the manager op-timizes a dense, trajectory-based shaped reward derived from the system’s objective function, which is presented in Section 4.6. 
+
+4.5 Worker Agent: Low-Level Specific Execution 
+
+The worker agent operates at the lower level, responsible for the precise execution of order dispatching. Conditioned on the man-ager’s goal, the worker evaluates the feasibility of specific vehicles within the selected mode and generates matching scores. 
+
+4.5.1 Policy Design. For a specific order 𝑜 , the Worker receives two inputs: (i) the mode-specific representations ( U𝑜 𝑡 for UAV candidates or C𝑜 𝑡 for Carrier candidates), and (ii) the goal vector g𝑜 𝑡 from the manager. To effectively utilize the manager’s guidance, we design a gating mechanism that fuses the goal into the vehicle features: 
+
+q𝑜 𝑡 = ReLU  𝜙 (U𝑜 𝑡 , C𝑜 𝑡 ) ⊕ 𝜓 (g𝑜 𝑡 ) , (6) where 𝜙 (·) is the feature encoder for specific vehicles, 𝜓 (·) projects the manager’s goal into the latent feature space, and ⊕ denotes concatenation. The final scoring action 𝑎 𝑡, (𝑜,𝑣 ) for an O-D pair (𝑜, 𝑣 )
+
+is generated by a bounded output layer: 
+
+𝑎 𝑡, (𝑜,𝑣 ) = tanh (MLP 𝑤 (q𝑜 𝑡 )) . (7) These scores are used to rank candidate vehicles, and the system greedily selects the highest-scored pairs for execution [18]. 
+
+4.5.2 Hybrid Reward Mechanism. A core challenge in hierarchical RL is the credit assignment problem, the worker needs distinct feedback on how well it followed the manager’s instructions. To address this, we introduce an Intrinsic Reward mechanism. The worker is trained to maximize a Hybrid Reward 𝑟 𝑤 𝑡 :
+
+𝑟 𝑤 𝑡 = 𝑟 𝑒𝑥 𝑡 + 𝛼 · 𝑟 𝑖𝑛 𝑡 , (8) where 𝑟 𝑒𝑥 𝑡 is the shared global reward that ensuring the worker cares about the final result, and 𝑟 𝑖𝑛 𝑡 is the intrinsic reward. We define 𝑟 𝑖𝑛 𝑡 as the consistency between the manager’s goal and the worker’s actual execution. Specifically, if the manager assigns a high probability to Hierarchical Reinforcement Learning for Cooperative Air-Ground Delivery in Urban System Conference’17, July 2017, Washington, DC, USA 
+
+the UAV mode, which means that 𝑔 𝑜 𝑡 [UAV ] > 0.5, and the worker successfully matches the order to a UAV, the worker receives a positive intrinsic reward; otherwise, it receives a penalty. This mechanism, controlled by the coefficient 𝛼 , significantly stabilizing the training of the bi-level policy. 
+
+4.6 Trajectory-Driven Reward Shaping and Optimization 
+
+Dense Reward Construction. Relying solely on the final delivery count creates a sparse supervision signal that hinders the critic’s value estimation. To mitigate this sparsity and guide the hierarchi-cal agents toward optimal policies, we construct a dense extrinsic reward 𝑟 𝑒𝑥 𝑡 that explicitly incorporates trajectory milestones: 
+
+𝑟 𝑒𝑥 𝑡 = (𝜆 𝑚 𝑁 𝑚 𝑡 + 𝜆 𝑝 𝑁 𝑝 𝑡 + 𝜆 𝑑 𝑁 𝑑 𝑡 )
+
+| {z }
+
+> Completion Gradient
+
++ 𝜆 𝑟 
+
+𝑁 𝑝 𝑡 + 𝑁 𝑑 𝑡 
+
+Í𝑡 𝑖 =0 𝑁 𝑚 𝑖 
+
+| {z }
+
+> Execution Rate
+
++ 𝜆 𝑡 (1 − 𝑡 𝑇 𝑚𝑎𝑥 
+
+)
+
+| {z }
+
+> Time Decay
+
+,
+
+(9) where 𝑁 𝑚 𝑡 , 𝑁 𝑝 𝑡 , 𝑁 𝑑 𝑡 denote the counts of matched, picked-up, and delivered orders, respectively. We assign differentiated weights (𝜆 𝑚 = 1.5, 𝜆 𝑝 = 3.0, 𝜆 𝑑 = 10 .0) to create a completion gradient 
+
+that pulls the agent towards order fulfillment. The second term incentivizes the actual execution rate to prevent order hoarding, while the third term ( 𝜆 𝑡 = 0.2) acts as a temporal regularization to discourage procrastination as the deadline approaches. 
+
+Hierarchical Optimization Process. To maximize the mentioned cumulative reward, we leverage the Deep Deterministic Policy Gradient (DDPG) algorithm to train the proposed bi-level hierarchy. Training involves optimizing four neural networks simultaneously: the manager actor-critic pair (𝜇 𝑚 , 𝑄 𝑚 ) and the worker actor-critic pair (𝜇 𝑤 , 𝑄 𝑤 ). To ensure stability and break temporal correlations, we utilize a shared experience replay buffer D to store transition tuples (𝑠 𝑡 , 𝑎 𝑚 𝑡 , 𝑎 𝑤 𝑡 , 𝑟 𝑒𝑥 𝑡 , 𝑟 𝑖𝑛 𝑡 , 𝑠 𝑡 +1).During updating, we sample batches from D. Crucially, the man-ager and workers align with their respective objectives: the man-ager’s target 𝑦 𝑚 𝑡 is calculated using the global shaped reward 𝑟 𝑒𝑥 𝑡 ,while the workers’ target 𝑦 𝑤 𝑡 utilizes the hybrid internal reward 𝑟 𝑖𝑛 𝑡 .The critics are updated by minimizing the mean squared error loss: 
+
+L( 𝜃 𝑄 ) = ED
+
+(𝑦 𝑡 − 𝑄 (𝑠 𝑡 , 𝑎 𝑡 |𝜃 𝑄 )) 2  , (10) where 𝑦 𝑡 = 𝑟 𝑡 + 𝛾𝑄 ′ (𝑠 𝑡 +1, 𝜇 ′ (𝑠 𝑡 +1)| 𝜃 𝑄 ′ ) represents the target value. Correspondingly, the actors are updated via the deterministic policy gradient to maximize their Q-values: 
+
+∇𝜃 𝜇 𝐽 ≈ E𝑠 𝑡 ∼D 
+
+∇𝑎 𝑄 (𝑠 𝑡 , 𝑎 |𝜃 𝑄 )| 𝑎 =𝜇 (𝑠 𝑡 ) ∇𝜃 𝜇 𝜇 (𝑠 𝑡 |𝜃 𝜇 ) . (11) Finally, we employ soft updates for target network parameters ( 𝜃 ′ ←
+
+𝜏𝜃 + ( 1 − 𝜏 )𝜃 ′) to ensure smooth convergence of the policy. 
+
+5 Experiments 
+
+In this section, we conduct extensive experiments to evaluate the effectiveness of HRL4AG in addressing the cooperative air-ground delivery problem. The goal of the experiments is to evaluate the per-formance of HRL4AG under dynamic urban systems and compare it against baselines, including heuristic algorithms and RL methods. Specifically, our experiments aim to answer the following re-search questions (RQs): 
+
+Table 1: Shanghai Dataset v.s. Chengdu Dataset. Parameter Shanghai Chengdu                   
+
+> Time Span 30 days 2016/11/01 - 2016/11/6 Spatial Range (120 .87 °𝐸, 31 .50 °𝑁 )-
+> (121 .97 °𝐸, 30 .70 °𝑁 )(103 .99 °E,30 .76 °N)-
+> (104 .15 °E,30 .63 °N)
+> Road Network Nodes 590,249 4,658 Total Orders 20,664 96,376 Order Density (/node /day) 0.001 3.448 Avg. Distance of O-D Pairs Euclidean: 31.37 km Road: 33.79 km Euclidean: 7.39 km Road: 8.34 km
+
+• RQ1: How does HRL4AG perform compared to other baselines in terms of improving dispatch performance and efficiency? 
+
+• RQ2: How do the key components of HRL4AG contribute to learning effectiveness and efficiency? 
+
+• RQ3: How can we assess the contribution of UAVs and carriers to the final delivery performance under different strategies? 
+
+• RQ4: How do the differences between HRL4AG and other base-lines in order dispatch decisions lead to varying outcomes? 
+
+5.1 Experimental Settings 
+
+5.1.1 Datasets. We preprocessed the aBeacon [ 6] and Chengdu [ 40 ]datasets and utilized them for cooperative air–ground delivery task. The details of the preprocessed two datasets are shown in Table 1 .
+
+• Shanghai : The preprocessed dataset includes 20,664 orders in the area of 6400 𝑘𝑚 2 of Shanghai. We further crawled the road net-work within the boundary (120 .87 °𝐸, 31 .50 °𝑁 )−( 121 .97 °𝐸, 30 .70 °𝑁 ),and mapped the grid-based order locations to their nearest road network nodes. The dataset contains 30 days orders, where each order consists of the order ID, the pick-up time, the delivery time, the merchant, and the destination. The dataset is split into training (70%), validation (20%), and test (10%) sets by day. 
+
+• Chengdu : This dataset was collected for 6 days, from November 1st to November 6th, 2016. We constructed the road network within the bounding box (103 .99 °E, 30 .76 °N) − ( 104 .15 °E, 30 .63 °N).After data cleaning, the dataset comprises 96,376 orders. Similar to the Shanghai dataset, each order includes the order ID, pick-up time, delivery time, merchant, and destination, which we mapped to the nearest road-network nodes. The dataset is split into training (Day 1-4), validation (Day 5), and test (Day 6) sets. 
+
+5.1.2 Baselines. We adapt several state-of-the-art heuristic and RL algorithms from top-tier venues within the past three years to our specific setting for a comprehensive comparison. 
+
+Heuristic Algorithms: 
+
+• B&B: Utilizes a branch-and-bound approach with the PuLP ILP solver to determine the optimal solution for the ILP problem. 
+
+• Greedy [ 9]: The dispatch priority is determined by the sum of the distance from the UAV or carrier to the order’s origin and the distance from the origin to the destination. Assignments are made by selecting pairs with the smallest total distance. 
+
+• HGR [ 20 ]: This baseline first models the dispatch process as a graph partitioning problem, using minimum-weight perfect matching to group orders into feasible clusters. Assignments are then determined by constructing a minimum spanning forest that connects these order clusters to available UAVs or carriers. Conference’17, July 2017, Washington, DC, USA Trovato et al. 
+
+Method Algorithms Nums=30 Nums=40 Nums=50 PN ↑ DN ↑ ET(s) ↓ PN ↑ DN ↑ ET(s) ↓ PN ↑ DN ↑ ET(s) ↓
+
+> Shanghai
+
+Heuristic B&B 8±2 6±3 14.51 9±1 6±1 15.01 11 ±3 8±1 11.71 Greedy 6±2 4±1 16.54 7±1 6±1 20.25 10 ±3 8±1 22.18 HGR 24 ±3 20 ±2 15.07 25 ±2 20 ±2 17.49 29 ±3 25 ±2 20.23 RL D2SN 27 ±3 22 ±2 25.9 31 ±3 24 ±3 28.5 33 ±4 27 ±3 29.6 DECO 25 ±2 21 ±2 23.3 29 ±3 23 ±3 25.6 34 ±3 23 ±3 28.1 GRC 25 ±4 18 ±3 30.5 28 ±5 22 ±4 35.6 31 ±5 23 ±4 37.2 DDPG-JOTOCC 28 ±2 21 ±2 20.7 34 ±3 29 ±3 24.5 37 ±3 31 ±3 25.6 
+
+HRL4AG (ours) 38 ±3 30 ±3 0.17 41 ±4 36 ±3 0.2 49 ±5 39 ±2 0.35 Method Algorithms Nums=30 Nums=40 Nums=50 PN ↑ DN ↑ ET(s) ↓ PN ↑ DN ↑ ET(s) ↓ PN ↑ DN ↑ ET(s) ↓
+
+> Chengdu
+
+Heuristic B&B 44 ±2 43 ±2 13.04 50 ±2 48 ±2 15.92 50 ±3 49 ±2 18.01 Greedy 38 ±2 37 ±2 7.69 42 ±3 40 ±2 9.17 44 ±3 41 ±2 8.95 HGR 61 ±4 59 ±3 9.55 70 ±5 68 ±4 10.78 73 ±5 71 ±4 13.36 RL D2SN 59 ±6 55 ±5 5.76 68 ±6 64 ±5 6.73 71 ±7 69 ±6 8.72 DECO 53 ±5 50 ±4 5.85 67 ±6 64 ±6 6.05 70 ±5 68 ±5 9.30 GRC 49 ±8 47 ±7 7.35 61 ±10 54 ±7 9.16 65 ±8 60 ±8 11.30 DDPG-JOTOCC 64 ±5 57 ±5 2.81 70 ±5 67 ±5 3.40 75 ±6 70 ±5 6.55 
+
+HRL4AG (ours) 82 ±7 76 ±5 0.35 89 ±6 85 ±5 0.56 95 ±8 88 ±7 0.83 
+
+Table 2: 5-run experimental results on the Shanghai and Chengdu datasets. Higher PN and DN indicate better performance, while lower ET signifies higher computational efficiency. Bold and underlined digits are the best and the second best values. RL Algorithms: 
+
+• D2SN [ 41 ]: Leveraging a Deep Double Scalable Network with an encoder-decoder architecture, the approach handles variable-sized inputs to directly generate assignment pairs between orders and vehicles, aiming to maximize long-term cumulative rewards. 
+
+• DECO [ 19 ]: This baseline enables collaborative order transfers between UAVs or carriers. By integrating a graph-based predic-tion module with a transfer optimization strategy, it dynamically adjusts assignments to enhance global efficiency, actively lever-aging agent interactions to handle real-time uncertainties. 
+
+• GRC [ 40 ]: This baseline revisits traditional value estimation by introducing a supply-demand correction mechanism into the or-der dispatch process. By dynamically adjusting matching weights based on the real-time scarcity of UAVs or carriers in specific re-gions, it balances the spatial distribution of resources to mitigate local oversupply and maximize global long-term efficiency. 
+
+• DDPG-JOTOCC [ 1 ]: Originally designed for UAV-assisted envi-ronments, it models the decision-making process as a continuous control problem. It optimizes scheduling decisions, enabling pre-cise control over high-dimensional variables in dynamic settings. 
+
+5.1.3 Evaluation Metrics. We follow previous work [ 9] and use pick-up number (PN) and delivery number (DN) to assess perfor-mance. In addition, to evaluate the efficiency of baselines and our HRL4AG, we calculate the average duration of each epoch during the inference phase, termed execution time (ET). ET quantifies the decision-making time required by an algorithm to complete a single epoch, serving as a key metric to evaluate computational efficiency. Each method is run 5 times with different random seed settings, and we report the average value along with the variance. 
+
+5.1.4 Implementation Details. All baseline methods are implemented in Python, with training conducted using PyTorch 2.1.3 on a single NVIDIA RTX A4000 GPU. In terms of the default setting of our HRL4AG, the batch size is set to 32, the initial learning rate of both actor and critic network is set to 0.005, and the hidden size is set to 256. We configure each epoch with a maximum of 50 time steps and initialize UAV energy at 1 kWh. Vehicle speeds are adapted to specific scenarios: for the uncongested Shanghai dataset (sparse orders), UAV and carrier speeds are set to 120 km/h and 90 km/h, while for the congested Chengdu dataset (dense orders), they are set to 60 km/h and 45 km/h. The vehicle number is explored within the range of 30 to 50, where the ratio of UAVs to carriers is 1:1. 
+
+5.2 Model Comparison (RQ1) 
+
+In this section, we compare the performance of HRL4AG with exist-ing baselines in terms of dispatch performance and computational efficiency, using two real-world datasets as shown in Table 2 . Our HRL4AG consistently outperforms all baselines under varying ve-hicle numbers 𝑁𝑢𝑚𝑠 , achieving an improvement of approximately 18% to 28% in delivery number on the Shanghai dataset, and 20% to 25% on the Chengdu dataset compared to the second best baselines. This demonstrates the effectiveness of our method for collaborative air-ground delivery. As the number of vehicles 𝑁𝑢𝑚𝑠 increases, we observe an upward trend in both PN and DN for all baselines across both datasets. This is attributed to the increased dispatch capacity allows a larger proportion of concurrent orders to be fulfilled. Specifically, on the sparse Shanghai dataset, HRL4AG effectively leverages air-ground heterogeneity. Unlike baselines that struggle with global coordination over a wide area with an ET between 11s to 20s, HRL4AG employs distinct worker agents for UAVs and Hierarchical Reinforcement Learning for Cooperative Air-Ground Delivery in Urban System Conference’17, July 2017, Washington, DC, USA Num=30 Num=40 Num=50       
+
+> 0
+> 20
+> 40
+> Number
+> (a) Shanghai: PN Comparison
+> Num=30 Num=40 Num=50
+> 0
+> 20
+> 40
+> Number
+> (b) Shanghai: DN + ET Comparison
+> Num=30 Num=40 Num=50
+> 0
+> 25
+> 50
+> 75
+> Number
+> (c) Chengdu: PN Comparison
+> Num=30 Num=40 Num=50
+> 0
+> 25
+> 50
+> 75
+> Number
+> (d) Chengdu: DN + ET Comparison
+> 0
+> 5
+> 10
+> 15
+> 20
+> ET (s)
+> 2
+> 4
+> 6
+> ET (s)
+> w/o Hie
+> w/o IR
+> w/o Reward Shapping
+> HRL4AG
+> ET - w/o Hie
+> DN (bars)
+> ET - HRL4AG
+
+Figure 4: Ablation Study Results. 
+
+carriers. This design not only optimizes the O-D pair scoring for each mode to maximize delivery number but also significantly reduces the action search space, maintaining an ultra-low inference time compared to the sluggish performance of baselines. Conversely, on the dense Chengdu dataset, HRL4AG overcomes the scalability bottleneck where baselines suffer severe compu-tational delays. By utilizing a manager agent to assignment the orders to specific worker so as to narrow the candidate scope, and Euclidean distance Bound for efficient carrier routing, HRL4AG drastically reduces computational overhead. This allows for real-time responsiveness with the ET less than 0.9s, and superior delivery performance with the ET from 80 to 87, proving that high efficiency and effectiveness can be achieved simultaneously. 
+
+5.3 Ablation Study (RQ2) 
+
+To assess the impact of each component on the performance of HRL4AG, we perform ablation studies on both Shanghai and Chengdu datasets. We compare the full model with three variants: w/o Hie 
+
+(removing the hierarchical structure), w/o IR (removing the intrin-sic reward), and w/o RS (removing the reward shaping). 
+
+5.3.1 Effects of Hierarchical Architecture. To evaluate the hierarchi-cal design, we compare HRL4AG with the centralized variant w/o Hie . In this setting, the manager layer is removed, and an agent directly controls all vehicles. As shown in Fig. 4 , removing the struc-ture leads to a decline in efficiency, with ET increasing from 0.35s to 22.1s on the Shanghai dataset. Furthermore, the effectiveness (PN and DN) also drops significantly. This confirms the necessity of the hierarchical design in reducing the search space, ensuring both the scalability and the feasibility of real-time decision-making. 
+
+5.3.2 Effects of Reward Mechanisms. We investigate our reward design by conducting ablation studies on two key components: 
+
+• Intrinsic Reward (w/o IR) : This variant removes the intrinsic reward mechanism, forcing both the Manager and Workers to optimize the same unified global reward. As shown in Fig. 4 ,the absence of IR leads to a noticeable performance drop. This decoupling ensures that the low-level policy can be optimized efficiently with dense feedback, while the high-level Manager focuses on long-term global objectives. 
+
+• Reward Shaping (w/o RS) : The mechanism designed to guide agents in the sparse-reward environment. As shown in Fig. 4 , re-moving reward shaping results in the lowest performance among reward-related variants. This demonstrates its contribution to HRL4AG UAV-only Carrier-only HGR DDPG-JOTOCC 
+
+Delivery Method       
+
+> 0
+> 20
+> 40
+> Number of Orders  (a) Mode Utilization Analysis (Num=30)
+> by UAVs by Carriers Undelivered HRL4AG UAV-only Carrier-only HGR DDPG-JOTOCC
+
+Delivery Method       
+
+> 0
+> 20
+> 40
+> Number of Orders  (b) Mode Utilization Analysis (Num=40)
+> by UAVs by Carriers Undelivered HRL4AG UAV-only Carrier-only HGR DDPG-JOTOCC
+
+Delivery Method   
+
+> 0
+> 20
+> 40
+> Number of Orders  (c) Mode Utilization Analysis (Num=50)
+> by UAVs by Carriers Undelivered
+
+Figure 5: Mode Utilization Analysis. 
+
+preventing agents from getting stuck in suboptimal policies due to the lack of immediate guidance. 
+
+5.4 Mode Utilization Analysis (RQ3) 
+
+To investigate the contributions of different transport modes and validate the necessity of air-ground collaboration, we conducted a comparative analysis under varying number of vehicles ( 𝑁𝑢𝑚𝑠 ). In addition to the top-performing heuristic baseline ( HGR ) and the RL baseline ( DDPG-JOTOCC ), we introduced two homogeneous variants: UAV-only and Carrier-only . In these variants, the total vehicle size remains constant, but all vehicles are converted to a single type, controlled by the HRL4AG logic. To manage the high volume of orders relative to 𝑁𝑢𝑚𝑠 , we fixed the delivery demand ratio at 0.5. The comparative results are presented in Fig. 5 .As shown in Fig. 5 , HRL4AG consistently outperforms all other methods across all settings. Notably, while the Carrier-only vari-ant suffers from low speed and traffic constraints, the UAV-only 
+
+variant, despite the high speed of drones, also fails to achieve opti-mal performance. This reveals a critical trade-off: relying solely on UAVs exposes the system to severe battery constraints . Although UAVs can travel directly, their limited energy restricts them from completing long-distance or continuous tasks, leading to higher mission failure rates. In contrast, HRL4AG effectively orchestrates a synergy between the two modes. It strategically assigns short-range time-critical requests to UAVs while allocating long-distance or heavy-traffic tasks to Carriers. By leveraging the speed of UAVs and the endurance of carriers, HRL4AG overcomes the limitations of individual modes, achieving the highest delivery rate. 
+
+5.5 Case Study (RQ4) 
+
+To intuitively visualize how HRL4AG differs from baselines in decision-making logic, we developed an Cooperative Air-Ground Conference’17, July 2017, Washington, DC, USA Trovato et al. Manager UAV Worker 
+
+> Carrier Worker
+> Worker
+> Worker
+> (a) RL- HRL4AG
+> (b) RL- DDPG-JOTOCC
+> (c) Heuristic-HGR
+
+Figure 6: Cooperative Air-Ground Delivery Platform. Delivery Simulation Platform . As shown in Figure 6, this plat-form allows for the configuration of environmental parameters, including datasets, fleet size, vehicle speeds, and charging station distribution, to visualize the dispatching process in real-time. We utilized our developed platform to visualize a comparison among three distinct categories of algorithms on the Shanghai dataset. As shown in Figure 6, the visualization panels highlight two critical advantages of HRL4AG. First, in terms of efficiency, the flat baseline RL (DDPG-JOTOCC) exhibits significant decision latency (high Execution Time in Fig. 6b) due to the explosive joint action space, while HRL4AG maintains real-time responsiveness through hierarchical decomposition. Second, regarding decision quality, the heuristic baseline (HGR) exhibits a myopic pattern characterized by low delivery numbers (Fig. 6c), indicating resource depletion from short-sighted assignments. In contrast, HRL4AG outperforms both the heuristic and RL baselines by achieving a balanced conversion rate. This visualization confirms HRL4AG’s foresight in avoiding low-quality orders and serves as a white-box debugging tool, enabling developers to trace intermediate dispatch links and iteratively improve reward shaping logic. 
+
+6 Related Works 
+
+Cooperative Air-Ground Delivery. Existing research on cooper-ative air-ground delivery can be broadly categorized into interactive delivery and parallel delivery . Interactive delivery typically treats ground vehicles as mobile launching and retrieval platforms for UAVs to extend their operational range or save energy. For instance, [ 5] models vehicles as carriers and investigates cooperative path planning to synchronize UAV and vehicle trajectories. Other studies explore collaborative delivery for contactless logistics during epi-demics [ 36 ] or leverage public transportation (e.g., buses) to assist UAVs [ 24 , 25 ]. Despite their potential in specific scenarios, these systems require frequent physical synchronization between UAVs and ground vehicles, introducing significant system complexity and operational risks that hinder large-scale deployment. Consequently, parallel delivery has emerged as a more scalable paradigm, where orders are assigned to either UAVs or carriers to be executed independently. Recent works have formulated this as a generalized assignment problem, employing approximation greedy heuristics [ 9] or optimization solvers [ 10 ] to determine dispatch-ing schemes. However, most existing methods rely on simplified environmental assumptions, often overlooking the complex road network constraints for ground vehicles and the distinct mobility dynamics between aerial and ground agents. This simplification leads to a gap between theoretical models and real-world efficiency. In contrast, our work explicitly incorporates realistic road-network and flight constraints, proposing a learning-based framework to optimize collaborative efficiency in complex environments. 
+
+Reinforcement Learning for Order Dispatch. Order dispatch-ing is a core problem in on-demand logistics, often modeled as bipartite matching between orders and vehicles. While traditional combinatorial optimization methods are effective for small-scale static problems, reinforcement learning (RL) has become the domi-nant approach for large-scale dynamic dispatching due to its ability to optimize long-term returns. Related works have proposed vari-ous RL architectures. For example, [ 40 ] introduced goal-reaching mechanisms to handle credit assignment in large-scale platforms. Other studies utilize hierarchical RL [ 7 ] or mean-field RL to im-prove scalability and coordinate agents at both microscopic and macroscopic levels [ 41 ]. Some researches also incorporate fairness considerations into the RL objective function [15, 31]. However, directly transferring these homogeneous RL algorithms to cooperative air-ground delivery is non-trivial. They fail to ad-dress the heterogeneity gap , as UAVs and carriers possess different states and distance metrics (Euclidean vs. Route). Furthermore, as the number of vehicles grows, classical RL approaches suffer from the scalability bottleneck due to the explosion of the joint action space. To handle these limitations, we propose HRL4AG , a hier-archical framework that utilizes mode-specific workers to handle heterogeneity and a high-level manager to decompose the action space, ensuring both effectiveness and efficiency. 
+
+7 Conclusion & Future Work 
+
+In this paper, we presented HRL4AG , a hierarchical reinforcement learning framework designed to tackle the cooperative air-ground delivery problem. We identified and addressed two critical limi-tations that hinder existing approaches: the heterogeneity gap 
+
+in vehicle dynamics modeling and the scalability bottleneck in large-scale dispatching. To overcome these issues, HRL4AG intro-duces a Manager-Worker architecture that effectively decomposes the massive action space and utilizes mode-specific embeddings for precise matching, coupled with an internal reward mechanism to ensure training stability. Extensive experiments on two real-world datasets and an evaluation platform demonstrate that HRL4AG sig-nificantly outperforms state-of-the-art baselines, improving the de-livery success rate by up to 26% while achieving an 80-fold increase in computational efficiency. In future work, we plan to extend the framework to incorporate stochastic environmental factors, such as weather conditions and uncertain energy consumption. Hierarchical Reinforcement Learning for Cooperative Air-Ground Delivery in Urban System Conference’17, July 2017, Washington, DC, USA 
+
+References 
+
+[1] Jingpan Bai, Jiahui Luo, Yuan Chen, Yuming Tang, Li Jin, Yan Shi, Bozhong Yang, and Houling Ji. 2025. The DDPG-Based Joint Optimization of Task Offloading and Content Caching in UAV-Assisted IoV. IEEE Internet of Things Journal 12, 19 (2025), 40330–40346. doi:10.1109/JIOT.2025.3588858 [2] Yoshua Bengio, Andrea Lodi, and Antoine Prouvost. 2021. Machine learning for combinatorial optimization: A methodological tour d’horizon. European Journal of Operational Research 290, 2 (2021), 405–421. doi:10.1016/j.ejor.2020.07.063 [3] Jinwei Chen, Zefang Zong, Yunlin Zhuang, Huan Yan, Depeng Jin, and Yong Li. 2023. Reinforcement Learning for Practical Express Systems with Mixed Deliveries and Pickups. ACM Trans. Knowl. Discov. Data 17, 3, Article 33 (Feb. 2023), 19 pages. doi:10.1145/3546952 [4] Zipeng Dai, Chi Harold Liu, Rui Han, Guoren Wang, Kin K. Leung, and Jian Tang. 2023. Delay-Sensitive Energy-Efficient UAV Crowdsensing by Deep Reinforce-ment Learning. IEEE Transactions on Mobile Computing 22, 4 (2023), 2038–2052. doi:10.1109/TMC.2021.3113052 [5] Dyutimoy Nirupam Das, Rohan Sewani, Junwei Wang, and Manoj Kumar Tiwari. 2021. Synchronized Truck and Drone Routing in Package Delivery Logistics. 
+
+IEEE Transactions on Intelligent Transportation Systems 22, 9 (2021), 5772–5782. doi:10.1109/TITS.2020.2992549 [6] Yi Ding, Ling Liu, Yu Yang, Yunhuai Liu, Desheng Zhang, and Tian He. 2021. From Conception to Retirement: A Lifetime Story of a 3-Year-Old Wireless Beacon System in the Wild. IEEE/ACM Trans. Netw. 30, 1 (Aug. 2021), 47–61. doi:10.1109/ TNET.2021.3107043 [7] Soheil Sadeghi Eshkevari, Xiaocheng Tang, Zhiwei Qin, Jinhan Mei, Cheng Zhang, Qianying Meng, and Jia Xu. 2022. Reinforcement Learning in the Wild: Scalable RL Dispatching Algorithm Deployed in Ridehailing Marketplace. arXiv:2202.05118 [cs.LG] https://arxiv.org/abs/2202.05118 [8] Zhenan Fan, Bissan Ghaddar, Xinglu Wang, Linzi Xing, Yong Zhang, and Zirui Zhou. 2024. Artificial Intelligence for Operations Research: Revolutionizing the Operations Research Process. arXiv:2401.03244 [math.OC] https://arxiv.org/abs/ 2401.03244 [9] Junhui Gao, Qianru Wang, Xin Zhang, Juan Shi, Xiang Zhao, Qingye Han, and Yan Pan. 2024. Cooperative Air-Ground Instant Delivery by UAVs and Crowdsourced Taxis. In 2024 IEEE 40th International Conference on Data Engineering (ICDE) .4153–4166. doi:10.1109/ICDE60146.2024.00120 [10] Junhui Gao, Qianru Wang, Xin Zhang, Juan Shi, Xiang Zhao, Yunji Liang, Bin Guo, Qingye Han, and Yan Pan. 2025. Cooperative Air-Ground Instant Delivery by UAVs and Crowdsourced Taxis: Joint UAV Station Deployment and Delivery Scheduling. IEEE Transactions on Mobile Computing (2025), 1–17. doi:10.1109/ TMC.2025.3634430 [11] Baoshen Guo, Shuai Wang, Haotian Wang, Yunhuai Liu, Fanshuo Kong, Desheng Zhang, and Tian He. 2023. Towards Equitable Assignment: Data-Driven Delivery Zone Partition at Last-mile Logistics. In Proceedings of the 29th ACM SIGKDD Conference on Knowledge Discovery and Data Mining (Long Beach, CA, USA) 
+
+(KDD ’23) . Association for Computing Machinery, New York, NY, USA, 4078–4088. doi:10.1145/3580305.3599915 [12] Xusen Guo, Mingxing Peng, Xixuan Hao, Xingchen Zou, Qiongyan Wang, Sijie Ruan, and Yuxuan Liang. 2025. AgentSense: LLMs Empower Generalizable and Explainable Web-Based Participatory Urban Sensing. arXiv:2510.19661 [cs.AI] https://arxiv.org/abs/2510.19661 [13] Md Arafat Habib, Pedro Enrique Iturria Rivera, Yigit Ozcan, Medhat Elsayed, Majid Bavand, Raimundus Gaigalas, and Melike Erol-Kantarci. 2025. LLM-Based Intent Processing and Network Optimization Using Attention-Based Hierarchical Reinforcement Learning. In 2025 IEEE Wireless Communications and Networking Conference (WCNC) . 1–6. doi:10.1109/WCNC61545.2025.10978505 [14] Benjamin Han, Hyungjun Lee, and Sébastien Martin. 2022. Real-Time Rideshare Driver Supply Values Using Online Reinforcement Learning. In Proceedings of the 28th ACM SIGKDD Conference on Knowledge Discovery and Data Mining 
+
+(Washington DC, USA) (KDD ’22) . Association for Computing Machinery, New York, NY, USA, 2968–2976. doi:10.1145/3534678.3539141 [15] Lin Jiang, Shuai Wang, Baoshen Guo, Hai Wang, Desheng Zhang, and Guang Wang. 2023. FairCod: A Fairness-aware Concurrent Dispatch System for Large-scale Instant Delivery Services. In Proceedings of the 29th ACM SIGKDD Conference on Knowledge Discovery and Data Mining (Long Beach, CA, USA) (KDD ’23) .Association for Computing Machinery, New York, NY, USA, 4229–4238. doi:10. 1145/3580305.3599824 [16] Boyang Li, Yurong Cheng, Ye Yuan, Yi Yang, QianQian Jin, and Guoren Wang. 2023. ACTA: Autonomy and Coordination Task Assignment in Spatial Crowd-sourcing Platforms. Proc. VLDB Endow. 16, 5 (Jan. 2023), 1073–1085. doi:10.14778/ 3579075.3579082 [17] Qingyang Li, Zexuan Li, Qianru Wang, Lei Han, Jiangtao Cui, and Zhiwen Yu. 2025. Hierarchical Human-UAV Cooperative Task Allocation for Spatiotemporal Crowdsensing in Disaster Response. Proc. ACM Interact. Mob. Wearable Ubiquitous Technol. 9, 4, Article 188 (Dec. 2025), 33 pages. doi:10.1145/3770651 [18] Jiahao Ling, Xiaohui Huang, Xiaofei Yang, and Boxue Cheng. 2025. Balancing supply and demand for ride-hailing: A preallocation hierarchical reinforcement learning approach. Information Sciences 718 (2025), 122371. doi:10.1016/j.ins. 2025.122371 [19] Yao Lu, Shuai Wang, Yu Yang, Hai Wang, Baoshen Guo, Desheng Zhang, Shuai Wang, and Tian He. 2024. DECO: Cooperative Order Dispatching for On-Demand Delivery with Real-Time Encounter Detection. In Proceedings of the 33rd ACM International Conference on Information and Knowledge Management (Boise, ID, USA) (CIKM ’24) . Association for Computing Machinery, New York, NY, USA, 4734–4742. doi:10.1145/3627673.3680084 [20] Kelin Luo, Alexandre M. Florio, Syamantak Das, and Xiangyu Guo. 2023. AHierarchical Grouping Algorithm for the Multi-Vehicle Dial-a-Ride Problem. 
+
+Proc. VLDB Endow. 16, 5 (Jan. 2023), 1195–1207. doi:10.14778/3579075.3579091 [21] Nina Mazyavkina, Sergey Sviridov, Sergei Ivanov, and Evgeny Burnaev. 2021. Reinforcement learning for combinatorial optimization: A survey. Computers & Operations Research 134 (2021), 105400. doi:10.1016/j.cor.2021.105400 [22] Hao Miao, Xiaolong Zhong, Jiaxin Liu, Yan Zhao, Xiangyu Zhao, Weizhu Qian, Kai Zheng, and Christian S. Jensen. 2024. Task Assignment With Efficient Federated Preference Learning in Spatial Crowdsourcing. IEEE Transactions on Knowledge and Data Engineering 36, 4 (2024), 1800–1814. doi:10.1109/TKDE.2023.3311816 [23] Rashmeet Kaur Nayyar and Siddharth Srivastava. 2025. Autonomous op-tion invention for continual hierarchical reinforcement learning and planning. In Proceedings of the Thirty-Ninth AAAI Conference on Artificial Intelligence and Thirty-Seventh Conference on Innovative Applications of Artificial Intelli-gence and Fifteenth Symposium on Educational Advances in Artificial Intelligence (AAAI’25/IAAI’25/EAAI’25) . AAAI Press, Article 2190, 9 pages. doi:10.1609/aaai. v39i18.34163 [24] Yan Pan, Qianwu Chen, Nan Zhang, Zhigang Li, Ting Zhu, and Qingye Han. 2023. Extending Delivery Range and Decelerating Battery Aging of Logistics UAVs Using Public Buses. IEEE Transactions on Mobile Computing 22, 9 (2023), 5280–5295. doi:10.1109/TMC.2022.3167040 [25] Yan Pan, Shining Li, Qianwu Chen, Nan Zhang, Tao Cheng, Zhigang Li, Bin Guo, Qingye Han, and Ting Zhu. 2021. Efficient Schedule of Energy-Constrained UAV Using Crowdsourced Buses in Last-Mile Parcel Delivery. Proc. ACM Interact. Mob. Wearable Ubiquitous Technol. 5, 1, Article 28 (March 2021), 23 pages. doi:10.1145/ 3448079 [26] Shubham Pateria, Budhitama Subagdja, Ah-hwee Tan, and Chai Quek. 2021. Hierarchical Reinforcement Learning: A Comprehensive Survey. ACM Comput. Surv. 54, 5, Article 109 (June 2021), 35 pages. doi:10.1145/3453160 [27] Haoqing Qi, Yong Li, Yongqing Xu, and Tony Q. S. Quek. 2024. UAV-Assisted Mobile Crowdsensing Systems Empowered by Wireless Power Transfer and Adaptive Compression Techniques. IEEE Wireless Communications Letters 13, 9 (2024), 2487–2491. doi:10.1109/LWC.2024.3421314 [28] Pham Tran Anh Quang, Yassine Hadjadj-Aoul, and Abdelkader Outtagarts. 2019. A Deep Reinforcement Learning Approach for VNF Forwarding Graph Em-bedding. IEEE Transactions on Network and Service Management 16, 4 (2019), 1318–1331. doi:10.1109/TNSM.2019.2947905 [29] Sijie Ruan, Jie Bao, Yuxuan Liang, Ruiyuan Li, Tianfu He, Chuishi Meng, Yanhua Li, Yingcai Wu, and Yu Zheng. 2020. Dynamic Public Resource Allocation Based on Human Mobility Prediction. Proc. ACM Interact. Mob. Wearable Ubiquitous Technol. 4, 1, Article 25 (March 2020), 22 pages. doi:10.1145/3380986 [30] Soheil Sadeghi Eshkevari, Xiaocheng Tang, Zhiwei Qin, Jinhan Mei, Cheng Zhang, Qianying Meng, and Jia Xu. 2022. Reinforcement Learning in the Wild: Scalable RL Dispatching Algorithm Deployed in Ridehailing Marketplace. In Proceedings of the 28th ACM SIGKDD Conference on Knowledge Discovery and Data Mining 
+
+(Washington DC, USA) (KDD ’22) . Association for Computing Machinery, New York, NY, USA, 3838–3848. doi:10.1145/3534678.3539095 [31] Jiahui Sun, Haiming Jin, Zhaoxing Yang, Lu Su, and Xinbing Wang. 2022. Op-timizing Long-Term Efficiency and Fairness in Ride-Hailing via Joint Order Dispatching and Driver Repositioning. In Proceedings of the 28th ACM SIGKDD Conference on Knowledge Discovery and Data Mining (Washington DC, USA) 
+
+(KDD ’22) . Association for Computing Machinery, New York, NY, USA, 3950–3960. doi:10.1145/3534678.3539060 [32] Hao Wang, Chi Harold Liu, Zipeng Dai, Jian Tang, and Guoren Wang. 2021. Energy-Efficient 3D Vehicular Crowdsourcing for Disaster Response by Dis-tributed Deep Reinforcement Learning. In Proceedings of the 27th ACM SIGKDD Conference on Knowledge Discovery & Data Mining (Virtual Event, Singapore) 
+
+(KDD ’21) . Association for Computing Machinery, New York, NY, USA, 3679–3687. doi:10.1145/3447548.3467070 [33] Yu Wang, Jingfei Wu, Xingyuan Hua, Chi Harold Liu, Guozheng Li, Jianxin Zhao, Ye Yuan, and Guoren Wang. 2023. Air-Ground Spatial Crowdsourcing with UAV Carriers by Geometric Graph Convolutional Multi-Agent Deep Reinforcement Learning. In 2023 IEEE 39th International Conference on Data Engineering (ICDE) .1790–1802. doi:10.1109/ICDE55515.2023.00140 [34] Zhenning Wang, Yue Cao, Kai Jiang, Huan Zhou, Jiawen Kang, Yuan Zhuang, Daxin Tian, and Victor C. M. Leung. 2025. When Crowdsensing Meets Smart Cities: A Comprehensive Survey and New Perspectives. IEEE Communications Surveys & Tutorials 27, 2 (2025), 1101–1151. doi:10.1109/COMST.2024.3400121 [35] Haomin Wen, Youfang Lin, Yuxuan Hu, Fan Wu, Mingxuan Xia, Xinyi Zhang, Lixia Wu, Haoyuan Hu, and Huaiyu Wan. 2023. Modeling Spatial–Temporal Conference’17, July 2017, Washington, DC, USA Trovato et al. 
+
+Constraints and Spatial-Transfer Patterns for Couriers’ Package Pick-up Route Prediction. IEEE Transactions on Intelligent Transportation Systems 24, 12 (2023), 13787–13800. doi:10.1109/TITS.2023.3301661 [36] Guohua Wu, Ni Mao, Qizhang Luo, Binjie Xu, Jianmai Shi, and Ponnuthurai Na-garatnam Suganthan. 2022. Collaborative Truck-Drone Routing for Contactless Parcel Delivery During the Epidemic. IEEE Transactions on Intelligent Transporta-tion Systems 23, 12 (2022), 25077–25091. doi:10.1109/TITS.2022.3181282 [37] Huaming Wu, Lei Tian, Huijun Tang, Ruidong Li, and Pengfei Jiao. 2025. Graph Convolutional Reinforcement Learning-Guided Joint Trajectory Optimization and Task Offloading for Aerial Edge Computing. IEEE Transactions on Intelligent Transportation Systems 26, 10 (2025), 17487–17498. doi:10.1109/TITS.2024.3490533 [38] Yuqian Wu, Yuhong Peng, Jiapeng Yu, and Raymond S. T. Lee. 2024. MAS4POI: a Multi-Agents Collaboration System for Next POI Recommenda-tion. arXiv:2409.13700 [cs.IR] https://arxiv.org/abs/2409.13700 [39] Yuqian Wu, Yuhong Peng, Jiapeng Yu, Xiangyu Liu, Zeting Yan, Kang Lin, Weifeng Su, Bingqing Qu, Raymond Lee, and Dingqi Yang. 2025. Beyond Regularity: Modeling Chaotic Mobility Patterns for Next Location Prediction. arXiv:2509.11713 [cs.LG] https://arxiv.org/abs/2509.11713 [40] Zhaoxing Yang, Haiming Jin, Guiyun Fan, Min Lu, Yiran Liu, Xinlang Yue, Hao Pan, Zhe Xu, Guobin Wu, Qun Li, Xiaotong Wang, and Jiecheng Guo. 2024. Rethinking Order Dispatching in Online Ride-Hailing Platforms. In Proceedings of the 30th ACM SIGKDD Conference on Knowledge Discovery and Data Mining 
+
+(Barcelona, Spain) (KDD ’24) . Association for Computing Machinery, New York, NY, USA, 3863–3873. doi:10.1145/3637528.3672028 [41] Xinlang Yue, Yiran Liu, Fangzhou Shi, Sihong Luo, Chen Zhong, Min Lu, and Zhe Xu. 2024. An End-to-End Reinforcement Learning Based Approach for Micro-View Order-Dispatching in Ride-Hailing. In Proceedings of the 33rd ACM International Conference on Information and Knowledge Management (Boise, ID, USA) (CIKM ’24) . Association for Computing Machinery, New York, NY, USA, 5054–5061. doi:10.1145/3627673.3680013 [42] Zefang Zong, Tao Feng, Jingwei Wang, Tong Xia, and Yong Li. 2025. Deep Rein-forcement Learning for Demand-Driven Services in Logistics and Transportation Systems: A Survey. ACM Trans. Knowl. Discov. Data 19, 4, Article 89 (May 2025), 42 pages. doi:10.1145/3708325 [43] Zefang Zong, Xia Tong, Meng Zheng, and Yong Li. 2024. Reinforcement Learning for Solving Multiple Vehicle Routing Problem with Time Window. ACM Trans. Intell. Syst. Technol. 15, 2, Article 32 (March 2024), 19 pages. doi:10.1145/3625232 [44] Zefang Zong, Huan Yan, Hongjie Sui, Haoxiang Li, Peiqi Jiang, and Yong Li. 2023. An AI-based Simulation and Optimization Framework for Logistic Systems. In Proceedings of the 32nd ACM International Conference on Information and Knowledge Management (Birmingham, United Kingdom) (CIKM ’23) . Association for Computing Machinery, New York, NY, USA, 5138–5142. doi:10.1145/3583780. 3614732 Hierarchical Reinforcement Learning for Cooperative Air-Ground Delivery in Urban System Conference’17, July 2017, Washington, DC, USA 
+
+A Cooperative Air-Ground Delivery Platform 
+
+To bridge the gap between theoretical algorithms and real-world deployment, we developed a simulation platform. This platform is designed to evaluate algorithmic effectiveness using real-world urban road networks, such as Shanghai dataset [ 6 ] and allows for comprehensive benchmarking against various baselines, ranging from greedy approaches [ 9 ] to branch-and-bound strategies [ 29 ]. As illustrated in Figure 7 and Figure 8, the system interface is com-posed of four modules: Scenario Configuration, Process Monitoring, Microscopic Agent Visualization, and Comparative Analytics. 
+
+A.1 Scenario Configuration (Panel A) 
+
+The Configuration View (Fig. 7-A) serves as the control center for initializing the research environment. It provides a modularized interface for customizing simulation parameters: 
+
+• Environment Settings: Researchers can define the global simu-lation context, including the road network dataset, order genera-tion distribution, and the dispatching algorithm to be evaluated. 
+
+• Heterogeneous Fleet Config: The panel allows precise pa-rameterization of the heterogeneous fleet. For UAVs, users can configure the fleet size, payload capacity, battery constraints, and maximum flight altitude. Similarly, for carriers, parameters such as speed limits, capacity, and service range can be adjusted. This parametric design ensures that the platform can simulate di-verse operational paradigms, from pure drone-based or rider-based models to complex collaborative air-ground scenarios. 
+
+A.2 Delivery Process Monitoring (Panel B) 
+
+Upon initialization, the Delivery Process View (Fig. 7-B) visualizes the spatiotemporal dynamics of the entire system. The interface ren-ders the real-time positions of all entities, including orders, UAVs, riders, and charging stations. The simulation unfolds in three se-quential stages: 1) Dispatching: Orders are assigned to specific vehicles based on the selected algorithm; 2) Pickup & Delivery: Ve-hicles execute route planning based on their specific mobility logic (Euclidean for UAVs vs. Road Network for riders) to complete tasks; 3) Maintenance: Crucially, the system incorporates a safety-aware logic for UAVs. After delivery, a UAV checks its residual energy. It will only accept new orders if the battery permits; otherwise, it autonomously navigates to the nearest charging station, simulating the operation constraints in real-world logistics. 
+
+A.3 Microscopic Agent Visualization (Panel C) 
+
+To support fine-grained analysis, the platform offers an interactive 
+
+Agent Perspective View (Fig. 8-C). By clicking on individual en-tities (e.g., a specific UAV), the system switches to a microscopic telemetry view. This panel displays high-fidelity state information, including the agent’s ID, current coordinates, and for UAVs, critical flight dynamics such as Height, Pitch, Roll, Yaw, and Remaining Power. This feature allows researchers to debug algorithmic behav-ior at the individual agent level and verify that physical constraints (e.g., battery depletion) are strictly observed. 
+
+A.4 Real-time Comparative Analytics (Panel D) 
+
+The Result Dashboard (Fig. 8-D) provides a quantitative assess-ment of algorithmic performance. It features a visualization system: 
+
+Figure 7: Configuration View and Delivery Process View. 
+
+Figure 8: 3D UAV View and Scheduling Result View. 
+
+• Dynamic Line Charts: These tracks time-series metrics, plot-ting the number of generated orders against the volume of matched, picked-up, and delivered orders at each time step. 
+
+• Summary Bar Charts: These display aggregate performance indicators, such as overall matching rate and delivery rate. A key feature of this module is its time-synchronized compar-ison capability . The system archives the performance traces of executed baselines. When a new algorithm is tested, its real-time results are overlaid with historical data, enabling researchers to visually benchmark the proposed method against state-of-the-art baselines in the same temporal context.

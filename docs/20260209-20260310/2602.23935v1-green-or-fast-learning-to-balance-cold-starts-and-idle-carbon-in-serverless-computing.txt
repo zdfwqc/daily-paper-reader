@@ -1,0 +1,451 @@
+Title: Green or Fast? Learning to Balance Cold Starts and Idle Carbon in Serverless Computing
+
+URL Source: https://arxiv.org/pdf/2602.23935v1
+
+Published Time: Mon, 02 Mar 2026 01:59:05 GMT
+
+Number of Pages: 12
+
+Markdown Content:
+# Green or Fast? Learning to Balance Cold Starts and Idle Carbon in Serverless Computing 
+
+Bowen Sun *
+
+Department of Computer Science William & Mary Williamsburg, VA, USA bsun02@wm.edu 
+
+Christos D. Antonopoulos 
+
+Department of Computer Science University of Thessaly Volos, Greece cda@uth.gr 
+
+Evgenia Smirni 
+
+Department of Computer Science William & Mary Williamsburg, VA, USA exsmir@wm.edu 
+
+Bin Ren 
+
+Department of Computer Science William & Mary Williamsburg, VA, USA bren@wm.edu 
+
+Nikolaos Bellas 
+
+Department of Computer Science University of Thessaly Volos, Greece nbellas@uth.gr 
+
+Spyros Lalis 
+
+Department of Computer Science University of Thessaly Volos, Greece lalis@uth.gr 
+
+> This is the preprint accepted for publication in the 26th IEEE International Symposium on Cluster, Cloud, and Internet Computing (CCGrid 2026), Sydney, Australia, 18–21 May 2026. This version is released under a CC-BY license in accordance with the Horizon Europe programme requirements.
+
+Abstract—Serverless computing simplifies cloud deployment but introduces new challenges in managing service latency and carbon emissions. Reducing cold-start latency requires retain-ing warm function instances, while minimizing carbon emis-sions favors reclaiming idle resources. This balance is further complicated by time-varying grid carbon intensity and varying workload patterns, under which static keep-alive policies are inefficient. We present LACE-RL, a latency-aware and carbon-efficient management framework that formulates serverless pod retention as a sequential decision problem. LACE-RL uses deep reinforcement learning to dynamically tune keep-alive durations, jointly modeling cold-start probability, function-specific latency costs, and real-time carbon intensity. Using the Huawei Public Cloud Trace, we show that LACE-RL reduces cold starts by 51 .69% and idle keep-alive carbon emissions by 77 .08% compared to Huawei’s static policy, while achieving better latency–carbon trade-offs than state-of-the-art heuristic and single-objective baselines, approaching Oracle performance. Index Terms—Serverless Computing, Reinforcement Learn-ing, Cold Start Optimization, Carbon-Aware Management 
+
+I. Introduction Serverless computing has become a widely adopted paradigm for cloud applications, offering elastic scaling and simplified deployment by abstracting infrastructure provisioning and management [1], [2]. Once viewed as a niche technology, serverless is now used in production by over 50% of organizations [3]. As serverless platforms scale, however, they must increasingly reconcile service performance with energy efficiency and environmental impact. In particular, cold-start latency [4] and the carbon footprint of idle pods 1 that host functions [5], [6] have 
+
+> *Ph.D. candidate at William and Mary. This work was completed while the author was a researcher at University of Thessaly, Greece.
+> 1A pod represents the basic container instance that executes a serverless function; we use it synonymously with a function container or instance.
+
+emerged as closely related challenges shaped by pod keep-alive decisions that determine whether pods are retained or reclaimed after function execution. Cold starts occur when a function is invoked without a warm pod, requiring initialization of both the exe-cution environment and runtime [7], [8]. This process can introduce hundreds of milliseconds to several seconds of additional latency, potentially violating service-level objectives (SLOs) in latency-sensitive applications [9]– [11]. Our analysis of the recently released Huawei Cloud Trace [5], the most up-to-date public dataset on serverless cold starts, reveals substantial diversity in both pod reuse patterns and cold-start latencies across functions. This variability limits the effectiveness of static keep-alive policies [5], [12] and motivates decision-making that accounts for function-specific behavior. Reducing cold-start latency typically requires main-taining warm idle pods. However, both our empirical characterization and recent studies [13] show that ag-gressive keep-alive strategies can incur a substantial “hid-den” carbon cost, in some cases exceeding the emissions associated with function execution itself. Moreover, the carbon footprint of keeping idle pods warm varies over time with changes in grid carbon intensity [14]. Despite this temporal variability, production platforms continue to rely on static keep-alive policies, such as fixed timeouts used in Huawei Cloud [5], or simple heuristic pre-warming. Such approaches are ill-suited to environments with di-verse function behavior, non-stationary workloads, and time-varying carbon intensity, where effective keep-alive decisions require adapting to both workload dynamics and external conditions (the time-varying carbon footprint). The above observations motivate an adaptive control framework for keep-alive management, which makes per-function invocation decisions by considering pod reuse potential, cold-start latency, and time-varying carbon 1
+
+> arXiv:2602.23935v1 [cs.DC] 27 Feb 2026
+
+intensity. Keeping a pod warm reduces cold-start latency but increases idle energy use and carbon emissions. As a result, keep-alive decisions form a sequential optimiza-tion problem under uncertainty, with long-term latency– carbon trade-offs: a decision made now determines pod availability (warm vs. cold) for future invocations as well as idle energy consumption and associated carbon emissions. Effective keep-alive control must operate be-neath cluster-level autoscaling, enabling fine-grained pod management and more aggressive downscaling. While prior work examines cold-start mitigation [15], [16], pre-warming, or carbon-aware management [11], [17] in iso-lation [18], [19], no existing system optimizes keep-alive decisions at function-instance granularity under time-varying carbon intensity. We address this gap with LACE-RL, a Latency-Aware and Carbon-Efficient serverless management framework based on Reinforcement Learning. LACE-RL learns per-function keep-alive policies that balance latency and carbon objectives while adapting to diverse workloads and changing carbon conditions. Our key contributions are summarized below.  
+
+> •
+
+Formalization of the latency–carbon trade-off. We for-malize serverless pod retention as a per-pod, multi-objective sequential decision problem that captures cold-start probability, function-specific latency penal-ties, and time-varying grid carbon intensity.  
+
+> •
+
+RL-based adaptive keep-alive control. We design areinforcement learning framework that learns per-pod keep-alive policies from workload dynamics and envi-ronmental signals. Unlike static or heuristic approaches, LACE-RL adapts to varying cold-start behaviors and supports configurable latency–carbon trade-offs.  
+
+> •
+
+Cold-start and energy profiling. We profile a controlled FunctionBench [20] deployment using Kepler [21] to calibrate phase-level energy accounting, characterize diverse cold-start costs, and quantify non-trivial en-ergy consumption during keep-alive periods, grounding both our simulator and optimization objectives in real-machine measurements.  
+
+> •
+
+Comprehensive evaluation. We evaluate LACE-RL us-ing a trace-driven simulator based on the Huawei Cloud Trace [5] and calibrated with empirical measurements. LACE-RL reduces cold starts by 51 .69% and idle keep-alive carbon emissions by 77 .08% relative to Huawei’s static policy [5], and achieves superior latency–carbon trade-offs compared to single-objective baselines and state-of-the-art approaches [22], while approaching Or-acle performance. II. Energy Modeling and Challenges We analyze a public serverless trace from Huawei Cloud [5] that includes fine-grained invocation patterns, pod reuse behavior, and diverse cold-start latencies. Then, we introduce the energy model for estimating carbon emis-sions in LACE-RL. The proposed energy model integrates pod-level resource utilization and temporal carbon inten-sity, enabling a systematic exploration of performance– sustainability trade-offs. A. Huawei Cloud Dataset We analyze the Huawei Cloud Trace [5], focusing on day 30, which includes more than 300 million detailed request-level records [23]. We select this dataset over alternatives like Azure [12] or Alibaba [24] due to two key advantages: (i) unique insights into cold start latency diversity and (ii) timeliness, ensuring that it reflects modern workloads. Unlike other public datasets, this trace includes per-invocation timestamps and pod identifiers. These fea-tures enable us to infer pod reuse patterns and strictly distinguish between cold and warm starts. Moreover, it contains cold start latency components and detailed resource configurations. This granularity supports the pod-centric modeling required for the adaptive strategy of LACE-RL. Table I summarizes the structure of the dataset used. B. Energy Model: Accounting for Serverless Carbon Foot-print We estimate per-invocation carbon emissions using run-time hardware activity and grid carbon intensity, based on the energy and carbon accounting model proposed in [13], [22]. We summarize the model here for completeness and to aid readability. We focus exclusively on operational energy and exclude embodied carbon (e.g., manufacturing) as it is invariant to runtime retention strategies. We also assume a ho-mogeneous hardware environment to isolate management effects from hardware heterogeneity. Our model divides energy consumption into two phases: pod execution and pod keep-alive to reduce cold starts. Function Execution Energy. Per-invocation execution energy for function f is estimated as: 
+
+Eexec (f ) = ( JM B DRAM ·mem f +Jcore  
+
+> CP U
+
+·cpu f )·Texec (f ), (1) where mem f and cpu f denote memory (MB) and CPU (cores) allocation, Texec (f ) is execution time, and J repre-sents power per MB of memory and per CPU core respec-tively. The carbon emitted is Cexec (f, t ) = Eexec (f )·CI (t),where CI (t) is the carbon intensity at time window t.We use real-time carbon intensity data from Electricity Maps [14], a real-time, data-driven platform that reports per region carbon intensity (grams of CO 2 equivalent emissions per kWh of electric energy) based on the variations of fuel mix used and availability of renewable sources. We assume the carbon intensity CI (t) remains constant during a short execution window. Keep-alive Energy. Retaining warm pods for function f
+
+mitigates cold starts but incurs idle energy: 
+
+Eidle (f ) = ( JM B DRAM · mem f +Jcore CPU ·cpu f )·Tidle (f ), (2) 2TABLE I: Summary of Huawei Dataset Components Used in the LACE-RL Framework     
+
+> Dataset Source Description Usage in LACE-RL Framework Cold Start Logs 31-day cold start traces with breakdowns of pod allocation cost, code deploy cost. Used to construct function-specific cold start latency ( Lcs ) by runtime Request-Level Logs Per-invocation metadata including timestamp, execution time, podID, CPU, and memory request Used to simulate invocation traces, calculate pod reuse intervals, and model pod reuse probabilities Runtime and Trigger Metadata Static table mapping each function with its runtime language and trigger type Used to determine runtime-sensitive latency and filter function categories
+
+where Tidle (f ) is the retention duration. Since idle pods consume less power than active ones, we apply a scaling factor λidle [13]: 
+
+Escaled  
+
+> idle
+
+(f ) = λidle · Eidle (f ) (3) We set λidle = 0 .2 based on prior studies [6], [22]. The choice of λidle = 0 .2 is further justified in Sec. IV-A via actual experiments on a real system. The resulting carbon footprint is Cidle (f, t ) = Escaled  
+
+> idle
+
+(f ) · CI (t).Cold-start Energy. Starting pods to serve an invocation of function f incurs cold-start energy: 
+
+Ecold (f ) = Pcold (f ) · Tcold (f ), (4) where Tcold (f ) is the latency of the cold start and Pcold 
+
+is the power consumed during cold start. Although Pcold 
+
+is not strictly equal to the execution power, the empirical characterization discussed in Sec. IV-A shows that this term is dominated by the value of Tcold (f ). The resulting footprint is Ccold (f, t ) = Ecold (f ) · CI (t).Aggregated Carbon Accounting. The total carbon foot-print is Ctotal (f, t ) = Cexec (f, t ) + Cidle (f, t ) + Ccold (f, t ).C. Challenges in Serverless Management We identify three key challenges that complicate server-less management by analyzing patterns from the Huawei Cloud Trace [5] and Electricity Maps [14]. Challenge I: Irregular Pod Reuse and Cold Start Dy-namics. We observe high variability in pod invocation patterns. Fig. 1a shows the cumulative distribution func-tion (CDF) of the average time across successive pod invocations. The reuse intervals range from milliseconds to hundreds of seconds, confirming that a single keep-alive timeout cannot perform well across all functions. Similarly, Fig. 1b illustrates that cold start latencies vary from less than 0.1s to more than 10s, depending on the runtime and deployment context. This variance invalidates the fixed latency assumptions made in other work [22], [25]. Capturing the distribution tail is critical, motivating adaptive management strategies rather than static ones. Challenge II: Trade-off Between Responsiveness and Carbon Footprint. Keep-alive strategies create a funda-mental conflict between responsiveness and sustainabil-ity. Using traces from the Huawei dataset [5], Fig. 2demonstrates that increasing keep-alive timeouts sharply reduces cold starts, but monotonically increases the idle carbon footprint ( Cidle ). A fixed timeout strategy cannot 10 −2 10 0 10 2  
+
+> Average Reuse Interval(s) per Pod
+> 0.00
+> 0.25
+> 0.50
+> 0.75
+> 1.00
+> CDF
+> CDF Mean
+> (a) CDF of average reuse interval per pod. 10 −110 010 1
+> Cold Start Latency (s)
+> 0.00
+> 0.25
+> 0.50
+> 0.75
+> 1.00
+> CDF
+> CDF Mean
+> (b) Cold start latency CDF. The gray area highlights distribution “tail”.
+
+Fig. 1: Characterization of the Huawei Cloud Trace [5]. 1s 5s 10s 30s 60s 120s 
+
+> 0.00 0.25 0.50 0.75 1.00
+> Normalized Metrics
+
+1s 5s 10s 30s 60s 120s 
+
+> 0.00 0.25 0.50 0.75 1.00
+
+Keep-Alive Times   
+
+> Execution Carbon Keep-Alive Carbon Cold Start Counts
+
+Fig. 2: Impact of keep-alive timeout for two different but representative functions in the Huawei dataset. In both cases, longer timeouts reduce cold starts but increase idle carbon footprint. Depending on the function, idle carbon may even surpass (significantly) the carbon for execution (right plot). effectively balance this trade-off. This highlights the need for adaptive management to dynamically adjust retention decisions based on specific function behavior. Challenge III: Temporal Variation in Carbon Inten-sity. Carbon footprint is heavily influenced by execution timing. Fig. 3a shows hourly carbon intensity profiles from Electricity Maps [14], revealing substantial temporal variation (e.g., solar energy drops). Static strategies miss opportunities to optimize for these fluctuations. LACE-RL incorporates real-time carbon intensity to minimize idle costs during high-intensity hours while exploiting low-carbon periods to reduce cold starts. 
+
+> 2Region names are anonymized to preserve the double-blind review process.
+
+30 6 12 18 24   
+
+> Hour of Day
+> 0
+> 200
+> 400
+> 600
+> Carbon Intensity (gCO 2eq/kWh)
+> Region1 Region2 (a) Hourly carbon intensity pro-files showing temporal variabil-ity. 210 110 2
+> Actual Memory Usage (MB)
+> 0.00
+> 0.25
+> 0.50
+> 0.75
+> 1.00
+> CDF
+> (b) Function memory footprint CDF. The majority use less than 200MB.
+
+Fig. 3: Observed variability in carbon intensity of the electrical grid [14](a) and Huawei’s function memory footprint (b). Memory and Modeling Assumptions. Fig. 3b shows the CDF of the memory footprint of all function invocations in the Huawei dataset. The CDF indicates that more than 80% of functions use less than 100MB, falling well below common allocation thresholds [1], [2], [26]. Thus, we exclude memory constraints from the model formulation. We further assume that function execution time (pod 
+
+execution phase) is independent of keep-alive decisions and that carbon intensity is provided as an external, real-time input [14]. III. System Design The LACE-RL framework optimizes pod management in serverless platforms by jointly considering the probabil-ity of cold start, cold start latency costs, and the carbon emissions of the idle keep-alive period. At its core is a reinforcement learning (RL) agent that learns to adapt keep-alive durations for each function execution. A. LACE-RL Overview Fig. 4 shows the four main components of LACE-RL that collectively enable adaptive management: A Work-load Driver 1 that sequentially parses historical invoca-tion traces and pod reuse states into the learning envi-ronment, a State Encoder 2 that transforms management context into (normalized) feature vectors, a DQN Policy Agent 3 that selects actions based on observed state and user-defined tradeoffs, and a Real System or Simulator 4 that applies decisions and reports performance outcomes. Large-scale testing of middleware / system software on production-grade serverless platforms is infeasible due to limited control. Our current evaluation is conducted within the trace-driven simulator (as commonly adopted in state-of-the-art work [22], [25]) for reproducibility and scalability. The architecture is fully compatible with online deployment, where the agent can make real-time decisions based on live system states. Workload Driver. The workload driver serves as the backbone of LACE-RL’s offline training loop. It parses the real-world trace of function invocations – each with Serverless Environment        
+
+> Workload
+> Driver State Encoder DQN Policy Agent
+> System
+> (Real/Simulated)
+> Autoscaler
+> cpu f,mem f
+> Keep-alive
+> Time
+> Save
+> Delete
+> St
+> cold
+> warm Response
+> RtRt+1
+> St+1
+> At
+> Request
+> 0
+> 3412
+> Latency
+> Carbon
+> ...
+> Decisions
+> cpu f,mem f
+> Runtime
+> Function
+> Dependencies
+> LACE-RL
+> Evaluation
+> (For simulator)
+
+Fig. 4: LACE-RL overview. timestamps, resource requirements, pod identifiers, and function metadata – and streams them sequentially into the environment. This setup enables the policy agent to observe realistic invocation bursts and temporal reuse pat-terns, which are crucial for modeling cold-start dynamics. State Encoder. For each function invocation i at time 
+
+t, the state encoder constructs a d-dim feature vector 
+
+St ∈ Rd representing the current context. Specifically, St
+
+includes: the reuse probability pk of its pod estimated using a historical window W over different keep-alive durations k ∈ K keep , memory and CPU requests res mem k ,
+
+res cpu k , cold start latency Lcold i for invocation i, real-time carbon intensity CI t at timestamp t, and user-defined tradeoff weights λcarbon ∈ [0 , 1] (as commonly done for tunable parameters [22], [27]). We log-normalize long-tailed latency features and standardize energy features using training-set statistics. The state vector St is the DQN input, allowing the agent to jointly reason about workload behavior, sustainability constraints, and user preferences. DQN Policy Agent. The agent uses a Deep Q-Network (DQN), a neural network–based approximation of the Q-learning algorithm in RL to map state vectors to actions. Each action is a discrete keep-alive timeout t.The agent is trained through reward feedback and updates its policy through temporal-difference learning, enabling it to dynamically balance cold starts, carbon cost, and latency. The formulation of the RL model in LACE-RL is introduced in Section III-C. The system forms a closed-loop learning environment. During offline training of the RL agent, the workload driver provides data, and the encoder prepares state features for the policy agent to learn how to select actions. After the agent is trained, it is applied in a per-invocation-triggered way, at just a microsecond cost, to do online inference. The decisions can either be applied to the real system or evaluated using a simulator. B. Carbon-Latency Tradeoff via Keep-Alive Tuning Serverless computing environments commonly face a trade-off between reducing cold start latency and mini-mizing carbon emissions. LACE-RL models this tradeoff 4explicitly by allowing the RL agent to select discrete keep-alive decisions for each pod. For each function invocation i at time t, the agent chooses a keep-alive timeout k from a predefined set Kkeep .A higher value of k reduces the cold start probability pk,but increases idle carbon emissions due to prolonged pod retention. To capture this trade-off, we define two cost terms: 1) Ccold (k) = (1 − pk) · Lcold i , where Lcold i is the cold start latency for invocation i. This term quantifies the expected latency penalty a user experiences due to cold starts, weighted by the likelihood that the pod expires before reuse. 2) Ccarbon (k) = Eidle  
+
+> i
+
+· CI t, where Eidle  
+
+> i
+
+is the idle energy consumption associated with keeping the pod alive for k seconds (as introduced in Section II-B) and 
+
+CI t is the carbon intensity at time t. This cost term reflects the environmental impact of keeping pods warm during idle periods. Based on the two cost terms, the reward assigned to each action is defined as follows: 
+
+R = −[(1 − λcarbon ) · Ccold (k) + λcarbon · Ccarbon (k)] (5) The reward formulation in Eq. (5) allows LACE-RL to dynamically trade between performance and sustainability based on the tunable preference weight λcarbon ∈ [0 , 1] .When λcarbon is close to 0, the agent prioritizes minimizing latency. On the other hand, when λcarbon is close to 1, the agent of LACE-RL emphasizes carbon efficiency. Inter-mediate values produce hybrid strategies that interpolate between the two objectives. C. Reinforcement-Learning Model Formulation LACE-RL formulates function management as aMarkov Decision Process (MDP), where the agent learns to optimize deployment based on the encoded system context. At each invocation, the action sets the pod expiration time, which (i) determines for how long idle energy may be consumed until reuse or pod expiration and (ii) affects whether subsequent invocations will find the pod warm or will suffer a cold-start. Why RL and Why DQN. We employ reinforcement learning in LACE-RL because keep-alive tuning is asequential decision problem characterized by delayed re-wards. Unlike one-shot optimization, a decision made now affects resource availability and cold start probability in the future. Analytical solutions and static heuristics fail to capture the complex, non-linear interplay between reuse dynamics and real-time carbon intensity. Furthermore, Supervised Learning is unsuitable as there is no ground truth for the “correct” timeout; the optimal policy must be learned through exploration and interaction. We adopt the Deep Q-Network (DQN) algorithm to approximate the action-value function over a continuous state space. We select DQN over Tabular Q-learning, which cannot scale to high-dimensional continuous states, and over on-policy methods (e.g., PPO), which are less sample-efficient for trace-driven training. DQN is an off-policy algorithm, allowing LACE-RL to learn effectively from the replay of historical experiences. Finally, our specific DQN implementation utilizes a lightweight ar-chitecture yielding microsecond-level inference overhead suitable for real-time deployment (Sec. IV-E). MDP Formulation. As shown in Fig. 4, at each decision point t, the agent observes a state vector St ∈ Rd that encodes reuse probabilities across keep-alive durations based on historical data, normalized memory and CPU usage, estimated cold start latency, real-time carbon intensity and trade-off weight λcarbon . The agent selects an action at ∈ A to optimize cumulative long-term rewards. The environment provides feedback based on the real-world trace through a scalar reward Rt and transitions to the next state St+1 . This sequential interaction fits within the standard MDP framework defined by a tuple 
+
+(S, A, P, R, γ ). Among them, P are the transition dynam-ics, implicitly encoded via the trace-driven simulator, and 
+
+γ ∈ (0 , 1] is the discount factor for the accumulation of rewards in each episode. S, A, and R correspond to the state space, action space, and reward function and are defined as: State Space. Using the notation given in Section III-A, 
+
+St is defined as: 
+
+St = [ pk1 , . . . , p kn , r mem  
+
+> i
+
+, r cpu  
+
+> i
+
+, L cold  
+
+> i
+
+, CI t, λ carbon ]. (6) This compact state representation ensures that workload dynamics and preferred weights are available to the agent at each decision point. At inference time, the agent selects actions per invocation using only the observed state St
+
+without access to future invocations. Action Space. The action space A is the set of keep-alive candidates Kkeep . Each action is a scalar at. In practice, all actions are mapped to discrete indices for efficient computation and lookup of Q values. Reward Function. Rewards are defined in Eq. (5) to integrate cold start latency, carbon emissions from idle energy, and pod reuse probability, evaluated using real trace data, temporal carbon intensity, and network latency. DQN and Strategy Learning. LACE-RL employs Deep Q-Learning (DQN) to learn optimal management strate-gies. A fully connected neural network is used to ap-proximate the action-value function Q(s, a ; θ), where θ
+
+represents the collection of learnable parameters. The input of DQN is the full state vector St and the output is the Q-values for all discrete actions |A| . Experience replay and target networks are used to stabilize training. The DQN training steps are:  
+
+> •
+
+Experience Replay. Transitions ( st, at, Rt, st+1 ) are stored in a buffer and randomly sampled for training.  
+
+> •
+
+Target Network. A separate target network Q′ is used to compute stable targets during training and is updated 5periodically by copying weights from the primary Q-network.  
+
+> •
+
+Epsilon-greedy Policy. The agent selects random actions with probability ϵ to explore the environment. ϵ decays over time to promote convergence.  
+
+> •
+
+Loss. The network minimizes the squared Temporal Difference (TD) loss L during the training, defined as: 
+
+L(θ) = E(s,a,r,s ′)[( r+γ max  
+
+> a′
+
+Q′ (s′, a ′)−Q(s, a ; θ)) 2] (7) User-tunable Preference. As discussed in Section III-A, LACE-RL explicitly embeds user-tunable parameter 
+
+λcarbon in the state vector. This allows the Q-network to learn a preference-conditioned strategy that adapts dynamically during inference. As a result, users can specify tradeoffs at run-time without retraining. This improves the flexibility of deployment in diverse or evolving operational settings. IV. Evaluation Our goal is to assess how effectively LACE-RL co-optimizes cold starts and carbon emissions while main-taining low end-to-end function invocation latency. We evaluate LACE-RL from five perspectives: (1) perfor-mance on general workloads (Section IV-B), (2) robustness under challenging, high-cold-start-latency scenarios (Sec-tion IV-C), (3) comparison against an Oracle-based policy (Section IV-D), (4) inference cost and training overhead (Section IV-E), and (5) sensitivity analysis of tunable parameters (Section IV-F). A. Experimental Methodology We utilize a trace-driven simulation approach. To ensure this simulator is realistic, we first conduct real-system characterization to validate our simulation parameter assumptions. 1) Model and Parameters Validation via Real-System Measurements: To validate the model and parameters adopted in LACE-RL, we profile a deployment using FunctionBench [20], a widely accepted FaaS workload benchmark. Since the Huawei trace provides only hashed function IDs without source code, direct profiling of trace workloads is infeasible. We therefore utilize this controlled benchmark to validate the energy accounting factors used by our simulator. We characterize energy consumption across the three primary serverless phases: cold start, active execution, and keep-alive (warm) retention. Experiments are conducted on an HPE ProLiant DL385 (Gen10 Plus v2) server equipped with dual AMD EPYC 7513 processors (32 cores per socket, 64 cores total) and 256 GB of memory. We deploy Knative [28] on Kubernetes [29] and utilize Kepler [21] for energy monitoring. Kepler reports node-level active and idle energy at the CPU package level. To ensure accurate per-function accounting, each func-tion is profiled in isolation. Most pods are configured to request a single CPU core ( ci = 1 ). However, to reflect realistic deployment patterns for compute-intensive work-loads, functions such as Matrix Multiplication and Linpack (implemented using NumPy) are allowed to execute using multiple cores ( ci > 1). For every run, we calculate the total per-pod energy by summing two components: the direct active energy and the allocated idle baseline. This attribution logic applies consistently across all phases (cold start, compute, and keep-alive): i) Active Component: We integrate the node-level active power reported by Kepler over the duration of the phase. Since only one pod is active during profiling, this energy is attributed entirely to the target function. ii) Idle Baseline: The baseline static energy of the node is attributed proportionally to the resources reserved by the pod. For a pod reserving ci cores on a node with capacity C = 64 , the allocated idle energy is calculated as Eiidle = ( ci/C ) · Enode _idle . We should note that the average idle power consumption remains stable across different phases of the execution life of each pod. This proportional accounting ensures that heavier workloads (with ci > 1) bear a larger share of the static power costs, while lightweight functions are not penalized for the server’s total idle power. We focus on CPU-based attribution because memory usage across all benchmarks ranges from only 42 MB to 275 MB (Table II). This represents at most 0.11% of system memory, confirming that consolidation is CPU-bound rather than memory-bound. Table II summarizes the results. We adopt the original benchmark names from FunctionBench [20]. We observe significant cross-function diversity. Multicore compute-intensive kernels (e.g., Linpack) exhibit substantially higher total power due to both high active utilization and the scaled idle attribution described above. For the majority of workloads, cold-start energy is small relative to the compute and keep-alive energy due to the short duration of the cold-start phase. The main outliers are Image/Video Processing and Image Classification, whose cold-start times (and corresponding active energies) are markedly longer due to heavier initialization overhead (e.g., library dependencies and model weight loading). On average, the cold-start phase duration is a good predictor for the respective energy cost. The keep-alive-to-compute power ratio (λidle ) spans 0.21–0.83, indicating that warm retention consumes asignificant fraction of active power. In our simulation, we set λidle = 0 .2. This is a conservative choice relative to the measured values. Applying a larger λidle would further increase the modeled cost of idle pod retention, thereby strengthening the motivation for the adaptive strategy proposed by LACE-RL. A sensitivity analysis of λidle is illustrated in Sec. IV-F. 2) Dataset and Trace Processing: We evaluate LACE-RL using the Huawei Cloud Trace [5], which contains fine-grained logs of invocation timestamps, pod 6Benchmark Function Name Input Size / Dimension Memory Consumption Cold Start Time (ms) Compute Time (ms) Cold-start Active Energy (J) Compute-phase Active Energy (J) 1-min Keep-alive-phase Active Energy (J) Per-pod Compute-Phase Total Power (W) Per-pod Keep-alive-phase Total Power (W) Lambda Idle Total Power Ratio (Keep-alive/Compute) Float Operations 10,000,000 44 MB 112.2 3340.86 0.94 15.08 78.29 6.37 3.19 0.50 MatMul 10,000 95 MB 166.5 2393.41 0.27 144.41 76.98 86.64 28.89 0.33 Linpack 100,000 97 MB 76.33 6401.45 0.7 436.9 92.4 147.29 70.82 0.48 Image Processing 28.4 MB 68 MB 2441.68 6761.82 11.13 20.69 81.6 4.98 3.21 0.64 Video Processing 742 KB 233 MB 12414.77 2403.04 19.05 6.82 72.68 4.65 3.03 0.65 Chameleon [500,100] 57 MB 71.6 249.52 0.52 1.84 81.1 9.27 3.14 0.34 pyaes 200 iterations 42 MB 563.17 1567.58 3.41 6.34 66.78 6.02 2.87 0.48 Feature Extractor 30.5 MB 133 MB 109.31 2323.78 0.15 10.40 75.04 6.33 3.06 0.48 Model Training 15.23 MB 172 MB 115.58 2485.6 2.96 31.66 79.2 14.56 3.12 0.21 Classification Image 28.4 MB 275 MB 8642.95 1591.42 21.39 2.96 71.42 3.68 3.05 0.83 
+
+TABLE II: Energy profiling of serverless function pods under cold start, compute, and keep-alive phases. assignments, runtime types, and cold start latencies. The trace records over 300 million requests and cold start logs for more than 1,500 unique functions, providing a rich dataset for model training and performance validation. To construct a realistic evaluation environment, we apply the following pre-processing steps:  
+
+> •
+
+Training-Validation-Testing Data Partition. Records are grouped by pod identifier (podID) to preserve temporal reuse patterns. The resulting dataset is split into 80% training, 10% validation, and 10% testing.  
+
+> •
+
+Cold Start Profiling. We utilize the cold start logs to generate latency estimates based on trigger type and runtime (e.g., Python, Custom). A lookup table, derived from the training data, provides the expected cold start latency Lcold i for each invocation, allowing the simulator to emulate system delays during cold starts.  
+
+> •
+
+Resource Usage Integration. We join the request-level logs with cold start traces and metadata to produce a complete invocation stream containing CPU/memory usage, timestamps, and cold start latency profiles. These features serve as the state input for the RL agent. 3) Energy and Carbon Modeling: Incorporating the structural findings from our characterization, we imple-ment a trace-driven simulator that models a homogeneous cluster of serverless nodes. To ensure our absolute carbon estimates reflect typical public cloud deployments, we model a cluster of standard m5-series EC2 instances (32 logical cores per 128 GB DRAM) [26]. Energy estimates per active core and per MB of memory are derived from the Thermal Design Power (TDP) and benchmarks of the Intel Xeon Platinum 8275CL processor [30], representing the class of CPUs powering the m5 instance family. To model the CO 2 impact, we incorporate real-world carbon intensity traces from Electricity Maps [14] with an hourly sampling rate. For each invocation, the total carbon cost is computed by weighting the execution and keep-alive energy by the carbon intensity at the specific time of day. This setup allows LACE-RL to adapt keep-alive choices to changing carbon conditions. 4) RL Model Configuration: The action space of RL agent consists of discrete keep-alive durations: 
+
+{1, 5, 10 , 30 , 60 } seconds. These values capture the empir-ical distribution of average reuse intervals (corresponding roughly to the 10th, 50th, 75th, and 90th percentiles) and include the standard 60s timeout used by Huawei [5] to ensure compatibility with real-world practice. Training and Inference. The agent is trained offline using a replay buffer of 10,000 samples, an input batch size of 64, a learning rate of 0.001, and a reward discount factor 
+
+γ = 0 .99 . Epsilon-greedy exploration starts at ϵ = 1 .0 and decays at a rate of 0.95 per episode to a minimum of 0.05. Stable convergence is observed after approximately 300 episodes. Once trained, the agent is evaluated on a testing set unseen during training. For each request, the simulator feeds the encoded current state to the DQN to select the optimal keep-alive time. In line with our earlier analysis (Fig. 1b), where cold start latency spans from sub-second to more than 10s with a long-tailed distribution, we structure evaluation around two workload sets:  
+
+> •
+
+General: The entire testing set (all invocations).  
+
+> •
+
+Long-tailed: A subset containing only the high-latency functions of General (long tail of the latency distribu-tion), which are heavily affected by cold starts. 5) Baseline Strategies: We compare LACE-RL against four strategies:  
+
+> •
+
+Latency-Minimizing (Latency-Min): Minimizes ex-pected cold starts ( Ccold ) regardless of energy cost.  
+
+> •
+
+Carbon-Minimizing (Carbon-Min): Minimizes keep-alive duration to strictly reduce idle carbon ( Ccarbon ), often at the cost of high latency.  
+
+> •
+
+Huawei: A static strategy using a fixed 60s keep-alive timeout, consistent with the state-of-the-practice platform configuration [5].  
+
+> •
+
+DPSO (EcoLife [22]): A state-of-the-art carbon-aware metaheuristic using Particle Swarm Optimization to jointly optimize keep-alive durations and function place-ment. 6) Evaluation Metrics: We evaluate LACE-RL using standard system metrics: i) Cold Start Count, ii) Average End-to-end Latency including cold start, execution, and a fixed network latency profiled via AWS CloudPing [31] 3,iii) Keep-alive Carbon resulting from idle pods kept alive for invocations, and iv) Total Carbon Emissions including both execution and keep-alive carbon emissions. To enable unified trade-off analysis, we introduce two composite metrics inspired by the Energy-Delay Prod-
+
+> 3
+
+Since the evaluation is restricted to a single-site setting, network latency is treated as a constant offset and does not affect adaptive keep-alive decisions. 
+
+7uct [32], [33] used to evaluate energy-performance trade-offs in the HPC domain (for both metrics, lower values indicate better efficiency):  
+
+> •
+
+Latency–Carbon Product (LCP): The product of aver-age end-to-end latency and total carbon emissions. It quantifies the overall efficiency of the system, trading off responsiveness against environmental impact.  
+
+> •
+
+Idle Reuse Inefficiency (IRI): The product of cold start count and keep-alive carbon. This quantifies the wastefulness of idle resources that fail to prevent cold starts. B. Performance on General Testing Set We begin with the General workload comprising 99,140 invocations from the Huawei Cloud Trace [5]. Fig. 5presents the absolute metric comparisons, while Fig. 6 highlights relative trade-offs. Together, they demonstrate that LACE-RL achieves a delicate balance between re-sponsiveness and sustainability. Cold Start Counts. Fig. 5a shows that LACE-RL re-duces cold starts to 13,958. This represents a 51.7% reduc-tion compared to the Huawei default (28,891) and a 37.9% reduction compared to DPSO (22,485). While Latency-Min achieves a slightly lower count (10,588), it does so by indiscriminately prolonging keep-alive durations, leading to massive energy waste. LACE-RL achieves its efficiency by selectively retaining pods based on predicted reuse likelihood, avoiding over-provisioning for low-impact functions. End-to-end Latency. Fig. 5b shows that LACE-RL achieves an average end-to-end latency of 1.05s. This ef-fectively matches the performance of Latency-Min (1.02s) while outperforming DPSO (1.31s), Huawei (1.43s), and Carbon-Min (1.83s). By dynamically adapting to burst patterns and cold-start risks, LACE-RL maintains high responsiveness without the excessive idle costs of greedy strategies. Carbon Metrics. In terms of sustainability, Fig. 5c shows that LACE-RL emits only 48.93g CO 2 for keep-alive retention. This is drastically lower than Huawei (213.52g) and Latency-Min (916.67g), and comparable to DPSO (44.73g). Total carbon emissions (Fig. 5d) follow the same trend, with LACE-RL emitting 121.23g. Notably, LACE-RL matches the carbon efficiency of DPSO while delivering far superior latency and cold start performance, reflecting the benefits of finer-grained, per-invocation decision-making over population-based heuristics. Trade-Off Evaluation. Fig. 6 visualizes the normal-ized trade-off, plotting cold start increase (vs. Latency-Min) against keep-alive carbon increase (vs. Carbon-Min). An ideal scheduler would lie in the bottom-left corner. LACE-RL is positioned closest to this optimal point, confirming it explores the latency–carbon space more effectively than all baselines. Composite Metrics. Fig. 7 confirms these findings using composite metrics. LACE-RL achieves the lowest LCP Latency-Min Carbon-Min Huawei DPSO LACE-RL       
+
+> 0
+> 20000
+> 40000
+> 60000
+> Cold Start Count
+> (a) Cold Start Counts. Latency-Min Carbon-Min Huawei DPSO LACE-RL
+> 0.0
+> 0.5
+> 1.0
+> 1.5
+> End-to-end Latency (s) (b) End-to-end latency. Latency-Min Carbon-Min Huawei DPSO LACE-RL
+> 0
+> 200
+> 400
+> 600
+> 800
+> Keep-Alive Carbon (gCO 2)
+> (c) Keep-alive Carbon. Latency-Min Carbon-Min Huawei DPSO LACE-RL
+> 0
+> 250
+> 500
+> 750
+> 1000
+> Total Carbon Emission (gCO 2)(d) Total Carbon Footprint.
+
+Fig. 5: General testing workload results across key metrics. The dashed line shows the optimal value. 0 10 20 30 40 50 
+
+Keep-Alive Carbon Increase (N x) w.r.t. Carbon-Min 
+
+> 2
+> 4
+> 6
+> Cold Start Count Increase ( N x) w.r.t. Latency-Min  Latency-Opt Carbon-Min Huawei DPSO LACE-RL
+
+Fig. 6: For the General workload LACE-RL achieves the best tradeoff between cold starts and keep-alive carbon. (178.84 in Fig. 7a) and IRI (683k in Fig. 7b). In contrast, baseline strategies show much higher inefficiency: Huawei reaches an LCP of 478.64 and an IRI of 6169k, while DPSO records an LCP of 217.96 and IRI exceeding 1,000k. These results demonstrate that LACE-RL provides the most holistic balance between performance and sustainability. C. Performance on Challenging Workloads We next evaluate LACE-RL on the Long-tailed work-load (64,375 invocations), a subset characterized by func-tions mainly with “Custom” runtimes, high CPU and memory demand, and heavy initialization penalties, which are especially critical for latency-sensitive applications and sustainability-aware platforms. Results. As shown in Fig. 8, LACE-RL maintains good performance even in this demanding scenario.  
+
+> •
+
+Cold Starts: LACE-RL achieves 20,645 cold starts (Fig. 8a), fewer than Carbon-Min (54,374) and DPSO 8Latency-Min Carbon-Min Huawei DPSO LACE-RL 
+
+> 0
+> 100
+> 200
+> 300
+> 400
+> 500
+> LCP
+> 1057.00 252.37 478.64 217.96 178.84
+
+(a) Latency–Carbon Product (LCP). Latency-Min Carbon-Min Huawei DPSO LACE-RL  
+
+> 0
+> 20
+> 40
+> 60
+> IRI ( ×10 5)
+> 97.06 10.69 61.69 10.06 6.83
+
+(b) Idle Reuse Inefficiency (IRI). 
+
+Fig. 7: Comparison based on the composite metrics (lower is better). LACE-RL always outperforms the other strate-gies. (37,485). While Latency-Min minimizes counts (460), it triggers a massive surge in keep-alive carbon.  
+
+> •
+
+End-to-end Latency: LACE-RL achieves an average la-tency of 17.75s (Fig. 8b), outperforming DPSO (24.41s) and Carbon-Min (24.41s), although slightly higher than Huawei (15.86s) due to the trade-off with keep-alive carbon.  
+
+> •
+
+Carbon Emissions: LACE-RL emits only 68.15 gCO 2 for keep-alive (Fig. 8c). In contrast, Latency-Min surges to 164.11 gCO 2 and Huawei to 158.21 gCO 2. Similar trend can be observed in the total carbon footprint in Fig. 8d. LACE-RL achieves a total carbon footprint of 404.76 gCO 2, lower than Huawei and on par with DPSO, but with lower latency. Tradeoff Visualization. Fig. 9 visualizes the normalized tradeoff. LACE-RL identifies the optimal balance point, while Huawei and DPSO shift further from the origin, indicating reduced adaptability. Composite metrics fur-ther validate this: LACE-RL maintains the lowest LCP (7185.73) and IRI (1400k), surpassing Huawei (LCP: 7845, IRI: 2050k) and DPSO (LCP: 9553, IRI: 2850k). This confirms that LACE-RL generalizes well to complex, high-latency functions. D. Comparing LACE-RL with Oracle To quantify the gap between the prediction model of LACE-RL and the optimum decision, we compare it against an Oracle policy (equipped with perfect future knowledge) over a two-hour trace slice. As shown in Table III, LACE-RL incurs only a 6.18% increase in keep-alive carbon and a 7.20% increase in cold starts for the General workload. For the Long-tailed workload, the gap widens slightly to 8.97% (carbon) and 11.15% (cold starts). This discrepancy is due to the bursty arrival patterns of long-tailed functions, which limit the effectiveness of window-based reuse prediction. However, LACE-RL remains highly efficient, operating very close to the theoretical limit even under unpredictable conditions. Latency-Min Carbon-Min Huawei DPSO LACE-RL 
+
+> 0
+> 20000
+> 40000
+> Cold Start Count
+
+(a) Cold Starts Count. Latency-Min Carbon-Min Huawei DPSO LACE-RL  
+
+> 0
+> 10
+> 20
+> End-to-end Latency (s)
+
+(b) End-to-end latency. Latency-Min Carbon-Min Huawei DPSO LACE-RL 
+
+> 0
+> 50
+> 100
+> 150
+> Keep-Alive Carbon (gCO 2)
+
+(c) Keep Alive Carbon. Latency-Min Carbon-Min Huawei DPSO LACE-RL  
+
+> 0
+> 200
+> 400
+> Total Carbon Emission (gCO 2)
+
+(d) Total Carbon Footprint. 
+
+Fig. 8: Long-tailed workload results: the dashed line shows the optimal value. 0 20 40 60 80 100 120 
+
+Keep-Alive Carbon Increase (N x) w.r.t. Carbon-Min 
+
+> 0
+> 50
+> 100
+> Cold Start Count Increase ( N x) w.r.t. Latency-Min  Latency-Min Carbon-Min Huawei DPSO LACE-RL
+
+Fig. 9: Long-tailed workload: LACE-RL achieves the most balanced tradeoff between cold starts and carbon emissions. E. Inference and Training Cost Inference overhead is a critical factor for production deployment. We measure the inference time across the Long-tailed workload (64,375 invocations). The trained LACE-RL agent completes inference for the entire work-load in just 0.9642 seconds, averaging approximately 15 microseconds per invocation. While interactions with the underlying control plane (e.g., Kubernetes) to en-force these decisions may incur additional millisecond-level latency (e.g., via CRD updates), this overhead is asynchronous to the function execution path and negligible relative to the decision granularity. This low overhead makes it suitable for real-time, latency-sensitive environ-ments. In contrast, the heuristic-based DPSO strategy requires 4,522.53 seconds for the same workload—over 4,600 × slower than LACE-RL. This is because DPSO 9TABLE III: Comparison of LACE-RL vs. Oracle                                     
+
+> Case Metrics Oracle LACE-RL Degradation General Keep-alive Carbon (gCO 2)2.88 3.058 6.181% Cold Start Count (Times) 1069 1146 7.203% Long-tailed Keep-alive Carbon (gCO 2)3.9 4.25 8.974% Cold Start Count (Times) 807 897 11.152% 0.1 0.5 0.9
+> λcarbon
+> 30
+> 35
+> 40
+> 45
+> 50 Keep-Alive Carbon (g)
+> 1.52.02.53.0Cold Starts
+> ×10 4
+> Keep-Alive Carbon Cold Starts
+> (a) Impact of λcarbon on cold start counts and keep-alive car-bon. 0:00 6:00 12:00 18:00 23:00
+> Hour of Day
+> 0
+> 10
+> 20
+> 30
+> 40
+> Percentage (%)  1s 10s 60s
+> 200 300 400 Carbon Intensity (CO2eq/kWh)
+> (b) Percentage of three repre-sentative keep-alive durations by LACE-RL as a function of hourly carbon intensity.
+
+Fig. 10: Sensitivity of LACE-RL to tunable parameters (a) and interpretability (b). performs iterative population updates for every decision, which scales poorly. Regarding training, although the DQN requires offline training (approximately 5 minutes per episode), this cost is amortized over long-term deployment. F. Sensitivity Analysis and Interpretability We analyze how the tunable parameter λcarbon affects system behavior. Fig. 10a shows that as λcarbon increases from 0.1 to 0.9, the agent increasingly prioritizes carbon reduction, resulting in lower keep-alive emissions at the cost of higher cold start counts. This confirms that LACE-RL provides stable, predictable control over the latency–carbon trade-off. To interpret the learned strategy, Fig. 10b plots the selection frequency of representative keep-alive durations against hourly carbon intensity. During low-carbon hours (lighter background, e.g., 08:00–12:00), LACE-RL fre-quently selects longer keep-alive durations (e.g., 60s) to minimize cold starts when energy is “green”. On the con-trary, during high-carbon periods (darker background), the agent shifts toward shorter timeouts (e.g., 1s) to min-imize idle emissions. This demonstrates that LACE-RL successfully learns to adapt its strategy in response to real-time conditions of the electricity grid. V. Related Work Optimizing performance and sustainability in serverless computing is of growing research interest [16]. Prior efforts span several categories, including cold start mitiga-tion [34], pre-warming strategies [35], carbon-aware man-agement [17], [36], and function invocation prediction [25], [37]. To our knowledge, LACE-RL is the first RL-based framework that tunes keep-alive times to co-optimize cold-start latency and carbon emissions under time-varying grid carbon intensity. Cold Start Mitigation. Prior work has explored systems-level optimizations to reduce function startup time in FaaS platforms, such as Catalyzer [34] and AWS Lambda’s Firecracker microVM technology [38]. While effective in reducing latency, these techniques prioritize performance only, often incurring memory or background service over-head [39], and do not account for energy or carbon implications. In contrast, LACE-RL incorporates the cold start mitigation. Pre-warming Techniques. Another class of solutions focuses on pre-warming or reusing pods across invocations. Many serverless platforms implement a fixed timeout as the keep-alive time [5], but do not adapt to workload diversity. Adaptive approaches adjust retention based on invocation frequency or classification [12], [25]. Vahidinia et al. [15] combine reinforcement learning with LSTM models to reduce cold starts. These methods improve over static strategies but still rely on predefined rules and assume fixed cold start for all the functions. LACE-RL dif-fers by dynamically adjusting keep-alive durations, based on reuse probability and cold start impact, enabling finer-grained and workload-aware strategies, and also incorpo-rates carbon costs. Moreover, LACE-RL models runtime-dependent cold-start latency rather than assuming a fixed cost. Carbon-Aware Management. EcoLife [22] applies aPSO-based optimization framework to co-select keep-alive durations and hardware generations. CarbonScaler [40] dynamically scales serverless resources based on carbon intensity fluctuations in the grid, but targets delay-tolerant workloads and does not address interactive cold-start tradeoffs. Similarly, EcoFaaS [6] redesigns serverless environments to reduce baseline energy waste, focusing on system-level efficiency rather than adaptive management. LACE-RL differs from the above by integrating carbon-aware decision-making directly into an RL formulation that balances idle carbon and cold-start latency, allowing fine-grained, workload-aware decisions at runtime with microsecond-level inference overhead. VI. Conclusion We introduce LACE-RL, a reinforcement learning– based framework that adaptively tunes keep-alive dura-tions by jointly modeling cold start probability, latency cost, and carbon emissions. LACE-RL identifies the be-havior of cold start latencies of different functions and adapts strategies accordingly. Evaluation with the recently released Huawei trace shows that LACE-RL substantially reduces both cold starts and carbon emissions while maintaining low latency, achieving performance close to an Oracle policy. 10 Acknowledgment This work has been supported in part by the Horizon Europe research and innovation programme of the Euro-pean Union, under grant agreement no 101092912, project MLSysOps and the U.S. National Science Foundation (NSF) grants #2402942 and #2403088. References 
+
+[1] “AWS Lambda,” https://aws.amazon.com/lambda/, 2025. [2] “Azure Cloud Functions,” https://azure.microsoft.com/produc ts/functions, 2025. [3] “The state of serverless,” https://datadoghq.com/state-of-ser verless/, 2023, accessed Dec. 2025. [4] X. Liu, J. Wen, Z. Chen, D. Li, J. Chen, Y. Liu, H. Wang, and X. Jin, “Faaslight: General application-level cold-start latency optimization for function-as-a-service in serverless computing,” ACM Transactions on Software Engineering and Methodology, vol. 32, no. 5, pp. 1–29, 2023. [5] A. Joosen, A. Hassan, M. Asenov, R. Singh, L. Darlow, J. Wang, Q. Deng, and A. Barker, “Serverless cold starts and where to find them,” in Proceedings of the Twentieth European Conference on Computer Systems, 2025, pp. 938–953. [6] J. Stojkovic, N. Iliakopoulou, T. Xu, H. Franke, and J. Torrellas, “Ecofaas: Rethinking the design of serverless environments for energy efficiency,” in 2024 ACM/IEEE 51st Annual Interna-tional Symposium on Computer Architecture (ISCA). IEEE, 2024, pp. 471–486. [7] Y. Zhang, Í. Goiri, G. I. Chaudhry, R. Fonseca, S. Elnikety, C. Delimitrou, and R. Bianchini, “Faster and cheaper serverless computing on harvested resources,” in Proceedings of the ACM SIGOPS 28th Symposium on Operating Systems Principles, 2021, pp. 724–739. [8] L. Cvetković, F. Costa, M. Djokic, M. Friedman, and A. Klimovic, “Dirigent: Lightweight serverless orchestration,” in Proceedings of the ACM SIGOPS 30th Symposium on Operating Systems Principles, 2024, pp. 369–384. [9] V. M. Bhasi, A. Sharma, S. Mohanty, M. T. Kandemir, and C. R. Das, “Paldia: Enabling slo-compliant and cost-effective serverless computing on heterogeneous hardware,” in 2024 IEEE International Parallel and Distributed Processing Symposium (IPDPS). IEEE, 2024, pp. 100–113. [10] A. Aslani and M. Ghobaei-Arani, “Machine learning inference serving models in serverless computing: a survey,” Computing, vol. 107, no. 1, p. 47, 2025. [11] S. Qi, H. Moore, N. Hogade, D. Milojicic, C. Bash, and S. Pasricha, “Casa: A framework for slo-and carbon-aware au-toscaling and scheduling in serverless cloud computing,” in 2024 IEEE 15th International Green and Sustainable Computing Conference (IGSC). IEEE, 2024, pp. 1–6. [12] M. Shahrad, R. Fonseca, I. Goiri, G. Chaudhry, P. Batum, J. Cooke, E. Laureano, C. Tresness, M. Russinovich, and R. Bianchini, “Serverless in the wild: Characterizing and op-timizing the serverless workload at a large cloud provider,” in 2020 USENIX annual technical conference (USENIX ATC 20), 2020, pp. 205–218. [13] R. B. Roy, R. Kanakagiri, Y. Jiang, and D. Tiwari, “The hidden carbon footprint of serverless computing,” in Proceedings of the 2024 ACM Symposium on Cloud Computing, 2024, pp. 570–579. [14] “Electricity maps: Live co 2 emissions of electricity consump-tion,” https://www.electricitymaps.com/, 2024, accessed June 2025. [15] P. Vahidinia, B. Farahani, and F. S. Aliee, “Mitigating cold start problem in serverless computing: A reinforcement learning approach,” IEEE Internet of Things Journal, vol. 10, no. 5, pp. 3917–3927, 2022. [16] A. Ebrahimi, M. Ghobaei-Arani, and H. Saboohi, “Cold start latency mitigation mechanisms in serverless computing: tax-onomy, review, and future directions,” Journal of systems architecture, vol. 151, p. 103115, 2024. [17] V. U. Gsteiger, P. H. Long, Y. Sun, P. Javanrood, and M. Shahrad, “Caribou: Fine-grained geospatial shifting of serverless applications for sustainability,” in Proceedings of the ACM SIGOPS 30th Symposium on Operating Systems Principles, 2024, pp. 403–420. [18] H. Shafiei, A. Khonsari, and P. Mousavi, “Serverless computing: a survey of opportunities, challenges, and applications,” ACM Computing Surveys, vol. 54, no. 11s, pp. 1–32, 2022. [19] P. Patros, J. Spillner, A. V. Papadopoulos, B. Varghese, O. Rana, and S. Dustdar, “Toward sustainable serverless com-puting,” IEEE Internet Computing, vol. 25, no. 6, pp. 42–50, 2021. [20] J. Kim and K. Lee, “Functionbench: A suite of workloads for serverless cloud function service,” in 2019 IEEE 12th Interna-tional Conference on Cloud Computing (CLOUD). IEEE, 2019, pp. 502–504. [21] Sustainable Computing IO, “Kepler: Kubernetes-based efficient power level exporter,” https://github.com/sustainable-compu ting-io/kepler, 2025. [Online]. Available: https://github.com/s ustainable-computing-io/kepler [22] Y. Jiang, R. B. Roy, B. Li, and D. Tiwari, “Ecolife: Carbon-aware serverless function scheduling for sustainable computing,” in SC24: International Conference for High Performance Com-puting, Networking, Storage and Analysis. IEEE, 2024, pp. 1–15. [23] SIR-Lab, “Huawei public cloud trace 2025,” https://github.c om/sir-lab/data-release/blob/main/README_data_release _2025.md#huawei-public-request-tables, 2025. [24] Q. Weng, W. Xiao, Y. Yu, W. Wang, C. Wang, J. He, Y. Li, L. Zhang, W. Lin, and Y. Ding, “ {MLaaS } in the wild: Workload analysis and scheduling in {Large-Scale } heterogeneous {GPU }
+
+clusters,” in 19th USENIX Symposium on Networked Systems Design and Implementation (NSDI 22), 2022, pp. 945–960. [25] C. Lee, Z. Zhu, T. Yang, Y. Huo, Y. Su, P. He, and M. R. Lyu, “Spes: Towards optimizing performance-resource trade-off for serverless functions,” in 2024 IEEE 40th International Conference on Data Engineering (ICDE). IEEE, 2024, pp. 165–178. [26] Amazon Web Services, “Amazon EC2 Instance Types – M5,” https://aws.amazon.com/ec2/instance-types/m5/, 2024. [27] B. Li, S. Samsi, V. Gadepally, and D. Tiwari, “Clover: Toward sustainable ai with carbon-aware machine learning inference service,” in Proceedings of the International Conference for High Performance Computing, Networking, Storage and Analysis, 2023, pp. 1–15. [28] The Knative Authors, “Knative: Providing the building blocks for creating modern, cloud-based applications,” https: //knative.dev/, 2025. [Online]. Available: https://knative.dev/ [29] E. A. Brewer, “Kubernetes and the path to cloud native,” in Proceedings of the sixth ACM symposium on cloud computing, 2015, pp. 167–167. [30] Intel Corporation, “Intel Xeon Processors,” https://www.intel. com/content/www/us/en/products/details/processors/xeon.h tml, 2025. [31] CloudPing.cloud, “AWS Cloud Ping,” https://www.cloudping. cloud/aws, 2024, accessed May 2025. [32] J. H. Laros III, K. Pedretti, S. M. Kelly, W. Shu, K. Ferreira, J. Vandyke, and C. Vaughan, “Energy delay product,” in Energy-Efficient High Performance Computing: Measurement and Tuning. Springer, 2012, pp. 51–55. [33] G. L. Valentini, W. Lassonde, S. U. Khan, N. Min-Allah, S. A. Madani, J. Li, L. Zhang, L. Wang, N. Ghani, J. Kolodziej et al., “An overview of energy efficiency techniques in cluster computing systems,” Cluster Computing, vol. 16, no. 1, pp. 3– 15, 2013. [34] D. Du, T. Yu, Y. Xia, B. Zang, G. Yan, C. Qin, Q. Wu, and H. Chen, “Catalyzer: Sub-millisecond startup for serverless computing with initialization-less booting,” in Proceedings of the Twenty-Fifth International Conference on Architectural Support for Programming Languages and Operating Systems, 2020, pp. 467–481. [35] Q. Hu, H. Li, and E. Nikougoftar, “Mitigating cold start problem in serverless computing using predictive pre-warming with machine learning,” Computing, vol. 107, no. 1, p. 27, 2025. 
+
+11 [36] C. Lin and M. Shahrad, “Bridging the sustainability gap in serverless through observability and carbon-aware pricing,” ACM SIGENERGY Energy Informatics Review, vol. 4, no. 5, pp. 120–126, 2024. [37] D. Tomaras, M. Tsenos, and V. Kalogeraki, “Prediction-driven resource provisioning for serverless container runtimes,” in 2023 IEEE International Conference on Autonomic Computing and Self-Organizing Systems (ACSOS). IEEE, 2023, pp. 1–6. [38] Firecracker Project, “Firecracker: Secure and fast microvms for serverless computing,” https://firecracker-microvm.github.io/, 2025. [39] C. Katsakioris, C. Alverti, V. Karakostas, K. Nikas, G. Goumas, and N. Koziris, “Faas in the age of (sub-) μs i/o: a performance analysis of snapshotting,” in Proceedings of the 15th ACM international conference on systems and storage, 2022, pp. 13– 25. [40] W. A. Hanafy, Q. Liang, N. Bashir, D. Irwin, and P. Shenoy, “Carbonscaler: Leveraging cloud workload elasticity for optimiz-ing carbon-efficiency,” Proceedings of the ACM on Measurement and Analysis of Computing Systems, vol. 7, no. 3, pp. 1–28, 2023. 
+
+12
