@@ -63,3 +63,27 @@ subscriptions:
           source: manual
           note: ''
       updated_at: '2026-03-10T15:49:00.856Z'
+    - tag: DRL
+      description: 深度强化学习
+      enabled: true
+      keywords:
+        - keyword: Deep Reinforcement Learning
+          keyword_cn: 深度强化学习
+          query: fundamental concepts and architectures of deep reinforcement learning
+      intent_queries:
+        - query: core principles and mathematical foundations of deep reinforcement learning
+          query_cn: 深度强化学习的核心原理与数学基础
+          enabled: true
+          source: manual
+          note: ''
+        - query: techniques for improving training stability and convergence in DRL
+          query_cn: 提高深度强化学习训练稳定性和收敛性的技术
+          enabled: true
+          source: manual
+          note: ''
+        - query: state of the art algorithms in deep reinforcement learning research
+          query_cn: 深度强化学习研究中的前沿算法
+          enabled: true
+          source: manual
+          note: ''
+      updated_at: '2026-03-10T16:36:36.777Z'
