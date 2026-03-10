@@ -1,0 +1,248 @@
+Title: A Granularity Characterization of Task Scheduling Effectiveness
+
+URL Source: https://arxiv.org/pdf/2602.20561v2
+
+Published Time: Thu, 26 Feb 2026 01:21:37 GMT
+
+Number of Pages: 19
+
+Markdown Content:
+# A Granularity Characterization of Task Scheduling Effectiveness 
+
+Sana Taghipour Anvari and David Kaeli 
+
+Northeastern University, Boston, MA, USA 
+
+taghipouranvari.s@northeastern.edu 
+
+Abstract. Task-based runtime systems provide flexible load balancing and portability for parallel scientific applications, but their strong scaling is highly sensitive to task granularity. As parallelism increases, scheduling overhead may transition from negligible to dominant, leading to rapid drops in performance for some algorithms, while remaining negligible for others. Although such effects are widely observed empirically, there is a general lack of understanding how algorithmic structure impacts whether dynamic scheduling is always beneficial. In this work, we intro-duce a granularity characterization framework that directly links schedul-ing overhead growth to task-graph dependency topology. We show that dependency structure, rather than problem size alone, governs how over-head scales with parallelism. Based on this observation, we character-ize execution behavior using a simple granularity measure that indicates when scheduling overhead can be amortized by parallel computation and when scheduling overhead dominates performance. Through experimen-tal evaluation on representative parallel workloads with diverse depen-dency patterns, we demonstrate that the proposed characterization ex-plains both gradual and abrupt strong-scaling breakdowns observed in practice. We further show that overhead models derived from dependency topology accurately predict strong-scaling limits and enable a practical runtime decision rule for selecting dynamic or static execution without requiring exhaustive strong-scaling studies or extensive offline tuning. 
+
+# 1 Introduction 
+
+Task-based runtimes are widely used in parallel scientific computing. By express-ing computations as a directed acyclic graph of tasks with data dependencies, these systems enable flexible load balancing, overlap of computation and com-munication, and portable parallelism across diverse hardware. As a result, task-based runtime systems have been adopted in application domains such as compu-tational fluid dynamics [40] and molecular dynamics [41]. However, practitioners face a persistent question when deploying task-based systems at scale: when does dynamic scheduling help, and when does it hurt? Every dynamic scheduler im-poses nonzero per-task overhead for dependency tracking, queue management, and work-stealing decisions. When tasks are large, this overhead can be amor-tized by the amount of work that will benefit. When tasks are smaller, the over-head can hide any benefits obtained from scheduling. We commonly encounter  
+
+> arXiv:2602.20561v2 [cs.DC] 25 Feb 2026 2S. Taghipour Anvari and D. Kaeli
+
+applications that transition between these two environments. Even though dy-namic scheduling has been adopted widely in practice [7,8,11,14,15], prior work has not actively explored the reasons why applications experience varying de-grees of overhead, impacting scaling behavior. The problem is especially acute under strong scaling. A distributed applica-tion that benefits from task scheduling at moderate rank counts may experience degradation as the domain is further decomposed. As per-task work shrinks and the number of scheduling decisions grows, overhead that was once negligible can dominate execution time. Prior experimental studies of task-based runtime sys-tems report scheduling overhead fractions ranging from under 2% to over 90%, depending on the workload, runtime, and execution configuration [3,14,27]. Dif-ferent workloads can reach this threshold at vastly different scales. Understand-ing this disparity requires examining the connection between algorithm structure and scheduler behavior. In this paper, we show that scheduling overhead can be estimated by in-specting the task-graph dependency topology. This insight provides a unified explanation for the widely varying overhead behaviors reported across different workloads and scales. We make three contributions: 1. Algorithm-based overhead estimation. We demonstrate that scheduling over-head scaling depends not only on problem size but also on the dependency topology of the task graph, and that different dependency structures lead to qualitatively different overhead growth rates under strong scaling. 2. Structure-driven overhead model. We introduce a simple scheduling overhead model whose functional form is determined by the dependency topology of the task graph, defined by the pattern of inter-task dependencies across ranks. 3. Unified characterization framework. We introduce a workload-independent metric for characterizing scheduling effectiveness that identifies distinct ex-ecution ranges and enables a practical decision rule for selecting between dynamic and static execution. 4. Experimental validation. We evaluate the proposed framework across rep-resentative workloads spanning global, local, and independent dependency classes, demonstrating that the overhead model accurately predicts strong-scaling limits and that all configurations collapse onto a single workload-independent relationship. The remainder of this paper is organized as follows. Section 2 reviews prior work on task granularity and scheduling overhead in task-based runtime systems. Section 3 introduces the runtime model and dependency topology concepts that motivate our analysis. Section 4 presents the granularity number, the overhead model, and the resulting regime classification. Section 5 evaluates the framework across representative workloads and validates the proposed characterization un-der strong scaling. Section 6 concludes with practical implications and guidance for using dynamic scheduling at scale. A Granularity Characterization of Task Scheduling Effectiveness 3
+
+# 2 Related Work 
+
+Our work addresses the question of when dynamic task scheduling provides ben-efit over static execution in distributed scientific computing. We position our contributions relative to three bodies of research: i) task granularity characteri-zation, ii) scheduler overhead modeling, and iii) adaptive scheduling strategies. 
+
+Task Granularity and Scheduling Overhead Characterization Task granularity and scheduler overhead have been studied extensively in the context of task-based runtime systems. Task Bench [1] introduced the Minimum Effective Task Granularity (METG) metric across a broad range of programming systems, demonstrating that tasks smaller than approximately 100 μs lead to substan-tial efficiency loss. Subsequent studies have reported similar thresholds in spe-cific runtimes. Grubel et al. [4] characterized scheduling overheads in HPX as a function of task granularity and showed that thread management overhead dominates execution time for fine-grained tasks, while Zhang et al. [3] quantified scheduling overheads in Charm++ [15] and HPX [14] using Task Bench. Hyper-Queue [6] further demonstrated that lightweight task management can sustain per-task overheads of approximately 0.1 ms while scaling to millions of tasks. Scheduler latency has also been examined at coarser time scales. Reuther et al. [2] modeled scheduler behavior for HPC and Big Data systems, showing that resource utilization drops sharply when scheduling latency becomes comparable to computation time. Related work in uncertainty quantification workflows [5] reported up to three orders of magnitude reduction in scheduling overhead by replacing batch schedulers with fine-grained task schedulers, highlighting the importance of scheduler choice for latency-sensitive workloads. 
+
+Task-Based Runtime Systems Task-based runtimes exhibit distinct overhead characteristics that define their effective operating regimes. StarPU [7] demon-strates that dynamic scheduling guided by performance estimates improves ex-ecution time on heterogeneous systems by reducing load imbalance and se-lecting efficient device mappings, without explicitly modeling task granular-ity. PaRSEC [8, 9] reduces scheduling overhead through Parameterized Task Graphs that avoid explicit graph materialization and enables efficient execu-tion of fine-grained tasks. TTG [10] further targets low-overhead dataflow ex-ecution by avoiding synchronization bottlenecks on shared runtime data struc-tures, allowing very small tasks to execute efficiently. Legion and Regent [11, 12] are two frameworks designed to mitigate fine-grained overhead through region-based dependence analysis and compiler-driven task fusion, achieving substantial speedups on irregular applications. nOS-V [13] explicitly identifies multiple op-erating regimes, including a crossover between peak-performance and overhead-dominated execution. 
+
+Load Balancing and Work Stealing Work stealing algorithms face the same granularity–overhead tradeoff that we study. PackStealLB [17] reduces over-head by grouping tasks into packs, improving performance by up to 41% on 4 S. Taghipour Anvari and D. Kaeli 
+
+molecular dynamics benchmarks by amortizing communication costs that would dominate fine-grained individual migrations. Chung et al. [18, 19] show that re-active work stealing can be ineffective when communication delays are high, and propose proactive offloading guided by load prediction, achieving 1.5–3.4 ×
+
+speedups. Scalable work stealing [20] demonstrates high efficiency up to 8,192 processors, but notes that performance depends critically on the computation-to-communication ratio of stolen tasks. 
+
+Adaptive Scheduling Strategies Several systems propose adaptive mechanisms to mitigate scheduling and task management overhead, addressing challenges re-lated to workload variability. HeraSched [21] applies hierarchical reinforcement learning to job selection and allocation in HPC systems and demonstrates sub-stantial reductions in job waiting time under overloaded conditions. Agon [22] employs a neural network classifier to select among multiple schedulers, achieves up to 99.1% of oracle performance, illustrating that the most effective scheduling strategy depends on workload characteristics. ATG [23] adaptively controls the creation of tasks in work-stealing schedulers and reduces overhead by switching between help-first and serialized execution, resulting in performance improve-ments of up to 19%. StarPU’s hierarchical tasks [24] enable dynamic granularity adaptation to better match heterogeneous resources. The taskiter directive [25] amortizes task creation overhead in iterative applications by reusing task graphs across iterations, which results in average speedups of 3.7 × for fine-grained work-loads. Finally, DAG clustering [26] increases task granularity through aggrega-tion, reduces overhead, and achieves up to 7 × speedup. 
+
+Comparison With Our Work Prior work quantifies minimum effective task gran-ularity and scheduling overheads across runtimes [1, 3, 4, 6] and proposes mecha-nisms to mitigate fine-grained costs through dataflow optimizations, packing, or clustering [8,10–12,17,26]. Adaptive approaches further select or adjust schedul-ing strategies at runtime [21–24], but none provides a predictive rule for when 
+
+dynamic task scheduling should be preferred over static execution for distributed scientific workloads under varying scale and overhead conditions. We address this gap by linking overhead scaling rates to task-graph dependency topology, charac-terizing the resulting regime transition, and using it to choose between dynamic and static execution in our distributed benchmarks. 
+
+# 3 Background and Motivation 
+
+Task-based runtime systems are increasingly adopted for distributed scientific computing, yet practitioners consistently report a recurring challenge: at mod-erate scales, dynamic scheduling improves performance through load balancing and latency hiding, but at higher scales, the same scheduling mechanisms can become the dominant cost. This tension between scheduling benefit and schedul-ing overhead motivates the central question of this work: when does dynamic scheduling help, and when does it hurt? A Granularity Characterization of Task Scheduling Effectiveness 5
+
+A per-phase runtime model [27] captures the interaction between useful com-putation, communication, and scheduling overhead within a single computation stage of task-based execution. The model is expressed as 
+
+Tphase ≈ max( Tcomp , T comm ) + (1 − ρ) k τ s (1) where Tcomp denotes useful computation time, Tcomm denotes communication time (e.g., MPI transfers or data redistributions), k is the number of sched-uled tasks per worker, τs is the per-task scheduling cost including dependency tracking, queue management, and dispatch, and ρ ∈ [0 , 1] represents the frac-tion of scheduling overhead that can be hidden by parallel execution. The term 
+
+(1 − ρ)kτ s therefore represents the scheduler overhead that remains exposed on the critical path. In practice, communication and computation are not strictly separated into distinct phases. In pipelined task-based execution, data redistribution between stages overlaps with task execution across ranks. No global barrier separates redistribution from subsequent computation; ranks enter and exit phases asyn-chronously, with each rank’s progress gated only by the arrival of its required input data. As a result, communication costs are not a separable term but are embedded in the pipeline stall time that each rank experiences while waiting for inter-rank data dependencies to resolve. We therefore model the total non-kernel cost per phase as a single overhead term: 
+
+Tphase ≈ Tkernel + Toverhead (2) where Toverhead captures the aggregate dependency cost, including pipeline stalls from inter-rank data dependencies, redistribution management, and scheduler dispatch (dependency tracking, queue management, task placement). The func-tional form of Toverhead is determined by the dependency topology of the al-gorithm, which governs both the number of inter-rank data dependencies per phase and the resulting network contention. Previous work [1, 4, 13, 27] reports that under strong scaling, as task granularity decreases, overhead can transition abruptly from negligible to dominant, overwhelming useful computation and pro-ducing a sharp performance cliff rather than gradual degradation. This behavior suggests a threshold below which per-task dependency costs can no longer be amortized effectively. We refer to this phenomenon as the overhead cliff .
+
+3.1 Dependency Topology in Distributed Algorithms 
+
+Distributed algorithms exhibit fundamentally different dependency structures depending on how tasks relate across ranks. We characterize these structures using a dependency neighborhood N (t, i ), which specifies the set of tasks from timestep t − 1 that task (t, i ) depends on [1]. Table 1 summarizes the three dependency classes. 
+
+Global dependency algorithms induce all-to-all dependency structures. The classic example is distributed FFT [29, 35, 38], where each computation phase consists of P local 1D transforms whose inputs depend on data from all 6 S. Taghipour Anvari and D. Kaeli 
+
+Table 1: Dependency neighborhood relations and their complexity for repre-sentative algorithm classes, where P is the number of ranks and i is the task index. [1] 
+
+Pattern Dependency Neighborhood Deps/Task Total Edges 
+
+Global (FFT) N (t, i ) := {j | 0 ≤ j < P } O(P ) O(P 2)
+
+Local (Stencil) N (t, i ) := {i, i − 1, i + 1 } O(1) O(P )
+
+Local (Sweep) N (t, i ) := {i, i − 1} O(1) O(P )
+
+Independent (GEMM) N (t, i ) := ∅ O(0) O(1) R0                         
+
+> Time step t
+> R1 R2 R3
+> R0 R1 R2 R3
+> R0 R1 R2 R3
+> R0 R1 R2 R3
+> R0 R1 R2 R3
+> R0 R1 R2 R3
+> Time step t Time step t
+> Time step t+1 Time step t+1 Time step t+1
+> Global Dependency:
+> All -to -All Dependencies
+> Local Dependency:
+> Nearest -Neighbor Dependencies
+> No Dependency:
+> Independent Tasks
+
+Fig. 1: Illustrative dependency topologies at P = 4 ranks. Edges represent log-ical inter-rank dependencies that constrain task execution order between com-putation phases. Global dependency (left) induces all-to-all dependencies, local dependency (center) induces nearest-neighbor dependencies, and independent workloads (right) induce no runtime dependencies. other ranks. This creates O(P ) dependencies per task and O(P 2) total edges in the dependency graph. 
+
+Local dependency algorithms require only nearest-neighbor communica-tion. Stencil computations with halo exchange [36] exemplify this pattern: each subdomain requires boundary data only from adjacent subdomains in the proces-sor topology. Sweep computations exhibit a similar bounded dependency struc-ture, where each task depends only on a fixed number of neighboring tasks along a traversal direction. These patterns create O(1) dependencies per task (at most six neighbors in 3D for stencil), yielding O(P ) total edges. 
+
+No dependency algorithms consist of independent tasks after the initial data distribution. Block matrix multiplication with a 2D block-cyclic distribu-tion [39] exhibits this pattern: after initial data placement, each rank performs local computation with no runtime synchronization, which results in O(1) total dependency overhead, regardless of scale. Figure 1 illustrates these dependency patterns for P = 4 ranks and highlights how global, local, and independent workloads induce fundamentally different de-pendency structures between computation phases. These three topology classes span the spectrum of dependency structures in scientific computing and suggest that scheduler overhead scales with the number of inter-rank dependency edges A Granularity Characterization of Task Scheduling Effectiveness 7
+
+rather than task count alone. Section 4 formalizes this relationship and derives the resulting overhead scaling behavior for each class. 
+
+# 4 Characterizing Scheduler Overhead 
+
+The scheduling overhead behavior under strong scaling is determined by the dependency structure of the task graph rather than task count or problem size alone. This distinction explains why some workloads experience abrupt perfor-mance collapse while others degrade gradually or remain stable. Starting from the reduced phase-level model in Eq.2, we isolate the compo-nent of execution time attributable to task scheduling: 
+
+Toverhead = (1 − ρ) k τ s, (3) and define the granularity number as the ratio of useful computation to schedul-ing overhead: 
+
+G ≡ Tkernel 
+
+Toverhead 
+
+= Tkernel 
+
+(1 − ρ) k τ s
+
+. (4) Large values of G indicate that kernel execution dominates and scheduling overhead is negligible. Values near unity correspond to situations where over-head and computation are comparable. When G < 1, scheduling overhead ex-ceeds useful computation and the scheduler becomes the dominant performance bottleneck. The overhead fraction, which is the ratio of scheduling time to kernel time, follows directly as Ω = 1 /G .
+
+4.1 Dependency Topology Determines Overhead Scaling 
+
+Scheduling overhead scales with the number of inter-task dependency edges in the task graph: Toverhead (P ) ∝ | E(P )|, where E(P ) denotes the set of directed edges representing inter-task dependencies at scale P . Because different algo-rithms induce qualitatively different dependency structures, they exhibit distinct overhead scaling behaviors: 
+
+Global dependency. Algorithms that require all-to-all dependencies induce dense task graphs where each task depends on many remote tasks. The num-ber of dependency edges grows superlinearly: Eglobal (P ) = Θ(P 2). Scheduling overhead increases rapidly under strong scaling, eventually overwhelming useful computation. 
+
+Local dependency. Algorithms with nearest-neighbor or bounded-radius dependencies induce sparse dependency graphs. Each task depends on a constant number of neighbors: Elocal (P ) = Θ(P ). Scheduling overhead grows linearly with scale, producing gradual degradation rather than abrupt collapse. 
+
+No runtime dependency. Algorithms whose tasks are independent during the computation phase induce constant dependency complexity: Eindependent (P ) = 
+
+Θ(1) . Scheduling overhead remains largely insensitive to parallel scale. 8 S. Taghipour Anvari and D. Kaeli 
+
+4.2 Granularity Decay Under Strong Scaling 
+
+Under strong scaling with fixed global problem size, we assume ideal scaling of a fully parallelizable computational kernel with negligible intrinsic serial fraction. The kernel execution time therefore decreases inversely with the number of ranks, 
+
+Tkernel (P ) = AP , (5) where A is a constant dependent on the architecture and implementation. Scheduling overhead scales with the dependency burden imposed by the task-graph dependency structure. Because the scheduler must track and resolve inter-task dependency edges, we model overhead growth as proportional to the total number of such edges, 
+
+Toverhead (P ) ∝ | E(P )|, (6) where |E(P )| is determined by the dependency topology. Using the definition of the granularity number in Eq.4, we obtain: 
+
+G(P ) ∝ P −1
+
+|E(P )| . (7) Substituting the asymptotic growth of E(P ) for each topology class yields: 
+
+Eglobal (P ) = Θ(P 2) ⇒ Gglobal (P ) ∝ P −3 (rapid collapse) , (8) 
+
+Elocal (P ) = Θ(P ) ⇒ Glocal (P ) ∝ P −2 (gradual degradation) , (9) 
+
+Eindependent (P ) = Θ(1) ⇒ Gindependent (P ) ∝ P −1 (stable scaling) . (10) The granularity number therefore decays at rates determined entirely by co-ordination topology. Dense global coordination induces cubic decay under strong scaling, bounded local coordination induces quadratic decay, and independent workloads induce linear decay. A natural transition scale P ⋆ arises when useful computation and schedul-ing overhead become comparable, Tkernel (P ⋆) = Toverhead (P ⋆), or equivalently 
+
+G(P ⋆) = 1 . The location of P ⋆ depends directly on how rapidly E(P ) grows: global-dependency algorithms reach this transition quickly, while local and in-dependent algorithms delay or avoid it within practical scaling ranges. 
+
+# 5 Evaluation 
+
+We validate the proposed granularity characterization using a set of represen-tative workloads with distinct dependency structures. Table 2 summarizes the experimental platform and workload configurations used in this study. For each configuration, we measure the kernel execution time Tkernel and the scheduling overhead Toverhead , and compute G (Eq.4) to identify the overhead range. A Granularity Characterization of Task Scheduling Effectiveness 9
+
+Table 2: Experimental platform and workloads. 
+
+Category Configuration 
+
+Hardware CPU cluster with Intel Xeon Gold 6240R processors (48 cores per node, 2.4 GHz base clock, 36 MB L3 cache), connected via InfiniBand HDR. Software Julia [33] v1.11.7; FFTW [31,32] v3.3.10 for local transforms; Open MPI [34] v4.1.6 with MPI.jl v0.20.22; Dagger.jl [16] v0.18.14 for task scheduling. FFT Workload 3D complex-to-complex FFT. Problem sizes N ∈{384 3, 512 3, 768 3}, scales 4–256 ranks. Each computation phase spawns P tasks with all-to-all dependencies, induc-ing Θ(P 2) dependency edges. Stencil Workload Five-point stencil on a 2D grid with 1D row decomposition. Problem sizes N ∈ {7525 2, 11560 2, 21285 2} across 4–256 ranks. Each iteration spawns P tasks with nearest-neighbor dependencies, inducing Θ(P ) dependency edges. Sweep Workload Discrete ordinates transport sweep on a 2D grid with 1D row decomposition. Problem sizes N ∈ { 7525 2, 11560 2, 21285 2}
+
+across 4–256 ranks. Each iteration spawns P tasks with uni-directional left-to-right dependency, inducing Θ(P ) depen-dency edges. GEMM Workload Blocked matrix multiplication with 1D row distribution. Problem sizes N ∈ {7525 2, 11560 2, 21285 2}, scales 4–256 ranks. After initial data distribution, tasks execute indepen-dently, inducing Θ(1) dependency edges. 
+
+5.1 Contrasting Failure Modes 
+
+Figure 2 illustrates how dependency topology impacts scheduling overhead under strong scaling. We plot the fraction of execution time spent on useful compu-tation versus scheduling overhead for dynamically scheduled FFT and stencil workloads across all three problem sizes. Across all FFT problem sizes, overhead remains below 10% through 64 ranks, then increases sharply at higher scales. At 256 ranks, scheduling overhead domi-nates execution time, consuming 50–80% depending on problem size. In contrast, stencil workloads exhibit smooth, monotonic overhead growth from under 1% at small scales to tens of percent at the highest ranks. Despite comparable problem sizes and task counts, these two workloads exhibit fundamentally different over-head trajectories, suggesting that dependency structure rather than scale alone determines how overhead grows. 
+
+5.2 Granularity–Overhead Relationship 
+
+Figure 3 plots the fraction of execution time spent in overhead, Ω%, as a function of the granularity number G (4) for all measured configurations across FFT, 10 S. Taghipour Anvari and D. Kaeli 
+
+Fig. 2: Contrasting failure modes under strong scaling with dynamic scheduling. FFT (top row) exhibits an overhead cliff where scheduling overhead remains neg-ligible across moderate scales but rises abruptly at high rank counts, consuming a majority of execution time at 256 ranks. Stencil (bottom row) exhibits grad-ual degradation where overhead grows steadily with scale and only approaches parity with useful work at the highest ranks. stencil, sweep, and GEMM workloads. Since Tphase = Tkernel + Toverhead , the overhead fraction follows directly as 
+
+Ω% = Toverhead 
+
+Tkernel + Toverhead 
+
+× 100 = 100 
+
+G + 1 . (11) All measurements collapse onto this relationship, confirming that G provides a single, workload-independent characterization of scheduling effectiveness regard-less of algorithmic structure, problem size, or scale. The granularity number induces a natural transition boundary at G = 1 ,where overhead equals useful computation ( Ω = 50% ). We further adopt G = 10 
+
+as a practical threshold for negligible overhead ( Ω ≈ 9% ), consistent with the convention that parallel efficiency losses below 10% are acceptable in prac-tice [1, 4]. We classify execution into three ranges based on these boundaries. In the beneficial range ( G > 10 ), overhead remains below ∼9% and dynamic scheduling provides net performance benefit. In the marginal range ( 1 < G ≤
+
+10 ), overhead becomes comparable to computation and the benefits of dynamic scheduling diminish. In the detrimental range ( G ≤ 1), overhead exceeds useful computation and static execution is preferable. While all configurations obey the same Ω%–G relationship, their trajecto-ries under strong scaling differ fundamentally. Independent workloads (GEMM) consistently exhibit large granularity values ( G ≳ 70 ), remaining firmly in the beneficial range across all tested scales. Stencil and sweep workloads transition A Granularity Characterization of Task Scheduling Effectiveness 11 
+
+Fig. 3: Overhead fraction versus granularity number G for all measured con-figurations. Each point represents one experimental configuration. Background shading indicates execution regimes: detrimental (red, G < 1), marginal (yellow, 
+
+1 ≤ G < 10 ), and beneficial (green, G ≥ 10 ). While all configurations obey the same relationship, their trajectories under strong scaling differ: FFT (circles) traverses all three regimes, stencil and sweep (squares and diamonds) reach the marginal regime at high rank counts, and GEMM triangles) remains entirely in the beneficial regime. gradually into the marginal range only at high rank counts, reflecting the slower granularity decay ( G ∝ P −2) imposed by bounded-degree inter-rank dependen-cies. FFT workloads span all three ranges, with the rapid decay ( G ∝ P −3)driven by dense inter-rank dependencies causing an abrupt transition to the detrimental range at the largest scales. These distinct trajectories demonstrate that the dependency topology governs where a workload operates on the univer-sal curve and how quickly it moves toward the detrimental range as parallelism increases. 
+
+5.3 Model Calibration and Validation 
+
+We evaluate the proposed direct scheduling-overhead model by calibrating it against measured runtime data and validating its ability to identify strong-scaling limits across workloads and input sizes. Rather than inferring overhead indirectly through efficiency metrics, we model scheduling cost explicitly as a function of rank count P , that reflects the dependency structure imposed by each workload and is observed directly in the runtime behavior. Figure 4 summarizes calibration and validation results for three problem sizes. Each row corresponds to a different input size, while columns correspond to workloads with distinct dependency patterns: FFT (global dependency), stencil (local dependency), sweep (local dependency), and GEMM (independent tasks). 12 S. Taghipour Anvari and D. Kaeli 
+
+For each input size, the top panels calibrate the scheduling-overhead model, and the bottom panels validate the model under strong scaling. 
+
+Calibration. We model the total scheduling overhead Toverhead (P ) directly as a function of the rank count P , using functional forms dictated by the dependency structure of each workload: global dependency: Toverhead (P ) = αP 2 + β, (12) local dependency: Toverhead (P ) = αP + β, (13) independent: Toverhead (P ) = β. (14) Model parameters are obtained via least-squares fitting to the measured scheduling-overhead times. For FFT, calibration is restricted to the pre-collapse scaling region ( P ≤ P ⋆) to ensure the model captures overhead growth before it dominates execution. For GEMM and sweep, the constant term β is estimated using the median measured overhead to ensure robustness to noise. 
+
+Validation and strong-scaling limit. To validate the calibrated overhead models, we compare them against ideal kernel strong scaling, 
+
+Tkernel (P ) = AP , (15) where A is obtained by fitting measured kernel execution times. We define the strong-scaling limit P ⋆ as the point at which scheduling over-head equals useful computation: 
+
+Toverhead (P ⋆) = Tkernel (P ⋆). (16) As shown in Figure 4, FFT exhibits a quadratic growth in scheduling over-head that intersects the P −1 kernel scaling curve at a finite P ⋆, predicting the onset of an overhead-dominated regime whose location depends on input size. This crossover consistently aligns with the empirically observed transition from marginal to detrimental strong-scaling behavior. In contrast, the kernel– overhead intersection for stencil workloads occurs at substantially larger rank counts than for FFT, and scheduling overhead does not induce an abrupt per-formance collapse within the measured scaling range. Notably, stencil’s abso-lute overhead in milliseconds can exceed FFT’s at comparable scales, yet its overhead fraction remains much lower (Fig. 2) because stencil kernels are signif-icantly larger. This illustrates that the overhead regime is determined by the ratio 
+
+G = Tkernel /T overhead , not by absolute overhead alone. For GEMM, no kernel– overhead intersection is observed within the measured scaling range, consistent with its independent task structure and near-constant scheduling overhead. 
+
+5.4 Predicting Strong-Scaling Limits Across Dependency Classes 
+
+To evaluate the generality of the proposed overhead model beyond the workloads used for calibration in Section 5.3, we apply it to four additional workloads spanning both local and global dependency classes. A Granularity Characterization of Task Scheduling Effectiveness 13 
+
+Fig. 4: Calibration and validation of the direct scheduling-overhead model across three input sizes. Top panels fit the overhead model; bottom panels overlay it against kernel strong scaling. The red dot marks the predicted crossover P ⋆.Shaded regions indicate the empirical interval between the last non-detrimental and first detrimental ( G < 1) measured configuration. Where observed, P ⋆ falls within or adjacent to this interval. 14 S. Taghipour Anvari and D. Kaeli 
+
+Bounded-Degree Dependency Distributed SpMV computes y ← Ax for a sparse matrix A arising from a five-point Laplacian discretization on a 2D grid, dis-tributed by rows across ranks. Each rank requires boundary values only from its immediate neighbors, inducing nearest-neighbor halo exchanges identical in structure to the stencil workload. Conv2D applies a fixed-radius convolution over a spatial grid, similarly requiring only nearest-neighbor halo exchanges [44, 45]. In both cases, each rank communicates with a fixed number of neighbors regard-less of total rank count, so the number of dependency edges per phase grows linearly in P . We therefore model their scheduling overhead using Eq.13. Figure 5 (top row) evaluates the proposed linear overhead model for SpMV and Conv2D. For both workloads, measured scheduling overhead increases ap-proximately linearly with rank count, and the fitted αP +β model closely matches the measurements. For SpMV, the predicted crossover occurs at P ⋆ ≈ 137 . For Conv2D, the crossover is predicted at a larger scale ( P ⋆ ≈ 329 ), reflecting the higher per-rank computational cost of the convolution kernel, which delays the point at which overhead overtakes useful computation. 
+
+Dense Dependency PageRank and all-pairs N-Body simulation both exhibit dense inter-rank dependency structure. In our distributed PageRank implemen-tation [46, 47], each iteration performs a sparse matrix–vector product followed by a global normalization step. The graph’s adjacency structure induces cross-rank data dependencies, in which each rank must exchange updated vertex values with all ranks that own destination vertices. For graphs whose adjacency struc-ture spans most partitions, this produces O(P ) dependencies per rank and O(P 2)
+
+total dependency edges per iteration. All-pairs N-Body simulation [48, 49] com-putes gravitational forces between N particles. Under domain decomposition, each rank owns N/P particles but requires the positions of all N particles to compute local forces. This all-to-all data dependency creates O(P ) edges per rank and O(P 2) total edges per phase. We therefore model scheduling overhead for both workloads using Eq.12. To ensure comparable kernel execution times across workloads, we select input sizes that produce similar total computational work: N-Body with N =21 ,285 particles performs O(N 2) ≈ 453 M pairwise force computations, while PageRank with N = 30 .2M vertices and average degree 15 traverses ∼453 Medges per iteration. Figure 5 (bottom row) presents calibration and validation results for the largest problem sizes of PageRank and N-Body. In both cases, measured scheduling overhead follows the quadratic model with high fidelity, confirming that the αP 2 + β functional form predicted by dense dependency structure accurately captures overhead growth across algorithmically distinct workloads. The validation panels overlay the calibrated overhead model against mea-sured kernel execution time under strong scaling. For PageRank, the predicted crossover occurs at P ⋆ ≈ 230 , while for N-Body the crossover occurs at P ⋆ ≈ 207 .A Granularity Characterization of Task Scheduling Effectiveness 15 
+
+Fig. 5: Calibration and validation of the scheduling-overhead model for four ad-ditional workloads. Top row: SpMV uses a five-point Laplacian on a 2D grid with 1D row decomposition and nearest-neighbor halo exchange; Conv2D uses 1D row decomposition with a 3 × 3 kernel, Cin = 3 input channels, and Cout = 16 output channels. Bottom row: PageRank and N-Body. All workloads are configured for comparable total computational work ( ∼453 M operations per iteration): SpMV and Conv2D operate on a 21 ,285 2 grid, N-Body computes O(N 2) pairwise in-teractions among N = 21 ,285 particles, and PageRank processes N = 30 .2Mvertices with average degree 15 ( ∼453 M edges). 
+
+5.5 Dynamic–Static Crossover Under Strong Scaling 
+
+To connect the granularity-based characterization to practical scheduling deci-sions, Figure 6 directly compares static execution against dynamically scheduled execution for FFT across multiple input sizes. The dynamically scheduled kernel consistently outperforms the static kernel due to improved load balance. How-ever, at sufficiently large scales, scheduling overhead grows rapidly and causes total dynamic execution time to exceed static execution time. We observe a clear dynamic–static crossover for all FFT problem sizes, occur-ring at high rank counts, which occurs when the load-balance benefit of dynamic execution can no longer amortize scheduling overhead, Tstatic = Tkernel,dyn +
+
+Toverhead .
+
+Static baseline. All measurements in this work isolate a single computation stage. We therefore compare dynamic execution against a matching static compute-only baseline. For one FFT computation stage, the static execution time under ideal load balance is modeled as: 
+
+bTstatic (P ) = N 2
+
+P c N log N, (17) 16 S. Taghipour Anvari and D. Kaeli 
+
+Fig. 6: Static versus dynamic execution for FFT under strong scaling. Each plot shows the static kernel time, the dynamically scheduled kernel time, and the total dynamic execution time (kernel plus scheduling overhead). where N is the global problem dimension, P is the number of ranks, and c is an implementation- and architecture-dependent constant capturing the cost of a single length-N one-dimensional FFT [38]. 
+
+Dynamic execution. Under dynamic scheduling, the predicted execution time for the same computation stage is: 
+
+bTdyn (P ) = bTkernel (P ) + bToverhead (P ), (18) where bTkernel (P ) models compute time and bToverhead (P ) captures scheduler over-head. As shown earlier, FFT overhead grows superlinearly with rank count due to global dependency. 
+
+Runtime decision rule. Combining the static compute-only model (Eq. 17) with the dynamic execution model (Eq. 18) yields a simple crossover-based scheduling criterion: use dynamic scheduling if bTkernel (P ) + bToverhead (P ) < bTstatic (P ), (19) and otherwise prefer static execution. Because bTstatic (P ) and bTkernel (P ) both scale approximately as P −1, while 
+
+bToverhead (P ) grows with coordination cost, this inequality predicts a finite crossover point P ⋆ beyond which scheduling overhead can no longer be amortized. Cru-cially, all terms in Eq. 19 can be estimated at runtime using the scheduler’s profil-ing information and the calibrated overhead model, enabling informed scheduling decisions without requiring offline strong-scaling measurements. 
+
+# 6 Summary 
+
+This work shows that scheduling overhead in task-based runtimes is governed primarily by dependency structure rather than task count or problem size alone. By relating overhead growth directly to task-graph dependencies, we explain why A Granularity Characterization of Task Scheduling Effectiveness 17 
+
+some workloads exhibit abrupt strong-scaling breakdowns while others degrade gradually or remain stable. The proposed models are intentionally lightweight and are not meant to predict exact execution times, but to identify when schedul-ing overhead can no longer be amortized. The close alignment between model-predicted crossover points and measured performance degradation suggests that dependency-aware modeling is sufficient for reasoning about scheduling effective-ness without exhaustive scaling studies. This structural characterization enables principled decisions between dynamic and static execution based on task-graph dependency properties, without requiring exhaustive strong-scaling experimen-tation. Integrating dependency-aware overhead prediction directly into runtime schedulers is a promising direction for making task-based parallelism more robust at scale. Such integration would enable automatic transitions between dynamic and static execution as G approaches the marginal regime. 
+
+# References 
+
+1. Slaughter, E., et al.: Task Bench: A Parameterized Benchmark for Evaluating Par-allel Runtime Performance. In: SC ’20. IEEE (2020) 2. Reuther, A., et al.: Scalable System Scheduling for HPC and Big Data. J. Parallel Distrib. Comput. 111, 76–92 (2018) 3. Zhang, W., et al.: Quantifying Overheads in Charm++ and HPX Using Task Bench. In: WAMTA 2023, LNCS, vol. 13861, pp. 1–12. Springer (2023) 4. Grubel, P., et al.: The Performance Implication of Task Size for Applications on the HPX Runtime System. In: IEEE CLUSTER, pp. 682–689 (2015) 5. Loi, C.M., et al.: A Performance Analysis of Task Scheduling for UQ Workflows on HPC Systems. arXiv:2503.22645 (2025) 6. Beránek, J., et al.: HyperQueue: Efficient and Ergonomic Task Graphs on HPC Clusters. SoftwareX 27, 101814 (2024) 7. Augonnet, C., et al.: StarPU: A Unified Platform for Task Scheduling on Hetero-geneous Multicore Architectures. Concurr. Comput. Pract. Exper. 23(2), 187–198 (2011) 8. Bosilca, G., et al.: PaRSEC: A Programming Paradigm Exploiting Heterogeneity for Enhancing Scalability. Comput. Sci. Eng. 15(6), 36–45 (2013) 9. Bouteiller, A., et al.: PaRSEC: Scalability, Flexibility, and Hybrid Architecture Support. Int. J. High Perform. Comput. Appl. 39(1), 147–166 (2025) 10. Schuchart, J., et al.: Pushing the Boundaries of Small Tasks: Scalable Low-Overhead Data-Flow Programming in TTG. In: Euro-Par 2024, LNCS, vol. 14803, pp. 1–15. Springer (2024) 11. Bauer, M., et al.: Legion: Expressing Locality and Independence with Logical Re-gions. In: SC ’12, pp. 66:1–66:11. IEEE (2012) 12. Slaughter, E., et al.: Regent: A High-Productivity Programming Language for HPC with Logical Regions. In: SC ’15, pp. 81:1–81:12. IEEE (2015) 13. nOS-V: Co-Executing HPC Applications Using System-Wide Task Scheduling. In: SC ’22. IEEE (2022) 14. Kaiser, H., et al.: HPX – The C++ Standard Library for Parallelism and Concur-rency. J. Open Source Softw. 5(53), 2352 (2020) 15. Kale, L.V., Krishnan, S.: CHARM++: A Portable Concurrent Object Oriented System Based on C++. In: OOPSLA ’93, pp. 91–108. ACM (1993) 18 S. Taghipour Anvari and D. Kaeli 16. Dagger.jl: A Framework for Out-of-Core and Parallel Execution. Julia Computing (2023) 17. Freitas, V., et al.: PackStealLB: A Scalable Distributed Load Balancer Based on Work Stealing and Workload Discretization. J. Parallel Distrib. Comput. 150, 34– 45 (2021) 18. Chung, M.T., et al.: Proactive Task Offloading for Load Balancing in Iterative Applications. In: PPAM 2022, LNCS, vol. 13826. Springer (2023) 19. Chung, M.T., et al.: From Reactive to Proactive Load Balancing for Task-Based Parallel Applications in Distributed Memory Machines. Concurr. Comput. Pract. Exper. 35(19), e7828 (2023) 20. Dinan, J., et al.: Scalable Work Stealing. In: SC ’09, pp. 1–11. ACM (2009) 21. Wang, L., Rodriguez, M.A., Lipovetzky, N.: Optimizing HPC Scheduling: A Hier-archical Reinforcement Learning Approach for Intelligent Job Selection and Allo-cation. J. Supercomput. 81(8), 918 (2025) 22. Prodromou, A., et al.: Agon: A Scalable Competitive Scheduler for Large Hetero-geneous Systems. arXiv:2109.00665 (2021) 23. An Adaptive Task Granularity Based Scheduling for Task-Centric Parallelism. In: IEEE ICPADS ’14, pp. 698–705 (2014) 24. Faverge, M., et al.: Programming Heterogeneous Architectures Using Hierarchical Tasks. In: Euro-Par 2022 Workshops, LNCS, vol. 13835, pp. 231–242. Springer (2023) 25. Álvarez, D., Beltran, V.: Leveraging Iterative Applications to Improve the Scala-bility of Task-Based Programming Models on Distributed Systems. ACM Trans. Archit. Code Optim. (2025) 26. Bramas, B., Ketterlin, A.: Improving Parallel Executions by Increasing Task Gran-ularity in Task-Based Runtime Systems Using Acyclic DAG Clustering. PeerJ Comput. Sci. 6, e247 (2020) 27. S. Taghipour Anvari, J. Samaroo, M. Raayai Ardakani, and D. Kaeli, “DaggerFFT: A Distributed FFT Framework Using Task Scheduling in Julia,” arXiv preprint arXiv:2601.12209, 2026. 28. Culler, D., et al.: LogP: Towards a Realistic Model of Parallel Computation. In: PPOPP ’93, pp. 1–12. ACM (1993) 29. Cooley, J.W., Tukey, J.W.: An Algorithm for the Machine Calculation of Complex Fourier Series. Math. Comput. 19(90), 297–301 (1965) 30. Ayala, A., et al.: heFFTe: Highly Efficient FFT for Exascale. In: ICCS 2020, LNCS, vol. 12137, pp. 262–275. Springer (2020) 31. Frigo, M., Johnson, S.G.: The Design and Implementation of FFTW3. Proc. IEEE 93(2), 216–231 (2005) 32. JuliaMath, “FFTW.jl: Julia interface to FFTW.” [Online]. Available: https://github.com/JuliaMath/FFTW.jl 33. J. Bezanson, S. Karpinski, V. B. Shah, and A. Edelman, “Julia: A fast dynamic language for technical computing,” arXiv preprint arXiv:1209.5145, (2012) 34. JuliaParallel, “MPI.jl: Julia bindings for the message passing interface.” [Online]. Available: https://github.com/JuliaParallel/MPI.jl 35. Pekurovsky, D.: P3DFFT: A Framework for Parallel Computations of Fourier Transforms in Three Dimensions. SIAM J. Sci. Comput. 34(4), C192–C209 (2012) 36. Datta, K., et al.: Stencil Computation Optimization and Auto-tuning on State-of-the-art Multicore Architectures. In: SC ’08, pp. 1–12. IEEE (2008) 37. Gropp, W., Lusk, E., Skjellum, A.: Using MPI: Portable Parallel Programming with the Message-Passing Interface. MIT Press (1999) A Granularity Characterization of Task Scheduling Effectiveness 19 38. K. Czechowski, C. McClanahan, C. Battaglino, K. Iyer, P.-K. Yeung, and R. Vuduc. On the communication complexity of 3D FFTs and its implications for exascale. In Proceedings of the 26th ACM International Conference on Supercomputing (ICS ’12) , pages 205–214. ACM, 2012. 39. R. A. Van De Geijn and J. Watts.SUMMA: Scalable universal matrix multiplication algorithm. Concurrency: Practice and Experience , 9(4):255–274, 1997. 40. J.-M. C. Carpaye, J. Roman, and P. Brenner: Design and analysis of a task-based parallelization over a runtime system of an explicit finite-volume CFD code with adaptive time stepping. Journal of Computational Science , 22:1–15, 2017. 41. B. Acun, R. Buch, L. V. Kale, and J. C. Phillips. NAMD: Scalable molecular dynamics based on the Charm++ parallel runtime system. In Exascale Scientific Applications: Scalability and Performance Portability , pages 67–88, 2017. 42. Barrett, R., Berry, M., Chan, T.F., Demmel, J., Donato, J., Dongarra, J., Eijkhout, V., Pozo, R., Romine, C., Van der Vorst, H.:Templates for the Solution of Linear Systems: Building Blocks for Iterative Methods. NASA Technical Memorandum TM-114494 (1994) 43. Demmel, J., Grigori, L., Hoemmen, M., Langou, J.: Communication-Avoiding Al-gorithms for Linear Algebra. SIAM J. Matrix Anal. Appl. 30(1), 1–27 (2008) 44. Lavin, A., Gray, S.: Fast Algorithms for Convolutional Neural Networks. In: Proc. IEEE Conf. Comput. Vis. Pattern Recognit. (CVPR), pp. 4013–4021 (2016) 45. Chetlur, S., Woolley, C., Vandermersch, P., Cohen, J., Tran, J., Catanzaro, B., Shel-hamer, E.: cuDNN: Efficient Primitives for Deep Learning.arXiv:1410.0759 (2014) 46. Page, L., Brin, S., Motwani, R., Winograd, T.: The PageRank Citation Ranking: Bringing Order to the Web. Technical Report, Stanford Digital Library Technolo-gies Project (1999) 47. Malewicz, G., Austern, M.H., Bik, A.J.C., Dehnert, J.C., Horn, I., Leiser, N., Czajkowski, G.: Pregel: A System for Large-Scale Graph Processing. In: Proc. ACM SIGMOD, pp. 135–146. ACM (2010) 48. Nyland, L., Harris, M., Prins, J.: Fast N-Body Simulation with CUDA. In: GPU Gems 3, Ch. 31, pp. 677–695. Addison-Wesley (2007) 49. Aarseth, S.J.: Gravitational N-Body Simulations. Cambridge University Press (2003)
