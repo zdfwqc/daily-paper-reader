@@ -1,0 +1,2926 @@
+Title: Contextual Rollout Bandits for Reinforcement Learning with Verifiable Rewards
+
+URL Source: https://arxiv.org/pdf/2602.08499v1
+
+Published Time: Tue, 10 Feb 2026 03:00:45 GMT
+
+Number of Pages: 25
+
+Markdown Content:
+## Contextual Rollout Bandits for Reinforcement Learning with Verifiable Rewards 
+
+Xiaodong Lu 1 2 Xiaohan Wang 2 Jiajun Chai 2 Guojun Yin 2 Wei Lin 2 Zhijun Chen 1 Yu Luo 3
+
+Fuzhen Zhuang 1 Yikun Ban 1 * Deqing Wang 1 * 
+
+Abstract 
+
+Reinforcement Learning with Verifiable Rewards (RLVR) is an effective paradigm for improving the reasoning capabilities of large language mod-els. However, existing RLVR methods utilize roll-outs in an indiscriminate and short-horizon man-ner: responses of heterogeneous quality within each prompt are treated uniformly, and histori-cal rollouts are discarded after a single use. This leads to noisy supervision, poor sample efficiency, and suboptimal policy updates. We address these issues by formulating rollout scheduling in RLVR as a contextual bandit problem and proposing a unified neural scheduling framework that adap-tively selects high-value rollouts throughout train-ing. Each rollout is treated as an arm whose re-ward is defined by the induced performance gain between consecutive optimization steps. The re-sulting scheduler supports both noise-aware intra-group selection and adaptive global reuse of his-torical rollouts within a single principled frame-work. We provide theoretical justification by de-riving sublinear regret bounds and showing that enlarging the rollout buffer improves the achiev-able performance upper bound. Experiments on six mathematical reasoning benchmarks demon-strate consistent gains in performance and train-ing efficiency across multiple RLVR optimization methods. 
+
+1. Introduction 
+
+From OpenAI O1 (Jaech et al., 2024) to DeepSeek R1 (DeepSeek-AI, 2025), recent advancements (Zou et al., 2025; Chen et al., 2025) in large reasoning models have highlighted the crucial role of Reinforcement Learning with Verifiable Rewards (RLVR) in enhancing mathematical rea-
+
+If your have any question about this work, please con-tact via xiaodonglu@buaa.edu.cn or yikunb@buaa.edu.cn .
+
+> 1
+
+Beihang University 2Meituan 3Huawei. Correspondence to: Yikun Ban <yikunb@buaa.edu.cn >, Deqing Wang 
+
+<dqwang@buaa.edu.cn >.
+
+Preprint. February 10, 2026. 
+
+soning capabilities. By grounding policy optimization in verifiable reward signals, RLVR establishes a scalable self-improvement paradigm that iteratively corrects reasoning trajectories (i.e., rollouts) through trajectory generation and verification-driven learning. Advanced RLVR methods (Zheng et al., 2025a; Yu et al., 2025a; Shao et al., 2024; Yang et al., 2026) typically employ group-relative policy optimization, which generates multi-ple responses for a single prompt to derive relative feedback signals. However, these methods often adopt an indiscrimi-nate utilization of responses within a group, incorporating all generated samples into the gradient computation regard-less of their individual learning value. In practice, due to the coarse granularity of rule-based rewards, responses within a group exhibit substantial quality heterogeneity, with many providing weak, noisy, or even misleading supervision, such as guessed-correct solutions (Yue et al., 2025; Arcuschin et al., 2025) and trajectories dominated by redundant rea-soning steps (Li et al., 2025; Huang et al., 2025a). Failing to filter such low-utility rollouts not only incurs unnecessary computational overhead but can also distort policy updates, motivating the need for fine-grained, noise-aware selection within each rollout group. Beyond intra-group noise, existing RLVR pipelines also suffer from a second fundamental limitation: restricted data horizons . Most methods rely exclusively on the latest batch of rollouts for optimization, discarding past trajectories after a single use. This myopic training paradigm leads to poor sample efficiency and limits attainable policy performance, as many high-value rollouts are never revisited. While recent efforts have explored reusing historical data (Hejna et al., 2024; Zhan et al., 2025), these approaches largely depend on static, hand-crafted heuristics and lack adaptivity to evolving training dynamics. How to systematically and adaptively reuse historical rollouts remains underexplored in RLVR. To address the above two challenges, we formulate rollout scheduling as a contextual bandit problem, where each roll-out is viewed as an arm, and the arm reward is derived from the policy performance gain between two consecutive opti-mization steps induced by selecting that rollout. Building on this formulation, we propose a neural data scheduler plugin, named CBS, which decomposes naturally into two 1
+
+> arXiv:2602.08499v1 [cs.LG] 9 Feb 2026 Contextual Rollout Bandits for Reinforcement Learning with Verifiable Rewards
+
+complementary contributions. 
+
+(i) Intra-group rollout selection. To address response-quality heterogeneity within groups, CBS introduces a contextual bandit-based scheduler that performs fine-grained selec-tion within each rollout group. We design a compact 10-dimensional arm representation that encodes policy-optimization-related training dynamics (e.g., reward, ad-vantage, entropy, and clipping statistics), and instantiate the scheduler as an MLP that predicts the future utility of each rollout under online feedback. This enables CBS to auto-matically prioritize informative responses while suppressing noisy or misleading ones during policy optimization. 
+
+(ii) Global Adaptive Rollout Reuse. To overcome the limited-horizon constraint of existing RLVR methods, CBS further extends the scheduler to a global selection regime over a replay buffer of historical rollouts. By unifying online and offline rollout selection under the same contextual bandit framework, CBS adaptively reuses high-value trajectories across training rounds, substantially improving sample effi-ciency and enabling long-horizon policy refinement. We validate the effectiveness of CBS from both theoretical and empirical perspectives. Theoretically, under a simplified yet essential single-rollout selection setting, we establish a formal connection between RLVR data scheduling and contextual bandits, define the per-round regret, and derive a sublinear regret bound for the proposed neural scheduler. We also show that enlarging the replay buffer improves the achievable upper bound of policy performance, providing principled justification for global rollout reuse. Empirically, experiments on six widely used mathematical reasoning benchmarks demonstrate that CBS consistently improves both performance and training efficiency across three rep-resentative policy optimization methods. Ablation studies further verify the effectiveness of the proposed components. Our contributions can be summarized as follows: • Unified Contextual-Rollout Bandit for RLVR. We formulate rollout scheduling in RLVR as a contextual bandit problem and propose a unified neural scheduling framework that supports both (i) noise-aware intra-group rollout selection and (ii) adaptive global reuse of historical rollouts, enabling fine-grained supervision filtering and long-horizon data reuse within a single principled decision-making framework. • Theoretical Guarantees. We establish a formal con-nection between RLVR data scheduling and contextual bandits, and derive sublinear regret bounds for the pro-posed scheduler under a simplified yet essential setting, providing theoretical justification for both local and global rollout selection. • Empirical Effectiveness and Efficiency. Extensive ex-periments on six mathematical reasoning benchmarks demonstrate that the proposed method consistently im-proves both performance and training efficiency across multiple RLVR optimization algorithms, with ablation studies validating the contribution of each component. 
+
+2. Related Work 
+
+2.1. RLVR for LLM Reasoning 
+
+Reinforcement Learning (RL) has emerged as a fundamental paradigm for the post-training of Large Language Models (LLMs), where the model is conceptualized as a policy πθ
+
+that generates tokens as sequential actions to maximize cu-mulative reward signals. Initial developments in this field primarily focused on Reinforcement Learning from Human Feedback (RLHF) (Ouyang et al., 2022; Dai et al., 2024; Christiano et al., 2017; Rafailov et al., 2023; Azar et al., 2024), which utilizes human preference data to either train reward models (Ouyang et al., 2022) or directly guide policy optimization (Rafailov et al., 2023). More recently, there has been a surge of interest in Reinforcement Learning with Verifiable Rewards (RLVR) for verifiable domains such as mathematics and code generation. These approaches (Zheng et al., 2025a; Yu et al., 2025a; Shao et al., 2024; Yang et al., 2026; 2025b) leverage rule-based rewards—such as deter-ministic correctness or execution feedback—to incentivize the model’s reasoning capabilities and have demonstrated significant potential in improving complex problem-solving tasks. Despite these advancements, contemporary RLVR methods typically utilize generated trajectories in an indis-criminate and local manner, ignoring the heterogeneous learning utility of different rollouts. 
+
+2.2. Data Selection for RLVR 
+
+Data selection is a critical technique for effective LLM post-training, which has been extensively studied in SFT (Zhou et al., 2023; Chen et al., 2023; Lu et al., 2024; Muennighoff et al., 2025; Ivison et al., 2025; Xia et al., 2024) and RLHF (Das et al., 2025; Mahmud et al., 2025; Mehta et al., 2023; Shen et al., 2024; Huang et al., 2025b) scenarios to miti-gate data noise and enhance training efficiency. With the rising success of RLVR, recent works have begun to explore data selection mechanisms within this paradigm (Zhang et al., 2025; Zheng et al., 2025b; Hejna et al., 2024; Zhan et al., 2025; Dou et al., 2025; Xu et al., 2025). For instance, GRESO (Zheng et al., 2025b) leverages historical success-failure records of prompts to identify and filter out zero-advantage samples that are unlikely to contribute to policy improvement; while ExGRPO (Zhan et al., 2025) enhances training efficiency by augmenting on-policy data with histor-ical rollouts, specifically prioritizing high-entropy responses generated under prompts of intermediate difficulty. How-ever, current data selection methods for RLVR predomi-nantly rely on manual and method-specific heuristics that 2Contextual Rollout Bandits for Reinforcement Learning with Verifiable Rewards 
+
+are labor-intensive and lack flexibility, leaving the poten-tial for more adaptive and automated mechanisms largely unexplored. 
+
+3. Problem Formulation 
+
+3.1. Preliminary 
+
+3.1.1. G ROUP RELATIVE POLICY OPTIMIZATION 
+
+Group relative policy optimization methods are widely adopted in exiting RLVR paradigm. Specifically, given a question-answer pair (q, a ), the group relative policy optimization method first generates a group of responses 
+
+{oi}Gi=1 using the current policy. The advantage of each response is then estimated by Ai = vi−mean ({vi}Gi=1 ) 
+
+> std ({vi}Gi=1 )
+
+, where 
+
+vi is the reward of the i-th response. The policy πθ is opti-mized by maximizing 
+
+Jθ = E(q,a )∼D, {o}Gi=1 ∼πold (·| q)
+
+"
+
+1
+
+G
+
+> G
+
+X
+
+> i=1
+
+1
+
+|oi|
+
+> |oi|
+
+X
+
+> t=1
+
+Ai∗
+
+Φ( Ai, r i,t (θ), ϵ low , ϵ high )
+
+#
+
+,
+
+(1) where D is the training dataset, Φ is a method-specific clip function, ri,t (θ) = πθ (oi,t |q,o i,<t ) 
+
+> πold (oi,t |q,o i,<t )
+
+is the importance sam-pling weight at the t-th token of oi, πold (·) indicates the policy to generate responses {o}Gi=1 , ϵlow and ϵhigh are the hyperparameters controlling the clip lower bound and the clip upper bound respectively. In this paper, we consider three popular policy optimization methods: GRPO (Shao et al., 2024), DAPO (Yu et al., 2025b), and GSPO (Zheng et al., 2025a), and refer to Appendix A for their detailed introduction. 3.1.2. RLVR TRAINING PIPELINE 
+
+The RLVR training can be considered as a multi-round pol-icy optimization problem. Assume the standard RLVR train-ing spans T rounds. In each round t, a batch of question-answer pairs, Bt = {(qt
+
+> 1
+
+, a t
+
+> 1
+
+), . . . , (qtB , a tB )}, is first ran-domly sampled from the training dataset D, and then a group of responses {oti,j }j∈[G] are generated by the policy model πθt−1 for each question qti , forming a batch of rollout 
+
+Rt = {xti,j }i∈[B],j ∈[G], where xti,j = ( qti , a ti, o ti,j ) 1 indi-cates a piece of rollout data. Then the policy parameter is updated by 2
+
+θt = θt−1 + η1∇θt−1 Jθ (Rt), (2) where Jθ (Rt) indicates the target function in Equation (1), computed using Rt.
+
+> 1
+
+We only show partial fields in xti,j ; any quantity with the same index is an attribute of that rollout (i.e., vti,j indicates reward). 
+
+> 2
+
+We adopt the SGD optimizer here for simplicity. 
+
+3.2. Contextual Rollout Bandit 
+
+We formulate data scheduling as a contextual bandit prob-lem (Ban et al., 2022; Ban & He, 2021). Specifically, we introduce a scheduler that, at each round t, selects a high-quality subset ¯Ct with | ¯Ct| = K from a given rollout set 
+
+Ct. Let f (·) denote a rollout encoding function that maps a subset into a representation. Then, each candidate subset 
+
+C′ ⊆ C t of size K can be viewed as an arm with representa-tion H′ = f (C′). Depending on the candidate’s arm space and the data source, we study the following two scheduling problems. 
+
+Definition 3.1 (Intra-Group Scheduling Problem ).
+
+We aim to downsample training rollouts by retaining only high-quality samples within each group. Formally, for each group of rollouts {xti,j }Gj=1 ⊂ R t, we se-lect a top-p% subset indexed by Sti ⊆ { 1, . . . , G }
+
+with |S ti | = ⌊p% · G⌋, yielding the selected set 
+
+{xti,j }j∈S ti . Denoting the selected rollouts as ¯Ct =
+
+SBi=1 {xti,j }j∈S ti , the policy is optimized by training on 
+
+¯Ct in Equation (2). 
+
+Definition 3.2 (Global Scheduling Problem ). We aim to reuse high-quality historical rollouts . Specifically, we maintain a FIFO buffer that stores rollouts from the most recent L iterations, Ct = Stt′=t−L+1 Rt′ . At round t, we select K high-quality rollouts from Ct to construct a training set ¯Ct ⊆ C t, where | ¯Ct| = K.We set K = |R t| to match the amount of the latest rollouts. The policy is then optimized by training on ¯Ct
+
+in Equation (2). The two scheduling problems will both generate a roll-out sequence ¯C1, ¯C2, · · · , ¯CT and corresponding parame-ter sequence θ1, · · · , θ T . Assume we have an unknown reward function R( ¯Ct, θ t−1, θ t) that evaluates the perfor-mance change from πθt−1 to πθt , after training on ¯Ct. Then the target of the scheduling sequence is to maximize the cumulative reward 
+
+RT =
+
+> T
+
+X
+
+> i=t
+
+R( ¯Ct, θ t−1, θ t). (3) Due to the high storage and computational cost for the LLM policy, it is impractical to accurately evaluate the perfor-mance change θt−1 → θt. Therefore, we resort to a com-putationally efficient surrogate that captures the true perfor-mance gain, and define the reward function as the metric gain between two consecutive rollout data Rt, Rt+1 .3
+
+> 3
+
+From here on, we flatten the two-dimensional indexing into a single dimension, using xti to denote the i-th data instance in Rt.
+
+3Contextual Rollout Bandits for Reinforcement Learning with Verifiable Rewards Scheduler         
+
+> s!!"#
+> Context
+> 𝒞 "
+> Select Data 𝐶 ̅"
+> Scheduler
+> s!!
+> select
+> Context
+> 𝒞 "#$
+> Context Update Scheduler
+> Update
+> Adaptive Neural Scheduler Plugin
+> Policy Model
+> 𝜋 %!"#
+> Rollout
+> ℛ"
+> Policy
+> Optimization
+> Policy Model
+> 𝜋 %!
+> Rollout
+> ℛ"&$
+> generate generate
+> Policy Learnin g
+> Round 1Round t
+
+… Round T…  
+
+> RLVR Training Proces s
+
+Figure 1. Workflow of CBS, introducing a neural scheduler plugin that augments RLVR training by selectively using rollouts. The scheduler also updates based on feedback. 
+
+Definition 3.3 (Performance Gain Reward ). Let 
+
+Vt = mean ({vti |xti ∈ R t}) and Et = mean ({eti|xti ∈Rt}) denote the average reward and entropy for the t
+
+step rollout data, with eti being defined as 
+
+eti = −1
+
+|oti| 
+
+> |oti|
+
+X
+
+> k=1
+
+X
+
+> v∈V
+
+πθt−1 (v|qti , o ti,j<k )∗
+
+log πθt−1 (v|qti , o ti,j<k ),
+
+(4) where V is the vocabulary of the LLM policy. Then the reward function is defined as 
+
+R(Ct, θ t−1, θ t) = Vt+1 − Vt − weI[Et > e min ]∗
+
+(Et+1 − Et),
+
+(5) where we, e min are hyperparamters and I[·] is an indi-cator function. 
+
+Since each mini-batch Bt is randomly sampled from the training set, Vt provides a stochastic estimate of the ex-pected performance of θt−1 on the training set D, and thus 
+
+Vt+1 − Vt reflects the performance improvement between consecutive updates. The term weI[Et > e min ]( Et+1 − Et)
+
+serves as an entropy control term, penalizing entropy in-creases once the entropy exceeds a predefined threshold 
+
+emin , preventing training collapse (shown in Section 6.3). It is also worth noting that the deviation between the stochas-tic estimate and its corresponding expectation is bounded (Lemma B.2). 
+
+4. Methodology 
+
+As shown in Figure 1, we present CBS, a general data selec-tion plugin that can be seamlessly integrated into existing RLVR methods for adaptive rollout selection. CBS em-ploys a neural reward estimator sϕ(·) that predicts arm-level rewards for rollout selection, and continually adapts its pa-rameters based on online feedback. In the following, we first introduce the overall framework, then describe the detailed configuration, and finally explain how to employ the sched-uler to address the two scheduling problems. The overall workflow is summarized in Algorithm 1. 
+
+4.1. Overall Framework of CBS Subset selection via sample scoring. Scoring each roll-out subset C′ ⊂ C t is infeasible due to the combinatorial explosion in the number of arms. We therefore decompose subset-level scoring into per-rollout evaluation. Specifically, let sϕt−1 denote the scheduler at round t, for each rollout 
+
+xti ∈ C t, we construct individual representations hti = f (xti)
+
+and score it via sϕt−1 (hti). Selecting the optimal size-K roll-out subset ¯Ct then reduces to selecting the top-K rollouts. Notably, this decomposition can be justified by a first-order Taylor expansion of the group-level reward, which yields a linear approximation where the overall reward is expressed as the sum of per-sample rewards. Similar linearizations of subset utility are also seen in prior work on data selection for SFT and RLHF, as they enable more efficient subset selection (Xia et al., 2024; Saunshi et al., 2023). Detailed discussion can be found in Appendix C. 
+
+Sample reward. To provide feedback for the sample scoring, we corresponding dispatch the group-level reward 
+
+R( ¯Ct, θ t−1, θ t) to sample-level rewards R(¯ xti, θ t−1, θ t) for each ¯xti ∈ ¯Ct. Inspired by GRPO-style objectives in Equa-tion (1), where each importance weight is scaled by an advantage term, we adopt a simple advantage-based assign-ment of: 
+
+R(¯ xti, θ t−1, θ t) = | ¯Ati|
+
+P   
+
+> ¯xtj∈¯Ct
+
+| ¯Atj | R( ¯Ct, θ t−1, θ t), (6) where the contribution of each sample is related to its ad-vantage magnitude. 
+
+Scheduler update. We further update the scheduler pa-rameters online, allowing it to adapt its scheduling policy in response to reward feedback. Specifically, after receiv-ing the sample feedback, we will optimize the scheduler according to the sample reward, which is 
+
+ϕt = ϕt−1 − η2∇ϕt−1
+
+1
+
+K
+
+> K
+
+X
+
+> j=1
+
+
+
+sϕt−1 (¯hti)−
+
+R(¯ xti, θ t−1, θ t)
+
+2
+
+,
+
+(7) where η2 is the learning rate of the scheduler. Since the feedback at round t depends on the rollout in round t+1 , we perform the scheduler update just after the rollout phase at round t + 1 (see Algorithm 1), before scheduling rollouts. 4Contextual Rollout Bandits for Reinforcement Learning with Verifiable Rewards 
+
+Table 1. The 10-dimensional training-dynamics representation is defined for each rollout xti ∈ C t.                                                                      
+
+> Description Mathematical Formulation Reward-related signals (Intra-group relative merit)
+> Reward vti
+> Advantage Ati
+> Mean group reward mean  {vtj|xtjis in the same group as xti}
+> Std of group reward std  {vtj|xtjis in the same group as xti}
+> Length-related signals (Response volume and integrity)
+> Normalized length 1|oti|/L max
+> Truncation flag I[otiis truncated ]
+> Policy perception metrics (Model state projected onto data)
+> Entropy 2−1
+> |oti|
+> |oti|
+> X
+> j=1
+> X
+> v∈V
+> πθt−(v|qti, o ti,<j )·log πθt−(v|qti, o ti,<j )
+> Clip ratio 1
+> |oti|
+> |oti|
+> X
+> j=1
+> I[rti,j (θt−)is clipped ]
+> Data interaction history (Usage and freshness)
+> Usage count 3Xt−1
+> k=1 I[xti∈¯Ck]
+> Sample age 4t−max {k|k < t, o ti∈ R k}
+> 1Lmax denotes the maximum response length.
+> 2t−denotes the latest round that xtiis used for policy optimization, or the round at which it was generated if it has never been used. The same for clip ratio.
+> 3The number of times xtiis used for policy optimization.
+> 4The number of rounds elapsed since the sample was generated.
+
+4.2. Detailed Configuration Arm representation. A notable amount of prior work has shown that training dynamics associated with roll-out data—such as advantage, entropy, and clip ratio—are strongly correlated with the underlying data value (Zhan et al., 2025; Liu et al., 2025b; Zhu et al., 2025). Inspired by this, we encode each arm xti into a 10-dimensional training-dynamic vector hti = f (xti) ∈ R10 . As shown in Table 1, these features can be divided into four groups of reward-related signals , length-related signals , policy perception metrics , and data interaction history . Although each feature is individually simple, their proper combination yields a rich representation of rollouts, making it possible to iden-tify informative patterns, such as high or low entropy under fresh or stale data regimes. Notably, constructing these rep-resentations incurs negligible computational overhead (will be shown in Section 6.2): most features are off-the-shelf metrics readily available in standard RL frameworks (e.g., verl), and the relatively complex policy perception metrics can be efficiently obtained during each forward pass without requiring an additional forward computation. 
+
+Scheduler architecture and decision. We design the sched-uler as a multi-layer perceptron (MLP). For scheduling, we select the top-K rollout data based on their scores. Besides, to balance exploration and exploitation, we use epsilon-greedy to select between the highest-scoring and the newest data. Specifically, the i-th data ¯xti ∈ ¯Ct is selected by 
+
+¯xti =
+
+
+
+arg max  
+
+> x∈C t\{ ¯xtj}i−1
+> j=1
+
+sϕt−1 (h) w.p. 1 − ϵt,
+
+arg min  
+
+> x∈C t\{ ¯xtj}i−1
+> j=1
+
+fd(x) w.p. ϵt. (8) where h indicates the representation of x and fd(x) ∈ R is the sample age of x in Table 1. The probability changes as 
+
+ϵt =
+
+(
+
+1.0 t ≤ Tw,
+
+max( ϵ0 − (t − 1) ∗ ∆ϵ, ϵ min ) t > T w, (9) where Tw, ∆ϵ, ϵ min , ϵ 0 are hyperparameters controlling the warmup step, probability decay weight, minimum explore probability, and initial explore probability, respectively. 
+
+Reward augmentation. To improve the training stability of the scheduler, we normalize the group reward by Exponen-tial Moving Average (EMA). Specifically, we first replace the raw reward gain in (5) with an EMA one and squeeze it within [0 , 1] by Sigmoid, which is 
+
+ˆR(Ct, θ t−1, θ t) = 
+
+
+
+Sigmoid 
+
+ (Vt+1 − Vt) − μt
+
+√σt
+
+
+
+− weI[Et > e min ]( Et+1 − Et)
+
+
+
+,μt = (1 − α)μt−1 + α(Vt+1 − Vt),σt = (1 − α)σt−1 + α [( Vt+1 − Vt) − μt]2
+
+(10) where α is a hyperparameter to control the degree of smooth-ness. Additionally, we find that the denominator in (6) yields very small sample weights when many rollouts are selected, leading to unstable scheduler training. We therefore remove the denominator and redefine the sample reward as 
+
+ˆR(¯ xti, θ t−1, θ t) = |Ati| ∗ ˆR( ¯Ct, θ t−1, θ t) (11) Finally, we summarize the overall workflow in Algorithm 1. 
+
+4.3. Employing the Scheduler Two Scheduling Problems Intra-group scheduling. For intra-group scheduling, we set the context set to the latest batch of rollouts (i.e., Ct = Rt)and organize rollouts by group. In each scheduling round, the scheduler respectively selects the top-p% rollouts within each group and aggregates them to form the selected set ¯Ct.
+
+Global scheduling problem. For the global scheduling problem, we employ a FIFO replay buffer to store roll-outs from the latest L steps and perform global selection to choose K rollouts to form the set ¯Ct. Moreover, since the policy perception metrics and data interaction history in Table 1 evolve across training rounds—where sample age 
+
+increases over time, while other features change only when a rollout is selected for policy optimization—we update these features at the end of each round (see Algorithm 1). 5Contextual Rollout Bandits for Reinforcement Learning with Verifiable Rewards 
+
+5. Theoretical Motivation 
+
+In this section, we more formally describe the connec-tion between the data scheduling and contextual bandit problem to provide intuitive motivation for CBS. In our analysis, we abstract away engineering details in Section 4, define the reward as the next-round performance (i.e., 
+
+R( ¯Ct, θ t−1, θ t) = Vt), and omit the ϵ-greedy exploration (i.e., ϵt ≡ 0). For clarity, we consider the single-sample se-lection setting—we select one rollout per round—where the sample reward will coincide with the subset reward. We re-fer to Appendix C for the analysis of batch selection. Proofs can be found in Appendix B Under the above setting, Algorithm 1 naturally reduces to a standard contextual bandit problem. Let M = |C t|
+
+denote the context size. At each round t, a set of arms 
+
+Ct = {xt
+
+> 1
+
+, . . . , x tM } and their associated representations 
+
+Ht = {ht
+
+> 1
+
+, . . . , h tM } are presented to the scheduler. An arm at ∈ [M ] is selected, and a reward ˆrt is observed for the chosen arm. Rewriting the policy optimization and the expected rewards as functions below, 
+
+A(x, θ t−1) = θt−1 + η∇θt−1 Jθ (x),g(θt) = EBt+1 ∼D ,Rt+1 ∼πθt (·|B t) [Vt+1 ] , (12) the rt can be considered as a stochastic estimate of func-tion g(A(xtat , θ t−1)) . Therefore, we can define the optimal arm as a∗ 
+
+> t
+
+= arg max x∈C t g(A(x, θ t−1)) . The cumulative regret is then given as 
+
+RT =
+
+> T
+
+X
+
+> t=1
+
+h
+
+g(A(xta∗ 
+
+> t
+
+, θ t−1)) − g(A(xtat , θ t−1)) 
+
+i
+
+. (13) In the following, we interchangeably use g(A(xta, θ t−1)) 
+
+and rta for notation simplicity. Our theoretical results build on the Neural Tangent Ker-nel (NTK) framework, which provides a tractable charac-terization of training dynamics in the overparameterized regime. We instantiate the selector network sϕ(·) as a fully connected network with depth L ≥ 2 and width m (de-tails in Appendix B.1). We slightly abuse the notations and rewrite the arm representations {hti}i∈[M ],t ∈[T ] and rewards {rti }t∈[T ],i ∈[M ] into {hi}i∈[T M ] and {ri}i∈[T M ]
+
+respectively. Let H ∈ RT M ×T M denote NTK matrix of 
+
+{hi}i∈[T M ] (defined in Appendix B.1). We adopt the follow-ing two standard assumptions for contextual bandit analysis (Zhou et al., 2020; Zhang et al., 2021; Qi et al., 2023; Dai et al., 2023; Jia et al., 2022; Ban et al., 2024). 
+
+Assumption 5.1. For any i ∈ [K], t ∈ [T ], θ ∈ Rd,
+
+∥hti∥2 = 1 and g(θ) ∈ [0 , 1] .
+
+Assumption 5.2. There exist λ0 > 0 that H ⪰ λ0I.The assumptions are mild: the first is satisfied when the RLVR reward is bounded in [0 , 1] and the arm representa-tions are ℓ2-normalized before being fed into sϕ, while the second holds as long as there are no identical representations among {hi}i∈[T M ].We first investigate how the buffer size of global schedul-ing impacts the final policy performance. Holding all other hyperparameters fixed, we define φ(M ) =max ϕ Emax t∈[T ] g(θt) as the optimal expected perfor-mance achievable during the training process, by setting buffer size to M and selecting the scheduler policy sϕ. The expectation is taken with respect to the randomness in the training procedure (i.e., rollout phase). We then state the following theorem. 
+
+Theorem 5.3. Let B denote the batch size and G de-note the group size. There exist constants C1, C 2 > 0
+
+such that, if m ≥ C1 and L ≥ C2, then for any 
+
+i, j ∈ [T ] with i ≥ j, it holds that 
+
+φ(iBG ) ≥ φ(jBG ).
+
+Theorem 5.3 emphasizes the benefits of reusing histori-cal rollouts, demonstrating that selectively leveraging roll-outs from multiple prior rounds—not just the most recent round—can enhance the performance upper bound of the policy model. Next, we present the regret bound for CBS. 
+
+Theorem 5.4. Let r = [ r1, · · · , r T M ] ∈ RT M be the stacked reward feature. If Assumption 5.1 and Assump-tion 5.2 hold, for any δ ∈ (0 , 1) , there exists a choice of scheduler hyperparameters (m, η 2) such that, with probability at least 1 − δ,
+
+RT ≤ ˜O
+
+√T
+
+ ˜d + S
+
+p ˜d
+
+
+
++ √T
+
+
+
+,
+
+where S = √rT H−1r and ˜d = log det( I+H)log(1+ T M ) .
+
+Theorem 5.4 provides a more fine-grained characterization of CBS. First, it shows that the regret increases sublinearly with the time horizon T , achieving a ˜O(√T ) regret bound. Second, it reveals that the regret is intrinsically related to the effective dimension ˜d of the neural tangent kernel (NTK) and the geometric structure of the reward captured by S, where a simpler feature structures (small ˜d) and better-aligned rewards (small S) will lead to a smaller regret. 
+
+6. Experimental Results 
+
+6.1. Experimental Settings Models and datasets. We conduct experiments using Qwen3 Base models (Yang et al., 2025a) of various sizes, namely Qwen3-1.7B-Base, Qwen3-4B-Base, and Qwen3-8B-Base. Following (Yang et al., 2025b), the training set is constructed by combining the DAPO dataset (Yu et al., 6Contextual Rollout Bandits for Reinforcement Learning with Verifiable Rewards 
+
+Table 2. Performance of different RLVR methods when equipped with CBS, where CBS indicates the global scheduler and the CBS* indicates the intra-group scheduler. Relative improvement (Rel. Impr.) is computed w.r.t. the corresponding policy optimization method, based on the Average score. 
+
+Method AIME24 AIME25 AMC23 MATH500 Minerva Olympiad Average Rel. Impr. 
+
+Qwen3-1.7B-Base 
+
+Base Model 1.77 0.73 15.31 29.10 9.83 11.09 11.31 –GRPO 9.58 4.38 42.97 60.95 26.29 29.30 28.91 –GRPO + CBS 8.12 3.12 45.78 63.90 28.95 31.16 30.17 +4.4% GRPO + CBS* 11.98 7.81 45.47 64.80 26.10 30.30 31.08 +7.5% DAPO 6.35 4.69 37.97 58.70 20.59 27.23 25.92 –DAPO + CBS 8.96 4.90 46.48 63.65 26.01 29.97 30.00 +15.7% DAPO + CBS* 10.52 6.04 45.16 62.45 24.82 31.01 30.00 +15.7% GSPO 10.73 5.52 43.52 65.95 27.94 31.53 30.87 –GSPO + CBS 11.35 5.83 46.72 65.70 28.22 33.09 31.82 +3.1% GSPO + CBS* 12.50 7.08 43.36 67.50 30.79 33.23 32.41 +5.0% 
+
+Qwen3-4B-Base 
+
+Base Model 5.10 3.65 21.33 31.90 10.85 17.54 15.06 –GRPO 21.04 15.21 61.56 73.70 33.55 42.32 41.23 –GRPO + CBS 20.31 18.44 63.05 74.45 34.47 43.73 42.41 +2.9% GRPO + CBS* 20.52 16.56 62.19 75.55 34.93 43.43 42.20 +2.4% DAPO 16.88 17.40 62.97 75.05 31.71 43.95 41.33 –DAPO + CBS 20.62 20.94 62.89 75.85 36.58 46.70 43.93 +6.3% DAPO + CBS* 18.96 17.81 63.83 76.30 34.83 44.88 42.77 +3.5% GSPO 18.44 15.21 67.34 77.55 41.18 44.92 44.11 –GSPO + CBS 21.46 18.33 67.03 76.05 36.49 44.18 43.92 -0.4% GSPO + CBS* 21.25 19.17 66.02 77.85 34.83 46.55 44.28 +0.4% 
+
+Qwen3-8B-Base 
+
+Base Model 8.33 6.56 35.78 53.25 19.67 26.22 24.97 –GRPO 20.52 17.29 67.34 76.15 37.50 47.14 44.32 –GRPO + CBS 23.65 20.83 69.45 77.45 38.79 48.59 46.46 +4.8% GRPO + CBS* 26.46 19.48 69.92 77.45 38.88 47.59 46.63 +5.2% DAPO 22.29 19.27 73.20 77.65 37.78 48.29 46.41 –DAPO + CBS 23.54 21.88 75.55 78.25 39.71 49.41 48.06 +3.6% DAPO + CBS* 24.38 19.58 68.52 76.85 37.50 46.96 45.63 -1.7% GSPO 27.92 19.38 73.20 79.20 40.53 48.37 48.10 –GSPO + CBS 23.02 20.73 73.83 83.10 45.13 49.93 49.29 +2.5% GSPO + CBS* 25.10 20.52 72.34 79.65 42.00 51.08 48.45 +0.7% 
+
+2025a) and a subset of the Math dataset (Hendrycks et al., 2021) containing level 3-5 problems, yielding a total of 21723 mathematical problems. For evaluation, we adopt a suite of benchmark datasets, including AIME24, AIME25, AMC23, MATH500 (Hendrycks et al., 2021), Minerva (Lewkowycz et al., 2022), and Olympiad (He et al., 2024). 
+
+Implementation details. We implement CBS based on verl (Sheng et al., 2025). Maximum response length is set to 4096 for all experiments. Following (Zhan et al., 2025; Yang et al., 2025b), we report Avg@4 for datasets with larger problems (i.e., MATH500, Minerva, Olympiad) and Avg@32 for datasets with smaller problems (i.e., AIME24, AIME25 and AMC23). More details regarding the experi-mental setup are provided in the Appendix D. The code is available at the repository. 
+
+6.2. Main Results Intra-group scheduling improves both performance and computational efficiency. As shown in Table 2, integrat-ing CBS* into representative policy optimization methods consistently yields substantial performance gains across different model sizes, demonstrating the effectiveness and robustness of our adaptive selection strategy. In particu-lar, CBS* achieves average relative improvements of 5.0% ,
+
+5.8% , and 2.0% for GRPO, DAPO, and GSPO, respectively. Moreover, Figure 2(b) shows that CBS* reduces the average policy optimization time by 50.4% across the three methods, as fewer training trajectories are required per actor update. These results indicate that prioritizing a subset of high-value rollouts provides a more effective and efficient paradigm for RLVR training compared to using the full rollout set. 7Contextual Rollout Bandits for Reinforcement Learning with Verifiable Rewards 
+
+Global scheduling further improves training efficiency. 
+
+As shown in Table 2, CBS also consistently enhances dif-ferent policy optimization methods, yielding relative im-provements of 4.0% , 8.5% , and 1.7% for GRPO, DAPO, and GSPO, respectively. Both CBS and CBS* continue to improve performance even when a rule-based data filter is applied (e.g., DAPO with dynamic sampling), suggest-ing that heuristic selection rules are insufficient to capture the complex and dynamically evolving utility of rollout data during training. Furthermore, Figure 2 (a) shows that CBS achieves higher training rewards than both CBS* and the original policy optimization baseline, indicating that appropriately reusing historical rollouts can further improve training efficiency. Importantly, the computational over-head of the scheduler is negligible: as shown in Table 3, buffer-related operations (e.g., scheduler updates and arm representation construction) account for less than 4% of total training time and decrease further as model size in-creases. Due to space limitations, more training dynamics curves are provided in Appendix E.1. 0 100 200 300 400 500              
+
+> Step
+> 0.2
+> 0.3
+> 0.4
+> 0.5
+> 0.6
+> Train Reward
+> GRPO (4B): Train Reward vs Step
+> GRPO
+> GRPO + CBS
+> GRPO + CBS* 025 50 75 100 125 150 175 200
+> Step
+> 0.15
+> 0.20
+> 0.25
+> 0.30
+> 0.35
+> 0.40
+> 0.45
+> 0.50
+> 0.55
+> Train Reward
+> DAPO (4B): Train Reward vs Step
+> DAPO
+> DAPO + CBS
+> DAPO + CBS* 0100 200 300 400 500
+> Step
+> 0.2
+> 0.3
+> 0.4
+> 0.5
+> 0.6
+> Train Reward
+> GSPO (4B): Train Reward vs Step
+> GSPO
+> GSPO + CBS
+> GSPO + CBS*
+
+(a) Training reward at each step. 0 100 200 300 400 500                 
+
+> Step
+> 20
+> 30
+> 40
+> 50
+> 60
+> 70
+> 80
+> 90
+> Actor Update Time (s)
+> Warmup
+> End 55.7%
+> GRPO (4B): Actor Update Time Comparison
+> GRPO
+> GRPO + CBS*
+> GRPO (avg: 73.6s)
+> GRPO + CBS* (avg: 32.6s)
+> Warmup end (step 50) 025 50 75 100 125 150 175 200
+> Step
+> 40
+> 60
+> 80
+> 100
+> 120
+> Actor Update Time (s)
+> Warmup
+> End 36.4%
+> DAPO (4B): Actor Update Time Comparison
+> DAPO
+> DAPO + CBS*
+> DAPO (avg: 80.8s)
+> DAPO + CBS* (avg: 51.4s)
+> Warmup end (step 50) 0100 200 300 400 500
+> Step
+> 20
+> 30
+> 40
+> 50
+> 60
+> 70
+> 80
+> 90
+> 100
+> Actor Update Time (s)
+> Warmup
+> End 59.1%
+> GSPO (4B): Actor Update Time Comparison
+> GSPO
+> GSPO + CBS*
+> GSPO (avg: 75.3s)
+> GSPO + CBS* (avg: 30.8s)
+> Warmup end (step 50)
+
+(b) Policy optimization at each step, where the horizontal dashed line denotes the mean optimization time. 
+
+Figure 2. Train dynamics of different RLVR methods. 
+
+Table 3. Buffer-related runtime overhead (% of total time) 
+
+Scheduler Method 1.7B 4B 8B CBS GRPO 3.83 1.45 1.15 DAPO 2.88 1.37 1.00 GSPO 1.97 1.79 1.56 CBS* GRPO 1.70 0.92 0.84 DAPO 1.95 0.83 0.69 GSPO 1.98 0.90 0.79 
+
+6.3. Ablation Study 
+
+To validate the effectiveness of the proposed submodules, we conduct an ablation study by comparing CBS with the following variants: (1) replacing the neural scheduler with random selection, denoted as Random ; (2) replacing the EMA reward gain in Equation (10) with the raw reward gain (i.e., Vt+1 − Vt), denoted as w/o EMA ; and (3) removing the entropy penalty in Equation (5), denoted as w/o Entropy .GRPO DAPO GSPO     
+
+> 30
+> 32
+> 34
+> 36
+> 38
+> 40
+> 42
+> 44
+> 46
+> Average Score (%)  41.41
+> 39.67
+> 40.55
+> 41.72
+> 40.49
+> 42.21
+> 42.60
+> 40.94
+> 43.80
+> 42.41
+> 43.93 43.92
+> Ablation Study (Global Scheduling)
+> Random w/o EMA w/o Entropy CBS
+
+Figure 3. Ablation study results on Qwen3-4B-Base. 25 50 75 100 125 150 175 200         
+
+> Step
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> 1.0
+> 1.2
+> 1.4
+> Entropy
+> DAPO - Entropy Comparison
+> w/o Entropy
+> CBS
+> 40 60 80 100 120 140 160 180 200
+> Step
+> 0.39
+> 0.40
+> 0.41
+> 0.42
+> 0.43
+> 0.44
+> Average Score on Eval Set
+> DAPO - Score Comparison
+> w/o Entropy
+> CBS
+
+Figure 4. Comparison of Entropy and average score on the evalua-tion set for CBS and w/o Entropy. 
+
+As shown in Figure 3, CBS generally achieves superior performance compared to other variants, demonstrating the effectiveness of the proposed submodules. Notably, Ran-dom degrades the performance of all policy optimization methods, suggesting that data selection is non-trivial, as naive random sampling may introduce unstable or conflict-ing training signals. In Figure 4, we further compare the entropy dynamics of w/o Entropy and CBS. The results show that, without the entropy penalty, the entropy of w/o Entropy 
+
+keeps increasing and the performance deteriorates accord-ingly, highlighting the necessity of the entropy penalty term. More ablation study results can be found in Appendix E.2. 
+
+Other experimental results. Due to space limitations, we put other experimental results in the Appendix, including hy-perparameter sensitivity analysis (Appendix E.3) and sched-uler pattern analysis (Appendix E.4). 
+
+7. Conclusion 
+
+In this paper, we present CBS, a contextual bandit-based scheduler that supports adaptive selection of high-value roll-outs for both intra-group and global rollout scheduling prob-lems. By encoding each rollout as a 10-dimensional training dynamics vector and using an MLP-based scheduler that learns adaptively from online policy feedback, CBS effec-tively prioritizes trajectories with high optimization poten-tial, thereby significantly improving both final performance and training efficiency across three popular RLVR meth-ods. Currently, CBS relies on a lightweight 10-dimensional representation of training dynamics for computational effi-ciency. Future work could explore integrating deep semantic representations from the LLM policy to uncover more nu-anced selection patterns, further unlocking the potential of adaptive rollout scheduling. 8Contextual Rollout Bandits for Reinforcement Learning with Verifiable Rewards 
+
+Impact Statement 
+
+This paper presents an adaptive rollout scheduler whose goal is to advance the field of Reinforcement Learning with Verifiable Rewards. There are many potential societal con-sequences of our work, none which we feel must be specifi-cally highlighted here. 
+
+References 
+
+Arcuschin, I., Janiak, J., Krzyzanowski, R., Rajamanoha-ran, S., Nanda, N., and Conmy, A. Chain-of-thought reasoning in the wild is not always faithful. CoRR ,abs/2503.08679, 2025. Azar, M. G., Guo, Z. D., Piot, B., Munos, R., Rowland, M., Valko, M., and Calandriello, D. A general theoretical paradigm to understand learning from human preferences. In International Conference on Artificial Intelligence and Statistics , 2024. Ban, Y. and He, J. Local clustering in contextual multi-armed bandits. In Proceedings of the Web Conference 2021 , pp. 2335–2346, 2021. Ban, Y., Yan, Y., Banerjee, A., and He, J. EE-net: Exploitation-exploration neural networks in contextual bandits. In International Conference on Learning Rep-resentations , 2022. URL https://openreview. net/forum?id=X_ch3VrNSRg .Ban, Y., Yan, Y., Banerjee, A., and He, J. Neural ex-ploitation and exploration of contextual bandits. CoRR ,abs/2305.03784, 2023. Ban, Y., Qi, Y., Wei, T., Liu, L., and He, J. Meta clus-tering of neural bandits. In ACM SIGKDD Conference on Knowledge Discovery and Data Mining (SIGKDD) ,2024. Chen, H., Zhang, Y., Zhang, Q., Yang, H., Hu, X., Ma, X., Yanggong, Y., and Zhao, J. Maybe only 0.5% data is needed: A preliminary exploration of low training data instruction tuning. CoRR , abs/2305.09246, 2023. Chen, Z., Ai, T., Li, Y., Li, G., Wei, Y., Zhou, W., Li, G., Yu, B., Chen, Z., Sun, H., Zhuang, F., Li, J., Wang, D., and Ban, Y. Llmboost: Make large language models stronger with boosting, 2025. URL https://arxiv. org/abs/2512.22309 .Christiano, P. F., Leike, J., Brown, T. B., Martic, M., Legg, S., and Amodei, D. Deep reinforcement learning from human preferences. In Conference on Neural Information Processing Systems (NeurIPS) , 2017. Dai, J., Pan, X., Sun, R., Ji, J., Xu, X., Liu, M., Wang, Y., and Yang, Y. Safe RLHF: safe reinforcement learning from human feedback. In International Conference on Learning Representations (ICLR) , 2024. Dai, Z., Shu, Y., Verma, A., Fan, F. X., Low, B. K. H., and Jaillet, P. Federated neural bandits. In International Conference on Learning Representations (ICLR) , 2023. Das, N., Chakraborty, S., Pacchiano, A., and Chowdhury, S. R. Active preference optimization for sample efficient RLHF. In Machine Learning and Knowledge Discov-ery in Databases. Research Track- European Conference, ECML PKDD , volume 16017 of Lecture Notes in Com-puter Science , pp. 96–112. Springer, 2025. DeepSeek-AI. Deepseek-r1: Incentivizing reasoning ca-pability in llms via reinforcement learning. CoRR ,abs/2501.12948, 2025. Dou, S., Wu, M., Xu, J., Zheng, R., Gui, T., and Zhang, Q. Improving RL exploration for LLM reasoning through retrospective replay. In Natural Language Processing and Chinese Computing - 14th National CCF Confer-ence, NLPCC 2025 , volume 16102 of Lecture Notes in Computer Science , pp. 594–606. Springer, 2025. He, C., Luo, R., Bai, Y., Hu, S., Thai, Z. L., Shen, J., Hu, J., Han, X., Huang, Y., Zhang, Y., Liu, J., Qi, L., Liu, Z., and Sun, M. Olympiadbench: A challenging benchmark for promoting AGI with olympiad-level bilingual multimodal scientific problems. In Proceedings of the 62nd Annual Meeting of the Association for Computational Linguistics ,2024. Hejna, J., Bhateja, C., Jiang, Y., Pertsch, K., and Sadigh, D. Re-mix: Optimizing data mixtures for large scale imitation learning. CoRR , abs/2408.14037, 2024. Hendrycks, D., Burns, C., Kadavath, S., Arora, A., Basart, S., Tang, E., Song, D., and Steinhardt, J. Measuring mathematical problem solving with the MATH dataset. In Conference on Neural Information Processing Systems (NeurIPS) , 2021. Huang, Y., Chen, H., Ruan, S., Zhang, Y., Wei, X., and Dong, Y. Mitigating overthinking in large reasoning models via manifold steering. CoRR , abs/2505.22411, 2025a. Huang, Z., Ban, Y., Fu, L., Li, X., Dai, Z., Li, J., et al. Adaptive batch-wise sample scheduling for direct prefer-ence optimization. In Conference on Neural Information Processing Systems (NeurIPS) , 2025b. Ivison, H., Zhang, M., Brahman, F., Koh, P. W., and Dasigi, P. Large-scale data selection for instruction tuning. CoRR ,abs/2503.01807, 2025. 9Contextual Rollout Bandits for Reinforcement Learning with Verifiable Rewards 
+
+Jacot, A., Hongler, C., and Gabriel, F. Neural tangent kernel: Convergence and generalization in neural networks. In 
+
+Conference on Neural Information Processing Systems (NeurIPS) , 2018. Jaech, A., Kalai, A., Lerer, A., Richardson, A., El-Kishky, A., Low, A., Helyar, A., Madry, A., Beutel, A., Carney, A., Iftimie, A., Karpenko, A., Passos, A. T., Neitz, A., Prokofiev, A., Wei, A., Tam, A., Bennett, A., Kumar, A., Saraiva, A., Vallone, A., Duberstein, A., Kondrich, A., Mishchenko, A., Applebaum, A., Jiang, A., Nair, A., Zoph, B., Ghorbani, B., Rossen, B., Sokolowsky, B., Barak, B., McGrew, B., Minaiev, B., Hao, B., Baker, B., Houghton, B., McKinzie, B., Eastman, B., Lugaresi, C., Bassin, C., Hudson, C., Li, C. M., de Bourcy, C., Voss, C., Shen, C., Zhang, C., Koch, C., Orsinger, C., Hesse, C., Fischer, C., Chan, C., Roberts, D., Kappler, D., Levy, D., Selsam, D., Dohan, D., Farhi, D., Mely, D., Robinson, D., Tsipras, D., Li, D., Oprica, D., Freeman, E., Zhang, E., Wong, E., Proehl, E., Cheung, E., Mitchell, E., Wallace, E., Ritter, E., Mays, E., Wang, F., Such, F. P., Raso, F., Leoni, F., Tsimpourlas, F., Song, F., von Lohmann, F., Sulit, F., Salmon, G., Parascandolo, G., Chabot, G., Zhao, G., Brockman, G., Leclerc, G., Salman, H., Bao, H., Sheng, H., Andrin, H., Bagherinezhad, H., Ren, H., Lightman, H., Chung, H. W., Kivlichan, I., O’Connell, I., Osband, I., Gilaberte, I. C., and Akkaya, I. Openai o1 system card. CoRR , abs/2412.16720, 2024. Jia, Y., Zhang, W., Zhou, D., Gu, Q., and Wang, H. Learning neural contextual bandits through perturbed rewards. In 
+
+International Conference on Learning Representations (ICLR) , 2022. Lewkowycz, A., Andreassen, A., Dohan, D., Dyer, E., Michalewski, H., Ramasesh, V. V., Slone, A., Anil, C., Schlag, I., Gutman-Solo, T., Wu, Y., Neyshabur, B., Gur-Ari, G., and Misra, V. Solving quantitative reasoning problems with language models. In Conference on Neu-ral Information Processing Systems (NeurIPS) , 2022. Li, Z., Liang, X., Tang, Z., Ji, L., Wang, P., Xu, H., W, X., Huang, H., Deng, W., Gong, Y., Guo, Z., Liu, X., Yin, F., and Liu, C. Tl;dr: Too long, do re-weighting for efficient LLM reasoning compression. CoRR , abs/2506.02678, 2025. Liu, B., Wang, A., Min, Z., Yao, L., Zhang, H., Liu, Y., Zeng, A., and Su, J. Spec-rl: Accelerating on-policy reinforcement learning via speculative rollouts. arXiv preprint arXiv:2509.23232 , 2025a. Liu, Z., Chen, C., Li, W., Qi, P., Pang, T., Du, C., Lee, W. S., and Lin, M. Understanding r1-zero-like training: A critical perspective. CoRR , abs/2503.20783, 2025b. Lu, K., Yuan, H., Yuan, Z., Lin, R., Lin, J., Tan, C., Zhou, C., and Zhou, J. #instag: Instruction tagging for analyz-ing supervised fine-tuning of large language models. In 
+
+International Conference on Learning Representations (ICLR) , 2024. Mahmud, S., Nakamura, M., and Zilberstein, S. MAPLE: A framework for active preference learning guided by large language models. In Walsh, T., Shah, J., and Kolter, Z. (eds.), AAAI Conference on Artificial Intelligence (AAAI) ,2025. Mehta, V., Das, V., Neopane, O., Dai, Y., Bogunovic, I., Schneider, J. G., and Neiswanger, W. Sample efficient reinforcement learning from human feedback via active exploration. CoRR , abs/2312.00267, 2023. Muennighoff, N., Yang, Z., Shi, W., Li, X. L., Fei-Fei, L., Hajishirzi, H., Zettlemoyer, L., Liang, P., Cand `es, E. J., and Hashimoto, T. s1: Simple test-time scaling. CoRR ,abs/2501.19393, 2025. Ouyang, L., Wu, J., Jiang, X., Almeida, D., Wainwright, C. L., Mishkin, P., Zhang, C., Agarwal, S., Slama, K., Ray, A., Schulman, J., Hilton, J., Kelton, F., Miller, L., Simens, M., Askell, A., Welinder, P., Christiano, P. F., Leike, J., and Lowe, R. Training language models to follow instructions with human feedback. In Conference on Neural Information Processing Systems (NeurIPS) ,2022. Qi, Y., Ban, Y., and He, J. Graph neural bandits. In Proceed-ings of the 29th ACM SIGKDD Conference on Knowledge Discovery and Data Mining , pp. 1920–1931, 2023. Rafailov, R., Sharma, A., Mitchell, E., Manning, C. D., Ermon, S., and Finn, C. Direct preference optimization: Your language model is secretly a reward model. In 
+
+Conference on Neural Information Processing Systems (NeurIPS) , 2023. Saunshi, N., Gupta, A., Braverman, M., and Arora, S. Un-derstanding influence functions and datamodels via har-monic analysis. In International Conference on Learning Representations (ICLR) . OpenReview.net, 2023. Shao, Z., Wang, P., Zhu, Q., Xu, R., Song, J., Zhang, M., Li, Y. K., Wu, Y., and Guo, D. Deepseekmath: Pushing the limits of mathematical reasoning in open language models. CoRR , abs/2402.03300, 2024. Shen, J. H., Sharma, A., and Qin, J. Towards data-centric RLHF: simple metrics for preference dataset comparison. 
+
+CoRR , abs/2409.09603, 2024. Sheng, G., Zhang, C., Ye, Z., Wu, X., Zhang, W., Zhang, R., Peng, Y., Lin, H., and Wu, C. Hybridflow: A flexible and efficient RLHF framework. In Proceedings of the 
+
+10 Contextual Rollout Bandits for Reinforcement Learning with Verifiable Rewards 
+
+Twentieth European Conference on Computer Systems, EuroSys 2025, Rotterdam, The Netherlands, 30 March 2025 - 3 April 2025 , 2025. Wang, Z., Awasthi, P., Dann, C., Sekhari, A., and Gentile, C. Neural active learning with performance guarantees. In Conference on Neural Information Processing Systems (NeurIPS) , 2021. Xia, M., Malladi, S., Gururangan, S., Arora, S., and Chen, D. LESS: selecting influential data for targeted instruction tuning. In International Conference on Machine Learning (ICML) , 2024. Xu, Y. E., Savani, Y., Fang, F., and Kolter, Z. Not all rollouts are useful: Down-sampling rollouts in LLM reinforce-ment learning. CoRR , abs/2504.13818, 2025. Yang, A., Li, A., Yang, B., Zhang, B., Hui, B., Zheng, B., Yu, B., Gao, C., Huang, C., Lv, C., Zheng, C., Liu, D., Zhou, F., Huang, F., Hu, F., Ge, H., Wei, H., Lin, H., Tang, J., Yang, J., Tu, J., Zhang, J., Yang, J., Yang, J., Zhou, J., Lin, J., Dang, K., Bao, K., Yang, K., Yu, L., Deng, L., Li, M., Xue, M., Li, M., Zhang, P., Wang, P., Zhu, Q., Men, R., Gao, R., Liu, S., Luo, S., Li, T., Tang, T., Yin, W., Ren, X., Wang, X., Zhang, X., Ren, X., Fan, Y., Su, Y., Zhang, Y., Zhang, Y., Wan, Y., Liu, Y., Wang, Z., Cui, Z., Zhang, Z., Zhou, Z., and Qiu, Z. Qwen3 technical report. CoRR , abs/2505.09388, 2025a. Yang, F., Chen, Z., Wang, X., Lu, X., Chai, J., Yin, G., Lin, W., Ma, S., Zhuang, F., Wang, D., et al. Your group-relative advantage is biased. CoRR , abs/2601.08521, 2026. Yang, S., Dou, C., Guo, P., Lu, K., Ju, Q., Deng, F., and Xin, R. DCPO: dynamic clipping policy optimization. CoRR ,abs/2509.02333, 2025b. Yu, Q., Zhang, Z., Zhu, R., Yuan, Y., Zuo, X., Yue, Y., Fan, T., Liu, G., Liu, L., Liu, X., Lin, H., Lin, Z., Ma, B., Sheng, G., Tong, Y., Zhang, C., Zhang, M., Zhang, W., Zhu, H., Zhu, J., Chen, J., Chen, J., Wang, C., Yu, H., Dai, W., Song, Y., Wei, X., Zhou, H., Liu, J., Ma, W., Zhang, Y., Yan, L., Qiao, M., Wu, Y., and Wang, M. DAPO: an open-source LLM reinforcement learning system at scale. 
+
+CoRR , abs/2503.14476, 2025a. Yu, Q., Zhang, Z., Zhu, R., Yuan, Y., Zuo, X., Yue, Y., Fan, T., Liu, G., Liu, L., Liu, X., Lin, H., Lin, Z., Ma, B., Sheng, G., Tong, Y., Zhang, C., Zhang, M., Zhang, W., Zhu, H., Zhu, J., Chen, J., Chen, J., Wang, C., Yu, H., Dai, W., Song, Y., Wei, X., Zhou, H., Liu, J., Ma, W., Zhang, Y., Yan, L., Qiao, M., Wu, Y., and Wang, M. DAPO: an open-source LLM reinforcement learning system at scale. 
+
+CoRR , abs/2503.14476, 2025b. Yue, Y., Chen, Z., Lu, R., Zhao, A., Wang, Z., Yue, Y., Song, S., and Huang, G. Does reinforcement learning really incentivize reasoning capacity in llms beyond the base model? CoRR , abs/2504.13837, 2025. Yun, C., Sra, S., and Jadbabaie, A. Small relu networks are powerful memorizers: a tight analysis of memorization capacity. In Conference on Neural Information Process-ing Systems (NeurIPS) , 2019. Zhan, R., Li, Y., Wang, Z., Qu, X., Liu, D., Shao, J., Wong, D. F., and Cheng, Y. Exgrpo: Learning to reason from experience. CoRR , abs/2510.02245, 2025. Zhang, H., Fu, J., Zhang, J., Fu, K., Wang, Q., Zhang, F., and Zhou, G. RLEP: reinforcement learning with experience replay for LLM reasoning. CoRR , abs/2507.07451, 2025. Zhang, W., Zhou, D., Li, L., and Gu, Q. Neural thomp-son sampling. In International Conference on Learning Representations (ICLR) , 2021. Zheng, C., Liu, S., Li, M., Chen, X., Yu, B., Gao, C., Dang, K., Liu, Y., Men, R., Yang, A., Zhou, J., and Lin, J. Group sequence policy optimization. CoRR , abs/2507.18071, 2025a. Zheng, H., Zhou, Y., Bartoldson, B. R., Kailkhura, B., Lai, F., Zhao, J., and Chen, B. Act only when it pays: Efficient reinforcement learning for LLM reasoning via selective rollouts. CoRR , abs/2506.02177, 2025b. Zhou, C., Liu, P., Xu, P., Iyer, S., Sun, J., Mao, Y., Ma, X., Efrat, A., Yu, P., Yu, L., Zhang, S., Ghosh, G., Lewis, M., Zettlemoyer, L., and Levy, O. LIMA: less is more for alignment. In Conference on Neural Information Processing Systems (NeurIPS) , 2023. Zhou, D., Li, L., and Gu, Q. Neural contextual bandits with ucb-based exploration. In International Conference on Machine Learning (ICML) , 2020. Zhu, X., Xia, M., Wei, Z., Chen, W., Chen, D., and Meng, Y. The surprising effectiveness of negative reinforcement in LLM reasoning. CoRR , abs/2506.01347, 2025. Zou, J., Ban, Y., Li, Z., Qi, Y., Qiu, R., Yang, L., and He, J. Transformer copilot: Learning from the mistake log in LLM fine-tuning. In The Thirty-ninth Annual Conference on Neural Information Processing Systems ,2025. URL https://openreview.net/forum? id=MRvxlTlkNQ .11 Contextual Rollout Bandits for Reinforcement Learning with Verifiable Rewards 
+
+A. Introduction of Group Relative Policy Optimization Algorithms 
+
+GRPO (Group Reward Policy Optimization) is a popular method for policy optimization in language model post-training. It optimizes the policy πθ by maximizing 
+
+Jθ = E(q,a )∼D, {o}Gi=1 ∼πold (·| q)
+
+"
+
+1
+
+G
+
+> G
+
+X
+
+> i=1
+
+1
+
+|oi|
+
+> |oi|
+
+X
+
+> t=1
+
+min( Airi,t (θ), A iclip (ri,t (θ), 1 − ϵlow , 1 + ϵhigh )) 
+
+#
+
+, (14) where the clip (r, p low , p high ) = max  plow , min( r, p high ) is a hard clip function. The GRPO can be considered as a variant of Equation (1) by setting Φ to 
+
+Φ( A, r i,t (θ), ϵ low , ϵ high ) = min( Airi,t (θ), A iclip (ri,t (θ), 1 − ϵlow , 1 + ϵhigh )) . (15) 
+
+Dynamic Sampling Policy Optimization (DAPO) introduces four key improvements over GRPO: 1) Dynamic Sampling ,which filters out zero-advantage responses; 2) Clip Higher , which increases the clip upper bound ϵhigh ; 3) Overlong Filter ,which shapes the reward by penalizing overly long responses; and 4) Token-Level Loss , which normalizes the loss by the total token length across the group of responses. By combining these components, the policy πθ is optimized by maximizing 
+
+Jθ = E(q,a )∼D ,{oi}Gi=1 ∼πold (·| q)
+
+"
+
+1
+
+PGi=1 |oi|
+
+> G
+
+X
+
+> i=1
+> |oi|
+
+X
+
+> t=1
+
+min 
+
+
+
+Airi,t (θ), clip (ri,t (θ), 1 − ϵlow , 1 + ϵhigh )Ai
+
+#
+
+s.t. 0 < |{ oi|is equivalent (a, o i)}| < G 
+
+(16) The policy optimization function of DAPO can be considered as the same Equation (1) variant of GRPO. 
+
+Group Sequence Policy Optimization (GSPO) adopts the sequence-level clip rather than the token-level clip, specifically, it optimizes the policy by maximizing 
+
+Jθ = E(q,a )∼D ,{oi}Gi=1 ∼πold (·| q)
+
+"
+
+1
+
+G
+
+> G
+
+X
+
+> i=1
+
+min 
+
+
+
+Aisi(θ), A iclip (si(θ), 1 − ϵlow , 1 + ϵhigh )
+
+#
+
+, (17) where si(θ) = exp 
+
+ 1
+
+> |oi|
+
+P|oi| 
+
+> t=1
+
+log πθ (oi,t |q,o i<t ) 
+
+> πθold (oi,t |q,o i<t )
+
+
+
+is the normalized sequence-level importance sampling weight. Equa-tion (17) can be also be written into a token form (Zheng et al., 2025a) of 
+
+Jθ = E(q,a )∼D ,{oi}Gi=1 ∼πold (·| q)
+
+"
+
+1
+
+G
+
+> G
+
+X
+
+> i=1
+
+1
+
+|oti| 
+
+> |oti|
+
+X
+
+> t=1
+
+min( Aisi,t (θ), A iclip (si,t (θ), 1 − ϵmin , 1 + ϵmax )) 
+
+#
+
+, (18) where si,t (θ) = sg [si(θ)] ∗πold (yi,t |xi,y i,<t ) 
+
+> sg (πθ(yi,t |x,y i,<t ))
+
+· ri,t (θ) and sg indicates the stop gradient operation. Let wi,t indicates  
+
+> sg [si(θ)] ∗πold (yi,t |xi,y i,<t )
+> sg (πθ(yi,t |x,y i,<t ))
+
+. The GSPO can be considered as a variant of Equation (1) by setting Φ to 
+
+Φ( A, r i,t (θ), ϵ low , ϵ high ) = min( Ai · wi,t · ri,t (θ), A iclip (wi,t · ri,t (θ), 1 − ϵlow , 1 + ϵhigh )) . (19) 
+
+B. Proof of Theorem 
+
+B.1. Definitions 
+
+We instantiate the selector network sϕ(·) as a fully connected network with depth L ≥ 2 and width m, where sϕ(h) = 
+
+WLσ(WL−1σ(WL−2 · · · σ(W1h))) with σ(·) being ReLU activation, W1 ∈ Rm×10 , Wi ∈ Rm×m for 1 ≤ i ≤ L − 1,
+
+WL ∈ R1×m, and ϕ = [vec( WL), . . . , vec( W1)] . For initialization, entries of WL are drawn independently from 
+
+N (0 , 1/m ), and for 1 ≤ i ≤ L − 1, entries of each Wi are drawn independently from N (0 , 2/m ). We slightly abuse the notations and rewrite the arm representations {hti}i∈[M ],t ∈[T ] and rewards {rti }t∈[T ],i ∈[M ] into {hi}i∈[T M ] and {ri}i∈[T M ]
+
+respectively. The NTK matrix is defined as below, 12 Contextual Rollout Bandits for Reinforcement Learning with Verifiable Rewards 
+
+Algorithm 1 Policy Training with Data Scheduler 
+
+1: Input: policy πθ0 , scheduler sϕ0
+
+2: for t = 1 , 2, . . . , T do 
+
+3: ▽ Rollout Construction 
+
+4: Randomly select a batch Bt from training data D
+
+5: Generate rollout Rt by current policy πθt−1 and construct corresponding representations in Table 1 
+
+6: Construct Ct using Rt and Ct−1
+
+7: ▽ Scheduler Training 
+
+8: Construct sample reward ˆR(x, θ t−2, θ t−1) for x ∈ ¯Ct−1 according to Equation (10) and Equation (11) 
+
+9: Update the scheduler from sϕt−2 to sϕt−1 according to Equation (7) 
+
+10: ▽ Data Scheduling 
+
+11: Select ¯Ct from Ct according to Equation (8) 
+
+12: Update πθt−1 to πθt according to Equation (2) 
+
+13: ▽ Arm Representation Update 
+
+14: Update representations associated to the data in Ct if needed 
+
+15: end for Definition B.1 (NTK (Jacot et al., 2018; Wang et al., 2021)) . Let N denote the normal distribution. Given the data instances 
+
+{ht}T M t=1 , for all i, j ∈ [T M ], define: 
+
+H0 
+
+> i,j
+
+= Σ 0 
+
+> i,j
+
+= ⟨hi, h j ⟩, Ali,j =
+
+Σli,i Σli,j 
+
+Σlj,i Σlj,j 
+
+
+
+,
+
+Σli,j = 2 Ea,b ∼N (0 ,A l−1 
+
+> i,j )
+
+[σ(a)σ(b)] ,Hli,j = 2 Hl−1 
+
+> i,j
+
+Ea,b ∼N (0 ,A l−1 
+
+> i,j )
+
+[σ′(a)σ′(b)] + Σ li,j .
+
+Then the NTK matrix is defined as H = ( HL + Σ L)/2
+
+B.2. Lemma on Bounded Deviation 
+
+Given parameters θt−1 and θt, the terms Vt and Vt+1 can be viewed as stochastic estimates of the expected performance of 
+
+θt−1 and θt on the training set D (and similarly for Et and Et+1 ). The following lemma shows that the deviation between the stochastic estimate and its corresponding expectation is bounded. 
+
+Lemma B.2. Let R(Ct, θ t−1, θ t) denote the reward in (5) . Assume the per-sample reward satisfies vti ∈ { 0, 1} for all t, i ,and let N = |V| be the vocabulary size. Then 
+
+ER(Ct, θ t−1, θ t) − R (Ct, θ t−1, θ t) ≤ 2 (1 + we log N ) , (20) 
+
+Proof. Since vti ∈ { 0, 1}, we have 0 ≤ Vt = mean( {vti }) ≤ 1, hence 
+
+Vt+1 − Vt ∈ [−1, 1] . (21) For the entropy term, for any context the Shannon entropy of a distribution over a vocabulary of size N is bounded by 
+
+0 ≤ H(πθt−1 (· | · )) ≤ log N. (22) By definition, eti is the average of token-level entropies, so eti ∈ [0 , log N ], and thus 
+
+Et = mean( {eti}) ∈ [0 , log N ], Et+1 − Et ∈ [− log N, log N ]. (23) Moreover, I[Et > e min ] ∈ { 0, 1}, so 
+
+−we I[Et > e min ] ( Et+1 − Et) ∈ [−we log N, w e log N ]. (24) 13 Contextual Rollout Bandits for Reinforcement Learning with Verifiable Rewards 
+
+Therefore, 
+
+R(Ct, θ t−1, θ t) ∈
+
+h
+
+− (1 + we log N ), 1 + we log N
+
+i
+
+. (25) For any random variable X ∈ [a, b ], we have |E[X] − X| ≤ b − a. Applying this with a = −(1 + we log N ) and 
+
+b = 1 + we log N yields 
+
+|E[R] − R| ≤ 2(1 + we log N ), (26) which proves the claim. 
+
+B.3. Lemma for Neural Regression 
+
+We first present lemmas for online neural regression, which serve as a foundation for our theoretical analysis. 
+
+Lemma B.3 (Theorem 3.1 of (Yun et al., 2019)) . Given any dataset {(xi, y i)}Ni=1 that all xi are different and all yi ∈ [−1, 1] .
+
+If L > = 3 and 4  m
+
+> 2
+
+  m
+
+> 2
+
+ ≥ N , there exist a ϕ′ such that sϕ′ (xi) = yi for all i ∈ [N ].
+
+Lemma B.4 (Theorem 2 of (Ban et al., 2023)) . For any arm representations {hi}i∈[T ] and rewards {ri}i∈[T ] that satisfy Assumption 5.1, let Lt(ϕ) = ( sϕ(ht) − rt)2/2, for any R > 0, δ ∈ (0 , 1) , suppose m ≥ Ω ( poly (T, R, L, N, log( δ))) ,
+
+η = R2 
+
+> √m
+
+. With probability at least 1 − δ over randomness of θ0, it holds that 
+
+> T
+
+X
+
+> t=1
+
+Lt(ϕt−1) ≤
+
+> T
+
+X
+
+> t=1
+
+Lt(ϕ′) + O(1) + LR 2
+
+√m + O
+
+ T R 4/3L2√log mm1/3
+
+
+
+, (27) 
+
+for any θ′ ∈ B(θ0, R ), where B(θ0, R ) = {θ | ∥ θ − θ0∥2 ≤ R/m 1/4}
+
+Lemma B.5 (Lemma 5.2 of (Ban et al., 2023)) . For any arm representations {hi}i∈[T M ] and rewards {ri}i∈[T M ] that satisfy Assumption 5.1 and Assumption 5.2, if m ≥ Ω ( poly (T, R, L, N, log( δ))) , with probability at least 1 − δ over initilization of ϕ0, there exists ϕ′ ∈ B(ϕ0, ˜Ω( T 3/2)) such that 
+
+> T M
+
+X
+
+> t=1
+
+ sϕ′ (ht) − rt
+
+2 ≤ ˜O
+
+p ˜d + S
+
+2
+
+∗ ˜d, (28) 
+
+where S = √rT H−1r and ˜d = log det( I+H)log(1+ T M ) .
+
+B.4. Proof of Theorem 5.3 
+
+Let ϕ∗ denote the optimal policy parameter for buffer size jBG . To prove Theorem 5.3, we can show that there exists a policy parameter ϕ′ such that, for any given rollout sequence R = {R 1, . . . , RT }, the selected data se-quence x1(ϕ′, R, iBG ), . . . , x T (ϕ′, R, iBG ) is identical to the sequence x1(ϕ∗, R, jBG ), . . . , x T (ϕ∗, R, jBG ), where 
+
+xt(ϕ, R, M ) represents the data chosen by scheduler sϕ when the buffer size is M and the rollout data is R. Therefore, we can write the following inequality: 
+
+φ(iBG ) = max  
+
+> ϕ
+
+EM =iBG [max  
+
+> t∈T
+
+g(θt)] ≥ Eϕ=ϕ′,M =iBG [max  
+
+> t∈T
+
+g(θt)] = φ(jBG ),
+
+where Eϕ=ϕ′,M =iBG [max t∈T g(θt)] represents the optimal performance when the buffer size is iBG and the scheduler parameter is ϕ′.Next, we describe how to construct ϕ′ based on ϕ∗. Since the vocabulary size |V |, the response length Lmax , and the number of training rounds T are finite, all possible rollout data and arm representations come from a finite set. Let H ⊂ R10 denote the set of all possible arm representations, and let U = max h∈H |sϕ∗ (h)| be the upper bound of the absolute value of scores, with C = |H| representing the size of the arm set. We assign a label yh for each h ∈ H as follows: 
+
+yh = 2U · I[hs < j ] + sϕ∗ (h)3U ,
+
+where hs denotes the delta step feature for the arm representations in Table 1. By setting L = 3 , m = 2 C, and applying Lemma B.3, we obtain sϕ′ (h) = yh for all h ∈ H.14 Contextual Rollout Bandits for Reinforcement Learning with Verifiable Rewards 
+
+Now, consider the scores sϕ′ (h), s ϕ′ (h′) for any two data points x, x ′ ∈ F t, where h, h ′ are the representations for x and x′,respectively. The buffer Ft = ∪ti=t−i+1 Rt includes the data from the latest i steps. For data within the latest j steps, the delta step hs < j , so yh will be larger than the labels for data older than the latest j steps according to the definition of yh.For two data points both within the latest j steps, we have: 
+
+sϕ′ (h) − sϕ′ (h′) = sϕ∗ (h) − sϕ∗ (h′)3U .
+
+Thus, the relative difference in scores is the same as for sϕ∗ . Combining the two situations together, the strategy sϕ′ behaves identically to sϕ∗ . As a result, for any rollout sequence R = {R 1, . . . , RT }, the data selection sequence of sϕ′ will be the same as that of sϕ∗ . This completes the proof. 
+
+B.5. Proof of Theorem 5.4 
+
+For the regret RT , we have 
+
+RT =
+
+> T
+
+X
+
+> i=1
+
+h
+
+g(A(xta∗ 
+
+> t
+
+, θ t−1)) − g(A(xtat , θ t−1)) 
+
+i
+
+> (a)
+
+≤
+
+> T
+
+X
+
+> i=1
+
+h
+
+g(A(xta∗ 
+
+> t
+
+, θ t−1)) − sϕt−1 (hta∗ 
+
+> t
+
+) + sϕt−1 (htat ) − g(A(xtat , θ t−1)) 
+
+i
+
+≤
+
+> T
+
+X
+
+> i=1
+
+|g(A(xta∗ 
+
+> t
+
+, θ t−1)) − sϕt−1 (hta∗ 
+
+> t
+
+)| +
+
+> T
+
+X
+
+> i=1
+
+|g(A(xtat , θ t−1)) − sϕt−1 (htat )|
+
+> (b)
+
+≤
+
+vuutT
+
+> T
+
+X
+
+> i=1
+
+
+
+g(A(xta∗ 
+
+> t
+
+, θ t−1)) − sϕt−1 (hta∗ 
+
+> t
+
+)
+
+2
+
++
+
+vuutT
+
+> T
+
+X
+
+> i=1
+
+ g(A(xtat , θ t−1)) − sϕt−1 (htat )2
+
+= √2T
+
+vuuut TX
+
+> i=1
+
+
+
+g(A(xta∗ 
+
+> t
+
+, θ t−1)) − sϕt−1 (hta∗ 
+
+> t
+
+)
+
+2
+
+2 +
+
+vuut TX
+
+> i=1
+
+ g(A(xtat , θ t−1)) − sϕt−1 (htat )2
+
+2
+
+ ,
+
+where (a) comes from the scheduling rule that sϕt−1 (htat ) = max a∈[M ] sϕt−1 (hta) and (b) comes by applying the Cauchy–Schwarz inequality. For notation simplicity, we denote g(A(xta), θ t−1) as g(xta).The terms PTi=1 (g(xta∗    
+
+> t)−sϕt−1(hta∗
+> t)) 2
+> 2
+
+and PTi=1 (g(xtat )−sϕt−1 (htat )) 2 
+
+> 2
+
+are online regression loss. Set m =max  T 3L6R4, Ω ( poly (T, R, L, N, log( δ/ 3)))  and η2 = R2 
+
+> √m
+
+. Then applying Lemma B.4 for the first term, we will have, with probability at least 1 − δ 
+
+> 3
+
+over randomness of ϕ0, for any R > 0 and any ϕ′ ∈ B(ϕ0, R )
+
+vuut TX
+
+> i=1
+
+(g(xta∗ 
+
+> t
+
+) − sϕt−1 (ht,a ∗ 
+
+> t
+
+)) 2
+
+2 ≤
+
+vuut TX
+
+> t=1
+
+(g(xta∗ 
+
+> t
+
+) − sϕ′ (hta∗ 
+
+> t
+
+)) 2
+
+2 + O(1) + LR 2
+
+√m + O
+
+ T R 4/3L2√log mm1/3
+
+
+
+,
+
+> (a)
+
+=
+
+vuut TX
+
+> t=1
+
+(g(xta∗ 
+
+> t
+
+) − sϕ′ (hta∗ 
+
+> t
+
+)) 2
+
+2 + O(1) 
+
+> (b)
+
+≤
+
+vuut TX
+
+> t=1
+
+(g(xta∗ 
+
+> t
+
+) − sϕ′ (hta∗ 
+
+> t
+
+)) 2
+
+2 + pO(1) ,
+
+where (a) holds because O(1) + LR 2 
+
+> √m
+
++ O( T R 4/3L2√log mm1/3 ) = O(1) when m ≥ T 3L6R4 and (b) holds because √a + b ≤√a + √b for a, b > 0. Similarly, applying Lemma B.4 to PTi=1 (g(xtat )−sϕt−1 (htat )) 2 
+
+> 2
+
+and using union bound, we will have, 15 Contextual Rollout Bandits for Reinforcement Learning with Verifiable Rewards 
+
+with probability at least 1 − 2δ 
+
+> 3
+
+over randomness of ϕ0, for any R > 0 and any ϕ′ ∈ B(ϕ0, R ),
+
+RT ≤ √2T
+
+vuut TX
+
+> i=1
+
+(g(xta∗ 
+
+> t
+
+) − sϕt−1 (hta∗ 
+
+> t
+
+)) 2
+
+2 +
+
+vuut TX
+
+> i=1
+
+(g(xtat ) − sϕt−1 (htat )) 2
+
+2
+
+
+
+≤ √2T
+
+vuut TX
+
+> i=1
+
+(g(xta∗ 
+
+> t
+
+) − sϕ′ (hta∗ 
+
+> t
+
+)) 2
+
+2 +
+
+vuut TX
+
+> i=1
+
+(g(xtat ) − sϕ′ (htat )) 2
+
+2 + O(1) 
+
+
+
+≤ √4T
+
+vuut TX
+
+> i=1
+> M
+
+X
+
+> a=1
+
+(g(xta) − sϕ′ (hta)) 2
+
+2 + O(1) 
+
+
+
+Set R = ˜Ω( T 3/2) and then apply Lemma B.5 and the union bound, we have with probability at least 1 − δRT ≤ √4T
+
+s
+
+˜O
+
+q 
+
+˜d + S
+
+2
+
+∗ ˜d + O(1) 
+
+
+
+≤ √4T
+
+ ˜O
+
+p ˜d + S
+
+
+
+∗
+
+p ˜d + O(1) 
+
+
+
+= ˜O
+
+√T
+
+ ˜d + S
+
+p ˜d
+
+
+
++ √T
+
+
+
+The proof is complete. 
+
+C. Discussion on Subset Selection 
+
+We first justify the subset selection as sample scoring using a first-order Taylor expansion, and then discuss the regret bound under subset selection. 
+
+Justification of Sample Selection. When θt−1 is fixed, the expression 
+
+R( ¯Ct, θ t−1, θ t) = Vt+1 − Vt − weI[Et > e min ]( Et+1 − Et) (29) can be interpreted as a stochastic estimate of the function f (θt), which is defined as 
+
+f (θt) = E(q,a )∼D,o ∼πθt (·| q)
+
+
+
+v(a, o ) − Vt − weI[Et > e min ] ·
+
+ |o|
+
+X
+
+> t=1
+
+− P 
+
+> x∈V
+
+πθt (x|q, o <t ) log πθt (x|q, o <t )
+
+|o| − Et
+
+
+
+,
+
+(30) where v(·) is the reward function of RLVR. Applying the first-order Taylor expansion around the reference point θt−1, we will get 
+
+f (θt) ≈ f (θt−1) + ∇θt−1 f (θ) · (θt − θt−1). (31) Since the parameter is updated by gradient ascent, i.e., θt = θt−1 + η∇θt−1 Jθ ( ¯Ct), we obtain 
+
+f (θt) ≈ f (θt−1) + ∇θt−1 f (θ) · η∇θt−1 Jθ ( ¯Ct)= f (θt−1) + ∇θt−1 f (θ) · η X 
+
+> x∈¯Ct
+
+∇θt−1 Jθ ( ¯Ct). (32) Therefore, the subset utility f (θt) becomes the sum of the utilities of the samples. 
+
+Regret bound under subset selection. Under the first-order approximation, the subset-level reward is additive. If we treat the advantage-dispatched per-sample reward as the (unbiased) true reward, the resulting problem can be modeled as a contextual semi-bandit. In each round, selecting a size-K subset can be viewed as making K single-arm choices (with distinct arms) and receiving feedback for all selected arms at the end of the round. Therefore, any adversarial single-play regret guarantee extends to the subset setting with at most a factor-K degradation, i.e., the cumulative regret is upper bounded by K times the single-rollout selection bound (up to the same logarithmic factors). 16 Contextual Rollout Bandits for Reinforcement Learning with Verifiable Rewards 
+
+Experiment M ϵ0 η2 Tw α ϵmin δ p% emin 
+
+Qwen3-1.7B-Base 
+
+GRPO + CBS 2048 1 0.0001 50 0.9 0.2 0.008 - 0.1 GRPO + CBS* 1024 1 0.0001 50 0.9 0.2 0.008 30% 0.1 DAPO + CBS 2048 1 0.0001 50 0.9 0.2 0.008 - 0.5 DAPO + CBS* 1024 1 0.0001 50 0.9 0.2 0.008 30% 0.5 GSPO + CBS 2048 1 0.0001 50 0.9 0.005 0.008 - 0.5 GSPO + CBS* 1024 1 0.0001 50 0.9 0.005 0.008 30% 0.5 
+
+Qwen3-4B-Base 
+
+GRPO + CBS 2048 1 0.0001 50 0.9 0.2 0.008 - 0.1 GRPO + CBS* 1024 1 0.0001 50 0.9 0.2 0.008 30% 0.1 DAPO + CBS 2048 1 0.0001 50 0.9 0.2 0.008 - 0.5 DAPO + CBS* 1024 1 0.0001 50 0.9 0.2 0.008 30% 0.5 GSPO + CBS 2048 1 0.0001 0 0.9 0.005 0.008 - 0.5 GSPO + CBS* 1024 1 0.0001 50 0.9 0.005 0.008 30% 0.5 
+
+Qwen3-8B-Base 
+
+GRPO + CBS 2048 1 0.0001 50 0.9 0.2 0.008 - 0.1 GRPO + CBS* 1024 1 0.0001 50 0.9 0.2 0.008 30% 0.1 DAPO + CBS 2048 1 0.0001 50 0.9 0.2 0.008 - 0.8 DAPO + CBS* 1024 1 0.0001 50 0.9 0.2 0.008 30% 0.5 GSPO + CBS 2048 1 0.0001 50 0.9 0.005 0.008 - 0.5 GSPO + CBS* 1024 1 0.0001 50 0.9 0.005 0.008 30% 0.5  
+
+> Table 4. Scheduler hyperparameters (adjusted for different models and sizes).
+> 17 Contextual Rollout Bandits for Reinforcement Learning with Verifiable Rewards
+
+D. Implementation Details 
+
+Hyperparamters. We set the learning rate to 1 × 10 −6, the batch size to 128, the mini-batch size to 16, and the rollout number per prompt to 8. For the scheduler, we set the buffer size to 2048 for global scheduling and p to 30% for intra-group scheduling. We keep the mini-batch size unchanged, and the policy optimization step decreases when rollouts are downsampled by the online scheduler. For example, if we generate 1024 rollouts and the scheduler downsamples them to 
+
+⌊1024 × 0.3⌋ = 307 , we then rearrange these rollouts into ⌊307 /(16 × 8) ⌋ = 2 mini-batches with each having 128 rollouts. The entropy penalty weight we is set to 100 . In our implementation, we approximate intra-group selection by pooling rollouts from all groups generated at the same step and selecting the top-p% globally, which yields a comparable retained set while simplifying the scheduler. More method-specific hyperparameters are summarized in Table 4. Following (Liu et al., 2025a), we use the prompt template below, Prompt Template 
+
+<|im start|>system You are a helpful assistant.<|im end|> <|im start|>user 
+
+{Problem }
+
+Please reason step by step, and put your final answer within boxed {} .<|im end|> <|im start|>assistant 
+
+Train and evaluation. We control the rollout volume during training to ensure a fair comparison across different policy optimization methods. Specifically, we train GRPO and GSPO for 500 steps. For DAPO, its dynamic sampling requires first upsampling the rollout by a factor of three, followed by downsampling the non-zero advantage ones. Therefore, we train DAPO for 200 steps. During training, we evaluate every 20 steps, reporting Avg@1 for larger datasets (i.e., MATH500, Minerva, and Olympiad) and Avg@16 for smaller datasets (i.e., AIME24 and AIME25). After training, we use the checkpoint with the highest average evaluation score to perform evaluation on the same dataset, computing Avg@4 for larger datasets and Avg@32 for smaller datasets. The temperature and maximum response length are set to 1.0 and 4096, respectively, for both training and evaluation. For the reward function, we use Math Verify 4 to compare the response with the answer, assigning a value of 1 if they match, and 0 otherwise. 
+
+E. More Experimental Results 
+
+E.1. Training Dynamics 
+
+We show the dynamics of average score on the validation set, training reward and actor update time in Figure 5, Figure 6 and Figure 7 respectively. 
+
+E.2. Ablation Study 
+
+The dataset-specific performance of different variants is shown in Table 5. Then entropy dynamics of the three PO methods are shown in Figure 8. 
+
+E.3. Hyperparameter Sensitivity 
+
+To explore the impact of buffer size |Ct|, we vary the buffer size of GRPO + CBS under the Qwen3-4B-Base setting, ranging from 1024 to 5120 in increments of 1024, and analyze both the performance and buffer-related runtime. As shown in Figure 10, CBS consistently outperforms the original GRPO within the range of [1024, 4096], demonstrating its robustness. However, when the buffer size reaches 5120, performance degrades below that of GRPO, which is expected due to factors such as increased noise from more data and the fact that the importance sampling in policy optimization is less likely to prioritize outdated data. Besides, the runtime generally increases as the buffer size increase. Moreover, the runtime typically increases with the buffer size. To optimize both performance and efficiency, we set the buffer size to 2048, balancing the tradeoff between performance and runtime. 
+
+> 4https://github.com/huggingface/Math-Verify
+
+18 Contextual Rollout Bandits for Reinforcement Learning with Verifiable Rewards 0 100 200 300 400 500 
+
+Step 
+
+0.22 
+
+0.24 
+
+0.26 
+
+0.28 
+
+0.30 
+
+> Average Score
+
+GRPO (1.7B): Average Score vs Step 
+
+GRPO 
+
+GRPO + CBS 
+
+GRPO + CBS* 25 50 75 100 125 150 175 200 
+
+Step 
+
+0.22 
+
+0.24 
+
+0.26 
+
+0.28 
+
+0.30 
+
+> Average Score
+
+DAPO (1.7B): Average Score vs Step 
+
+DAPO 
+
+DAPO + CBS 
+
+DAPO + CBS* 0 100 200 300 400 500 
+
+Step 
+
+0.20 
+
+0.22 
+
+0.24 
+
+0.26 
+
+0.28 
+
+0.30 
+
+0.32 
+
+> Average Score
+
+GSPO (1.7B): Average Score vs Step 
+
+GSPO 
+
+GSPO + CBS 
+
+GSPO + CBS* 0 100 200 300 400 500 
+
+Step 
+
+0.36 
+
+0.38 
+
+0.40 
+
+0.42 
+
+0.44 
+
+> Average Score
+
+GRPO (4B): Average Score vs Step 
+
+GRPO 
+
+GRPO + CBS 
+
+GRPO + CBS* 25 50 75 100 125 150 175 200 
+
+Step 
+
+0.37 
+
+0.38 
+
+0.39 
+
+0.40 
+
+0.41 
+
+0.42 
+
+0.43 
+
+0.44 
+
+> Average Score
+
+DAPO (4B): Average Score vs Step 
+
+DAPO 
+
+DAPO + CBS 
+
+DAPO + CBS* 0 100 200 300 400 500 
+
+Step 
+
+0.34 
+
+0.36 
+
+0.38 
+
+0.40 
+
+0.42 
+
+0.44 
+
+> Average Score
+
+GSPO (4B): Average Score vs Step 
+
+GSPO 
+
+GSPO + CBS 
+
+GSPO + CBS* 0 100 200 300 400 500 
+
+Step 
+
+0.40 
+
+0.41 
+
+0.42 
+
+0.43 
+
+0.44 
+
+0.45 
+
+0.46 
+
+0.47 
+
+0.48 
+
+> Average Score
+
+GRPO (8B): Average Score vs Step 
+
+GRPO 
+
+GRPO + CBS 
+
+GRPO + CBS* 25 50 75 100 125 150 175 200 
+
+Step 
+
+0.40 
+
+0.41 
+
+0.42 
+
+0.43 
+
+0.44 
+
+0.45 
+
+0.46 
+
+0.47 
+
+> Average Score
+
+DAPO (8B): Average Score vs Step 
+
+DAPO 
+
+DAPO + CBS 
+
+DAPO + CBS* 0 100 200 300 400 500 
+
+Step 
+
+0.38 
+
+0.40 
+
+0.42 
+
+0.44 
+
+0.46 
+
+0.48 
+
+0.50 
+
+> Average Score
+
+GSPO (8B): Average Score vs Step 
+
+GSPO 
+
+GSPO + CBS 
+
+GSPO + CBS* 
+
+Figure 5. Training dynamics of the average score on the validation set 0 100 200 300 400 500 
+
+Step 
+
+0.10 
+
+0.15 
+
+0.20 
+
+0.25 
+
+0.30 
+
+0.35 
+
+0.40 
+
+> Train Reward
+
+GRPO (1.7B): Train Reward vs Step 
+
+GRPO 
+
+GRPO + CBS 
+
+GRPO + CBS* 0 25 50 75 100 125 150 175 200 
+
+Step 
+
+0.10 
+
+0.15 
+
+0.20 
+
+0.25 
+
+0.30 
+
+0.35 
+
+> Train Reward
+
+DAPO (1.7B): Train Reward vs Step 
+
+DAPO 
+
+DAPO + CBS 
+
+DAPO + CBS* 0 100 200 300 400 500 
+
+Step 
+
+0.10 
+
+0.15 
+
+0.20 
+
+0.25 
+
+0.30 
+
+0.35 
+
+0.40 
+
+0.45 
+
+> Train Reward
+
+GSPO (1.7B): Train Reward vs Step 
+
+GSPO 
+
+GSPO + CBS 
+
+GSPO + CBS* 0 100 200 300 400 500 
+
+Step 
+
+0.2 
+
+0.3 
+
+0.4 
+
+0.5 
+
+0.6 
+
+> Train Reward
+
+GRPO (4B): Train Reward vs Step 
+
+GRPO 
+
+GRPO + CBS 
+
+GRPO + CBS* 0 25 50 75 100 125 150 175 200 
+
+Step 
+
+0.15 
+
+0.20 
+
+0.25 
+
+0.30 
+
+0.35 
+
+0.40 
+
+0.45 
+
+0.50 
+
+0.55 
+
+> Train Reward
+
+DAPO (4B): Train Reward vs Step 
+
+DAPO 
+
+DAPO + CBS 
+
+DAPO + CBS* 0 100 200 300 400 500 
+
+Step 
+
+0.2 
+
+0.3 
+
+0.4 
+
+0.5 
+
+0.6 
+
+> Train Reward
+
+GSPO (4B): Train Reward vs Step 
+
+GSPO 
+
+GSPO + CBS 
+
+GSPO + CBS* 0 100 200 300 400 500 
+
+Step 
+
+0.25 
+
+0.30 
+
+0.35 
+
+0.40 
+
+0.45 
+
+0.50 
+
+0.55 
+
+0.60 
+
+0.65 
+
+> Train Reward
+
+GRPO (8B): Train Reward vs Step 
+
+GRPO 
+
+GRPO + CBS 
+
+GRPO + CBS* 0 25 50 75 100 125 150 175 200 
+
+Step 
+
+0.30 
+
+0.35 
+
+0.40 
+
+0.45 
+
+0.50 
+
+0.55 
+
+0.60 
+
+> Train Reward
+
+DAPO (8B): Train Reward vs Step 
+
+DAPO 
+
+DAPO + CBS 
+
+DAPO + CBS* 0 100 200 300 400 500 
+
+Step 
+
+0.3 
+
+0.4 
+
+0.5 
+
+0.6 
+
+0.7 
+
+> Train Reward
+
+GSPO (8B): Train Reward vs Step 
+
+GSPO 
+
+GSPO + CBS 
+
+GSPO + CBS* 
+
+Figure 6. Training dynamics of the train reward. 
+
+19 Contextual Rollout Bandits for Reinforcement Learning with Verifiable Rewards 0 100 200 300 400 500 
+
+Step 
+
+5
+
+10 
+
+15 
+
+20 
+
+25 
+
+30 
+
+35 
+
+> Actor Update Time (s)
+
+Warmup 
+
+End 65.2% 
+
+GRPO (1.7B): Actor Update Time Comparison 
+
+GRPO 
+
+GRPO + CBS* 
+
+GRPO (avg: 26.8s) 
+
+GRPO + CBS* (avg: 9.3s) 
+
+Warmup end (step 50) 0 25 50 75 100 125 150 175 200 
+
+Step 
+
+10 
+
+15 
+
+20 
+
+25 
+
+30 
+
+35 
+
+> Actor Update Time (s)
+
+Warmup 
+
+End 44.4% 
+
+DAPO (1.7B): Actor Update Time Comparison 
+
+DAPO 
+
+DAPO + CBS* 
+
+DAPO (avg: 27.5s) 
+
+DAPO + CBS* (avg: 15.3s) 
+
+Warmup end (step 50) 0 100 200 300 400 500 
+
+Step 
+
+10 
+
+20 
+
+30 
+
+40 
+
+50 
+
+> Actor Update Time (s)
+
+Warmup 
+
+End 71.6% 
+
+GSPO (1.7B): Actor Update Time Comparison 
+
+GSPO 
+
+GSPO + CBS* 
+
+GSPO (avg: 34.9s) 
+
+GSPO + CBS* (avg: 9.9s) 
+
+Warmup end (step 50) 0 100 200 300 400 500 
+
+Step 
+
+20 
+
+30 
+
+40 
+
+50 
+
+60 
+
+70 
+
+80 
+
+90 
+
+> Actor Update Time (s)
+
+Warmup 
+
+End 55.7% 
+
+GRPO (4B): Actor Update Time Comparison 
+
+GRPO 
+
+GRPO + CBS* 
+
+GRPO (avg: 73.6s) 
+
+GRPO + CBS* (avg: 32.6s) 
+
+Warmup end (step 50) 0 25 50 75 100 125 150 175 200 
+
+Step 
+
+40 
+
+60 
+
+80 
+
+100 
+
+120 
+
+> Actor Update Time (s)
+
+Warmup 
+
+End 36.4% 
+
+DAPO (4B): Actor Update Time Comparison 
+
+DAPO 
+
+DAPO + CBS* 
+
+DAPO (avg: 80.8s) 
+
+DAPO + CBS* (avg: 51.4s) 
+
+Warmup end (step 50) 0 100 200 300 400 500 
+
+Step 
+
+20 
+
+30 
+
+40 
+
+50 
+
+60 
+
+70 
+
+80 
+
+90 
+
+100 
+
+> Actor Update Time (s)
+
+Warmup 
+
+End 59.1% 
+
+GSPO (4B): Actor Update Time Comparison 
+
+GSPO 
+
+GSPO + CBS* 
+
+GSPO (avg: 75.3s) 
+
+GSPO + CBS* (avg: 30.8s) 
+
+Warmup end (step 50) 0 100 200 300 400 500 
+
+Step 
+
+40 
+
+60 
+
+80 
+
+100 
+
+120 
+
+140 
+
+> Actor Update Time (s)
+
+Warmup 
+
+End 57.2% 
+
+GRPO (8B): Actor Update Time Comparison 
+
+GRPO 
+
+GRPO + CBS* 
+
+GRPO (avg: 120.9s) 
+
+GRPO + CBS* (avg: 51.7s) 
+
+Warmup end (step 50) 0 25 50 75 100 125 150 175 200 
+
+Step 
+
+50 
+
+75 
+
+100 
+
+125 
+
+150 
+
+175 
+
+200 
+
+> Actor Update Time (s)
+
+Warmup 
+
+End 31.1% 
+
+DAPO (8B): Actor Update Time Comparison 
+
+DAPO 
+
+DAPO + CBS* 
+
+DAPO (avg: 129.8s) 
+
+DAPO + CBS* (avg: 89.4s) 
+
+Warmup end (step 50) 0 100 200 300 400 500 
+
+Step 
+
+40 
+
+60 
+
+80 
+
+100 
+
+120 
+
+140 
+
+> Actor Update Time (s)
+
+Warmup 
+
+End 58.3% 
+
+GSPO (8B): Actor Update Time Comparison 
+
+GSPO 
+
+GSPO + CBS* 
+
+GSPO (avg: 126.4s) 
+
+GSPO + CBS* (avg: 52.7s) 
+
+Warmup end (step 50) 
+
+Figure 7. Training dynamics of the actor update time. 
+
+Table 5. Dataset-specific ablation study results for Qwen3-4B-Base under global scheduling. 
+
+Variant AIME24 AIME25 AMC23 MATH500 Minerva Olympiad Average 
+
+GRPO 
+
+CBS 20.31 18.44 63.05 74.45 34.47 43.73 42.41 w/o EMA 20.10 14.37 61.95 74.80 34.65 44.47 41.72 w/o Entropy 19.17 21.15 63.83 74.35 33.00 44.07 42.60 
+
+Random 17.19 15.83 61.72 74.85 35.29 43.58 41.41 
+
+DAPO 
+
+CBS 20.62 20.94 62.89 75.85 36.58 46.70 43.93 
+
+w/o EMA 17.19 16.04 59.30 73.55 34.65 42.21 40.49 w/o Entropy 17.81 17.50 61.64 73.95 31.43 43.32 40.94 Random 15.94 17.08 58.44 73.95 31.07 41.54 39.67 
+
+GSPO 
+
+CBS 21.46 18.33 67.03 76.05 36.49 44.18 43.92 
+
+w/o EMA 18.02 17.40 64.92 75.50 32.63 44.81 42.21 w/o Entropy 19.17 19.17 67.11 76.65 35.75 44.92 43.80 Random 16.88 15.21 61.17 75.15 32.72 42.14 40.55 20 Contextual Rollout Bandits for Reinforcement Learning with Verifiable Rewards 100 200 300 400 500 
+
+Step 
+
+0.05 
+
+0.10 
+
+0.15 
+
+0.20 
+
+0.25 
+
+0.30 
+
+0.35 
+
+0.40 
+
+> Entropy
+
+GRPO - Entropy Comparison 
+
+w/o Entropy 
+
+CBS 
+
+100 200 300 400 500 
+
+Step 
+
+0.37 
+
+0.38 
+
+0.39 
+
+0.40 
+
+0.41 
+
+0.42 
+
+0.43 
+
+0.44 
+
+> Average Score on Eval Set
+
+GRPO - Score Comparison 
+
+w/o Entropy 
+
+CBS 25 50 75 100 125 150 175 200 
+
+Step 
+
+0.2 
+
+0.4 
+
+0.6 
+
+0.8 
+
+1.0 
+
+1.2 
+
+1.4 
+
+> Entropy
+
+DAPO - Entropy Comparison 
+
+w/o Entropy 
+
+CBS 
+
+40 60 80 100 120 140 160 180 200 
+
+Step 
+
+0.39 
+
+0.40 
+
+0.41 
+
+0.42 
+
+0.43 
+
+0.44 
+
+> Average Score on Eval Set
+
+DAPO - Score Comparison 
+
+w/o Entropy 
+
+CBS 100 200 300 400 500 
+
+Step 
+
+0.08 
+
+0.10 
+
+0.12 
+
+0.14 
+
+0.16 
+
+0.18 
+
+> Entropy
+
+GSPO - Entropy Comparison 
+
+w/o Entropy 
+
+CBS 
+
+100 200 300 400 500 
+
+Step 
+
+0.36 
+
+0.38 
+
+0.40 
+
+0.42 
+
+0.44 
+
+> Average Score on Eval Set
+
+GSPO - Score Comparison 
+
+w/o Entropy 
+
+CBS 
+
+Figure 8. Entropy dynamics of CBS and w/o Entropy. 
+
+21 Contextual Rollout Bandits for Reinforcement Learning with Verifiable Rewards Sample age 
+
+> Clip ratio
+> Entropy
+> Mean group reward
+> Normalized length
+> Advantage
+> Reward
+> Std of group reward
+> Truncation flag
+> Usage count
+
+Features 
+
+> GRPO + CBS DAPO + CBS GSPO + CBS
+> Algorithms
+
+-0.004 0.426 -0.124 0.256 0.016 0.020 0.219 0.761 -0.025 0.292 
+
+0.053 0.319 -0.013 0.019 -0.023 0.218 0.173 0.190 -0.084 0.303 
+
+0.008 0.526 -0.166 0.235 -0.017 0.020 0.193 0.779 -0.038 0.318 
+
+Scheduler Correlations - 1.7B Model (Global Scheduling, Last Checkpoint) 
+
+1.00 
+
+0.75 
+
+0.50 
+
+0.25 
+
+0.00 
+
+0.25 
+
+0.50 
+
+0.75 
+
+1.00 
+
+> Pearson Correlation Sample age
+> Clip ratio
+> Entropy
+> Mean group reward
+> Normalized length
+> Advantage
+> Reward
+> Std of group reward
+> Truncation flag
+> Usage count
+
+Features 
+
+> GRPO + CBS* DAPO + CBS* GSPO + CBS*
+> Algorithms
+
+0.340 -0.019 0.223 0.025 0.265 0.318 0.814 -0.048 
+
+0.346 -0.007 0.033 -0.009 0.189 0.151 0.210 -0.066 
+
+0.296 -0.132 0.214 -0.005 0.211 0.286 0.711 -0.035 
+
+Scheduler Correlations - 1.7B Model (Intra-Group Scheduling, Last Checkpoint) 
+
+1.00 
+
+0.75 
+
+0.50 
+
+0.25 
+
+0.00 
+
+0.25 
+
+0.50 
+
+0.75 
+
+1.00 
+
+> Pearson Correlation Sample age
+> Clip ratio
+> Entropy
+> Mean group reward
+> Normalized length
+> Advantage
+> Reward
+> Std of group reward
+> Truncation flag
+> Usage count
+
+Features 
+
+> GRPO + CBS DAPO + CBS GSPO + CBS
+> Algorithms
+
+-0.926 0.097 0.032 0.082 -0.047 0.213 0.187 0.168 -0.114 -0.910 
+
+-0.201 0.287 -0.190 -0.152 -0.031 0.287 0.163 0.115 -0.102 0.068 
+
+-0.048 0.508 -0.030 0.003 0.211 -0.053 -0.024 0.768 0.052 0.260 
+
+Scheduler Correlations - 4B Model (Global Scheduling, Last Checkpoint) 
+
+1.00 
+
+0.75 
+
+0.50 
+
+0.25 
+
+0.00 
+
+0.25 
+
+0.50 
+
+0.75 
+
+1.00 
+
+> Pearson Correlation Sample age
+> Clip ratio
+> Entropy
+> Mean group reward
+> Normalized length
+> Advantage
+> Reward
+> Std of group reward
+> Truncation flag
+> Usage count
+
+Features 
+
+> GRPO + CBS* DAPO + CBS* GSPO + CBS*
+> Algorithms
+
+0.311 -0.073 0.052 0.088 -0.040 0.026 0.732 -0.028 
+
+0.394 0.022 -0.067 0.192 -0.148 -0.146 0.229 0.083 
+
+0.262 -0.101 -0.029 0.295 -0.076 -0.061 0.774 0.165 
+
+Scheduler Correlations - 4B Model (Intra-Group Scheduling, Last Checkpoint) 
+
+1.00 
+
+0.75 
+
+0.50 
+
+0.25 
+
+0.00 
+
+0.25 
+
+0.50 
+
+0.75 
+
+1.00 
+
+> Pearson Correlation Sample age
+> Clip ratio
+> Entropy
+> Mean group reward
+> Normalized length
+> Advantage
+> Reward
+> Std of group reward
+> Truncation flag
+> Usage count
+
+Features 
+
+> GRPO + CBS DAPO + CBS GSPO + CBS
+> Algorithms
+
+-0.378 0.185 0.421 0.187 0.087 0.404 0.375 0.516 0.015 -0.251 
+
+-0.610 0.078 0.132 -0.074 0.115 0.176 0.115 0.073 0.042 -0.522 
+
+-0.035 0.521 0.003 -0.027 0.252 -0.141 -0.081 0.795 0.083 0.239 
+
+Scheduler Correlations - 8B Model (Global Scheduling, Last Checkpoint) 
+
+1.00 
+
+0.75 
+
+0.50 
+
+0.25 
+
+0.00 
+
+0.25 
+
+0.50 
+
+0.75 
+
+1.00 
+
+> Pearson Correlation Sample age
+> Clip ratio
+> Entropy
+> Mean group reward
+> Normalized length
+> Advantage
+> Reward
+> Std of group reward
+> Truncation flag
+> Usage count
+
+Features 
+
+> GRPO + CBS* DAPO + CBS* GSPO + CBS*
+> Algorithms
+
+0.335 -0.022 -0.026 0.273 -0.113 -0.074 0.751 0.146 
+
+0.125 -0.736 -0.098 -0.171 0.226 0.139 0.207 -0.349 
+
+0.240 0.085 -0.055 0.290 -0.236 -0.170 0.731 0.216 
+
+Scheduler Correlations - 8B Model (Intra-Group Scheduling, Last Checkpoint) 
+
+1.00 
+
+0.75 
+
+0.50 
+
+0.25 
+
+0.00 
+
+0.25 
+
+0.50 
+
+0.75 
+
+1.00 
+
+> Pearson Correlation
+
+Figure 9. The Pearson correlation coefficient (PCC) between scheduler scores and training dynamic features, with empty blocks representing NaN values due to identical values across the training dynamic features in that dimension. 1000 2000 3000 4000 5000 
+
+Buffer Size 
+
+0.410 
+
+0.415 
+
+0.420 
+
+0.425 
+
+0.430 
+
+0.435 
+
+> Average Score
+
+0.4123 
+
+0.4241 
+
+0.4179 
+
+0.4344 
+
+0.4096 
+
+Test Performance vs Buffer Size 1000 2000 3000 4000 5000 
+
+Buffer Size 
+
+0.0 
+
+0.5 
+
+1.0 
+
+1.5 
+
+2.0 
+
+2.5 
+
+3.0 
+
+3.5 
+
+> Buffer Time Ratio (%)
+
+0.00% 
+
+1.45% 
+
+2.55% 
+
+2.44% 
+
+3.15% 
+
+Buffer Time Ratio vs Buffer Size 
+
+Figure 10. Performance and buffer-related runtime change of buffer size, where buffer size=1024 indicates the original GRPO. 
+
+22 Contextual Rollout Bandits for Reinforcement Learning with Verifiable Rewards 
+
+E.4. Scheduling Pattern Analysis and Case Study 
+
+We analyze the scheduling pattern of CBS by first examining the Pearson Correlation Coefficient (PCC) between training-dynamics features and the scheduler score. As shown in Figure 9, the patterns differ across policy optimization methods. For instance, GRPO + CBS relies heavily on data interaction history (i.e., usage count and sample age), while GSPO + CBS depends significantly on reward-related signals. These results demonstrate that CBS can adaptively adjust its scheduling behavior based on different policy optimization methods, leading to consistent performance improvements. Furthermore, we also respectively show rollouts that are filtered (in Figure 11) and selected by the scheduler (in Figure 12). 23 Contextual Rollout Bandits for Reinforcement Learning with Verifiable Rewards 
+
+Case Study 
+
+Prompt: 
+
+system 
+
+You are a helpful assistant. 
+
+user 
+
+Let n be the largest integer that is the product of exactly 3 distinct prime numbers: x, y, and 10 x + y, where x and y are digits. What is the sum of the digits of n?Please reason step by step, and put your final answer within \boxed {} .
+
+assistant 
+
+Answer : 12 
+
+Model Response: 
+
+Alright, I have this problem in front of me, and I need to find the largest integer n that is the product of exactly three distinct prime numbers: x, y, and 10 x + y,where x and y are single-digit numbers (from 1 to 9). Then, I need to find the sum of the digits of this integer n.First, let’s break it down: 
+
+Understanding the Problem 
+
+We need three distinct prime numbers: 1. x: a single-digit prime number. 2. y: another single-digit prime number. 3. 10 x + y: a two-digit number that is also prime. And we want the product n = x × y × (10 x + y) to be as large as possible. 
+
+Identifying Single-Digit Prime Numbers 
+
+Single-digit primes are: 2, 3, 5, 7. So, both x and y can be any of these values, and they must be different because the primes need to be distinct. 
+
+... [Intermediate reasoning steps omitted for brevity] ... 
+
+Calculating the Products 
+
+1. For x = 2 , y = 3 :
+
+n = 2 × 3 × 23 = 6 × 23 = 138 
+
+2. For x = 5 , y = 3 :
+
+n = 5 × 3 × 53 = 15 × 53 = 795 
+
+Wait, 795 is larger than 138, so it’s worth keeping. 3. For x = 3 , y = 7 :
+
+n = 3 × 7 × 37 = 21 × 37 = 777 
+
+4. For x = 7 , y = 3 :
+
+n = 7 × 3 × 73 = 21 × 73 = 1533 
+
+Now, comparing all the values of n we have: 138, 795, 777, 1533. The largest n is 1533. 
+
+Computing the Sum of the Digits of n
+
+Now, we need to find the sum of the digits of 1533. Let’s add them: 
+
+1 + 5 + 3 + 3 = 12 
+
+Final Answer 
+
+Therefore, the sum of the digits of n is 12 . NullOrUndefinedAssistant systemassistantassistantassistantassistantassistantassistantassistant 
+
+... [Output repeats ”assistant” continuously until truncate] ... 
+
+Figure 11. Rollout filtered by CBS, where the model answers correctly but fails to stop, entering a repetitive loop of token generation. 
+
+24 Contextual Rollout Bandits for Reinforcement Learning with Verifiable Rewards 
+
+Case Study 
+
+Prompt: 
+
+system 
+
+You are a helpful assistant. 
+
+user 
+
+The positive five-digit integers that use each of the digits 1, 2, 3, 4 and 5 exactly once are ordered from least to greatest. What is the 50 th integer in the list? Please reason step by step, and put your final answer within \boxed {} .
+
+assistant 
+
+Answer: 31254 Model Response: 
+
+Alright, I have this problem in front of me: 
+
+The positive five-digit integers that use each of the digits 1, 2, 3, 4, and 5 exactly once are ordered from least to greatest. What is the 50th integer in the list? 
+
+I need to find the 50th permutation of the digits 1, 2, 3, 4, and 5 arranged in ascending order. Let’s break this down. 
+
+Understanding the Problem 
+
+First, I need to generate five-digit numbers using each digit from 1 to 5 exactly once, sorted from smallest to largest, and then find the number that is in the 50th position. 
+
+Total Number of Permutations 
+
+I know that the total number of unique five-digit numbers using each of the digits 1, 2, 3, 4, and 5 exactly once is the number of permutations of 5 distinct digits. The number of permutations of 5 distinct digits is: 
+
+5! = 5 × 4 × 3 × 2 × 1 = 120 
+
+So, there are 120 such numbers, and they are ordered from smallest to largest. 
+
+Finding the 50th Permutation 
+
+To find the 50th permutation, I think it would be helpful to understand how the permutations are ordered. Each unique starting digit (first digit) can lead to 4! = 24 permutations because there are 24 ways to arrange the remaining four digits. Since 24 × 2 = 48 , the 50th permutation falls into the range where the first digit is 5 (because the first 48 permutations must have 1, 2, or 3 as the first digit). Wait, let’s check: • The first 24 numbers start with 1. • The next 24 numbers start with 2. • The next 24 numbers start with 3. • The next 24 numbers start with 4. • The next 24 numbers start with 5. So: • Numbers 1 to 24: first digit = 1 • Numbers 25 to 48: first digit = 2 • Numbers 49 to 72: first digit = 3 Aha, so the 50th permutation is between numbers 49 and 72, which corresponds to the first digit being 3. 
+
+Narrowing Down Further 
+
+Now, I need to find the 50th permutation. Since the first 48 are covered (24 starting with 1 + 24 starting with 2), the 49th to 72nd permutations start with 3. Thus, the 50th permutation is the 2nd permutation in the set of permutations starting with 3 (since 48 + 2 = 50 ). To find permutations starting with 3, the remaining digits are 1, 2, 4, 5. Now, the task reduces to finding the 2nd smallest permutation of the digits 1, 2, 4, 5 with 3 fixed as the first digit. 
+
+Finding the 2nd Smallest Permutation of 1, 2, 4, 5 
+
+First, find all permutations of 1, 2, 4, 5 ordered from smallest to largest. To find the 2nd permutation, let’s list them step by step. The smallest permutation (1st) will have the smallest possible digits in the subsequent places. 1. 1st permutation: Start with 1, remaining digits 2, 4, 5 in ascending order: 1 2 4 5 .2. 2nd permutation: Keep 1 as the second digit, swap the last two: 1 2 5 4 .Thus, the second permutation starting with 3 (which is the 50th overall) is 3 1 2 5 4 .
+
+Final Answer 
+
+After this reasoning, the 50th five-digit integer using each of the digits 1, 2, 3, 4, and 5 exactly once, in ascending order, is 
+
+31254 
+
+Figure 12. A rollout elected by CBS, where the answers and CoT are both right. 
+
+25

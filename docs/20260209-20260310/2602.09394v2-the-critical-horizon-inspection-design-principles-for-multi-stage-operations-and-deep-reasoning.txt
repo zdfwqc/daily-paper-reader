@@ -1,0 +1,2065 @@
+Title: The Critical Horizon: Inspection Design Principles for Multi-Stage Operations and Deep Reasoning
+
+URL Source: https://arxiv.org/pdf/2602.09394v2
+
+Published Time: Mon, 16 Feb 2026 01:15:41 GMT
+
+Number of Pages: 49
+
+Markdown Content:
+# The Critical Horizon: Inspection Design Principles for Multi-Stage Operations and Deep Reasoning 
+
+Seyed Emadi 
+
+> Kenan-Flagler Business School, University of North Carolina at Chapel Hill, seyed emadi@kenan-flagler.unc.edu
+
+Abstract. Manufacturing lines, service journeys, supply chains, and AI reasoning chains share a common challenge: attributing a terminal outcome to the intermediate stage that caused it. We establish an information-theoretic barrier to this credit assignment problem : the signal connecting early steps to final outcomes decays exponentially with depth, creating a critical horizon beyond which reliable learning from endpoint data alone requires exponentially many samples. We prove four results. First, a Signal Decay Bound: sample complexity for attributing outcomes to early stages grows exponentially in the number of intervening steps. Second, Width Limits: parallel rollouts provide only logarithmic relief, with correlation capping the effective number of independent samples. Third, an Objective Mismatch: additive reward aggregation optimizes the wrong quantity when sequential validity requires all steps to be correct. Fourth, Optimal Inspection Design: uniform checkpoint spacing is minimax-optimal under homogeneous signal attenuation, while a greedy algorithm yields optimal non-uniform schedules under heterogeneous attenuation. Together, these results provide a common analytical foundation for inspection design in operations and supervision design in AI. 
+
+Key words: credit assignment, critical horizon, deep reasoning, process supervision, signal decay, inspection design 
+
+1. Introduction 
+
+When a semiconductor wafer fails final testing, which of the hundred preceding fabrication steps caused the defect? When a customer churns after a multi-touchpoint journey, which interaction was responsible? When a multi-tier supply chain delivers a defective product, which supplier introduced the flaw? These are instances of the credit assignment problem : attributing terminal outcomes to intermediate stages in deep sequential processes. Classical inspection theory (Lindsay and Bishop 1964, Raz 1986, Tapiero 1987) addresses this challenge through intermediate checkpoints, optimizing their placement to balance inspection cost against defect-escape risk. But intermediate inspection is not always an option: a proof step that appears irregular may be valid in context; a component may only be testable once assembled; a customer’s reaction to one touchpoint depends on what follows. In such cases, validity is a property of the whole sequence, and terminal inspection is not merely cheaper but necessary. Moreover, even when terminal inspection is the only option, the classical literature implicitly assumes that defect signals persist through the production chain: with enough terminal observations, any stage’s   
+
+> arXiv:2602.09394v2 [stat.ML] 13 Feb 2026 Emadi: The Critical Horizon
+> 2Article submitted to
+
+quality can eventually be inferred. We show this assumption fails for deep processes, where signals decay exponentially with depth. The challenge of attributing outcomes to early stages under terminal-only observation has gained particular urgency in AI, where large language models generate extended reasoning chains but only the final answer can be verified. Empirically, reinforcement learning (RL) value networks trained on outcome rewards “collapse”: they converge to near-constant predictions for early steps, as if outcomes carry no information about the chain’s beginning (Kazemnejad et al. 2024). Process reward models that provide step-level supervision dramatically improve performance (Lightman et al. 2024), but require expensive human annotation. When is such annotation necessary, and when does outcome supervision suffice? This paper answers these questions by establishing information-theoretic foundations for credit assignment. Using Strong Data Processing Inequalities (SDPIs), we prove that signals connecting early steps to terminal outcomes decay exponentially with depth. The analysis reveals a sharp threshold: there exists a critical horizon 𝐻 crit such that steps within this distance of the outcome can be evaluated from endpoint data, while steps beyond require a number of samples that grows exponentially in the gap 𝐻 − 𝑡 . This is not an algorithmic limitation but an information-theoretic barrier. The critical horizon scales logarithmically with sample size and signal strength but inversely with a per-stage contraction rate that captures how much each processing step blurs the distinction between good and bad earlier steps. In AI reasoning systems, sampling temperature controls this blurring: higher temperature produces more diverse continuations, making it harder to trace out-comes back to early steps. In manufacturing, the analogous driver is the overlap among downstream quality-grade distributions: variability-reducing steps (polishing, annealing, rework), pooling oper-ations (lot mixing, kitting, assembly), and coarse metrology bins all cause products of different upstream grades to produce similar distributions of grades at the next stage, fading the signal about the original grade. The critical horizon formula thus determines whether intermediate feedback is a cost-saving measure or a feasibility requirement .A key insight underlying our analysis is that credit assignment targets abstract states , not raw observations. In manufacturing, the observable state at production stage 𝑡 consists of detailed sensor readings (temperatures, pressures, vibration spectra), but credit assignment asks whether the stage produced output that was within specification, marginal, or defective. Multiple sensor patterns correspond to the same quality grade. In AI reasoning, the observable state is the token sequence generated after 𝑡 reasoning steps, but credit assignment asks whether the logical content is valid, not Emadi: The Critical Horizon  
+
+> Article submitted to 3
+
+which specific words were used. The phrases “Therefore 𝑥 = 5” and “Thus we conclude 𝑥 equals 5” use different tokens but express the same mathematical content. In both settings, the space of abstract states (quality grades, semantic content) is smaller than the space of raw observations (sensor readings, token sequences). This many-to-one mapping from observations to abstract states is the mechanism behind the per-stage contraction introduced above: when multiple observable states collapse to the same abstract state, transitions from distinct starting points lead to overlapping distributions over next states, and statistical distinguishability shrinks. This occurs even when raw dynamics are deterministic (as with token generation in language models), because the induced dynamics on the abstract space contract. The implication for learning systems is immediate: when signal decay is severe, outcome distributions conditioned on different early states become nearly identical, and training data contains almost no information about which early states are better. Under the assumptions of our model, the critic collapse phenomenon observed in AI systems (Kazemnejad et al. 2024) is statistically optimal behavior given the available information, and not a bug to be fixed but a symptom of a fundamental limit. A natural response to signal decay is to generate more observations: multiple parallel trajectories from the same starting point, as in replicated testing or width-based methods like GRPO (Group Relative Policy Optimization; DeepSeek-AI 2024). We show this strategy provides only limited relief: correlation among rollouts caps the effective width at 1 /𝜌 , where 𝜌 is the pairwise correlation between rollout outcomes, and adding more rollouts yields diminishing returns. For steps beyond the critical horizon, process supervision becomes necessary, raising a new question: how should step-level feedback be aggregated? Sequential validity requires all steps to be correct, a multiplicative rather than additive criterion. The mismatch is stark: a 100-step process with 99% per-step accuracy has an expected correctness score of 99, yet the probability that all 100 steps are correct is only 0 .99 100 ≈ 0.37. Systems that optimize additive objectives learn to produce chains that are “mostly correct” but nonetheless invalid. We analyze this objective mismatch and propose curriculum strategies that transition from learnable additive objectives to correct multiplicative ones as policy quality improves. Once the need for process supervision is established, a natural question arises: where should intermediate checkpoints be placed? Each checkpoint resets the signal decay clock, so a step imme-diately before a checkpoint is easy to evaluate, while a step far from any checkpoint is hard. The hardest step to evaluate under any schedule is the one farthest from its next checkpoint, and the Emadi: The Critical Horizon  
+
+> 4Article submitted to
+
+design goal is to make this worst case as mild as possible. We derive inspection schedules that are minimax-optimal in this sense: they minimize the worst-case sample complexity across all steps. When all stages attenuate signal at the same rate, uniform checkpoint spacing is minimax-optimal. When different stages attenuate at different rates, a greedy algorithm that places each successive checkpoint as far as the information budget allows yields optimal non-uniform schedules, automat-ically concentrating inspections where signal loss is fastest. In either case, achieving polynomial sample complexity requires inspection density that scales nearly linearly with process depth: deeper processes demand proportionally more intermediate verification. We develop a detailed application to large language model reasoning (Section I in the Electronic Companion), where the state abstraction maps token sequences to semantic content and sampling temperature controls the contraction coefficient. We validate the theoretical predictions through numerical experiments on both synthetic Markov chains and LLM reasoning chains on GSM8K (a grade-school math benchmark); full experimental details appear in Appendix H.  
+
+> Summary of contributions.
+
+We establish four main results that transform the intuition “credit assignment in long processes is hard” into precise, actionable principles. 
+
+• Signal Decay Bound (Section 3): Information about any given step decays exponentially when propagating to the terminal outcome. The resulting sample complexity bounds are tight, establishing that exponential scaling is fundamental. This yields a closed-form critical horizon formula. 
+
+• Width Limits (Section 4): Parallel rollouts reduce estimator variance, but correlation caps effective width at 1 /𝜌 , extending the critical horizon only logarithmically. 
+
+• Objective Mismatch (Section 5): Additive reward aggregation optimizes the wrong quantity when sequential validity requires all steps to be correct. We propose curriculum strategies that interpolate between learnable and correct objectives. 
+
+• Optimal Inspection Design (Section 6): Uniform checkpoint spacing is minimax-optimal under homogeneous contraction; a greedy algorithm yields optimal non-uniform schedules under heterogeneous contraction. Polynomial sample complexity requires inspection density scaling as Ω(𝐻 /log 𝐻 ).The framework yields concrete guidance for both AI and operations practitioners. For AI systems, it explains why process reward models improve performance (they provide signal beyond the critical horizon), why methods like VinePPO (value-based intermediate-step process supervision; Kazemnejad et al. 2024) succeed (they reduce effective depth below 𝐻 crit ), and why width-based Emadi: The Critical Horizon  
+
+> Article submitted to 5
+
+methods face diminishing returns (correlation caps effective width). For operations managers, it provides a direct diagnostic. Consider a 50-stage semiconductor process. With contraction rate 
+
+𝜂 = 0.85, signal strength Δ2 = 0.2, and 10,000 test wafers, 𝐻 crit ≈ 47 (simplified; ≈ 48 with 𝜖 = 0.1): at least one intermediate checkpoint is required. With 𝜂 = 0.90, the critical horizon extends to 72 steps, and terminal testing alone suffices. (In practice, 𝜂 is auditable: estimate adjacent-stage grade transition matrices from production data and compute the overlap-based bounds in Section 3.2.) The unifying insight is that credit assignment difficulty is a structural barrier, not an algorithmic one. The critical horizon formula answers the diagnostic question ( when is intermediate feedback necessary?); the optimal inspection schedules answer the prescriptive question ( where to place checkpoints?); and the objective mismatch analysis answers the aggregation question ( how to com-bine step-level feedback?). Together, these results provide a principled foundation for supervision system design in both operations and AI.  
+
+> 1.1. Literature Review
+
+Our results sit at the intersection of inspection design in operations research, outcome-versus-process supervision in deep sequential decision systems, and information-theoretic limits for Markovian signal propagation. On the OR side, we build on classical checkpoint placement models (Lindsay and Bishop 1964, Raz 1986, Tapiero 1987), but focus on a different binding constraint: 
+
+observability under terminal-only evaluation in deep processes, rather than expected-cost tradeoffs under persistent defect signals. On the AI side, recent work documents that outcome-only supervi-sion can fail on long reasoning chains and that step-level supervision can help (Lightman et al. 2024, Uesato et al. 2022, Kazemnejad et al. 2024); we provide a non-asymptotic, information-theoretic characterization of when outcome supervision becomes insufficient. In standard RL settings with bounded concentrability, outcome and process supervision are polynomially equivalent (Jia et al. 2025); our setting falls outside this regime because concentrability grows exponentially in horizon. Independent concurrent work by ? establishes an exponential separation using function approxima-tion complexity, complementing our information-theoretic approach. More broadly, this work contributes to a growing OR-for-AI agenda that applies operations research methodology to AI system design (Snell et al. 2025, Besta et al. 2025, Elmachtoub and Grigas 2022, Wiberg et al. 2025), here showing that classical tools such as strong data processing inequalities and minimax inspection design yield precise answers to questions the AI community has addressed primarily through empirical heuristics. Technically, the analysis leverages strong data processing inequalities (Polyanskiy and Wu 2017, Raginsky 2016) and Le Cam-style hypothesis Emadi: The Critical Horizon  
+
+> 6Article submitted to
+
+testing lower bounds (Le Cam 1973) to establish tight sample-complexity limits and the closed-form critical horizon. A detailed, stream-by-stream literature discussion (inspection design, RL theory, information theory, and OR-for-AI) is provided in the Electronic Companion (Appendix A).  
+
+> 1.2. Paper Organization
+
+The paper develops a logical progression from information-theoretic limits to optimal inspection design. Section 2 establishes the formal framework: the MDP model, state abstraction, supervision regimes, and the contraction property that drives signal decay. Section 3 proves the Signal Decay Bound, showing that information about step 𝑡 decays as 𝜂 𝐻 −𝑡 , and derives the critical horizon formula that determines which steps can be evaluated from terminal data. Two extensions follow. Section 4 analyzes width amplification, showing that correlation among parallel rollouts caps effective width and extends the critical horizon only logarithmically. Section 5 addresses an orthogonal failure mode: standard additive objectives optimize the wrong quantity for sequential validity, and proposes curriculum strategies that interpolate between learnable and correct objectives. Section 6 synthesizes these results into optimal inspection schedules: uniform spacing under homogeneous contraction and a greedy information-distance algorithm under heterogeneous con-traction. Section 7 provides a concise summary of numerical validation; full experimental setups and all plots are deferred to the Electronic Companion (Appendix H). The Electronic Companion also develops a detailed application to language model reasoning (Section I). 
+
+2. Problem Formulation 
+
+We formalize the credit assignment problem in sequential processes, beginning with the operational setting before developing the mathematical framework.  
+
+> 2.1. Multi-Stage Processes with Terminal Inspection
+
+Consider a process where items pass through 𝐻 stages before final inspection. At each stage, the item’s state changes and defects may be introduced. The final inspection reveals whether the complete item meets specifications but does not identify which stage caused a failure. As discussed in Section 1, terminal-only inspection arises either because intermediate inspection is costly (semiconductor metrology, supplier auditing) or infeasible (validity depends on context that emerges only downstream). The common structure across manufacturing, service operations, supply chains, and AI reasoning is that terminal outcomes are observable but the intermediate stage Emadi: The Critical Horizon  
+
+> Article submitted to 7
+
+responsible for success or failure is not. Without localization, process improvement efforts may target the wrong stages. Our framework applies when (i) the process evolves through discrete stages with Markovian dynamics on an abstract state space, (ii) terminal inspection reveals aggregate quality, and (iii) intermediate inspection, if feasible, is costly. In AI, outcome supervision refers to training on final output labels, while process supervision provides step-level feedback. We adopt this terminology throughout, noting that the underlying structure is domain-general. 
+
+2.2. Mathematical Formalization 
+
+We model the sequential process as an episodic finite-horizon Markov decision process (MDP) with terminal reward. Let S denote a state space, A an action space, and 𝐻 the horizon (the number of decision stages). 
+
+DEFINITION 1 (F INITE -H ORIZON MDP WITH TERMINAL REWARD ). A finite-horizon MDP with terminal reward consists of: 
+
+• An initial state 𝑆 0 ∈ S , drawn from a distribution 𝜇 over S (or fixed at a given state 𝑠 0)
+
+• Transition dynamics, either deterministic 𝑠 𝑡 +1 = 𝑓 (𝑠 𝑡 , 𝑎 𝑡 ) or stochastic 𝑠 𝑡 +1 ∼ 𝑃 (· | 𝑠 𝑡 , 𝑎 𝑡 )
+
+• A policy 𝜋 = (𝜋 0, . . . , 𝜋 𝐻 −1) where each 𝜋 𝑡 : S → Δ(A) maps states to distributions over actions 
+
+• A terminal evaluation 𝑅 = 𝑔 (𝑆 𝐻 ) ∈ { 0, 1} indicating success or failure 
+
+• Step validity indicators 𝑟 𝑡 = ℎ𝑡 (𝑆 𝑡 , 𝐴 𝑡 , 𝑆 𝑡 +1) ∈ { 0, 1}, treated as exogenous labels available only under process or partial supervision; the functions ℎ𝑡 are problem-dependent and need not be known to the learner A trajectory is the complete sequence 𝜏 = (𝑆 0, 𝐴 0, 𝑆 1, . . . , 𝐴 𝐻 −1, 𝑆 𝐻 ). We use uppercase letters for random variables; realized samples are denoted 𝜏 (𝑖 ) = (𝑠 (𝑖 ) 
+
+> 0
+
+, 𝑎 (𝑖 ) 
+
+> 0
+
+, . . . , 𝑠 (𝑖 ) 
+
+> 𝐻
+
+). In sequential validity 
+
+tasks, terminal success requires every step to be correct: 𝑅 = Î𝐻 −1 
+
+> 𝑡 =0
+
+𝑟 𝑡 ; this structural relationship motivates the multiplicative objective introduced in Section 5. To ground this abstraction: in manufacturing, the state 𝑆 𝑡 is the workpiece condition at stage 𝑡 , an action 𝐴 𝑡 is the process setting (temperature, pressure, feed rate), and the transition 𝑓 maps current condition and setting to the next-stage condition. The terminal evaluation 𝑅 indicates whether the finished product passes final inspection. In AI reasoning, 𝑆 𝑡 is the partial solution generated so far, 
+
+𝐴 𝑡 is the next reasoning step, and 𝑅 indicates whether the final answer is correct. 
+
+REMARK 1 (D ETERMINISTIC DYNAMICS WITH STOCHASTIC TRAJECTORIES ). In many sequential processes, the transition function 𝑓 is deterministic while trajectories are stochastic Emadi: The Critical Horizon  
+
+> 8Article submitted to
+
+because actions are sampled from a policy distribution. This distinction matters: information loss arises not from noisy dynamics but from the many-to-one structure of state abstraction (Section 3). In manufacturing, this occurs even under fixed recipes: units sharing the same quality grade may differ in latent characteristics (material lot, tool drift, defect mode), so the abstraction from detailed workpiece state to grade is many-to-one, and the induced grade-to-grade kernels have overlapping rows and 𝜂 < 1. The value function captures the probability of eventual success from any intermediate state. Intuitively, it answers the question: “If the process is currently at state 𝑠 after 𝑡 steps, what is the chance it will ultimately succeed?” 
+
+DEFINITION 2 (V ALUE FUNCTION ). The value function under policy 𝜋 from state 𝑠 at step 𝑡 
+
+is 
+
+𝑉 𝜋 𝑡 (𝑠 ) := P𝜋 (𝑅 = 1 | 𝑆 𝑡 = 𝑠 ) = E𝜋 [𝑅 | 𝑆 𝑡 = 𝑠 ],
+
+representing the probability of terminal success when starting from state 𝑠 at step 𝑡 and following policy 𝜋 .
+
+2.3. Supervision Models 
+
+The learner observes 𝑛 i.i.d. trajectories generated by a fixed behavior policy 𝜋 . We define three supervision regimes, distinguished by what feedback accompanies each trajectory. 
+
+DEFINITION 3 (O UTCOME SUPERVISION ). Under outcome supervision , the learner observes 
+
+𝑛 independent trajectory-outcome pairs: 
+
+Dout = {( 𝜏 (𝑖 ) , 𝑅 (𝑖 ) )} 𝑛 𝑖 =1.
+
+The full trajectory 𝜏 (𝑖 ) including all intermediate states is observed, but no step-level correctness labels are provided. The learner sees what happened at each step but not whether each step was correct. Consequently, the only supervision signal about step validity is through 𝑅 , and any test for whether step 𝑡 was correct must rely on the induced separation in outcome distributions; this is why the lower bounds in Section 3 are stated in terms of 𝑃 (0) 
+
+> 𝑅
+
+versus 𝑃 (1) 
+
+> 𝑅
+
+.
+
+DEFINITION 4 (P ROCESS SUPERVISION ). Under process supervision , the learner addition-ally observes step validity labels: 
+
+Dproc = {( 𝜏 (𝑖 ) , 𝑟 (𝑖 ) 
+
+> 0
+
+, . . . , 𝑟 (𝑖 )
+
+> 𝐻 −1
+
+, 𝑅 (𝑖 ) )} 𝑛 𝑖 =1,
+
+where 𝑟 (𝑖 ) 
+
+> 𝑡
+
+∈ { 0, 1} indicates whether step 𝑡 of trajectory 𝑖 is valid. Emadi: The Critical Horizon  
+
+> Article submitted to 9
+
+Process supervision provides the ground truth about each step. This is the gold standard for credit assignment but is expensive: a human expert must evaluate every step of every trajectory, or a formal verifier must check each logical inference. 
+
+DEFINITION 5 (P ARTIAL SUPERVISION ). Under 𝑘 -step supervision , the learner observes step labels at intervals of 𝑘 steps: 
+
+D𝑘 = {( 𝜏 (𝑖 ) , 𝑟 (𝑖 ) 
+
+> 𝑘
+
+, 𝑟 (𝑖 ) 
+
+> 2𝑘
+
+, . . . , 𝑟 (𝑖 )⌊( 𝐻 −1)/ 𝑘 ⌋· 𝑘 , 𝑅 (𝑖 ) )} 𝑛 𝑖 =1,
+
+That is, labels are provided at steps 𝑡 = 𝑘, 2𝑘, . . . (we omit 𝑡 = 0 by convention). This interpolates between near-process supervision ( 𝑘 = 1, all steps except 𝑟 0 labeled) and outcome supervision (𝑘 ≥ 𝐻 , no step labels). The convention ensures that coarse supervision provides no step-level information. Under all three regimes, the learner observes the complete state sequence (𝑠 0, . . . , 𝑠 𝐻 ). The difficulty is not hidden states but missing correctness labels: the model’s output is fully readable, but determining whether each step is valid may require human experts or formal verification. 
+
+2.4. Information-Theoretic Preliminaries 
+
+Our lower bounds rely on tracking how information degrades through sequential processing. The core question is: if two hypotheses (say, “step 𝑡 was good” versus “step 𝑡 was bad”) lead to different distributions over trajectories, how many samples suffice to distinguish them? The answer depends on how different the resulting outcome distributions are: nearly identical distributions require many samples, while well-separated distributions require few. We formalize this using 𝜒 2-divergence. 
+
+DEFINITION 6 ( 𝜒 2-D IVERGENCE ). For distributions 𝑃 and 𝑄 with 𝑃 absolutely continuous with respect to 𝑄 :
+
+𝜒 2 (𝑃 ∥𝑄 ) :=
+
+∫ (𝑑𝑃 − 𝑑𝑄 )2
+
+𝑑𝑄 = E𝑄 
+
+" 𝑑𝑃 𝑑𝑄 − 1
+
+2#
+
+.
+
+We use 𝜒 2-divergence rather than KL divergence for two reasons. First, it connects directly to hypothesis testing: by Le Cam’s method (Le Cam 1973), distinguishing 𝑃 from 𝑄 with constant probability requires 𝑛 = Ω (1/𝜒 2 (𝑃 ∥𝑄 )) samples. Second, it tensorizes cleanly across indepen-dent samples: 𝜒 2 (𝑃 ⊗𝑛 ∥𝑄 ⊗𝑛 ) = (1 + 𝜒 2 (𝑃 ∥𝑄 )) 𝑛 − 1 (see, e.g., Polyanskiy and Wu 2017). This multiplicative structure translates divergence bounds directly into sample complexity bounds. The central tool in our analysis is the Strong Data Processing Inequality, which captures a fundamental phenomenon: processing information can only destroy it, never create it . If two Emadi: The Critical Horizon  
+
+> 10 Article submitted to
+
+distributions are hard to distinguish, passing them through a noisy channel makes them even harder to distinguish. 
+
+DEFINITION 7 ( 𝜒 2-C ONTRACTION COEFFICIENT ). For a Markov kernel 𝐾 : X → Δ(Y) , the 
+
+𝜒 2-contraction coefficient is 
+
+𝜂 𝜒 2 (𝐾 ) := sup  
+
+> 𝑃,𝑄 :𝑃 ≪𝑄
+> 0<𝜒 2(𝑃 ∥𝑄 )<∞
+
+𝜒 2 (𝑃𝐾 ∥𝑄𝐾 )
+
+𝜒 2 (𝑃 ∥𝑄 ) ,
+
+where 𝑃𝐾 (𝑦 ) = ∫ 𝐾 (𝑦 | 𝑥 ) 𝑑𝑃 (𝑥 ) is the pushforward measure. The contraction coefficient satisfies 𝜂 𝜒 2 (𝐾 ) ∈ [ 0, 1], measuring what fraction of distinguishability survives the channel: 𝜂 = 0 destroys all information; 𝜂 = 1 is lossless. Throughout, smaller 𝜂 means stronger contraction (faster information loss). 
+
+LEMMA 1 (𝜒 2 Strong Data Processing Inequality (see Raginsky 2016, Polyanskiy and Wu 2017)) .
+
+Let 𝐾 : Y → Δ(Z) be a Markov kernel. For any distributions 𝑃 𝑌 and 𝑄 𝑌 on Y with 𝑃 𝑌 ≪ 𝑄 𝑌 and 
+
+𝜒 2 (𝑃 𝑌 ∥𝑄 𝑌 ) < ∞, define 𝑃 𝑍 = 𝑃 𝑌 𝐾 and 𝑄 𝑍 = 𝑄 𝑌 𝐾 . Then 
+
+𝜒 2 (𝑃 𝑍 ∥𝑄 𝑍 ) ≤ 𝜂 𝜒 2 (𝐾 ) · 𝜒 2 (𝑃 𝑌 ∥𝑄 𝑌 ).
+
+For credit assignment: if 𝑃 𝑌 and 𝑄 𝑌 represent state distributions under “good step” versus “bad step,” and 𝐾 represents subsequent reasoning, then outcome distributions are at most 𝜂 times as distinguishable as the original states. When we iterate through multiple steps, information loss compounds. 
+
+COROLLARY 1 (Divergence Decay in Markov Chains (cf. Polyanskiy and Wu 2017)) .
+
+Consider a Markov chain (𝑆 0, 𝑆 1, . . . , 𝑆 𝐻 ) with transition kernels 𝐾 0, 𝐾 1, . . . , 𝐾 𝐻 −1. For any two initial distributions 𝑃 𝑆 0 and 𝑄 𝑆 0 with 𝑃 𝑆 0 ≪ 𝑄 𝑆 0 and 𝜒 2 (𝑃 𝑆 0 ∥𝑄 𝑆 0 ) < ∞:
+
+𝜒 2 (𝑃 𝑆 𝐻 ∥𝑄 𝑆 𝐻 ) ≤ 
+
+> 𝐻 −1
+
+Ö
+
+> 𝑡 =0
+
+𝜂 𝜒 2 (𝐾 𝑡 )
+
+!
+
+𝜒 2 (𝑃 𝑆 0 ∥𝑄 𝑆 0 ).
+
+In particular, if 𝜂 𝜒 2 (𝐾 𝑡 ) ≤ 𝜂 < 1 for all 𝑡 , then 
+
+𝜒 2 (𝑃 𝑆 𝐻 ∥𝑄 𝑆 𝐻 ) ≤ 𝜂 𝐻 · 𝜒 2 (𝑃 𝑆 0 ∥𝑄 𝑆 0 ).Emadi: The Critical Horizon  
+
+> Article submitted to 11
+
+3. The Signal Decay Bound: Why Early Steps Are Hardest 
+
+We now prove that information about step 𝑡 decays exponentially as it propagates through the remaining 𝐻 − 𝑡 stages, making credit assignment to early steps fundamentally harder than to late ones. We first introduce a state abstraction under which abstract dynamics are Markov (Section 3.1), show that the many-to-one structure of this abstraction induces contraction (Section 3.2), and then prove the Signal Decay Bound, derive the critical horizon, and establish tightness (Section 3.3). 
+
+Proofs appear in Appendix B.  
+
+> 3.1. State Abstraction and Abstract Dynamics
+
+Credit assignment targets abstract content, not raw observations. In many sequential processes, the full observable state contains details (surface representation, sensor noise, formatting choices) that are irrelevant to the outcome. Multiple observable states may map to the same quality grade or semantic content. This many-to-one structure is the source of information loss, and formalizing it is the first step toward quantifying signal decay. 
+
+DEFINITION 8 (M ARKOV STATE ABSTRACTION ). A Markov state abstraction is a mapping 
+
+𝜙 : S → Z from observable states to an abstract state space Z satisfying the lumpability condition :for all 𝑡 and all 𝑠, 𝑠 ′ ∈ S with 𝜙 (𝑠 ) = 𝜙 (𝑠 ′) = 𝑧 ,
+
+L( 𝜙 (𝑆 𝑡 +1) | 𝑆 𝑡 = 𝑠 ) = L( 𝜙 (𝑆 𝑡 +1) | 𝑆 𝑡 = 𝑠 ′).
+
+The abstract state at step 𝑡 is 𝑍 𝑡 = 𝜙 (𝑆 𝑡 ).The lumpability condition, due to Kemeny and Snell (1960), ensures that the abstract process 
+
+(𝑍 0, 𝑍 1, . . . , 𝑍 𝐻 ) is itself Markov: the distribution of the next abstract state depends only on the current abstract state, not on which observable state within the equivalence class was realized. When this condition holds, there exist well-defined abstract transition kernels 𝐾 𝑡 : Z → Δ(Z) with 
+
+𝐾 𝑡 (𝑧 ′ | 𝑧 ) = P(𝜙 (𝑆 𝑡 +1) = 𝑧 ′ | 𝜙 (𝑆 𝑡 ) = 𝑧 ).Lumpability is a modeling choice rather than a restrictive hypothesis: one defines 𝜙 so that the abstract dynamics are Markov. If an initial choice of 𝜙 fails the condition, one refines the partition by augmenting 𝜙 with additional context until the condition holds, at the cost of a larger abstract space. The interesting question is not whether lumpability holds (it can always be arranged, at the cost of enlarging the abstract state space) but how much the resulting abstract kernels 𝐾 𝑡 mix: do different abstract states lead to overlapping or distinct distributions over successor states? A coarser abstraction lumps more observable states together, increasing overlap and accelerating information Emadi: The Critical Horizon  
+
+> 12 Article submitted to
+
+loss. A finer abstraction preserves more distinctions but may require a larger state space. Section 3.2 formalizes this tradeoff. Section I in the Electronic Companion develops a concrete instantiation for language model reasoning. 
+
+EXAMPLE 1 (S TATE ABSTRACTION IN APPLICATIONS ). 
+
+• Manufacturing: The observable state 𝑆 𝑡 consists of sensor readings at production stage 𝑡 (tem-peratures, pressures, vibration spectra). The abstract state 𝑍 𝑡 = 𝜙 (𝑆 𝑡 ) captures the quality grade: “within specification,” “marginal,” or “defective.” Multiple sensor patterns map to the same grade. 
+
+• AI reasoning: The observable state 𝑆 𝑡 is the token sequence generated after 𝑡 reasoning steps. The abstract state 𝑍 𝑡 = 𝜙 (𝑆 𝑡 ) captures semantic content: the mathematical claims established, the proof strategy adopted, or the intermediate values derived. Multiple token sequences expressing the same content map to the same abstract state. The lumpability condition requires exact agreement of abstract transition probabilities within each equivalence class. In practice, this may hold only approximately: two sensor patterns classified as the same quality grade may lead to slightly different distributions over downstream grades. We return to this point in Section 3.3, after establishing the main bound, where we show that approximate lumpability incurs only a bounded, typically negligible penalty. 
+
+3.2. Why Abstract Dynamics Contract 
+
+The many-to-one structure of 𝜙 introduced in Section 3.1 causes information loss whenever distinct abstract states lead to overlapping next-state distributions. We now quantify this loss per step using the 𝜒 2-contraction coefficient 𝜂 𝜒 2 (𝐾 ) ∈ [ 0, 1] (Definition 7), which measures what fraction of 𝜒 2-divergence survives when distributions pass through a kernel 𝐾 . When different abstract states 𝑧 
+
+and 𝑧 ′ produce overlapping distributions 𝐾 (· | 𝑧 ) and 𝐾 (· | 𝑧 ′) over next states, 𝜂 𝜒 2 (𝐾 ) < 1 and any statistical difference between two distributions over 𝑍 𝑡 shrinks after one transition. To build intuition, suppose we want to determine whether the abstract chain was in state 𝑧 or state 𝑧 ′ at step 𝑡 by observing the state at step 𝑡 + 1. If 𝐾 (· | 𝑧 ) and 𝐾 (· | 𝑧 ′) have disjoint support, observing 𝑍 𝑡 +1 perfectly identifies 𝑍 𝑡 , and no information is lost. But if both distributions assign positive probability to some state 𝑦 , then observing 𝑍 𝑡 +1 = 𝑦 leaves residual uncertainty about whether 𝑍 𝑡 was 𝑧 or 𝑧 ′. The greater the overlap between 𝐾 (· | 𝑧 ) and 𝐾 (· | 𝑧 ′), the more information is lost at each step. 
+
+EXAMPLE 2 (C ONTRACTION COEFFICIENT IN EXTREME CASES ). Emadi: The Critical Horizon  
+
+> Article submitted to 13
+
+• Deterministic dynamics ( 𝜂 = 1): If each state 𝑧 transitions to a unique successor, the transition matrix is a permutation and 𝐾 (· | 𝑧 ) and 𝐾 (· | 𝑧 ′) have disjoint support for 𝑧 ≠ 𝑧 ′. No information is lost: 𝜂 𝜒 2 (𝐾 ) = 1. 
+
+• Uniform mixing ( 𝜂 = 0): If 𝐾 (· | 𝑧 ) = 𝜈 for all 𝑧 (every state transitions to the same distribution 
+
+𝜈 ), then 𝑍 𝑡 +1 is independent of 𝑍 𝑡 and all information about the past is destroyed in one step: 
+
+𝜂 𝜒 2 (𝐾 ) = 0. 
+
+• Intermediate case: Consider a two-state chain with 𝐾 (1 | 1) = 1 − 𝑝 , 𝐾 (2 | 1) = 𝑝 , 𝐾 (1 | 2) = 𝑝 ,
+
+𝐾 (2 | 2) = 1 − 𝑝 . The overlap between rows is 2 min {𝑝, 1 − 𝑝 }, and 𝜂 𝜒 2 (𝐾 ) = (1 − 2𝑝 )2. When 
+
+𝑝 = 0, the chain is deterministic and 𝜂 = 1; when 𝑝 = 1/2, both rows are identical and 𝜂 = 0. The following two propositions formalize the relationship between row overlap and 𝜒 2-contraction, providing concrete sufficient conditions for 𝜂 < 1. Both build on classical Markov chain mixing techniques (Doeblin decomposition, Dobrushin’s ergodicity coefficient) combined with the SDPI framework (Lemma 1); proofs appear in Appendix B. 
+
+PROPOSITION 1 (Contraction from Diversity) . Consider a transition kernel 𝐾 on an abstract state space with |Z| states. If 𝐾 spreads probability such that 𝐾 (𝑧 ′ | 𝑧 ) ≥ 𝑝 min > 0 for all state pairs 
+
+(𝑧, 𝑧 ′), then 𝜂 𝜒 2 (𝐾 ) ≤ 1 − |Z| · 𝑝 min (note |Z| · 𝑝 min ≤ 1 since rows sum to one). 
+
+Proposition 1 provides a sufficient but strong condition: requiring 𝐾 (𝑧 ′ | 𝑧 ) ≥ 𝑝 min for all state pairs is often unrealistic. The following proposition gives a weaker condition based on the Dobrushin coefficient ( ?), requiring only that each pair of rows has some overlap. 
+
+PROPOSITION 2 (Contraction from Row Overlap (cf. ?Polyanskiy and Wu 2017)) . For atransition kernel 𝐾 on a finite abstract state space Z, define the Dobrushin coefficient: 
+
+𝛼 (𝐾 ) := min  
+
+> 𝑧,𝑧 ′∈Z
+
+∑︁ 𝑦 ∈Z 
+
+min {𝐾 (𝑦 | 𝑧 ), 𝐾 (𝑦 | 𝑧 ′)} .
+
+Then 𝜂 𝜒 2 (𝐾 ) ≤ 1 − 𝛼 (𝐾 ).
+
+The resulting bound on 𝜂 is looser than Proposition 1 but applies more broadly, since it requires only pairwise row overlap rather than full minorization. In practice, 𝛼 (𝐾 ) can be estimated by sampling continuations from different prefixes and measuring their distributional overlap. In manufacturing, the same bound is computed from existing instrumentation or pilot audits: bin each stage’s output into grades via 𝜙 , estimate 𝐾 from empirical adjacent-stage transition frequencies, and compute Emadi: The Critical Horizon  
+
+> 14 Article submitted to
+
+𝛼 (𝐾 ) from the resulting matrix, giving 𝜂 ≤ 1 − 𝛼 (𝐾 ) (Proposition 2). Example 6 in Appendix F illustrates this computation for a three-grade quality transition kernel. Example 2, Example 6 in Appendix F, and Propositions 1–2 show that contraction ( 𝜂 < 1) arises whenever the rows of the abstract kernel have nontrivial overlap. Contraction fails (i.e., 𝜂 = 1remains possible) only when some pairs of rows have disjoint support ( 𝛼 (𝐾 ) = 0), as in deterministic dynamics with distinct successors. We now formalize the assumption that contraction is strict. 
+
+ASSUMPTION 1 (Contractive Dynamics) . At each step 𝑢 , the abstract transition kernel 𝐾 𝑢 
+
+satisfies 𝜂 𝜒 2 (𝐾 𝑢 ) ≤ 𝜂 for some 𝜂 < 1.
+
+Propositions 1 and 2 provide concrete upper bounds on 𝜂 in terms of the abstract kernel’s row overlap. In Section I of the Electronic Companion, we establish how sampling temperature governs 
+
+𝜂 in language model reasoning, connecting the abstract contraction framework to a concrete and practically important design lever. 
+
+3.3. The Signal Decay Bound 
+
+We now state our main result for this section: a lower bound on the number of i.i.d. outcome samples required to distinguish competing hypotheses about early steps. The bound formalizes the intuition that information decays exponentially as it propagates through the sequential chain. We formalize the hypotheses, prove the bound, derive the critical horizon, and show tightness. Consider two hypotheses 𝐻 0 and 𝐻 1 about step 𝑡 . These hypotheses induce different distributions 
+
+𝑃 (0) 
+
+> 𝑍 𝑡
+
+and 𝑃 (1) 
+
+> 𝑍 𝑡
+
+over the abstract state 𝑍 𝑡 , and consequently different distributions over the binary outcome 𝑅 ∈ { 0, 1}. We assume the hypotheses agree on everything else: the transition kernels 𝐾 𝑢 
+
+for 𝑢 ≥ 𝑡 and the terminal map 𝑔 are identical under both. The question is: how many outcome observations are needed to reliably distinguish 𝐻 0 from 𝐻 1?
+
+DEFINITION 9 (H YPOTHESIS MODEL : L OCALIZED DISTRIBUTIONAL DIFFERENCE ). Fix a step 𝑡 ∈ { 1, . . . , 𝐻 }. A pair of hypotheses (𝐻 0, 𝐻 1) differs only at step 𝑡 if the following generative model holds: 1. Common initial dynamics: Under both hypotheses, the chain (𝑍 0, . . . , 𝑍 𝑡 −1) follows the same distribution determined by the initial state and transition kernels 𝐾 0, . . . , 𝐾 𝑡 −2.2. Localized divergence: The conditional distribution of 𝑍 𝑡 given 𝑍 𝑡 −1 differs: 
+
+𝐻 𝑖 : 𝑍 𝑡 | 𝑍 𝑡 −1 ∼ 𝐾 (𝑖 ) 
+
+> 𝑡 −1
+
+(· | 𝑍 𝑡 −1), 𝑖 ∈ { 0, 1}.
+
+The induced marginal distributions satisfy 𝜒 2 (𝑃 (0) 
+
+> 𝑍 𝑡
+
+∥𝑃 (1) 
+
+> 𝑍 𝑡
+
+) = Δ 2 > 0. Emadi: The Critical Horizon  
+
+> Article submitted to 15
+
+3. Shared suffix (downstream dynamics): For 𝑢 ≥ 𝑡 , the transition kernels 𝐾 𝑢 and terminal evaluation 𝑔 are identical under both hypotheses. In applications: 𝐻 0 corresponds to “step 𝑡 is valid” (the transition 𝐾 (0) 
+
+> 𝑡 −1
+
+produces correct states), while 𝐻 1 corresponds to “step 𝑡 contains an error” (the transition 𝐾 (1) 
+
+> 𝑡 −1
+
+may produce erroneous states). In manufacturing: 𝐻 0 means stage 𝑡 operated correctly; 𝐻 1 means a defect was introduced at stage 𝑡 . The shared-suffix condition isolates step 𝑡 as the sole source of difference: downstream stages process whatever they receive in the same way under both hypotheses, so any difference in the outcome distribution is attributable entirely to step 𝑡 . Errors introduced at step 𝑡 may be corrected or may cascade through subsequent stages, but the stages themselves operate identically. Appendix F discusses how Δ2 can be estimated from pilot audits in operations settings. We index step 𝑡 as the abstract state 𝑍 𝑡 immediately after the 𝑡 -th transition, so 𝐻 − 𝑡 counts the number of transitions remaining to reach the outcome. 
+
+DEFINITION 10 (T OTAL TESTING ERROR AND DISTINGUISHABILITY ). Let 𝐻 0 and 𝐻 1
+
+induce distributions 𝑃 (0) and 𝑃 (1) over outcomes. The total testing error , defined as the sum of type-I and type-II error probabilities minimized over all tests, is err ∗ (𝑃 (0) , 𝑃 (1) ) := inf 
+
+> 𝜓
+
+ P𝑃 (0) (𝜓 = 1) + P𝑃 (1) (𝜓 = 0) = 1 − 𝑑 TV (𝑃 (0) , 𝑃 (1) ),
+
+where the infimum is over all measurable tests 𝜓 : Y → { 0, 1}. For 𝑛 i.i.d. samples, the 𝑛 -sample total testing error is err ∗ 
+
+> 𝑛
+
+:= 1 − 𝑑 TV (𝑃 (0)⊗ 𝑛 , 𝑃 (1)⊗ 𝑛 ), where the test acts on Y𝑛 . The hypotheses are 
+
+(𝑛, 𝜖 )-distinguishable if err ∗ 
+
+> 𝑛
+
+≤ 𝜖 .Thus (𝑛, 𝜖 )-distinguishability requires 𝑑 TV (𝑃 (0)⊗ 𝑛 , 𝑃 (1)⊗ 𝑛 ) ≥ 1 − 𝜖 .
+
+THEOREM 1 (Signal Decay Bound) . Let 𝐻 0 and 𝐻 1 be two hypotheses differing only at step 𝑡 ,inducing distributions 𝑃 (0) 
+
+> 𝑍 𝑡
+
+and 𝑃 (1) 
+
+> 𝑍 𝑡
+
+over the abstract state with 𝑃 (0) 
+
+> 𝑍 𝑡
+
+≪ 𝑃 (1) 
+
+> 𝑍 𝑡
+
+and 𝜒 2 (𝑃 (0) 
+
+> 𝑍 𝑡
+
+∥𝑃 (1) 
+
+> 𝑍 𝑡
+
+) =Δ2 < ∞. Suppose the Markov state abstraction (Definition 8) and Assumption 1 hold with contraction coefficient 𝜂 < 1, and the binary outcome is determined by the terminal abstract state: 𝑅 = 𝑔 (𝑍 𝐻 ) ∈ {0, 1}. Then: 
+
+1. Divergence decay: The 𝜒 2-divergence at the outcome satisfies 
+
+𝜒 2 (𝑃 (0) 
+
+> 𝑅
+
+∥𝑃 (1) 
+
+> 𝑅
+
+) ≤ 𝜂 𝐻 −𝑡 · Δ2.
+
+2. Sample complexity lower bound: For any target error 𝜖 ∈ ( 0, 1/2), in the regime 𝜂 𝐻 −𝑡 Δ2 ≤ 1,any test achieving total testing error (Definition 10) at most 𝜖 requires 
+
+𝑛 ≥ (1 − 𝜖 )2
+
+𝜂 𝐻 −𝑡 · Δ2Emadi: The Critical Horizon  
+
+> 16 Article submitted to
+
+i.i.d. outcome samples. When 𝜂 𝐻 −𝑡 Δ2 > 1, this lower bound becomes 𝑂 (1); in this regime, the outcome distributions are well-separated and 𝑂 (1) samples suffice to achieve any constant total error rate. 
+
+3. Exponential growth: For fixed initial divergence Δ2 = Θ (1), the sample complexity grows exponentially in distance to the outcome: 
+
+𝑛 = Ω 
+
+ 1
+
+𝜂 
+
+𝐻 −𝑡 !
+
+.
+
+Remark 2 in Appendix B extends Theorem 1 to noisy terminal observations 𝑅 ∼ 𝐺 (· | 𝑍 𝐻 ).Inverting Theorem 1 yields a horizon formula: given a fixed sample budget 𝑛 , how far back can one reliably evaluate? 
+
+COROLLARY 2 (Critical Horizon) . For initial divergence Δ2, sample budget 𝑛 , and any target error 𝜖 ∈ ( 0, 1/2), a necessary condition for achieving total testing error at most 𝜖 is that the step lies within the 𝜖 -critical horizon: 
+
+𝐻 − 𝑡 ≤ 𝐻 crit (𝜖 ) := max 
+
+(
+
+0, ln  𝑛 Δ2/( 1 − 𝜖 )2
+
+ln (1/𝜂 )
+
+)
+
+.
+
+Steps more than 𝐻 crit (𝜖 ) from the outcome require exponentially many samples to evaluate from outcome labels alone. When 𝑛 Δ2 < (1 − 𝜖 )2, the horizon is zero: even the final step cannot be distinguished at error 𝜖 . For intuition, 𝐻 crit ≈ ln (𝑛 Δ2)/ ln (1/𝜂 ) when 𝜖 is a fixed constant. 
+
+EXAMPLE 3 (C RITICAL HORIZON IN PRACTICE ). With 𝜂 = 0.9, Δ2 = 0.1, and 𝑛 = 10 6, the critical horizon is 𝐻 crit = ln (10 5)/ ln (1/0.9) ≈ 110: one million outcome samples can reliably evaluate steps up to 110 steps before the outcome. With stronger contraction 𝜂 = 0.7, the same budget yields 𝐻 crit ≈ 32. The formula depends logarithmically on 𝑛 and Δ2 but much more strongly on 𝜂 : doubling 𝑛 extends the horizon by ln 2 /ln (1/𝜂 ) steps ( ≈ 6.6 when 𝜂 = 0.9), while reducing 𝜂 
+
+from 0 .9 to 0 .7 cuts it by a factor of three. The exponential rate in Theorem 1 is achievable: the following proposition constructs a Bernoulli endpoint-testing instance in which the likelihood ratio test matches the lower bound up to constants. 
+
+PROPOSITION 3 (Achievability: Matching Upper Bound) . Consider a stylized two-hypothesis problem where the outcome 𝑅 ∈ { 0, 1} is Bernoulli with parameters: 
+
+• Under 𝐻 0: P(𝑅 = 1) = 𝑝 0
+
+• Under 𝐻 1: P(𝑅 = 1) = 𝑝 1 = 𝑝 0 + 𝛿 where 𝛿 = Θ (𝜂 (𝐻 −𝑡 )/ 2Δ)Emadi: The Critical Horizon  
+
+> Article submitted to 17
+
+Assume 𝑝 0 ∈ [ 𝜖 0, 1 − 𝜖 0] for some constant 𝜖 0 > 0, so the outcome is non-degenerate under both hypotheses. Then the 𝜒 2-divergence between outcome distributions is 𝜒 2 (𝑃 (0) 
+
+> 𝑅
+
+∥𝑃 (1) 
+
+> 𝑅
+
+) = Θ (𝜂 𝐻 −𝑡 Δ2),and the standard likelihood ratio test achieves total testing error 𝜖 with sample complexity 𝑛 =
+
+𝑂 (1/( 𝜂 𝐻 −𝑡 Δ2)) .
+
+Together, Theorem 1 and Proposition 3 show that the exponential rate (1/𝜂 )𝐻 −𝑡 is both necessary and sufficient for the matched endpoint-testing problem: the scaling is tight up to constants. Example 5 in the appendix constructs a full Markov-chain instance achieving this rate with equality, confirming that the barrier is a property of the information structure, not of our proof technique. The preceding results assume exact lumpability (Definition 8), but in practice this may hold only approximately. Proposition 9 in Appendix B shows that if each step introduces at most 𝛿 total-variation error relative to the lumpable idealization, the total-variation distance between outcome distributions acquires an additive penalty of 2 (𝐻 − 𝑡 )𝛿 on top of the signal-decay term √︁ 𝜂 𝐻 −𝑡 Δ2/2. For a 50-stage process with per-step discrepancy 𝛿 = 0.001, the accumulated penalty is at most 2 × 50 × 0.001 = 0.1 in total variation distance. Approximate lumpability becomes a concern only for very deep processes or coarse abstractions, in which case the partition should be refined. Theorem 1 tells us how many samples are needed for reliable testing, and Corollary 2 inverts this into a horizon formula. But neither quantifies how bad the error is when the sample budget falls short. The following corollary fills this gap: it gives an explicit lower bound on the minimax testing error, showing that when the available samples 𝑛 fall below the threshold 1 /( 𝜂 𝐻 −𝑡 Δ2) required by Theorem 1, the error remains close to 1 /2; no test can do meaningfully better than random guessing. 
+
+COROLLARY 3 (Statistical Limits of Value Estimation) . Fix 𝜖 ∈ ( 0, 1/2) and let 𝑅 1: 𝑛 denote 
+
+𝑛 i.i.d. outcome samples. Under the Markov state abstraction (Definition 8) and Assumption 1, the minimax error for testing 𝐻 0 vs. 𝐻 1 based only on 𝑅 1: 𝑛 satisfies 
+
+inf  
+
+> 𝜓
+
+max  
+
+> 𝑖 ∈{ 0,1}
+
+P𝑖 (𝜓 (𝑅 1: 𝑛 ) ≠ 𝑖 ) ≥ 12 1 −√︂ (1 + 𝜂 𝐻 −𝑡 Δ2)𝑛 − 12
+
+!
+
+.
+
+In particular, if 
+
+𝑛 ≤ ln  1 + 2(1 − 2𝜖 )2
+
+𝜂 𝐻 −𝑡 Δ2 ,
+
+then every test 𝜓 has minimax error at least 𝜖 .
+
+Corollary 3 uses the per-hypothesis error convention max 𝑖 P𝑖 (𝜓 ≠ 𝑖 ), standard for Le Cam bounds, whereas Definition 10 uses the total error P0 (𝜓 = 1) + P1 (𝜓 = 0); the two are related by a factor of Emadi: The Critical Horizon  
+
+> 18 Article submitted to
+
+two and yield equivalent scaling in 𝜂 𝐻 −𝑡 Δ2. When 𝑛𝜂 𝐻 −𝑡 Δ2 is small, (1 + 𝜂 𝐻 −𝑡 Δ2)𝑛 ≈ 1 + 𝑛𝜂 𝐻 −𝑡 Δ2,so the minimax error is close to 1 /2: the best possible test is barely better than a coin flip. For reinforcement learning, this means that critics trained from outcome labels cannot reliably evaluate steps beyond the critical horizon. 
+
+4. Limits of Parallel Sampling 
+
+The Signal Decay Bound reveals that outcome signals weaken exponentially with depth. A natural response is to generate more samples: 𝑊 independent observations from the same starting condition, as in replicated testing or width-based methods like GRPO (DeepSeek-AI 2024). The intuition is that even if individual observations carry weak signal, averaging enough of them should recover the truth. This approach might seem to extract more signal from outcome data, despite Section 3 showing fundamental limits. But can width truly overcome the exponential barrier? This section shows that it cannot: width reduces noise around an estimate but cannot amplify a signal that has already decayed. The statistical tools, variance reduction under averaging and design effects under equicorrelation ( ?), are classical, but their interaction with the signal decay structure of Section 3 yields new limits on the reach of parallel sampling. We proceed in two steps: derive variance reduction bounds under independence (Section 4.1) and show that correlation limits effective width (Section 4.2). Proofs of all results in this section appear in Appendix C. 
+
+4.1. Multi-Rollout Value Estimation 
+
+Consider a learner who wishes to estimate the value 𝑉 𝜋 (𝑠 ) := P𝜋 (𝑅 = 1 | 𝑆 𝑡 = 𝑠 ), the probability of eventual success from state 𝑠 under the current policy 𝜋 . (When conditioning on abstract state, replace 𝑆 𝑡 with 𝑍 𝑡 .) Rather than observing a single trajectory, the learner generates 𝑊 independent continuations from 𝑠 and observes their outcomes. Throughout this section, we analyze the conditional distribution given a realized 𝑠 ; unconditional properties follow by averaging over the distribution of 𝑠 .
+
+DEFINITION 11 (M ULTI -R OLLOUT ESTIMATOR ). Given a state 𝑠 and 𝑊 rollout continuations 
+
+𝜏 1, . . . , 𝜏 𝑊 from 𝑠 under policy 𝜋 , the multi-rollout value estimator is: ˆ𝑉 𝑊 (𝑠 ) := 1
+
+𝑊 
+
+> 𝑊
+
+∑︁ 
+
+> 𝑗 =1
+
+𝑅 𝑗 ,
+
+where 𝑅 𝑗 ∈ { 0, 1} is the binary outcome of rollout 𝜏 𝑗 .Emadi: The Critical Horizon  
+
+> Article submitted to 19
+
+The estimator is simply the empirical success rate across rollouts. Its statistical properties depend on the independence structure. 
+
+ASSUMPTION 2 (Conditional Independence) . Given the conditioning variable 𝑠 and a fixed policy 𝜋 , the rollouts 𝜏 1, . . . , 𝜏 𝑊 are conditionally independent: 
+
+𝑃 (𝜏 1, . . . , 𝜏 𝑊 | 𝑠, 𝜋 ) =
+
+> 𝑊
+
+Ö
+
+> 𝑗 =1
+
+𝑃 (𝜏 𝑗 | 𝑠, 𝜋 ).
+
+This assumption holds when each rollout is generated by independent sampling from the policy starting at 𝑠 . It fails when rollouts share randomness, when the policy adapts based on previous rollouts, or when systematic biases cause rollouts to follow similar paths. 
+
+PROPOSITION 4 (Variance Reduction from Width) . Under Assumption 2, the multi-rollout estimator satisfies: 
+
+1. Unbiasedness: E[ ˆ𝑉 𝑊 (𝑠 ) | 𝑠 ] = 𝑉 𝜋 (𝑠 ).
+
+2. Variance reduction: Var ( ˆ𝑉 𝑊 (𝑠 ) | 𝑠 ) = 𝑉 𝜋 (𝑠 )( 1 − 𝑉 𝜋 (𝑠 )) 
+
+𝑊 .
+
+3. Concentration (Hoeffding): With probability at least 1 − 𝛿 : | ˆ𝑉 𝑊 (𝑠 ) − 𝑉 𝜋 (𝑠 )| ≤ √︃ ln (2/𝛿 )
+
+> 2𝑊
+
+The variance in Part 2 is largest when 𝑉 𝜋 (𝑠 ) = 1/2 (maximum uncertainty) and zero when outcomes are deterministic. Dividing by 𝑊 confirms the standard result: to halve the standard deviation, quadruple 𝑊 . Part 3 follows from Hoeffding’s inequality. The preceding analysis assumes independent rollouts. In practice, rollouts from the same starting point are correlated, which further limits the benefit of width. 
+
+4.2. Correlation Limits Effective Width 
+
+To quantify this limitation, we must account for correlation among rollouts from the same prefix. Consider collecting data from 𝑛 independent starting points, generating 𝑊 rollouts from each. Roll-outs from different starting points are independent, and their outcomes are uncorrelated. However, rollouts from the same starting point share the same prefix and tend to make similar errors, inducing positive correlation among their outcomes. Correlation arises from shared prefix errors (all contin-uations inherit a latent early defect), mode collapse (low-entropy policies generate near-identical continuations, driving 𝜌 → 1), and systematic biases (learned error patterns activated by specific inputs). When 𝑊 = 1 (one rollout per starting point), we obtain 𝑛 i.i.d. outcome observations. When 
+
+𝑊 > 1, this within-starting-point correlation reduces the effective sample size, as the following theorem quantifies. Emadi: The Critical Horizon  
+
+> 20 Article submitted to
+
+THEOREM 2 (Effective Width Under Correlation (cf. ?)) . Consider 𝑊 rollouts from a single starting point 𝑠 . Assume the outcomes satisfy equicorrelation: Corr (𝑅 𝑖 , 𝑅 𝑗 | 𝑠 ) = 𝜌 for all 𝑖 ≠ 𝑗 ,where 𝜌 ∈ [ 0, 1) is a constant. (More generally, let 𝜌 be an upper bound on pairwise correlations.) The variance of the multi-rollout estimator ˆ𝑉 𝑊 (𝑠 ) = 1
+
+> 𝑊
+
+Í𝑊 𝑗 =1 𝑅 𝑗 satisfies: 
+
+Var ( ˆ𝑉 𝑊 (𝑠 ) | 𝑠 ) = 𝜎 2 (𝑠 )
+
+𝑊 · ( 1 + ( 𝑊 − 1) 𝜌 ),
+
+where 𝜎 2 (𝑠 ) = 𝑉 𝜋 (𝑠 )( 1 − 𝑉 𝜋 (𝑠 )) . Equivalently, the correlated estimator has the same variance as an estimator using 𝑊 eff independent rollouts, where the effective width is: 
+
+𝑊 eff := 𝑊 
+
+1 + ( 𝑊 − 1) 𝜌 .
+
+When 𝜌 = 0 (perfect independence), 𝑊 eff = 𝑊 and no degradation occurs. When 𝜌 > 0, the effective width saturates as 𝑊 → ∞ : 𝑊 eff → 1/𝜌 .
+
+EXAMPLE 4 (I MPACT OF CORRELATION ). Suppose rollouts have correlation 𝜌 = 0.2 (modest correlation from shared reasoning patterns). The effective width for various nominal widths: 
+
+𝑊 10 50 100 500 ∞
+
+𝑊 eff 3.6 4.6 4.8 5.0 5.0 Even with 500 rollouts, the effective width is only 5. Beyond roughly 1 /𝜌 = 5 rollouts, additional sampling provides negligible benefit. The equicorrelation variance formula in Theorem 2 is a classical design-effect result in survey sampling ( ?); what is new is its implication for the credit assignment horizon, which we develop next. While the 𝑊 rollouts within each starting point are correlated, the 𝑛 starting points are independent. Define the effective sample size as 𝑁 eff := 𝑛 · 𝑊 eff . Combined with the Signal Decay Bound (Theorem 1), distinguishing hypotheses about step 𝑡 requires 
+
+𝑁 eff ≳ 1
+
+𝜂 𝐻 −𝑡 Δ2 .
+
+The following corollary formalizes the resulting critical horizon. 
+
+COROLLARY 4 (Critical Horizon with Width) . Let 𝑛 be the number of independent starting points and 𝑊 eff the effective width per starting point. For fixed 𝜖 , the critical horizon extends to 
+
+𝐻 crit = ln (𝑛 · 𝑊 eff · Δ2)
+
+ln (1/𝜂 ) ,
+
+where the 𝑂 (ln (1/( 1 − 𝜖 ))) correction from Corollary 2 is suppressed. Emadi: The Critical Horizon  
+
+> Article submitted to 21
+
+Width enters the critical horizon only logarithmically: doubling 𝑊 eff adds merely ln (2)/ ln (1/𝜂 ) ≈ 
+
+6.6 steps when 𝜂 = 0.9. And correlation caps the benefit: since 𝑊 eff ≤ 1/𝜌 , the effective sample size cannot exceed 𝑛 /𝜌 regardless of nominal width. The exponential dependence on depth cannot be escaped by increasing 𝑊 .In sum, width helps only when the step lies within the critical horizon and rollouts are approx-imately independent; beyond either limit, additional rollouts yield diminishing returns. For deep processes where 𝐻 > 𝐻 crit , width cannot substitute for step-level supervision; Appendix G provides a decision rule: width alone is provably insufficient whenever 𝐻 > ln (𝑛 Δ2/𝜌 )/ ln (1/𝜂 ), and in prac-tice one inspection dominates doubling 𝑊 whenever the maximal gap exceeds 𝐻 crit (𝜖 ). This raises the question of how step-level supervision should be aggregated. 
+
+5. From Outcome Limits to Process Supervision 
+
+The preceding sections established that outcome-based credit assignment faces an exponential barrier (Theorem 1) that width can only logarithmically mitigate (Section 4). For deep processes where 𝐻 > 𝐻 crit , this leaves only one path forward: step-level supervision . Process reward models (Lightman et al. 2024), intermediate checkpoints in manufacturing, and stage-gate reviews in project management all implement this principle. Step-level labels are not merely convenient; they are 
+
+necessary .But step-level supervision introduces its own challenge: how should step-level feedback be aggregated into a training or evaluation objective? Standard reinforcement learning sums rewards across steps (Sutton et al. 2000), but for sequential validity, where a single error invalidates the entire chain, this additive aggregation optimizes the wrong quantity. Proofs of all results in this section appear in Appendix D. 
+
+5.1. The Objective Mismatch 
+
+Given that step-level supervision is necessary for deep processes, how should it be used? When training a system with step-level labels 𝑟 𝑡 ∈ { 0, 1} indicating whether each step is valid, one can maximize either the expected number of correct steps or the probability that all steps are correct. These correspond, respectively, to additive and multiplicative aggregation of step-level feedback. 
+
+DEFINITION 12 (S TEP -Q UALITY AND VALIDITY OBJECTIVES ). For a policy 𝜋 generating trajectories of length 𝐻 from initial state 𝑆 0, with step validity indicators 𝑟 0, . . . , 𝑟 𝐻 −1:1. The step-quality objective is 𝐽 add := E𝜋 
+
+Í 𝐻 −1 
+
+> 𝑡 =0
+
+𝑟 𝑡 𝑆 0
+
+, the expected number of correct steps. 2. The validity objective is 𝐽 mult := E𝜋 
+
+Î 𝐻 −1 
+
+> 𝑡 =0
+
+𝑟 𝑡 𝑆 0
+
+, the probability that all steps are correct. Emadi: The Critical Horizon  
+
+> 22 Article submitted to
+
+Multiplicative objectives appear in risk-sensitive control (Howard and Matheson 1972) and stochas-tic reachability (Abate et al. 2008). Our contribution is identifying that sequential validity , where a single failure invalidates the entire chain, naturally requires this structure, and analyzing the opti-mization challenges it creates. This applies to logical reasoning, manufacturing processes where any defective stage produces a defective product, and service operations where any failed touchpoint loses the customer. Under independent steps with common success probability 𝑝 , we have 𝐽 add = 𝐻 𝑝 while 𝐽 mult =
+
+𝑝 𝐻 . Even at 99% per-step accuracy over 100 steps, 𝐽 add = 99 while 𝐽 mult = 0.37: systems optimizing additive objectives learn to produce sequences that are mostly correct but nonetheless invalid. 
+
+5.2. Gradient Decay in the Multiplicative Objective 
+
+The preceding analysis suggests using the multiplicative objective directly. However, this approach encounters a fundamental optimization barrier: the multiplicative objective exhibits vanishing gradients for long chains with imperfect per-step accuracy. Under the independence model, differentiating 𝐽 add = 𝐻 𝑝 and 𝐽 mult = 𝑝 𝐻 with respect to policy parameters 𝜃 gives ∇𝜃 𝐽 add = 𝐻 ∇𝜃 𝑝 and ∇𝜃 𝐽 mult = 𝐻 𝑝 𝐻 −1∇𝜃 𝑝 . The multiplicative gradient contains an additional factor 𝑝 𝐻 −1 that attenuates the learning signal. For 𝑝 = 0.95 over a 100-step chain, this factor equals 0 .95 99 ≈ 0.006, rendering the validity objective nearly unlearnable. The barrier becomes severe precisely when it matters most: for longer chains and policies that have not yet achieved high per-step accuracy. This gradient decay is conceptually distinct from the signal decay of Section 3. Signal decay concerns information flow: outcome data becomes uninformative about early steps. Gradient decay concerns objective structure: the multiplicative objective attenuates learning signal regardless of information availability. A complete training framework must address both barriers. We propose a curriculum approach: begin with the learnable additive objective, then transition to the correct multiplicative objective as policy quality improves (Bengio et al. 2009). 
+
+DEFINITION 13 (I NTERPOLATED OBJECTIVE ). For 𝜆 ∈ [ 0, 1], the interpolated objective is: 
+
+𝐽 𝜆 (𝜃 ) := (1 − 𝜆 ) · 𝐽 add (𝜃 ) + 𝜆 · 𝐽 mult (𝜃 ).
+
+At 𝜆 = 0, the objective is learnable but incorrect; at 𝜆 = 1, correct but potentially unlearnable. The following result characterizes how 𝜆 should evolve with policy quality. Emadi: The Critical Horizon  
+
+> Article submitted to 23
+
+PROPOSITION 5 (Gradient-Preserving Curriculum) . Assume ∇𝜃 𝐽 add and ∇𝜃 𝐽 mult have non-negative inner product. To maintain ∥∇ 𝜃 𝐽 𝜆 ∥ ≥ 𝑐 · ∥∇ 𝜃 𝐽 add ∥ for some 𝑐 ∈ ( 0, 1), it suffices to set 
+
+𝜆 ≤ 1 − 𝑐 .
+
+The proposition establishes that the interpolated objective preserves gradient signal when 𝜆 is sufficiently small. In the independence model where 𝐽 add = 𝐻 𝑝 and 𝐽 mult = 𝑝 𝐻 , the gradients satisfy 
+
+∥∇ 𝜃 𝐽 mult ∥ = 𝑝 𝐻 −1 ∥∇ 𝜃 𝐽 add ∥. As the policy improves and per-step success probability 𝑝 approaches 1, this attenuation factor approaches 1, allowing 𝜆 to increase toward 1 without sacrificing gradient magnitude. This yields a curriculum: begin training with 𝜆 near 0 to ensure learnability, then gradually increase 𝜆 toward 1 as the policy improves, transitioning from a learnable but misspecified objective to one that is correctly specified. Having established why step-level supervision is necessary and how to aggregate it, the next section addresses where : given an inspection budget, which steps should be observed? 
+
+6. Optimal Intermediate Inspection Design 
+
+We now convert the information-theoretic limits into optimal intermediate inspection schedules .The organizing principle is that inspections shorten the information path that credit assignment must traverse: instead of propagating from step 𝑡 to the terminal outcome at time 𝐻 , it suffices to propagate from 𝑡 to the next checkpoint. The inspection design problem has a long history in OR under different guises. In manufacturing, it is the placement of quality checkpoints along a production line (Lindsay and Bishop 1964, Raz 1986). In sequential testing, it is related to adaptive group testing (Du and Hwang 2000). Our contribution is to solve inspection placement under the specific signal-decay structure implied by the Strong Data Processing Inequality, yielding closed-form schedules for both homogeneous and heterogeneous contraction. We proceed in three steps. First, we formalize the inspection feedback model and extend the signal-decay bound to an arbitrary inspection time 𝑢 . Second, under homogeneous contraction we show that worst-case sample complexity is governed by a single scalar, the largest distance from any step to its next inspection, and we solve the resulting placement problem (uniform spacing). Third, under heterogeneous contraction we show that feasibility depends on cumulative information loss along each segment, and we solve the minimum-inspection design problem via a greedy information-distance schedule. Cost and sample tradeoffs are then handled in Section 6.5. Proofs of all results in this section appear in Appendix E. Emadi: The Critical Horizon  
+
+> 24 Article submitted to
+
+6.1. Inspection Schedules and Feedback Model 
+
+Recall the abstract Markov chain (𝑍 0, . . . , 𝑍 𝐻 ) induced by the abstraction 𝜙 and policy 𝜋 . We treat the terminal outcome 𝑅 = 𝑔 (𝑍 𝐻 ) ∈ { 0, 1} as a terminal inspection at time 𝐻 .
+
+DEFINITION 14 (I NSPECTION SCHEDULE ). An inspection schedule is a strictly increasing set of inspection times 
+
+T = {𝑡 1 < 𝑡 2 < · · · < 𝑡 𝑚 } ⊆ { 1, 2, . . . , 𝐻 − 1}.
+
+We use the augmented sequence 0 =: 𝑡 0 < 𝑡 1 < · · · < 𝑡 𝑚 < 𝑡 𝑚 +1 := 𝐻 . The number of paid intermediate inspections is 𝑚 .
+
+DEFINITION 15 (I NSPECTION OBSERVATIONS ). At each inspection time 𝑢 ∈ T ∪ { 𝐻 }, the learner observes an inspection output 𝑌 𝑢 := 𝑔 𝑢 (𝑍 𝑢 ) ∈ Y 𝑢 , where 𝑔 𝑢 is an external evaluator (human, verifier, metrology device) applied to the abstract state. The terminal outcome is the special case 
+
+𝑌 𝐻 ≡ 𝑅 = 𝑔 (𝑍 𝐻 ).The model allows many inspection types: prefix-validity checks, milestone verification, partial correctness scores, or any measurement that is a function of the abstract state. Remark 3 in Appendix E extends the model to noisy inspections with false positives and negatives, adding an observation-channel penalty to the segment attenuation budget. The results below are information-theoretic and do not assume any particular learning algorithm. 
+
+6.2. Signal Decay to Intermediate Inspections 
+
+The design lever is that intermediate checkpoints reduce the effective distance over which informa-tion must propagate. If step 𝑡 is followed by an inspection at time 𝑢 < 𝐻 , then credit assignment for step 𝑡 need only overcome 𝑢 − 𝑡 steps of attenuation rather than 𝐻 − 𝑡 . We formalize this for inhomogeneous contraction (step-dependent mixing rates); the homogeneous case follows in Section 6.3. 
+
+ASSUMPTION 3 (Inhomogeneous Contractive Dynamics) . Let 𝐾 𝑡 denote the abstract transi-tion kernel from 𝑍 𝑡 to 𝑍 𝑡 +1, with 𝜒 2-contraction coefficient 𝜂 𝜒 2 (𝐾 𝑡 ) ≤ 𝜂 𝑡 ∈ ( 0, 1] for 𝑡 = 0, 1, . . . , 𝐻 −
+
+1. Define the cumulative attenuation from step 𝑡 to inspection time 𝑢 > 𝑡 as 
+
+Attn (𝑡 → 𝑢 ) :=
+
+> 𝑢 −1
+
+Ö
+
+> 𝑗 =𝑡
+
+𝜂 𝑗 .
+
+In the homogeneous case 𝜂 𝑡 ≡ 𝜂 , this simplifies to Attn (𝑡 → 𝑢 ) = 𝜂 𝑢 −𝑡 .Emadi: The Critical Horizon  
+
+> Article submitted to 25
+
+PROPOSITION 6 (Signal Decay to an Intermediate Inspection) . Consider two hypotheses 
+
+𝐻 0 and 𝐻 1 differing only at step 𝑡 , inducing abstract state distributions with 𝜒 2 (𝑃 (0) 
+
+> 𝑍 𝑡
+
+∥𝑃 (1) 
+
+> 𝑍 𝑡
+
+) = Δ 2.Under Assumption 3, the 𝜒 2-divergence at any downstream inspection 𝑌 𝑢 = 𝑔 𝑢 (𝑍 𝑢 ) satisfies 
+
+𝜒 2 (𝑃 (0) 
+
+> 𝑌 𝑢
+
+∥𝑃 (1) 
+
+> 𝑌 𝑢
+
+) ≤ Attn (𝑡 → 𝑢 ) · Δ2.
+
+Proposition 6 implies that an inspection at time 𝑢 replaces the terminal attenuation factor Attn (𝑡 → 𝐻 ) by the shorter-horizon factor Attn (𝑡 → 𝑢 ). The following corollary makes the value of intermediate inspection precise: placing a checkpoint at time 𝑢 reduces the attenuation exponent from 𝐻 − 𝑡 to 𝑢 − 𝑡 . The remaining question is how to place inspection times so that no step is too far from its next checkpoint. 
+
+COROLLARY 5 (Sample Complexity with Intermediate Inspection) . Under the conditions of Proposition 6, any test distinguishing 𝐻 0 from 𝐻 1 at error rate 𝜖 requires 
+
+𝑛 ≥ (1 − 𝜖 )2
+
+Attn (𝑡 → 𝑢 ) · Δ2 .
+
+In the homogeneous case, 𝑛 ≥ ( 1 − 𝜖 )2/( 𝜂 𝑢 −𝑡 Δ2).
+
+6.3. Homogeneous Contraction: Minimax-Optimal Placement 
+
+Under homogeneous contraction, the sample complexity penalty depends only on the distance from a step to its next inspection (Corollary 5). This turns inspection design into a one-dimensional placement problem on {0, 1, . . . , 𝐻 } with a single governing design statistic. The development in this subsection follows a short chain of implications. We first define the distance of each step to its next checkpoint and the induced maximal gap 𝐿 (T ) . We then show that any schedule must incur a worst-case sample complexity that depends exponentially on 𝐿 (T ) .Finally, we solve the placement problem by minimizing 𝐿 (T ) over schedules with a fixed number of inspections 𝑚 and translate the result into a minimum number of inspections required for feasibility. 
+
+DEFINITION 16 (D OWNSTREAM DISTANCE AND MAXIMAL GAP ). For a schedule T = {𝑡 1 <
+
+· · · < 𝑡 𝑚 } with augmented times 𝑡 0 = 0 and 𝑡 𝑚 +1 = 𝐻 , the downstream distance of step 𝑡 is the distance to its next inspection: 
+
+𝑑 T (𝑡 ) := min {𝑢 − 𝑡 : 𝑢 ∈ T ∪ { 𝐻 }, 𝑢 > 𝑡 }.
+
+The maximal gap is 𝐿 (T ) := max 𝑡 ∈{ 0,...,𝐻 −1} 𝑑 T (𝑡 ), equivalently 𝐿 (T ) = max 𝑖 =0,...,𝑚 (𝑡 𝑖 +1 − 𝑡 𝑖 ).Emadi: The Critical Horizon  
+
+> 26 Article submitted to
+
+The maximal gap determines worst-case performance: the step at the beginning of the longest segment between inspections faces the most attenuation before any observation. For a fixed number of intermediate inspections 𝑚 , the minimax placement problem is therefore min  
+
+> |T | =𝑚
+
+𝐿 (T ) ,
+
+because 𝐿 (T ) controls the worst-case attenuation exponent (and hence the worst-case sample complexity) across all steps. Operationally, 𝐿 (T ) is the length of the longest uninspected “run” of steps; the minimax goal is to prevent any stage from being too far from a checkpoint. 
+
+PROPOSITION 7 (Worst-Case Sample Complexity) . Under homogeneous contraction 𝜂 𝑡 ≡
+
+𝜂 < 1, any inspection schedule T admits a step 𝑡 ★ such that distinguishing hypotheses about 𝑡 ★
+
+requires 
+
+𝑛 ≥ (1 − 𝜖 )2
+
+𝜂 𝐿 (T ) Δ2
+
+samples. 
+
+Proposition 7 identifies the correct minimax objective: reduce the largest gap to reduce worst-case sample complexity. The remaining question is purely combinatorial: how should 𝑚 inspections partition a horizon of length 𝐻 to minimize the length of the longest segment? 
+
+THEOREM 3 (Minimax-Optimal Inspection Placement) . Under homogeneous contraction 
+
+𝜂 𝑡 ≡ 𝜂 < 1, the minimal achievable maximal gap with 𝑚 intermediate inspections is 
+
+min  
+
+> |T | =𝑚
+
+𝐿 (T ) =
+
+l 𝐻 𝑚 + 1
+
+m
+
+.
+
+This minimum is achieved by near-uniform spacing: placing inspections at 𝑡 𝑖 = ⌊𝑖𝐻 /( 𝑚 + 1)⌋ for 
+
+𝑖 = 1, . . . , 𝑚 .
+
+While uniform spacing is a classical heuristic for worst-case gap objectives, our contribution is identifying the correct design objective , namely the gap in SDPI attenuation units, and linking it to sample complexity via the Signal Decay Bound. The implication is that the detailed location of checkpoints is secondary; what matters is controlling the longest uninspected run. Combining Proposition 7 and Theorem 3 yields an explicit feasibility criterion. 
+
+COROLLARY 6 (Sample Complexity Under 𝑚 Inspections) . With 𝑚 minimax-optimal inspections, the worst-case sample complexity for credit assignment is 
+
+𝑛 ≥ (1 − 𝜖 )2
+
+𝜂 ⌈𝐻 /( 𝑚 +1)⌉ Δ2 .Emadi: The Critical Horizon  
+
+> Article submitted to 27
+
+COROLLARY 7 (Minimum Inspections for Feasibility) . For all steps to be (𝑛, 𝜖 )-distinguishable, the number of inspections must satisfy 
+
+𝑚 ≥
+
+l 𝐻 𝐻 crit (𝜖 )
+
+m
+
+− 1,
+
+where 𝐻 crit (𝜖 ) =  ln (𝑛 Δ2) − 2 ln (1 − 𝜖 )/ln (1/𝜂 ) is the 𝜖 -critical horizon. This is a necessary condition; the sufficient number may be one higher due to integer rounding when 𝐻 /( 𝑚 + 1) is not an integer. 
+
+Example 7 in Appendix F applies Corollary 7 to a 50-stage semiconductor fabrication process, showing that a single midpoint inspection suffices to bring all stages within the critical horizon. 
+
+6.4. Heterogeneous Contraction: Minimum Inspections via Information Distance 
+
+Uniform spacing is optimal when all steps contract equally, but many processes exhibit depth-dependent contraction. In such settings, the design objective shifts from “minimize the largest segment length” to a feasibility-driven problem: choose as few inspections as possible so that every segment has cumulative information loss at most the threshold implied by the sample budget. 
+
+DEFINITION 17 (I NFORMATION DISTANCE ). Under Assumption 3, the per-step information distance is 𝑤 𝑡 := ln (1/𝜂 𝑡 ) ≥ 0. For an interval [𝑎, 𝑏 ), the cumulative information distance is 
+
+𝑊 ([ 𝑎, 𝑏 )) :=
+
+> 𝑏 −1
+
+∑︁ 
+
+> 𝑡 =𝑎
+
+𝑤 𝑡 = ln (1/Attn (𝑎 → 𝑏 )) .
+
+Steps with strong contraction (small 𝜂 𝑡 ) contribute large 𝑤 𝑡 ; steps with weak contraction contribute little. Because Attn (𝑡 → 𝑢 ) = exp (− 𝑊 ([ 𝑡, 𝑢 ))) , Corollary 5 yields a segment-level feasibility threshold. 
+
+LEMMA 2 (Per-Segment Feasibility) . Fix consecutive inspection times 𝑡 𝑖 < 𝑡 𝑖 +1. If 
+
+𝑊 ([ 𝑡 𝑖 , 𝑡 𝑖 +1)) ≤ Γ(𝑛, Δ2, 𝜖 ) := ln (𝑛 Δ2) − 2 ln (1 − 𝜖 ),
+
+then every step 𝑡 ∈ { 𝑡 𝑖 , . . . , 𝑡 𝑖 +1 − 1} is (𝑛, 𝜖 )-distinguishable using the inspection at 𝑡 𝑖 +1. Conversely, if step 𝑡 𝑖 is (𝑛, 𝜖 )-distinguishable using the inspection at 𝑡 𝑖 +1, then the displayed inequality must hold. 
+
+The heterogeneous inspection design problem is to partition the horizon into segments satisfying the Lemma 2 constraint while using as few paid inspections as possible. A greedy construction is optimal. Emadi: The Critical Horizon  
+
+> 28 Article submitted to
+
+THEOREM 4 (Greedy Inspection is Optimal) . Among all schedules satisfying 𝑊 ([ 𝑡 𝑖 , 𝑡 𝑖 +1)) ≤ 
+
+Γ for each segment, the following greedy construction minimizes the number of inspections: starting at 𝑡 0 = 0, place each inspection 𝑡 𝑖 +1 at the largest index such that 𝑊 ([ 𝑡 𝑖 , 𝑡 𝑖 +1)) ≤ Γ.
+
+Greedy segmentation is standard for interval-packing problems; what the SDPI analysis adds is the metric of cumulative information distance 𝑊 ([ 𝑡 𝑖 , 𝑡 𝑖 +1)) = Í𝑡 ln (1/𝜂 𝑡 ) rather than step count, under which feasibility is defined, so inspections concentrate automatically where contraction is strongest. When 𝜂 𝑡 ≡ 𝜂 , we have 𝑤 𝑡 ≡ ln (1/𝜂 ), so greedy produces segments of length ⌊Γ/ln (1/𝜂 )⌋ ,recovering uniform spacing (Theorem 3). When contraction varies, greedy produces non-uniform placement: segments spanning high-contraction steps are short; segments spanning low-contraction steps are long. Example 8 in Appendix F applies Theorem 4 to a 50-touchpoint customer journey with depth-dependent contraction, showing that the greedy algorithm places its single inspection in the high-contraction early stages. 
+
+6.5. Joint Sample-Inspection Budgeting 
+
+Inspection frequency trades off per-trajectory cost against the exponential sample savings from shortening information paths. Let 𝑐 out denote the per-trajectory cost of terminal evaluation and 𝑐 insp 
+
+the per-trajectory cost per intermediate inspection. Collecting 𝑛 trajectories with 𝑚 inspections each has total budget 𝐵 = 𝑛 (𝑐 out + 𝑚𝑐 insp ).
+
+PROPOSITION 8 (Budget Lower Bound) . Under homogeneous contraction, the minimum budget required for worst-case (𝑛, 𝜖 )-distinguishability with 𝑚 inspections is 
+
+𝐵 ≥ ( 𝑐 out + 𝑚 · 𝑐 insp ) · (1 − 𝜖 )2
+
+𝜂 ⌈𝐻 /( 𝑚 +1)⌉ Δ2 .
+
+Increasing 𝑚 reduces the sample requirement exponentially but raises per-trajectory cost linearly. A practical rule is to choose the smallest 𝑚 that makes the uniform segment length ⌈𝐻 /( 𝑚 + 1)⌉ 
+
+fall within 𝐻 crit (𝜖 ) (Corollary 7). 
+
+COROLLARY 8 (Inspection Density for Polynomial Complexity) . To achieve polynomial sample complexity 𝑛 = 𝑂 (𝐻 𝑝 ) under homogeneous contraction, the number of inspections must scale as 𝑚 = Ω (𝐻 /log 𝐻 ).
+
+Corollary 8 implies that inspection effort must grow nearly linearly with process depth to avoid exponential sample requirements. An implementable inspection design procedure and detailed cost–sample tradeoff analysis are provided in the Electronic Companion (Appendix G). Emadi: The Critical Horizon  
+
+> Article submitted to
+
+29                                                     
+
+> Table 1 Headline numerical findings. Full setups and plots in Appendix H.
+> Prediction Test bed Key finding
+> Signal decay (Thm. 1) 10-state synthetic chains, 𝜂 ∈{0.7,0.8,0.9,0.95 }
+> Measured 𝜒 2-divergences match 𝜂 𝐻 −𝑡 Δ2
+> exactly ( 𝑅 2>0.999). Effective width (Thm. 2) Synthetic ( 𝜌 =0.15); LLM rollouts on GSM8K ( 𝜌 ≈0.49)
+> 𝑊 eff saturates at 6 .6 vs. theoretical 1 /𝜌 =6.7(synthetic); at 2 .2 vs. 2 .0 (LLM). Uniform inspection (Thm. 3) 𝐻 =20, 𝜂 =0.9, 𝑚 =3 checkpoints Uniform spacing achieves 40–47% lower worst-case error than front-loaded, back-loaded, or random schedules. Critical horizon (Cor. 2) Synthetic, 𝜂 ∈ { 0.7,0.8},𝑛 =1,000 Attribution accuracy drops to chance (50%) at or before the predicted 𝐻 crit .Objective mismatch (Def. 12) 50 LLM reasoning chains on GSM8K 16% of chains are “mostly correct” (additive reward ≥0.80) yet produce wrong answers.
+
+7. Numerical Validation 
+
+We validate the paper’s five core predictions through synthetic Markov chains with controlled parameters and, where applicable, LLM reasoning chains on GSM8K (a grade-school math bench-mark). Across all experiments, observed behavior closely matches the theoretical bounds, con-firming that the closed-form results provide reliable quantitative guidance in practice. Table 1 summarizes the headline findings; full experimental setups, parameter configurations, and all figures are provided in the Electronic Companion (Appendix H). 
+
+8. Conclusion 
+
+This paper establishes information-theoretic limits on credit assignment in deep sequential pro-cesses, revealing a sharp sample-complexity threshold that constrains both inspection system design and reasoning model training. 
+
+The core insight. The Signal Decay Bound (Theorem 1) shows that information about step 
+
+𝑡 decays as 𝜂 𝐻 −𝑡 , defining a critical horizon 𝐻 crit ≈ ln (𝑛 Δ2)/ ln (1/𝜂 ) (up to the 𝜖 -correction in Corollary 2). Steps within 𝐻 crit of the outcome can be evaluated from endpoint data; steps beyond require exponentially many samples in the distance 𝐻 − 𝑡 .
+
+Why this matters for AI reasoning. The framework explains why outcome-trained value networks collapse to near-constant predictions on long reasoning chains (Kazemnejad et al. 2024): this is statistically optimal behavior when outcome labels carry negligible information about early steps. Token-level dynamics are deterministic, but credit assignment targets semantic content, and the many-to-one abstraction from tokens to meaning is where contraction arises (see Section I in the Electronic Companion for a detailed treatment). Process reward models work by providing signal Emadi: The Critical Horizon  
+
+> 30 Article submitted to
+
+beyond the critical horizon; width-based methods like GRPO (DeepSeek-AI 2024) face diminishing returns because correlation caps effective width at 1 /𝜌 (Theorem 2). 
+
+Beyond AI: unifying inspection design. The same mathematics applies across operations settings (manufacturing, service operations, supply chains) wherever sequential processes are evaluated at endpoints. The critical horizon formula provides a direct diagnostic for whether intermediate inspection is necessary, and the optimal scheduling results (Section 6) show that uniform spacing is minimax-optimal under homogeneous contraction, with a greedy algorithm handling heteroge-neous contraction. Achieving polynomial sample complexity requires inspection density scaling as Ω(𝐻 /log 𝐻 ) (Corollary 8). A separate failure mode arises from objective structure: standard additive reward aggregation optimizes expected correct steps rather than end-to-end validity (Sec-tion 5), and the curriculum of Proposition 5 bridges this gap by interpolating between learnable and correct objectives as policy quality improves. 
+
+Limitations and future directions. Key extensions include data-driven estimation of 𝜂 and Δ2,learning the abstraction 𝜙 from observations, and moving from binary to graded validity. By establishing what endpoint data can and cannot reveal, this work provides a common analytical foundation for inspection design in operations and supervision design in AI. 
+
+9. Code and Data Disclosure 
+
+The code and data to support the numerical experiments in this paper will be made publicly available upon acceptance. 
+
+References         
+
+> Abate A, Prandini M, Lygeros J, Sastry S (2008) Probabilistic reachability and safety for controlled discrete time stochastic hybrid systems. Automatica 44(11):2724–2734. Azar MG, Munos R, Kappen HJ (2013) Minimax PAC bounds on the sample complexity of reinforcement learning with a generative model. Machine Learning 91(3):325–349. Baier C, Chatterjee K, Meggendorfer T, Piribauer J (2025) Multiplicative rewards in Markovian models. Proceedings of the 40th Annual ACM/IEEE Symposium on Logic in Computer Science (LICS) , 499–512, also available as arXiv:2504.18277. Bengio Y, Louradour J, Collobert R, Weston J (2009) Curriculum learning. Proceedings of the 26th International Conference on Machine Learning , 41–48. Besta M, Barth J, Schreiber E, Kubicek A, Catarino A, Gerstenberger R, Nyczyk P, Iff P, Li Y, Houliston S, Sternal T, Copik M, Kwasniewski G, Muller J, Flis L, Eberhard H, Chen Z, Niewiadomski H, Hoefler T (2025) Reasoning language models: A blueprint ArXiv:2501.11223. Emadi: The Critical Horizon
+> Article submitted to
+
+31 Chen F, Foster DJ, Han Y, Qian J, Rakhlin A, Xu Y (2024) Assouad, fano, and le cam with interaction: A unifying lower bound framework and characterization for bandit learnability. arXiv preprint arXiv:2410.05117 .Cheung WC, Simchi-Levi D, Zhu R (2023) Nonstationary reinforcement learning: The blessing of (more) optimism. 
+
+Management Science 69(10):5722–5739. Compare M, Baraldi P, Zio E (2020) Challenges to IoT-enabled predictive maintenance for Industry 4.0. IEEE Internet of Things Journal 7(5):4585–4597. DeepSeek-AI (2024) DeepSeekMath: Pushing the limits of mathematical reasoning in open language models. arXiv preprint arXiv:2402.03300 .Del Moral P, Guionnet A (2001) On the stability of interacting processes with applications to filtering and genetic algorithms. Annales de l’Institut Henri Poincar´ e (B) Probabilit´ es et Statistiques 37(2):155–194. Diez-Olivan A, Del Ser J, Galar D, Sierra B (2019) Data fusion and machine learning for industrial prognosis: Trends and perspectives towards industry 4.0. Information Fusion 50:92–111. Du DZ, Hwang FK (2000) Combinatorial Group Testing and Its Applications (World Scientific), 2nd edition. Duenyas I, Iravani SMR, Li L, Najafi S (2024) Group warranty contracts to coordinate assembly supply chains with nontestable components. Production and Operations Management 33(2):475–493. Elmachtoub AN, Grigas P (2022) Smart “Predict, then Optimize”. Management Science 68(1):9–26. Ghuge R, Gupta A, Nagarajan V (2025) Nonadaptive stochastic score classification and explainable half-space evalua-tion. Operations Research 73(4):2204–2222. Howard RA, Matheson JE (1972) Risk-sensitive Markov decision processes. Management Science 18(7):356–369. Hu Y, Kallus N, Uehara M (2025) Fast rates for the regret of offline reinforcement learning. Mathematics of Operations Research 50(1):633–655. Jia Z, Rakhlin A, Xie T (2025) Do we need to verify step by step? Rethinking process supervision from a theoretical perspective. arXiv preprint arXiv:2502.10581 .Kakade SM (2003) On the Sample Complexity of Reinforcement Learning . Ph.D. thesis, University College London. Kazemnejad A, Aghajohari M, Portelance E, Sordoni A, Reddy S, Courville A, Le Roux N (2024) VinePPO: Refining credit assignment in RL training of LLMs. arXiv preprint arXiv:2410.01679 .Kemeny JG, Snell JL (1960) Finite Markov Chains (Van Nostrand). Le Cam L (1973) Convergence of estimates under dimensionality restrictions. The Annals of Statistics 1(1):38–53. Lightman H, Kosaraju V, Burda Y, Edwards H, Baker B, Lee T, Leike J, Schulman J, Sutskever I, Cobbe K (2024) Let’s verify step by step. International Conference on Learning Representations .Lindsay GF, Bishop AB (1964) Allocation of screening inspection effort—a dynamic programming approach. Man-agement Science 10(2):342–352. Emadi: The Critical Horizon 
+
+32 Article submitted to 
+
+Lykouris T, Simchowitz M, Slivkins A, Sun W (2025) Corruption-robust exploration in episodic reinforcement learning. 
+
+Mathematics of Operations Research 50(2):1277–1304. Minsky M (1961) Steps toward artificial intelligence. Proceedings of the IRE 49(1):8–30. Pensia A, Jog V, Loh PL (2024) Communication-constrained hypothesis testing: Optimality, robustness, and reverse data processing inequalities. IEEE Transactions on Information Theory 70(1):389–414. Pieroth F, Kohring N, Bichler M (2025) Deep reinforcement learning for equilibrium computation in multistage auctions and contests. Management Science URL http://dx.doi.org/10.1287/mnsc.2024.06771 .Polyanskiy Y, Wu Y (2017) Strong data-processing inequalities for channels and bayesian networks. Convexity and Concentration , volume 161 of The IMA Volumes in Mathematics and its Applications , 211–249 (Springer). Raginsky M (2016) Strong data processing inequalities and 𝜙 -Sobolev inequalities for discrete channels. IEEE Trans-actions on Information Theory 62(6):3355–3389. Raz T (1986) A survey of models for allocating inspection effort in multistage production systems. Journal of Quality Technology 18(4):239–247. Snell C, Lee J, Xu K, Kumar A (2025) Scaling LLM test-time compute optimally can be more effective than scaling model parameters. International Conference on Learning Representations , arXiv:2408.03314. Sutton RS, McAllester D, Singh S, Mansour Y (2000) Policy gradient methods for reinforcement learning with function approximation. Advances in Neural Information Processing Systems , volume 12. Tan Y, Yi W, Chen P, Zou Y (2024) An adaptive crack inspection method for building surface based on BIM, UAV and edge computing. Automation in Construction 157:105149. Tang H, Hu K, Zhou JP, Zhong S, Zheng WL, Si X, Ellis K (2024) Code repair with LLMs gives an exploration-exploitation tradeoff. Advances in Neural Information Processing Systems , volume 37. Tapiero CS (1987) Production learning and quality control. IIE Transactions 19(4):362–370. Uesato J, Kushman N, Kumar R, Song F, Siegel N, Wang L, Creswell A, Irving G, Higgins I (2022) Solving math word problems with process- and outcome-based feedback. arXiv preprint arXiv:2211.14275 .Wang K, Kallus N, Sun W (2023) Near-minimax-optimal risk-sensitive reinforcement learning with CVaR. International Conference on Machine Learning , volume 202 of PMLR , 35864–35907. Wang P, Li L, Shao Z, Xu R, Dai D, Li Y, Chen D, Wu Y, Sui Z (2024) Math-shepherd: Verify and reinforce LLMs step-by-step without human annotations. Proceedings of the 62nd Annual Meeting of the Association for Computational Linguistics , 9426–9439. Wiberg H, Dai T, Lam H, Kulkarni R (2025) Synergizing artificial intelligence and operations research: Perspectives from INFORMS fellows on the next frontier. INFORMS Journal on Data Science URL http://dx.doi. org/10.1287/ijds.2025.0077 .Zhang D, Zhoubian S, Hu Z, Yue Y, Dong Y, Tang J (2024) ReST-MCTS*: LLM self-training via process reward guided tree search. Advances in Neural Information Processing Systems , volume 37. Emadi: The Critical Horizon  
+
+> Article submitted to
+
+EC1 
+
+Electronic Companion Appendix A: Extended Literature Review 
+
+The information-theoretic structure underlying credit assignment connects five research streams that have developed largely independently: inspection design in operations research, credit assignment in AI reasoning, reinforcement learning theory, information-theoretic analysis of sequential processes, and the emerging application of OR tools to AI system design. 
+
+Inspection design in operations research. The optimal placement of inspection points in sequential pro-duction is a foundational topic in operations research. Lindsay and Bishop (1964) formulated inspection allocation as a serial dynamic program, minimizing total cost of inspection plus penalties for escaping defects. Raz (1986) surveyed extensions incorporating multiple inspection stations and variable costs; Tapiero (1987) introduced imperfect inspection and learning effects. Recent work incorporates adaptive inspection (Tan et al. 2024), predictive maintenance (Compare et al. 2020), and machine-learning-based prognosis (Diez-Olivan et al. 2019). Ghuge et al. (2025) study sequential testing of system components under budget constraints, providing a constant-factor approximation for nonadaptive score classification. Duenyas et al. (2024) analyze supply chains where components cannot be individually tested, developing coordination mechanisms when stage-level inspection is infeasible, precisely the terminal-only observation regime our theory addresses. This literature optimizes checkpoint placement to minimize cost under the assumption that defect signals persist through the production chain. Our work identifies a structural limit: in deep processes, signal decay makes observability, not cost, the binding constraint. The critical horizon formula quantifies when this regime applies. 
+
+Credit assignment in AI reasoning. The credit assignment problem was recognized by Minsky (1961) as fundamental to learning systems, yet has resisted systematic theoretical treatment. Our framework provides an information-theoretic characterization of when outcome supervision suffices versus when process supervision becomes necessary, grounded in the signal decay structure of deep sequential processes. Recent work explores process supervision as a remedy: Lightman et al. (2024) show that step-level labels substantially improve mathematical reasoning; Uesato et al. (2022) compare outcome and process supervision for mathematical reasoning; Wang et al. (2024) develop automated step-labeling methods. These studies demonstrate that process supervision helps but do not characterize when it becomes necessary. Our Signal Decay Bound fills this gap. Empirically, value networks trained on outcome data exhibit “critic collapse”, converging to near-constant predictions on long chains (Kazemnejad et al. 2024). Width-based methods such as GRPO (DeepSeek-AI 2024) address this by replacing learned critics with Monte Carlo estimation. Our framework explains both phenomena: critic collapse reflects the absence of signal beyond the critical horizon, and width-based methods face diminishing returns because correlation caps effective width. 
+
+Reinforcement learning theory. Standard reinforcement learning theory establishes polynomial sample com-plexity under regularity conditions such as bounded concentrability (Kakade 2003, Azar et al. 2013). Recent work by Jia et al. (2025) shows that outcome and process supervision are polynomially equivalent when concentrability is bounded. Our setting falls outside this regime: in deep sequential processes where each step may fail, concentrability grows exponentially in horizon, and the polynomial equivalence breaks down. This is precisely why the critical horizon matters. The exponential barrier in this regime has also been identified by independent and concurrent work: ? establish Emadi: The Critical Horizon 
+
+EC2 Article submitted to 
+
+an exponential separation between outcome-based and per-step feedback for certain MDPs, using function approxima-tion complexity arguments. Their construction demonstrates the separation through a worst-case MDP family, while our SDPI-based analysis provides a continuous diagnostic ( 𝐻 crit ) and prescriptive inspection design applicable to any given process; the two approaches are complementary. Sample complexity in related RL settings has received attention in the OR community: Hu et al. (2025) establish fast convergence rates for offline RL, Cheung et al. (2023) develop algorithms for nonstationary environments, and Lykouris et al. (2025) address exploration under adversarial corruption. These works assume bounded concentrability or benign nonstationarity; the deep sequential regime we study, where signal decays exponentially, falls outside their scope. A second point of departure from standard reinforcement learning concerns objective structure. Standard algorithms aggregate rewards additively, but sequential validity requires all steps to be correct, inducing a multiplicative objective. This connects to risk-sensitive MDPs (Howard and Matheson 1972), multiplicative-reward models (Baier et al. 2025), and minimax-optimal risk-sensitive RL (Wang et al. 2023). We propose a curriculum strategy that interpolates between the learnable additive objective and the correct multiplicative one. 
+
+Information-theoretic foundations. Filter stability results (Del Moral and Guionnet 2001) establish that depen-dence on initial conditions decays asymptotically in Markov chains, but do not yield the non-asymptotic, closed-form rates that credit assignment requires: a practitioner needs to know how many samples suffice for a process of a given depth, not merely that the problem becomes harder in the limit. Our analysis provides such rates by combining two classical tools. Strong Data Processing Inequalities (Polyanskiy and Wu 2017, Raginsky 2016) quantify per-step infor-mation loss, establishing that 𝜒 2-divergence contracts by a factor 𝜂 < 1 at each transition. Le Cam’s method (Le Cam 1973) then translates the resulting divergence bounds into sample complexity lower bounds, yielding the critical horizon formula. Recent extensions to bandits under communication constraints (Pensia et al. 2024) and interactive learning (Chen et al. 2024) address related but distinct settings. 
+
+Operations research tools for AI system design. A growing body of work applies OR methodology directly to AI systems. Snell et al. (2025) frame inference-time compute allocation as an optimization problem, adaptively distributing verification effort across prompts of varying difficulty, an allocation problem that parallels inspection placement at the problem-structure level, though without the information-theoretic signal decay analysis we develop here. Besta et al. (2025) formulate LLM reasoning explicitly within the MDP framework, treating chain-of-thought generation as sequential decision-making. Zhang et al. (2024) apply Monte Carlo Tree Search to guide multi-step reasoning with step-level evaluation, and Tang et al. (2024) model iterative code repair as a multi-armed bandit. Pieroth et al. (2025) use deep RL to compute equilibrium strategies in multistage auctions, and Elmachtoub and Grigas (2022) establish the “predict, then optimize” framework integrating prediction with downstream decision-making, both demonstrating OR-native methodology enriching AI system design. Recent surveys of INFORMS Fellows identify bringing OR rigor to AI challenges as a priority research frontier (Wiberg et al. 2025). Our work contributes to this agenda by showing that Strong Data Processing Inequalities and minimax inspection design, classical OR tools, yield precise, actionable answers to questions the AI community has addressed primarily through empirical heuristics. 
+
+Appendix B: Proofs for Section 3 (Signal Decay Bound) 
+
+Indexing convention. Throughout, the abstract chain has states 𝑍 0, 𝑍 1, . . . , 𝑍 𝐻 connected by 𝐻 transition kernels 
+
+𝐾 0, . . . , 𝐾 𝐻 −1, where 𝐾 𝑡 maps 𝑍 𝑡 to 𝑍 𝑡 +1. Step-validity labels 𝑟 𝑡 correspond to transition 𝑡 (the transition producing Emadi: The Critical Horizon  
+
+> Article submitted to
+
+EC3 
+
+𝑍 𝑡 +1 from 𝑍 𝑡 ). When we say “hypotheses differ at step 𝑡 ,” we mean the transition kernel 𝐾 𝑡 −1 (producing 𝑍 𝑡 ) differs, so 𝐻 − 𝑡 transitions remain before 𝑍 𝐻 .
+
+Proof of Proposition 1. The condition 𝐾 (𝑧 ′ | 𝑧 ) ≥ 𝑝 min for all 𝑧, 𝑧 ′ allows us to decompose 𝐾 into a mixing component and a residual. Let 𝜈 be the uniform distribution on Z, so 𝜈 (𝑧 ′) = 1/|Z| for all 𝑧 ′, and set 𝛼 = |Z| · 𝑝 min .Then for any 𝑧, 𝑧 ′:
+
+𝐾 (𝑧 ′ | 𝑧 ) ≥ 𝑝 min = 𝛼 · 𝜈 (𝑧 ′),
+
+so we can write: 
+
+𝐾 (𝑧 ′ | 𝑧 ) = 𝛼 · 𝜈 (𝑧 ′) + ( 1 − 𝛼 ) · 𝐾 res (𝑧 ′ | 𝑧 ),
+
+where 𝐾 res is a residual kernel. Under this decomposition, with probability 𝛼 the next state is drawn from 𝜈 regardless of the current state, and with probability 1 − 𝛼 the next state is drawn from the residual kernel. For any two distributions 𝑃 and 𝑄 on Z, the output distributions after passing through 𝐾 are: 
+
+𝑃𝐾 = 𝛼 · 𝜈 + ( 1 − 𝛼 ) · 𝑃𝐾 res ,𝑄𝐾 = 𝛼 · 𝜈 + ( 1 − 𝛼 ) · 𝑄𝐾 res .
+
+The 𝜒 2-divergence between these mixtures satisfies: 
+
+𝜒 2 (𝑃𝐾 ∥𝑄𝐾 ) =∑︁ 
+
+> 𝑧 ′
+
+(( 1 − 𝛼 )( 𝑃𝐾 res (𝑧 ′) − 𝑄𝐾 res (𝑧 ′))) 2
+
+𝛼 𝜈 (𝑧 ′) + ( 1 − 𝛼 ) 𝑄𝐾 res (𝑧 ′)≤ ( 1 − 𝛼 )2∑︁ 
+
+> 𝑧 ′
+
+(𝑃𝐾 res (𝑧 ′) − 𝑄𝐾 res (𝑧 ′)) 2
+
+(1 − 𝛼 ) 𝑄𝐾 res (𝑧 ′)
+
+= (1 − 𝛼 ) · 𝜒 2 (𝑃𝐾 res ∥𝑄𝐾 res )≤ ( 1 − 𝛼 ) · 𝜒 2 (𝑃 ∥𝑄 ),
+
+where the first inequality drops the positive term 𝛼 𝜈 (𝑧 ′) from the denominator, and the last inequality uses the standard data processing inequality for 𝐾 res . Thus: 
+
+𝜂 𝜒 2 (𝐾 ) ≤ 1 − 𝛼 = 1 − |Z| · 𝑝 min .
+
+□
+
+Proof of Proposition 2. Let 𝜂 TV (𝐾 ) denote the total-variation (Dobrushin) contraction coefficient: 
+
+𝜂 TV (𝐾 ) := sup 
+
+> 𝑃 ≠𝑄
+
+𝑑 TV (𝑃𝐾, 𝑄𝐾 )
+
+𝑑 TV (𝑃, 𝑄 ) = max  
+
+> 𝑧,𝑧 ′
+
+𝑑 TV 
+
+ 𝐾 (· | 𝑧 ), 𝐾 (· | 𝑧 ′).
+
+For probability vectors 𝑝, 𝑞 on a finite alphabet, 𝑑 TV ( 𝑝, 𝑞 ) = 1 − Í𝑦 min {𝑝 (𝑦 ), 𝑞 (𝑦 )} , hence 𝜂 TV (𝐾 ) = 1 − 𝛼 (𝐾 ) by the definition of 𝛼 (𝐾 ). Finally, for every 𝑓 -divergence (and in particular for 𝜒 2), the corresponding contraction coefficient is upper bounded by 𝜂 TV (𝐾 ) (Polyanskiy and Wu 2017, Theorem 1). Therefore, 𝜂 𝜒 2 (𝐾 ) ≤ 𝜂 TV (𝐾 ) = 1 − 𝛼 (𝐾 ), as claimed. □
+
+Proof of Theorem 1. Part 1: Divergence decay. 
+
+Let 𝑃 (𝑖 ) 
+
+> 𝑍 𝑢
+
+denote the distribution of 𝑍 𝑢 under hypothesis 𝐻 𝑖 for 𝑖 ∈ { 0, 1}. Since the transition kernels are identical under both hypotheses, we have 𝑃 (𝑖 ) 
+
+> 𝑍 𝑢 +1
+
+= 𝑃 (𝑖 ) 
+
+> 𝑍 𝑢
+
+𝐾 𝑢 for each 𝑢 ≥ 𝑡 .Emadi: The Critical Horizon 
+
+EC4 Article submitted to 
+
+By the 𝜒 2 Strong Data Processing Inequality (Lemma 1) and Assumption 1: 
+
+𝜒 2 (𝑃 (0) 
+
+> 𝑍 𝑢 +1
+
+∥𝑃 (1) 
+
+> 𝑍 𝑢 +1
+
+) = 𝜒 2 (𝑃 (0) 
+
+> 𝑍 𝑢
+
+𝐾 𝑢 ∥𝑃 (1) 
+
+> 𝑍 𝑢
+
+𝐾 𝑢 ) ≤ 𝜂 · 𝜒 2 (𝑃 (0) 
+
+> 𝑍 𝑢
+
+∥𝑃 (1) 
+
+> 𝑍 𝑢
+
+).
+
+Iterating from step 𝑡 through steps 𝑡 + 1, . . . , 𝐻 (applying kernels 𝐾 𝑡 , 𝐾 𝑡 +1, . . . , 𝐾 𝐻 −1): 
+
+𝜒 2 (𝑃 (0) 
+
+> 𝑍 𝐻
+
+∥𝑃 (1) 
+
+> 𝑍 𝐻
+
+) ≤ 𝜂 𝐻 −𝑡 · 𝜒 2 (𝑃 (0) 
+
+> 𝑍 𝑡
+
+∥𝑃 (1) 
+
+> 𝑍 𝑡
+
+) = 𝜂 𝐻 −𝑡 · Δ2.
+
+Since 𝑅 = 𝑔 (𝑍 𝐻 ) is a deterministic function of the terminal state, the standard data processing inequality gives 
+
+𝜒 2 (𝑃 (0) 
+
+> 𝑅
+
+∥𝑃 (1) 
+
+> 𝑅
+
+) ≤ 𝜒 2 (𝑃 (0) 
+
+> 𝑍 𝐻
+
+∥𝑃 (1) 
+
+> 𝑍 𝐻
+
+).
+
+Part 2: Sample complexity lower bound. 
+
+Let 𝛿 𝑅 := 𝜒 2 (𝑃 (0) 
+
+> 𝑅
+
+∥𝑃 (1) 
+
+> 𝑅
+
+) ≤ 𝜂 𝐻 −𝑡 Δ2. For 𝑛 i.i.d. outcome observations, the 𝜒 2-divergence tensorizes: 
+
+𝜒 2 (𝑃 (0) ⊗ 𝑛 𝑅 ∥𝑃 (1) ⊗ 𝑛 𝑅 ) = (1 + 𝛿 𝑅 )𝑛 − 1.
+
+We work in the regime 𝛿 𝑅 ≤ 1. Using (1 + 𝑥 )𝑛 − 1 ≤ 𝑒 𝑛𝑥 − 1 ≤ 2𝑛𝑥 for 𝑛𝑥 ≤ 1: 
+
+𝜒 2 (𝑃 (0) ⊗ 𝑛 𝑅 ∥𝑃 (1) ⊗ 𝑛 𝑅 ) ≤ 2𝑛𝛿 𝑅 when 𝑛𝛿 𝑅 ≤ 1.
+
+The total variation distance satisfies 𝑑 TV (𝑃, 𝑄 ) ≤ √︁ 𝜒 2 (𝑃 ∥𝑄 )/ 2, so 
+
+𝑑 TV (𝑃 (0) ⊗ 𝑛 𝑅 , 𝑃 (1) ⊗ 𝑛 𝑅 ) ≤ √︁ 𝑛𝛿 𝑅 .
+
+By the identity err ∗ = 1 − 𝑑 TV , if 𝑛𝛿 𝑅 < (1 − 𝜖 )2 then 𝑑 TV < 1 − 𝜖 and hence err ∗ > 𝜖 . By contrapositive, achieving total testing error at most 𝜖 requires 𝑛𝛿 𝑅 ≥ ( 1 − 𝜖 )2, hence: 
+
+𝑛 ≥ (1 − 𝜖 )2
+
+𝛿 𝑅 
+
+≥ (1 − 𝜖 )2
+
+𝜂 𝐻 −𝑡 Δ2 .
+
+Part 3: Exponential growth. 
+
+When Δ2 = Θ (1), the bound becomes 𝑛 = Ω (1/𝜂 𝐻 −𝑡 ) = Ω (( 1/𝜂 )𝐻 −𝑡 ). Since 𝜂 < 1, we have 1 /𝜂 > 1, so sample complexity grows exponentially in 𝐻 − 𝑡 . □
+
+REMARK 2 (E XTENSION TO NOISY TERMINAL OBSERVATIONS ). Theorem 1 assumes a deterministic terminal map 𝑅 = 𝑔 (𝑍 𝐻 ). The result extends directly to noisy observations 𝑅 ∼ 𝐺 (· | 𝑍 𝐻 ) for any Markov kernel 𝐺 : Z → 
+
+Δ({ 0, 1}) . The standard data processing inequality gives 𝜒 2 (𝑃 (0) 
+
+> 𝑅
+
+∥𝑃 (1) 
+
+> 𝑅
+
+) ≤ 𝜂 𝜒 2 (𝐺 ) · 𝜒 2 (𝑃 (0) 
+
+> 𝑍 𝐻
+
+∥𝑃 (1) 
+
+> 𝑍 𝐻
+
+), so the effective contraction product becomes 𝜂 𝜒 2 (𝐺 ) · Î𝐻 −1 
+
+> 𝑢 =𝑡
+
+𝜂 𝑢 , and the critical horizon shortens by ln (1/𝜂 𝜒 2 (𝐺 ))/ ln (1/𝜂 ) steps. The deterministic case 𝑅 = 𝑔 (𝑍 𝐻 ) corresponds to 𝜂 𝜒 2 (𝐺 ) = 1 when 𝑔 is injective. 
+
+Proof of Corollary 2. The sample complexity lower bound in Theorem 1 states that achieving error at most 𝜖 
+
+requires 
+
+𝑛 ≥ (1 − 𝜖 )2
+
+𝜂 𝐻 −𝑡 Δ2 .
+
+Rearranging for 𝜂 𝐻 −𝑡 :
+
+𝜂 𝐻 −𝑡 ≥ (1 − 𝜖 )2
+
+𝑛 Δ2 .
+
+Taking logarithms of both sides (noting ln 𝜂 < 0 since 𝜂 < 1, which reverses the inequality): 
+
+(𝐻 − 𝑡 ) ln 𝜂 ≥ ln 
+
+ (1 − 𝜖 )2
+
+𝑛 Δ2
+
+
+
+=⇒ 𝐻 − 𝑡 ≤ ln (𝑛 Δ2) − 2 ln (1 − 𝜖 )
+
+ln (1/𝜂 ) ,
+
+which is the claimed bound. □Emadi: The Critical Horizon  
+
+> Article submitted to
+
+EC5 
+
+Proof of Proposition 3. For Bernoulli distributions with parameters 𝑝 0 and 𝑝 1 = 𝑝 0 + 𝛿 , the 𝜒 2-divergence is: 
+
+𝜒 2 (𝑃 (0) 
+
+> 𝑅
+
+∥𝑃 (1) 
+
+> 𝑅
+
+) = ( 𝑝 0 − 𝑝 1)2
+
+𝑝 1
+
++ (( 1 − 𝑝 0) − ( 1 − 𝑝 1)) 2
+
+1 − 𝑝 1
+
+= 𝛿 2
+
+ 1
+
+𝑝 1
+
++ 11 − 𝑝 1
+
+
+
+= Θ (𝛿 2) = Θ (𝜂 𝐻 −𝑡 Δ2),
+
+where the last step uses 𝛿 = Θ (𝜂 (𝐻 −𝑡 )/ 2Δ). We assume 𝑝 1 ∈ [ 𝜖 0, 1 − 𝜖 0] for some constant 𝜖 0 > 0; this mild regularity condition ensures the outcome is not deterministic under either hypothesis. The likelihood ratio test is known to achieve the minimax optimal rate, requiring 𝑛 = Θ (1/𝜒 2 (𝑃 (0) 
+
+> 𝑅
+
+∥𝑃 (1) 
+
+> 𝑅
+
+)) = Θ (1/( 𝜂 𝐻 −𝑡 Δ2)) samples to distinguish the hypotheses with constant error probability. □
+
+Proof of Corollary 3. Let 𝑅 1: 𝑛 denote 𝑛 i.i.d. outcome samples under hypothesis 𝐻 𝑖 , so 𝑅 1: 𝑛 ∼ ( 𝑃 (𝑖 ) 
+
+> 𝑅
+
+)⊗𝑛 . By Theorem 1, 𝜒 2 (𝑃 (0) 
+
+> 𝑅
+
+∥𝑃 (1) 
+
+> 𝑅
+
+) ≤ 𝜂 𝐻 −𝑡 Δ2. Using 𝜒 2 tensorization for product measures, 
+
+𝜒 2 
+
+(𝑃 (0) 
+
+> 𝑅
+
+)⊗𝑛 (𝑃 (1) 
+
+> 𝑅
+
+)⊗𝑛 
+
+=
+
+
+
+1 + 𝜒 2 (𝑃 (0) 
+
+> 𝑅
+
+∥𝑃 (1) 
+
+> 𝑅
+
+)
+
+𝑛 
+
+− 1 ≤ ( 1 + 𝜂 𝐻 −𝑡 Δ2)𝑛 − 1.
+
+By the standard bound 𝑑 TV (𝑃, 𝑄 ) ≤ √︁ 𝜒 2 (𝑃 ∥𝑄 )/ 2, 
+
+𝑑 TV 
+
+
+
+(𝑃 (0) 
+
+> 𝑅
+
+)⊗𝑛 , (𝑃 (1) 
+
+> 𝑅
+
+)⊗𝑛 
+
+≤√︂ (1 + 𝜂 𝐻 −𝑡 Δ2)𝑛 − 12 .
+
+Finally, for any test 𝜓 , Le Cam’s bound yields max  
+
+> 𝑖 ∈ { 0,1}
+
+P𝑖 (𝜓 (𝑅 1: 𝑛 ) ≠ 𝑖 ) ≥ 12
+
+
+
+1 − 𝑑 TV 
+
+
+
+(𝑃 (0) 
+
+> 𝑅
+
+)⊗𝑛 , (𝑃 (1) 
+
+> 𝑅
+
+)⊗𝑛  
+
+,
+
+which yields the stated bound. For the “in particular” statement, it suffices that √︁ (( 1 + 𝜂 𝐻 −𝑡 Δ2)𝑛 − 1)/ 2 ≤ 1 − 2𝜖 , i.e., 
+
+(1 + 𝜂 𝐻 −𝑡 Δ2)𝑛 − 1 ≤ 2(1 − 2𝜖 )2. Using ln (1 + 𝑥 ) ≤ 𝑥 implies (1 + 𝜂 𝐻 −𝑡 Δ2)𝑛 ≤ exp (𝑛𝜂 𝐻 −𝑡 Δ2), so it is enough that 
+
+𝑛𝜂 𝐻 −𝑡 Δ2 ≤ ln (1 + 2(1 − 2𝜖 )2). □
+
+EXAMPLE 5 (M ARKOV -C HAIN INSTANCE ACHIEVING THE SIGNAL DECAY RATE ). We construct a Markov chain satisfying Definition 8 and Assumption 1 for which the Signal Decay Bound is achieved up to constants. Let 
+
+|Z| = 2 and define the abstract transition kernel 𝐾 =   1−𝑞 𝑞 𝑞 1−𝑞 
+
+ with 𝑞 ∈ ( 0, 1/2), so 𝜂 𝜒 2 (𝐾 ) = (1 − 2𝑞 )2. Set the terminal map 𝑔 (𝑧 ) = 𝑧 (state 1 is success, state 0 is failure). Under 𝐻 0, let 𝑍 𝑡 = 0 with probability 1; under 𝐻 1, let 𝑍 𝑡 = 1with probability 𝛿 and 0 with probability 1 − 𝛿 , giving 𝜒 2 (𝑃 (0) 
+
+> 𝑍 𝑡
+
+∥𝑃 (1) 
+
+> 𝑍 𝑡
+
+) = 𝛿 2/( 1 − 𝛿 ) = Θ (𝛿 2) for small 𝛿 .After 𝐻 − 𝑡 applications of 𝐾 , the outcome distributions satisfy 
+
+𝜒 2 (𝑃 (0) 
+
+> 𝑅
+
+∥𝑃 (1) 
+
+> 𝑅
+
+) = 𝜂 𝐻 −𝑡 · 𝜒 2 (𝑃 (0) 
+
+> 𝑍 𝑡
+
+∥𝑃 (1) 
+
+> 𝑍 𝑡
+
+),
+
+with equality because the binary symmetric kernel with uniform reference measure achieves the 𝜒 2-SDPI bound (Polyanskiy and Wu 2017, Example 3), and 𝑔 is bijective. The likelihood ratio test then achieves the matching upper bound 𝑛 = Θ (1/( 𝜂 𝐻 −𝑡 Δ2)) .
+
+PROPOSITION 9 (Approximate Lumpability) . Suppose the per-step discrepancy between true and lumpable dynamics is bounded by 𝛿 in total variation: 𝑑 TV (𝐾 𝑢 (· | 𝑧 ), ˜𝐾 𝑢 (· | 𝑧 )) ≤ 𝛿 for all 𝑧 ∈ Z and 𝑢 = 𝑡, . . . , 𝐻 − 1. Assume the lumpable chain satisfies Assumption 1 with contraction coefficient 𝜂 . Then: 
+
+𝑑 TV (𝑃 (0) 
+
+> 𝑅
+
+, 𝑃 (1) 
+
+> 𝑅
+
+) ≤ √︁ 𝜂 𝐻 −𝑡 Δ2/2 + 2(𝐻 − 𝑡 )𝛿, 
+
+and, letting 𝜏 :=√︁ 𝜂 𝐻 −𝑡 Δ2/2 + 2(𝐻 − 𝑡 )𝛿 , any test based on 𝑛 i.i.d. outcome samples satisfies 
+
+inf  
+
+> 𝜓
+
+max  
+
+> 𝑖 ∈ { 0,1}
+
+P𝑖 (𝜓 (𝑅 1: 𝑛 ) ≠ 𝑖 ) ≥ 12 (1 − min {1, 𝑛𝜏 }) ,
+
+so in particular achieving minimax error at most 𝜖 requires 𝑛 ≥ ( 1 − 2𝜖 )/ 𝜏 .Emadi: The Critical Horizon 
+
+EC6 Article submitted to 
+
+Proof of Proposition 9. Fix a hypothesis 𝑖 ∈ { 0, 1} and write 𝑃 𝑢 and ˜𝑃 𝑢 for the laws of 𝑍 𝑢 under the true and lumpable kernels, respectively. By the triangle inequality and the fact that Markov kernels are non-expansive in total variation, 
+
+𝑑 TV (𝑃 𝑢 +1, ˜𝑃 𝑢 +1) = 𝑑 TV (𝑃 𝑢 𝐾 𝑢 , ˜𝑃 𝑢 ˜𝐾 𝑢 ) ≤ 𝑑 TV (𝑃 𝑢 𝐾 𝑢 , 𝑃 𝑢 ˜𝐾 𝑢 ) + 𝑑 TV (𝑃 𝑢 ˜𝐾 𝑢 , ˜𝑃 𝑢 ˜𝐾 𝑢 ) ≤ 𝛿 + 𝑑 TV (𝑃 𝑢 , ˜𝑃 𝑢 ),
+
+where the first term uses 𝑑 TV (𝜇𝐾, 𝜇 ˜𝐾 ) ≤ sup 𝑧 𝑑 TV (𝐾 (· | 𝑧 ), ˜𝐾 (· | 𝑧 )) ≤ 𝛿 for any distribution 𝜇 , and the second uses non-expansiveness of ˜𝐾 𝑢 . Iterating from 𝑢 = 𝑡 (where 𝑃 𝑡 = ˜𝑃 𝑡 ) yields 𝑑 TV (𝑃 (𝑖 ) 
+
+> 𝑍 𝐻
+
+, ˜𝑃 (𝑖 ) 
+
+> 𝑍 𝐻
+
+) ≤ ( 𝐻 − 𝑡 )𝛿 . The same bound transfers to any terminal observation 𝑅 by data processing. For the main inequality, apply the triangle inequality: 
+
+𝑑 TV (𝑃 (0) 
+
+> 𝑅
+
+, 𝑃 (1) 
+
+> 𝑅
+
+) ≤ 𝑑 TV (𝑃 (0) 
+
+> 𝑅
+
+, ˜𝑃 (0) 
+
+> 𝑅
+
+) + 𝑑 TV ( ˜𝑃 (0) 
+
+> 𝑅
+
+, ˜𝑃 (1) 
+
+> 𝑅
+
+) + 𝑑 TV ( ˜𝑃 (1) 
+
+> 𝑅
+
+, 𝑃 (1) 
+
+> 𝑅
+
+).
+
+The first and third terms are bounded by (𝐻 − 𝑡 )𝛿 . For the middle term, the inequality 𝑑 TV (𝑃, 𝑄 ) ≤ √︁ 𝜒 2 (𝑃 ∥𝑄 )/ 2combined with Theorem 1 for the lumpable chain yields 𝑑 TV ( ˜𝑃 (0) 
+
+> 𝑅
+
+, ˜𝑃 (1) 
+
+> 𝑅
+
+) ≤ √︁ 𝜂 𝐻 −𝑡 Δ2/2. For 𝑛 i.i.d. outcome samples, write 𝑃 𝑛 := (𝑃 (0) 
+
+> 𝑅
+
+)⊗𝑛 and 𝑄 𝑛 := (𝑃 (1) 
+
+> 𝑅
+
+)⊗𝑛 . A standard telescoping argument gives the subadditivity bound 
+
+𝑑 TV (𝑃 𝑛 , 𝑄 𝑛 ) ≤ 𝑛 𝑑 TV (𝑃 (0) 
+
+> 𝑅
+
+, 𝑃 (1) 
+
+> 𝑅
+
+) ≤ 𝑛𝜏, 
+
+and therefore 𝑑 TV (𝑃 𝑛 , 𝑄 𝑛 ) ≤ min {1, 𝑛𝜏 }. By Le Cam’s two-point method, for any test 𝜓 ,max  
+
+> 𝑖 ∈ { 0,1}
+
+P𝑖 (𝜓 (𝑅 1: 𝑛 ) ≠ 𝑖 ) ≥ 12 (1 − 𝑑 TV (𝑃 𝑛 , 𝑄 𝑛 )) .
+
+Taking inf 𝜓 on the left-hand side yields inf  
+
+> 𝜓
+
+max  
+
+> 𝑖 ∈ { 0,1}
+
+P𝑖 (𝜓 (𝑅 1: 𝑛 ) ≠ 𝑖 ) ≥ 12 (1 − 𝑑 TV (𝑃 𝑛 , 𝑄 𝑛 )) ≥ 12 (1 − min {1, 𝑛𝜏 }) ,
+
+which yields the claimed lower bound. In particular, if 𝑛𝜏 < 1 − 2𝜖 , then every test has minimax error > 𝜖 . □
+
+Appendix C: Proofs for Section 4 (Width Limits) 
+
+Proof of Proposition 4. Part 1: Each 𝑅 𝑗 is a Bernoulli random variable with E[𝑅 𝑗 | 𝑠 ] = 𝑉 𝜋 (𝑠 ). By linearity of expectation: 
+
+E[ ˆ𝑉 𝑊 (𝑠 ) | 𝑠 ] = 1
+
+𝑊 
+
+> 𝑊
+
+∑︁ 
+
+> 𝑗 =1
+
+E[𝑅 𝑗 | 𝑠 ] = 𝑉 𝜋 (𝑠 ).
+
+Part 2: Since the 𝑅 𝑗 are conditionally independent given 𝑠 , each with variance Var (𝑅 𝑗 | 𝑠 ) = 𝑉 𝜋 (𝑠 )( 1 − 𝑉 𝜋 (𝑠 )) :Var ( ˆ𝑉 𝑊 (𝑠 ) | 𝑠 ) = 1
+
+𝑊 2
+
+> 𝑊
+
+∑︁ 
+
+> 𝑗 =1
+
+Var (𝑅 𝑗 | 𝑠 ) = 𝑉 𝜋 (𝑠 )( 1 − 𝑉 𝜋 (𝑠 )) 
+
+𝑊 .
+
+Part 3: By Hoeffding’s inequality applied to 𝑊 independent random variables bounded in [0, 1]:
+
+P(| ˆ𝑉 𝑊 (𝑠 ) − 𝑉 𝜋 (𝑠 )| ≥ 𝜖 | 𝑠 ) ≤ 2 exp (− 2𝑊𝜖 2).
+
+Setting 𝛿 = 2 exp (− 2𝑊𝜖 2) and solving for 𝜖 yields the stated bound. □Emadi: The Critical Horizon  
+
+> Article submitted to
+
+EC7 
+
+Proof of Theorem 2. The variance of the sum of correlated random variables is: Var ©«
+
+> 𝑊
+
+∑︁ 
+
+> 𝑗 =1
+
+𝑅 𝑗 | 𝑠 ª®¬
+
+=
+
+> 𝑊
+
+∑︁ 
+
+> 𝑗 =1
+
+Var (𝑅 𝑗 | 𝑠 ) + 2∑︁ 
+
+> 𝑖< 𝑗
+
+Cov (𝑅 𝑖 , 𝑅 𝑗 | 𝑠 ).
+
+With Var (𝑅 𝑗 | 𝑠 ) = 𝜎 2 (𝑠 ) and Cov (𝑅 𝑖 , 𝑅 𝑗 | 𝑠 ) = 𝜌 · 𝜎 2 (𝑠 ) for 𝑖 ≠ 𝑗 :Var ©«
+
+> 𝑊
+
+∑︁ 
+
+> 𝑗 =1
+
+𝑅 𝑗 | 𝑠 ª®¬
+
+= 𝑊𝜎 2 (𝑠 ) + 𝑊 (𝑊 − 1)𝜌𝜎 2 (𝑠 ) = 𝜎 2 (𝑠 ) · 𝑊 (1 + ( 𝑊 − 1)𝜌 ).
+
+Dividing by 𝑊 2 gives the stated variance formula. The effective width satisfies 𝜎 2 (𝑠 )/ 𝑊 eff = Var ( ˆ𝑉 𝑊 (𝑠 ) | 𝑠 ), yielding 
+
+𝑊 eff = 𝑊 /( 1 + ( 𝑊 − 1)𝜌 ). When 𝜌 = 0, this gives 𝑊 eff = 𝑊 . When 𝜌 > 0, as 𝑊 → ∞ this approaches 1 /𝜌 . □
+
+Proof of Corollary 4. Substitute 𝑁 eff = 𝑛 · 𝑊 eff into Corollary 2. □
+
+Appendix D: Proofs for Section 5 (Objective Mismatch) 
+
+Proof of Proposition 5. By linearity, ∇𝜃 𝐽 𝜆 = (1 − 𝜆 )∇ 𝜃 𝐽 add + 𝜆 ∇𝜃 𝐽 mult . The non-negative inner product ensures 
+
+∥∇ 𝜃 𝐽 𝜆 ∥ ≥ ( 1 − 𝜆 )∥∇ 𝜃 𝐽 add ∥. Setting (1 − 𝜆 ) ≥ 𝑐 yields the result. □
+
+Appendix E: Proofs for Section 6 (Optimal Inspection Design) 
+
+Proof of Proposition 6. By the 𝜒 2-SDPI (Lemma 1), each transition contracts divergence: 𝜒 2 (𝑃 (0)  
+
+> 𝑍 𝑗 +1
+
+∥𝑃 (1)  
+
+> 𝑍 𝑗 +1
+
+) ≤ 
+
+𝜂 𝑗 · 𝜒 2 (𝑃 (0)  
+
+> 𝑍 𝑗
+
+∥𝑃 (1)  
+
+> 𝑍 𝑗
+
+). Iterating from 𝑗 = 𝑡 to 𝑢 − 1 yields 𝜒 2 (𝑃 (0) 
+
+> 𝑍 𝑢
+
+∥𝑃 (1) 
+
+> 𝑍 𝑢
+
+) ≤ Attn (𝑡 → 𝑢 )Δ2. Since 𝑌 𝑢 = 𝑔 𝑢 (𝑍 𝑢 ) is a function of 𝑍 𝑢 , the data processing inequality gives 𝜒 2 (𝑃 (0) 
+
+> 𝑌 𝑢
+
+∥𝑃 (1) 
+
+> 𝑌 𝑢
+
+) ≤ 𝜒 2 (𝑃 (0) 
+
+> 𝑍 𝑢
+
+∥𝑃 (1) 
+
+> 𝑍 𝑢
+
+). □
+
+REMARK 3 (I MPERFECT INSPECTIONS ). Definition 15 models inspections as noiseless functions of the abstract state. In practice, inspections may have false positives and negatives: the observation becomes 𝑌 𝑢 ∼ 𝐺 𝑢 (· | 𝑍 𝑢 ) for a noisy channel 𝐺 𝑢 with 𝜒 2-contraction coefficient 𝜂 𝜒 2 (𝐺 𝑢 ) ≤ 1. Proposition 6 then generalizes to 𝜒 2 (𝑃 (0) 
+
+> 𝑌 𝑢
+
+∥𝑃 (1) 
+
+> 𝑌 𝑢
+
+) ≤ 
+
+𝜂 𝜒 2 (𝐺 𝑢 ) · Attn (𝑡 → 𝑢 ) · Δ2. In the information-distance framework of Section 6.4, this adds a penalty ln (1/𝜂 𝜒 2 (𝐺 𝑢 )) at each inspection, effectively shortening the feasible segment length. Higher-fidelity inspections (larger 𝜂 𝜒 2 (𝐺 𝑢 ), closer to 1) incur a smaller penalty. 
+
+Proof of Corollary 5. Apply the testing lower bound from Theorem 1 with the effective horizon replaced by 𝑢 − 𝑡 .
+
+□
+
+Proof of Proposition 7. Let 𝑡 ★ be the first step in the largest segment: 𝑡 ★ = 𝑡 𝑖 ★ where 𝑖 ★ ∈ arg max 𝑖 (𝑡 𝑖 +1 − 𝑡 𝑖 ). The next inspection occurs at 𝑢 ★ = 𝑡 𝑖 ★+1, so 𝑢 ★ − 𝑡 ★ = 𝐿 (T ) . Applying Corollary 5 with 𝑢 = 𝑢 ★ yields the bound. □
+
+Proof of Theorem 3. Any schedule with 𝑚 intermediate inspections partitions the horizon into 𝑚 + 1 segments with integer lengths ℓ0, . . . , ℓ 𝑚 satisfying Í𝑚 𝑖 =0 ℓ𝑖 = 𝐻 . Hence max 𝑖 ℓ𝑖 ≥ ⌈ 𝐻 /( 𝑚 + 1)⌉ . For the near-uniform schedule 
+
+𝑡 𝑖 = ⌊𝑖𝐻 /( 𝑚 + 1)⌋ , each segment length 𝑡 𝑖 +1 − 𝑡 𝑖 is either ⌊𝐻 /( 𝑚 + 1)⌋ or ⌈𝐻 /( 𝑚 + 1)⌉ , so max 𝑖 (𝑡 𝑖 +1 − 𝑡 𝑖 ) = ⌈𝐻 /( 𝑚 + 1)⌉ ,achieving the lower bound. □
+
+Proof of Corollary 6. Under minimax-optimal placement with 𝑚 inspections, Theorem 3 gives 𝐿 (T ) = ⌈𝐻 /( 𝑚 +
+
+1)⌉ . Substituting this into Proposition 7 yields the stated bound. □
+
+Proof of Corollary 7. Feasibility requires 𝐿 (T ) ≤ 𝐻 crit (𝜖 ). With optimal spacing, 𝐿 (T ) = ⌈𝐻 /( 𝑚 + 1)⌉ , so (𝑚 +
+
+1) ≥ 𝐻 /𝐻 crit (𝜖 ). □Emadi: The Critical Horizon 
+
+EC8 Article submitted to 
+
+Proof of Lemma 2. Corollary 5 implies that step 𝑡 𝑖 is (𝑛, 𝜖 )-distinguishable using the inspection at 𝑡 𝑖 +1 only if 
+
+𝑛 ≥ (1 − 𝜖 )2
+
+Attn (𝑡 𝑖 → 𝑡 𝑖 +1)Δ2 ,
+
+equivalently 𝑊 ([ 𝑡 𝑖 , 𝑡 𝑖 +1)) ≤ ln (𝑛 Δ2) − 2 ln (1 − 𝜖 ). If the inequality holds, then for any 𝑡 ∈ { 𝑡 𝑖 , . . . , 𝑡 𝑖 +1 − 1} we have Attn (𝑡 → 𝑡 𝑖 +1) ≥ Attn (𝑡 𝑖 → 𝑡 𝑖 +1) (the product runs over fewer factors in (0, 1]), so the required sample size for step 
+
+𝑡 is no larger than for step 𝑡 𝑖 . Hence every step in the segment is (𝑛, 𝜖 )-distinguishable. Conversely, if step 𝑡 𝑖 is 
+
+(𝑛, 𝜖 )-distinguishable using the inspection at 𝑡 𝑖 +1, then the displayed inequality must hold by Corollary 5. □
+
+Proof of Theorem 4. Let the greedy schedule start at 𝑡 𝑔  
+
+> 0
+
+= 0 and choose each 𝑡 𝑔 𝑖 +1 as the largest index such that 
+
+𝑊 ([ 𝑡 𝑔 𝑖 , 𝑡 𝑔 𝑖 +1)) ≤ Γ. Consider any feasible schedule with inspection times 0 = 𝑡 0 < 𝑡 1 < · · · . Because it is feasible, it must satisfy 𝑊 ([ 0, 𝑡 1)) ≤ Γ, hence by maximality of 𝑡 𝑔  
+
+> 1
+
+we have 𝑡 1 ≤ 𝑡 𝑔  
+
+> 1
+
+. Now apply the same argument to the residual instance starting at 𝑡 𝑔  
+
+> 1
+
+: any feasible continuation from 𝑡 1 cannot place its next inspection beyond the greedy choice from 
+
+𝑡 𝑔  
+
+> 1
+
+without violating the constraint 𝑊 (·) ≤ Γ. Formally, if 𝑡 𝑗 ≤ 𝑡 𝑔 𝑗 for some 𝑗 , then any feasible 𝑡 𝑗 +1 from 𝑡 𝑗 satisfies 
+
+𝑊 ([ 𝑡 𝑗 , 𝑡 𝑗 +1)) ≤ Γ, hence 𝑊 ([ 𝑡 𝑔 𝑗 , 𝑡 𝑗 +1)) ≤ 𝑊 ([ 𝑡 𝑗 , 𝑡 𝑗 +1)) ≤ Γ (since removing leading terms with 𝑤 𝑡 ≥ 0 cannot increase the sum), so 𝑡 𝑗 +1 ≤ 𝑡 𝑔 𝑗 +1 by maximality of 𝑡 𝑔 𝑗 +1. Iterating, after 𝑘 greedy inspections the greedy schedule covers at least as much of the horizon as any feasible schedule with 𝑘 inspections. Therefore no feasible schedule can reach 𝐻 with fewer inspections than greedy, so greedy minimizes the number of inspections. □
+
+Proof of Proposition 8. Corollary 6 requires 𝑛 ≥ ( 1 − 𝜖 )2/( 𝜂 ⌈ 𝐻 /( 𝑚 +1) ⌉ Δ2). Multiplying by the per-trajectory cost gives the result. □
+
+Proof of Corollary 8. Feasibility with 𝑛 ≤ 𝐻 𝑝 requires 𝐻 𝑝 ≳ 𝜂 −⌈ 𝐻 /( 𝑚 +1) ⌉ . Taking logarithms: 𝑝 ln 𝐻 ≳ ⌈𝐻 /( 𝑚 +
+
+1)⌉ ln (1/𝜂 ), so 𝑚 + 1 ≳ (𝐻 /ln 𝐻 ) · ( ln (1/𝜂 )/ 𝑝 ) = Ω (𝐻 /log 𝐻 ). □
+
+Appendix F: Practical Examples 
+
+Interpreting the initial divergence Δ2. The parameter Δ2 = 𝜒 2 (𝑃 (0) 
+
+> 𝑍 𝑡
+
+∥𝑃 (1) 
+
+> 𝑍 𝑡
+
+) measures how different the abstract-state distributions are under “step correct” ( 𝐻 0) versus “step erroneous” ( 𝐻 1). In manufacturing, Δ2 reflects the separation between the grade distribution produced by a correctly operating stage versus a malfunctioning one; it can be estimated from pilot audits by running the stage under controlled conditions (normal vs. degraded), binning outputs into quality grades, and computing the empirical 𝜒 2-divergence. Larger Δ2 means defects are easier to detect locally, extending the critical horizon; small Δ2 (subtle defects) shortens it. When Δ2 is unknown, the critical horizon formula can be evaluated at a conservative lower bound to yield a worst-case inspection schedule. 
+
+EXAMPLE 6 (M ANUFACTURING GRADE TRANSITIONS ). Consider a three-grade abstraction 𝑍 𝑡 ∈ { A, B, C}
+
+where A denotes “within specification,” B denotes “marginal/reworkable,” and C denotes “defective,” in a setting with rework and defect masking. A downstream step such as polishing followed by retest can partially repair marginal units while occasionally degrading good ones. A representative grade-to-grade kernel is 
+
+𝐾 = ©«
+
+0.85 0 .14 0 .01 0.55 0 .35 0 .10 0.20 0 .30 0 .50 
+
+ª®¬
+
+,
+
+where rows index the incoming grade and columns the outgoing grade. The minimum pairwise row overlap is achieved by the A and C rows: ∑︁ 
+
+> 𝑧 ′
+
+min 𝐾 (𝑧 ′ | A), 𝐾 (𝑧 ′ | C) = min {0.85 , 0.20 } + min {0.14 , 0.30 } + min {0.01 , 0.50 }
+
+= 0.20 + 0.14 + 0.01 = 0.35 ,Emadi: The Critical Horizon  
+
+> Article submitted to
+
+EC9 so 𝛼 (𝐾 ) = 0.35 and Proposition 2 gives 𝜂 𝜒 2 (𝐾 ) ≤ 1 − 𝛼 (𝐾 ) = 0.65. Even when the underlying physical transformation is repeatable, coarse grading and partial defect masking produce strict per-stage contraction on the abstract state space. 
+
+EXAMPLE 7 (S EMICONDUCTOR FABRICATION ). A semiconductor process has 𝐻 = 50 stages with 𝜂 = 0.85. Terminal testing costs $10/wafer; intermediate metrology costs $50/inspection. With 𝑛 = 10 ,000 wafers, Δ2 = 0.2, and target error 𝜖 = 0.1: 
+
+𝐻 crit (𝜖 ) = ln (2000 ) − 2 ln (0.9)
+
+ln (1/0.85 ) ≈ 48 .1 < 50 .
+
+Since 𝐻 > 𝐻 crit (𝜖 ), outcome-only evaluation is insufficient. Corollary 7 gives 𝑚 ≥ ⌈ 50 /48 .1⌉ − 1 = 1. One inspection at the midpoint ( 𝑡 1 = 25) reduces the maximal gap to 25, bringing all stages within the critical horizon. The inspection adds $50/wafer but makes the study feasible; without it, the required sample size would exceed the budget. 
+
+EXAMPLE 8 (S ERVICE OPERATIONS ). A customer journey has 𝐻 = 50 touchpoints. Early touchpoints (aware-ness, consideration) have high variability ( 𝜂 𝑡 = 0.6 for 𝑡 ≤ 10), while later touchpoints are more deterministic ( 𝜂 𝑡 = 0.95 for 𝑡 > 10). With 𝑛 = 1,000 customers, Δ2 = 0.3, and 𝜖 = 0.1, the feasibility threshold is Γ = ln (300 ) − 2 ln (0.9) ≈ 5.9. The 11 high-contraction steps contribute 𝑊 ([ 0, 11 )) = 11 ×ln (1/0.6) ≈ 5.6, nearly exhausting the budget. The greedy algorithm extends through 5 additional low-contraction steps before exceeding Γ, placing an inspection at 𝑡 1 = 16 (since 𝑊 ([ 0, 16 )) ≈ 5.88 ≤ Γ ≈ 5.91 but 𝑊 ([ 0, 17 )) ≈ 5.93 > Γ). The remaining 34 low-contraction steps contribute only 𝑊 ([ 16 , 50 )) = 34 × ln (1/0.95 ) ≈ 1.7 < Γ, fitting in one segment. The optimal schedule has one inspection, placed where contraction is strongest, demonstrating that non-uniform placement arises naturally when contraction varies. 
+
+Appendix G: Budgeting Tradeoffs and Inspection Design Procedure 
+
+Section 6 characterizes inspection placement in information units. This appendix addresses two operational questions: how to trade off sample size against inspection frequency, and when to prefer additional inspections over additional rollouts. 
+
+Sample–inspection tradeoff. Let 𝑐 out denote the per-trajectory cost of terminal evaluation and 𝑐 insp the per-trajectory cost of each intermediate inspection. Collecting 𝑛 trajectories with 𝑚 inspections each costs 𝐵 = 𝑛 (𝑐 out + 𝑚 ·
+
+𝑐 insp ). Proposition 8 reveals that increasing 𝑚 reduces the sample requirement exponentially but raises per-trajectory cost linearly. A simple rule is to increase 𝑚 until the maximal gap ⌈𝐻 /( 𝑚 + 1)⌉ falls below 𝐻 crit (𝜖 ), at which point further inspections yield negligible sample savings. Corollary 8 implies that inspection effort must grow nearly linearly with process depth to avoid exponential sample requirements. 
+
+Width versus inspection. A practitioner choosing between increasing width 𝑊 (more rollouts or replicates) and adding an inspection faces the following comparison. By Corollary 4, doubling 𝑊 eff extends the critical horizon by ln 2 /ln (1/𝜂 ) steps, but correlation caps 𝑊 eff at 1 /𝜌 , so no amount of additional rollouts can extend the horizon beyond ln (𝑛 Δ2/𝜌 )/ ln (1/𝜂 ). By contrast, a single well-placed inspection halves the maximal gap (Theorem 3), extending the effective horizon by a factor of 2. For processes where 𝐻 > ln (𝑛 Δ2/𝜌 )/ ln (1/𝜂 ), width alone is provably insufficient and intermediate inspection is the only path to feasibility. In practice, the marginal value of one additional inspection exceeds that of doubling 𝑊 whenever the current maximal gap 𝐿 (T ) exceeds 𝐻 crit (𝜖 ).Emadi: The Critical Horizon 
+
+EC10 Article submitted to 
+
+Summary procedure. The following procedure synthesizes the results of Section 6 and the tradeoffs above. 
+
+Inspection Design Procedure 
+
+1. Estimate contraction: Bound the contraction coefficient 𝜂 (or {𝜂 𝑡 }) using A/B comparisons, cohort tracking, or variance decay measurements. 2. Compute feasibility threshold: Γ(𝑛, Δ2, 𝜖 ) = ln (𝑛 Δ2) − 2 ln (1 − 𝜖 ). Equivalently, under homogeneous con-traction compute 𝐻 crit (𝜖 ) = Γ /ln (1/𝜂 ).3. Choose inspections for feasibility: Under homogeneous contraction, choose the smallest 𝑚 satisfying 
+
+𝑚 ≥ ⌈ 𝐻 /𝐻 crit (𝜖 )⌉ − 1. Under heterogeneous contraction, choose the smallest 𝑚 produced by the greedy rule in Theorem 4. 4. Place inspections: Uniformly at 𝑡 𝑖 = ⌊𝑖𝐻 /( 𝑚 + 1)⌋ under homogeneous contraction (Theorem 3), or via greedy information-distance placement under heterogeneous contraction (Theorem 4). 5. Budget the study: Set 𝑛 and 𝑚 to satisfy 𝐵 = 𝑛 (𝑐 out + 𝑚𝑐 insp ) and compare against the lower bound in Proposition 8. 
+
+Practical implications. Three insights emerge. First, intermediate inspection is often an investment in feasibility ,not merely precision: a single well-placed checkpoint can make an otherwise impossible attribution problem tractable (Example 7). Second, uniform spacing provides a robust default when contraction rates are uncertain (Theorem 3); when stage-specific estimates are available, the greedy algorithm (Theorem 4) concentrates inspections where contraction is strongest. Third, inspection effort must scale with process depth: organizations extending their value chains cannot hold inspection budgets constant (Corollary 8). 
+
+Appendix H: Numerical Validation: Full Experimental Details 
+
+We validate five core theoretical predictions using synthetic Markov chains with controlled parameters. For effective width and objective mismatch, we additionally demonstrate the predicted phenomena on LLM reasoning chains from GSM8K. Synthetic experiments allow exact control of the contraction coefficient 𝜂 , providing clean verification of the bounds; LLM experiments confirm that the phenomena occur in practice. The experiments cover signal decay (Section H.1), effective width under correlation (Section H.2), optimal inspection design (Section H.3), the critical horizon phase transition (Section H.4), and the objective mismatch between additive and multiplicative rewards (Section H.5). The code and data to support the numerical experiments in this paper will be made publicly available upon acceptance. 
+
+H.1. Signal Decay Bound 
+
+Theorem 1 establishes that 𝜒 2-divergence between outcome distributions decays exponentially with distance from outcome: 
+
+𝜒 2 (𝑃 𝑆 𝐻 ∥𝑄 𝑆 𝐻 ) ≤ 𝜂 𝐻 −𝑡 · 𝜒 2 (𝑃 𝑆 𝑡 ∥𝑄 𝑆 𝑡 ).
+
+To test this bound, we construct synthetic Markov chains with 10 abstract states and exact contraction coefficient 
+
+𝜂 ∈ { 0.7, 0.8, 0.9, 0.95 }, using the kernel 𝐾 = √𝜂 𝐼 + ( 1 − √𝜂 ) ( 1/10 ) 11 ⊤, a convex combination of the identity and the uniform-mixing matrix whose 𝜒 2-contraction coefficient is exactly 𝜂 . For each step 𝑡 , we set 𝑃 𝑡 = 𝛿 0 (point mass on state 0) and 𝑄 𝑡 = 𝜋 (the uniform stationary distribution), giving 𝜒 2 (𝑃 𝑡 ∥𝑄 𝑡 ) = 9. We propagate both distributions to the terminal state through the contractive kernel and measure the resulting 𝜒 2-divergence at the state distribution level. Emadi: The Critical Horizon  
+
+> Article submitted to
+
+EC11 
+
+Figure 1 Validation of the Signal Decay Bound (Theorem 1). Measured 𝜒 2-divergences (dots) match the the-oretical prediction 𝜂 𝐻 −𝑡 · Δ2 (dashed lines) exactly for all four contraction rates, confirming expo-nential decay with rate 𝜂 . Setup: 10-state Markov chains with 𝐻 = 40 and Δ2 = 9.0 5 10 15 20 25 30 35 40                
+
+> Distance to Outcome (Ht)
+> 10 20
+> 10 17
+> 10 14
+> 10 11
+> 10 8
+> 10 5
+> 10 2
+> 10 1
+> 2 Divergence (log scale)
+> Slope = ln( )
+> Signal Decay Verification ( H= 40 ,m= 10 states)
+> = 0.7
+> = 0.8
+> = 0.9
+> = 0.95
+
+Figure 1 plots the measured divergence against distance to outcome (𝐻 − 𝑡 ) on a logarithmic scale for 𝐻 = 40, showing all four values of 𝜂 . The dashed lines show the theoretical prediction 𝜂 𝐻 −𝑡 · Δ2 with Δ2 = 9. Because the reference distribution 𝑄 𝑡 equals the stationary distribution 𝜋 , the bound is achieved with equality: measured divergences lie exactly on the theoretical lines. The measurements follow perfect linear trends on the log scale with distinct slopes for each 𝜂 , confirming exponential decay at the predicted rates. Results for other horizons ( 𝐻 ∈ { 10 , 20 }) are identical in pattern. 
+
+H.2. Effective Width Under Correlation 
+
+Theorem 2 shows that positively correlated rollouts yield diminished variance reduction: 
+
+𝑊 eff = 𝑊 
+
+1 + ( 𝑊 − 1)𝜌 ,
+
+where 𝜌 is the pairwise correlation between rollout outcomes. As 𝑊 → ∞ , effective width saturates at 1 /𝜌 , meaning that beyond a certain point, additional rollouts provide negligible benefit. We test this prediction in two settings. In synthetic experiments, we induce correlation 𝜌 = 0.15 by adding a shared noise component across rollouts, then measure variance reduction at 𝑊 ∈ { 1, 4, 16 , 64 , 256 }. In LLM experiments, we generate 𝑊 ∈ { 1, 4, 16 } rollouts per GSM8K problem and measure the empirical pairwise correlation ( ¯ 𝜌 ≈ 0.49, averaged across 𝑊 ∈ { 4, 16 }) and variance reduction. Figure 2 shows the results. In both panels, measured effective width (red dots) closely tracks the theoretical prediction (blue curve). The synthetic experiment confirms saturation: at 𝑊 = 256 rollouts, effective width reaches only 6 .6, compared to the theoretical maximum of 1 /𝜌 = 6.7. The LLM experiment shows even stronger saturation due to higher correlation: 𝑊 = 16 nominal rollouts yield effective width of only 2 .2. 
+
+H.3. Optimal Inspection Design 
+
+Theorem 3 establishes that under homogeneous contraction, uniformly spaced checkpoints minimize the worst-case attribution error across all steps. The intuition is that any gap between checkpoints allows signal to decay; uniform spacing ensures no gap is larger than necessary. Emadi: The Critical Horizon 
+
+EC12 Article submitted to 
+
+Figure 2 Validation of the Effective Width Formula (Theorem 2). Measured effective width (dots) matches the theoretical prediction 𝑊 /( 1 + ( 𝑊 − 1)𝜌 ) (curve) and saturates at 1/𝜌 . (a) Synthetic with 𝜌 = 0.15 . (b) LLM with 𝜌 ≈ 0.49 .10 0 10 1 10 2      
+
+> Nominal Width W
+> 1
+> 2
+> 3
+> 4
+> 5
+> 6
+> Effective Width  Weff
+> (a) Synthetic: = 0.15
+> Theoretical
+> Measured
+> Saturation ( 1/ = 6.7 )
+> 10 010 1
+> Nominal Width W
+> 1.0
+> 1.2
+> 1.4
+> 1.6
+> 1.8
+> 2.0
+> 2.2
+> Effective Width  Weff
+> (b) LLM (GSM8K): avg = 0.49
+> Theoretical
+> Measured
+
+Figure 3 Validation of Optimal Inspection Design (Theorem 3). Uniform checkpoint spacing (green) achieves 40–47% lower worst-case error than front-loaded, back-loaded, or random schedules. Checkpoint positions shown above each bar. Uniform Front-loaded Back-loaded Random    
+
+> Inspection Schedule
+> 0.0
+> 0.1
+> 0.2
+> 0.3
+> 0.4
+> 0.5
+> 0.6
+> 0.7
+> 0.8
+> Worst-Case Attribution Error
+> Checkpoints: [5, 10, 15]
+> Checkpoints: [2, 4, 6]
+> Checkpoints: [14, 16, 18]
+> Checkpoints: [2, 13, 14]
+> Optimal
+> Inspection Schedule Comparison ( H= 20 ,m= 3 )
+
+We test this with 𝐻 = 20 steps, contraction coefficient 𝜂 = 0.9, and 𝑚 = 3 intermediate checkpoints, comparing four schedules: uniform placement at {5, 10 , 15 }, front-loaded at {2, 4, 6}, back-loaded at {14 , 16 , 18 }, and random at 
+
+{2, 13 , 14 }. For each schedule, we compute the worst-case attribution error across all 20 steps. Figure 3 shows the results. Uniform spacing achieves worst-case error of 0.41, while the alternatives achieve 0.69 (random) to 0.77 (front- and back-loaded). This represents a 40–47% reduction in worst-case error, confirming that uniform spacing is not merely a reasonable heuristic but the optimal choice under the conditions of the theorem. 
+
+H.4. Critical Horizon Phase Transition 
+
+Corollary 2 predicts a sharp phase transition: steps within 𝐻 crit ≈ ln (𝑛 Δ2)/ ln (1/𝜂 ) of the outcome can be reliably attributed, while steps beyond this horizon cannot. We test this prediction by measuring attribution accuracy as a function of distance from outcome. Emadi: The Critical Horizon  
+
+> Article submitted to
+
+EC13 
+
+Figure 4 Validation of the Critical Horizon (Corollary 2). Attribution accuracy drops to chance (50%) at or before the predicted 𝐻 crit (dashed lines) for both contraction rates. For 𝜂 = 0.7, 𝐻 crit ≈ 26 ; for 𝜂 = 0.8,
+
+𝐻 crit ≈ 41 , which exceeds the horizon 𝐻 = 40 , so accuracy remains above chance throughout. 0 5 10 15 20 25 30 35 40       
+
+> Distance to Outcome (Ht)
+> 0.4
+> 0.5
+> 0.6
+> 0.7
+> 0.8
+> 0.9
+> 1.0
+> Attribution Accuracy
+> Hcrit Hcrit
+> Critical Horizon Phase Transition ( H= 40 ,n= 1,000 )
+> = 0.7
+> = 0.8
+> Chance (50%)
+
+We use 𝐻 = 40 steps, 10 abstract states, 𝑛 = 1,000 samples per hypothesis, and Δ2 = 9. We test two contraction rates: 
+
+𝜂 = 0.7 (predicted 𝐻 crit ≈ 26) and 𝜂 = 0.8 (predicted 𝐻 crit ≈ 41). For each step position, we generate outcome samples under two initial distributions and test whether the step’s identity can be recovered. Figure 4 shows the results. Attribution accuracy for 𝜂 = 0.7 drops from 89% at distance 1 to chance level (50%) around distance 23, slightly before the theoretical 𝐻 crit ≈ 26. For 𝜂 = 0.8, the slower decay rate places 𝐻 crit ≈ 41 beyond the maximum horizon 𝐻 = 40, so accuracy remains above chance throughout but declines steadily. The critical horizon formula provides a tight upper bound on the reach of outcome-based credit assignment: accuracy degrades continuously with distance and reaches chance level at or before 𝐻 crit , confirming that steps beyond the critical horizon cannot be reliably evaluated. The gap between the empirical transition and the theoretical bound reflects the difference between the simple classifier used here and the information-theoretically optimal test. 
+
+H.5. Objective Mismatch 
+
+Definition 12 identifies a fundamental gap between step-quality ( 𝐽 add ) and validity ( 𝐽 mult ) objectives: a chain can have most steps correct yet still produce a wrong answer. We test whether this “mostly correct fallacy” occurs in practice by evaluating 50 GSM8K reasoning chains. We score each step using an automated heuristic (numerical consistency of intermediate calculations); because this heuristic is imperfect, the results below are illustrative of the mismatch phenomenon rather than a definitive measurement of its magnitude. We compare additive rewards (fraction of steps rated correct) against a binary validity indicator (1 if the final answer is correct, 0 otherwise). Figure 5(a) plots each chain’s additive reward (x-axis) against its validity indicator (y-axis: 1 for correct, 0 for wrong). Dots along the top are chains that produce a correct final answer; dots along the bottom are chains with a wrong final answer. The shaded region marks the “mostly correct but wrong” zone: additive reward ≥ 0.80 yet validity = 0. Eight chains (16%) fall in this zone. Six of these have every step rated correct (additive reward = 1.0) but still produce a wrong final answer, because the step-level heuristic evaluates numerical consistency of intermediate calculations but cannot catch errors in problem setup or final answer extraction. Panel (b) shows the distribution of additive rewards Emadi: The Critical Horizon 
+
+EC14 Article submitted to 
+
+Figure 5 Validation of the Objective Mismatch (Definition 12). (a) Additive vs. multiplicative reward for 50 GSM8K chains. The shaded region highlights 8 chains (16%) that are “mostly correct” (high addi-tive reward) but wrong (multiplicative reward = 0). (b) Distribution of step correctness, showing that wrong-answer chains can have nearly all steps correct. 0.0 0.2 0.4 0.6 0.8 1.0     
+
+> Additive Reward (fraction of correct steps)
+> 0.2
+> 0.0
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> 1.0
+> 1.2
+> Multiplicative Reward
+> "Mostly Correct"
+> but Wrong
+> (a) Objective Mismatch: "Mostly Correct" but Wrong
+> Wrong final answer
+> Correct final answer
+> 0.6 0.7 0.8 0.9 1.0
+> Additive Reward (fraction of correct steps)
+> 0
+> 5
+> 10
+> 15
+> 20
+> 25
+> 30
+> 35
+> Count
+> 8 chains
+> 80% correct steps
+> but wrong answer
+> (b) Distribution of Step Correctness
+> Wrong final answer
+> Correct final answer
+
+separately for correct-answer and wrong-answer chains; the dashed line marks the 0 .80 threshold. Both correct-answer and wrong-answer chains concentrate at high additive reward, confirming that step-level scores do not reliably separate valid from invalid reasoning. These chains span 23–48 reasoning steps, so the phenomenon is not an artifact of short chains. An additive objective would assign near-maximal reward to all eight, reinforcing the reasoning patterns that produce wrong answers; the validity indicator correctly identifies them as failures. 
+
+Appendix I: Case Study: Supervision Design for Language Model Reasoning 
+
+We now apply the general framework to a domain of significant current interest: training large language models to perform multi-step reasoning. This case study shows how the information-theoretic limits translate into concrete supervision design guidance for AI practitioners and clarifies the connection to intermediate inspection principles (Section 6). Large language models present a puzzling credit assignment problem: token-level dynamics are deterministic (appending a token to a prefix yields a unique result), yet outcome supervision fails empirically. Value networks trained on terminal rewards produce near-constant outputs for early reasoning steps (Kazemnejad et al. 2024). Our framework resolves this paradox through the state abstraction of Section 3.1. Supervision targets semantic content, not surface representation: many distinct token sequences can encode the same meaning, so the abstraction map 𝜙 collapses token-level trajectories into a much smaller semantic state space. Writing 
+
+𝑍 𝑡 = 𝜙 (𝑆 𝑡 ) for the semantic content of a partial reasoning chain, different token-level choices can lead to the same 
+
+𝑍 𝑡 +1, inducing mixing in the abstract Markov kernel even when the underlying token dynamics are deterministic. This many-to-one abstraction is the source of contraction, and it is precisely why outcome-only supervision can fail even when next-token prediction is deterministic. The lumpability condition (Definition 8) becomes the requirement that semantic transitions depend only on current meaning, not on which specific token sequence expresses it. 
+
+EXAMPLE 9 (P ROOF STATE ABSTRACTION ). The observable state 𝑆 𝑡 is the complete text of a partial proof. The semantic state 𝑍 𝑡 = 𝜙 (𝑆 𝑡 ) captures which statements have been established, what remains to prove, and the current Emadi: The Critical Horizon  
+
+> Article submitted to
+
+EC15 proof strategy. Different phrasings of equivalent proofs map to the same semantic state. The semantic space Z is much smaller than the space of all token sequences, but it is the relevant space for evaluating correctness. The supervision design question in this section is: given a target reasoning depth, what feedback should be provided (and where) to keep early-step attribution within the critical horizon? We develop the answer in a logical sequence: (i) relate exploration mechanisms (temperature) to contraction and hence critical horizon; (ii) derive the prescription that local feedback (process supervision / verification) plays the same role as inspections in Section 6; and (iii) interpret width-based methods through the lens of variance reduction and correlation limits. 
+
+I.1. Temperature Controls Contraction and the Critical Horizon 
+
+For language models, a primary control knob for contraction is sampling temperature. A softmax policy with temperature 
+
+𝜏 selects actions according to 𝜋 𝜏 (𝑎 | 𝑧 ) ∝ exp (ℓ(𝑧, 𝑎 )/ 𝜏 ), where ℓ(𝑧, 𝑎 ) denotes the logits. Low temperature concentrates probability on high-logit actions; high temperature spreads probability toward uniform. The policy induces a semantic transition kernel 
+
+𝐾 𝜏 (𝑧 ′ | 𝑧 ) =∑︁ 
+
+> 𝑎 ∈ A
+
+𝑃 (𝑧 ′ | 𝑧, 𝑎 ) 𝜋 𝜏 (𝑎 | 𝑧 ),
+
+where 𝑃 (𝑧 ′ | 𝑧, 𝑎 ) is the probability of reaching semantic state 𝑧 ′ when taking token-level action 𝑎 from semantic state 𝑧 . Even if token-level transitions are deterministic, the semantic transition is stochastic because 𝜙 collapses many token sequences into the same semantic state. 
+
+PROPOSITION 10 (Temperature Extremes and 𝜒 2-Contraction) . Let {𝐾 𝜏 }𝜏> 0 be the semantic transition ker-nels induced by softmax sampling at temperature 𝜏 .
+
+1. (High-temperature mixing. ) If, as 𝜏 → ∞ , 𝐾 𝜏 (· | 𝑧 ) → 𝜈 (·) for all 𝑧 for some distribution 𝜈 independent of 𝑧 , then 
+
+𝜂 𝜒 2 (𝐾 ∞) = 0.
+
+2. (Low-temperature determinism. ) If, as 𝜏 → 0, 𝐾 𝜏 (𝑧 ′ | 𝑧 ) → 1[𝑧 ′ = 𝑓 (𝑧 )] for a bijection 𝑓 : Z → Z , then 
+
+𝜂 𝜒 2 (𝐾 0) = 1.Proof. For Item (1), if 𝐾 𝜏 (· | 𝑧 ) → 𝜈 (·) for all 𝑧 , then 𝑃𝐾 ∞ = 𝑄𝐾 ∞ = 𝜈 for any input distributions 𝑃, 𝑄 , hence 
+
+𝜒 2 (𝑃𝐾 ∞ ∥𝑄𝐾 ∞) = 0 and 𝜂 𝜒 2 (𝐾 ∞) = 0. For Item (2), if 𝐾 0 (𝑧 ′ | 𝑧 ) = 1[𝑧 ′ = 𝑓 (𝑧 )] for a bijection 𝑓 , then 𝐾 0 is a permutation kernel, so 𝜒 2 (𝑃𝐾 0 ∥𝑄𝐾 0) = 𝜒 2 (𝑃 ∥𝑄 ) and 𝜂 𝜒 2 (𝐾 0) = 1. □
+
+Proposition 10 clarifies the two extreme regimes. High temperature drives semantic transitions toward state-independent mixing ( 𝜂 𝜒 2 = 0, maximal information loss), while low temperature drives them toward a deterministic permutation ( 𝜂 𝜒 2 = 1, no information loss). Between these extremes, higher temperature increases action diversity and can raise the minimum transition probability 𝑝 min (𝜏 ) := min 𝑧,𝑧 ′ 𝐾 𝜏 (𝑧 ′ | 𝑧 ). When this occurs, Proposition 1 yields the tighter bound 𝜂 𝜒 2 (𝐾 𝜏 ) ≤ 1 − |Z| · 𝑝 min (𝜏 ), so contraction strengthens and signal decay accelerates with temperature. The implication is not that one should always lower temperature. Rather, when exploration is necessary and con-traction is non-negligible, outcome-only supervision cannot reliably attribute errors to early reasoning steps beyond the critical horizon. In that regime, supervision must be intermediate: provide process labels or verification signals at internal points of the chain so that each early step lies within the attenuation distance of an informative checkpoint, exactly as in the inspection design problem of Section 6. Emadi: The Critical Horizon 
+
+EC16 Article submitted to 
+
+EXAMPLE 10 (C ONTRACTION IN A REASONING MODEL ). Consider a semantic space with three states repre-senting reasoning validity: “on track,” “minor error,” and “fatal error.” Suppose the policy induces the transition kernel 
+
+𝐾 = ©«
+
+0.7 0 .2 0 .10.3 0 .4 0 .30.1 0 .2 0 .7
+
+ª®¬
+
+.
+
+The minimum entry is 𝑝 min = 0.1, so Proposition 1 gives 𝜂 ≤ 1 − |Z| × 0.1 = 1 − 3 × 0.1 = 0.7. With 𝜂 = 0.7 and 𝑛 = 10 6
+
+samples at Δ2 = 0.1, the critical horizon is approximately 32 steps. When the semantic kernel is unknown, practitioners can estimate 𝜂 by sampling continuations from varied prefixes and measuring distributional overlap (yielding an upper bound via Proposition 1), or by computing the empirical correlation between value estimates at consecutive steps as a proxy for contraction strength. 
+
+I.2. Process Supervision and Verification as Intermediate Inspections 
+
+The inspection design framework of Section 6 translates directly into supervision design for LLM reasoning. A process reward model that evaluates the semantic correctness of reasoning step 𝑢 produces an observation 𝑌 𝑢 = 𝑔 𝑢 (𝑍 𝑢 ), exactly the inspection output of Definition 15: the evaluator 𝑔 𝑢 is the human annotator or automated verifier applied to the semantic state. Human-annotated labels (Lightman et al. 2024) and automated verifiers (code execution, proof checkers, tool use) differ in cost but play the same structural role: each resets the signal decay clock so that nearby steps lie within the critical horizon of an informative checkpoint. With this identification, the per-segment feasibility condition (Lemma 2) governs how densely process labels must be spaced: consecutive labels at reasoning steps 𝑡 𝑖 and 𝑡 𝑖 +1 support reliable credit assignment for all intervening steps if and only if the cumulative semantic contraction satisfies 𝑊 ([ 𝑡 𝑖 , 𝑡 𝑖 +1)) ≤ Γ(𝑛, Δ2, 𝜖 ). Steps whose distance to the nearest label exceeds 𝐻 crit (𝜖 ) require exponentially many samples to evaluate reliably; for such steps, process labels are not merely helpful but necessary. This mapping also clarifies the cost structure. Human annotation provides high-quality labels but at high per-label cost 
+
+𝑐 insp . Systems such as Math-Shepherd (Wang et al. 2024) reduce this cost by generating process labels via Monte Carlo rollouts from intermediate states, substituting computation for human effort. The resulting tradeoff is precisely the joint sample-inspection budget problem of Proposition 8: given a total budget 𝐵 = 𝑛 (𝑐 out + 𝑚 · 𝑐 insp ), the designer chooses the number of labeled checkpoints 𝑚 and the number of training trajectories 𝑛 to minimize worst-case attribution error. 
+
+I.3. Width-Based Methods as Variance Reduction Within the Horizon 
+
+Several prominent LLM training methods rely on width: GRPO (Group Relative Policy Optimization; DeepSeek-AI 2024) samples 𝑊 rollouts per prompt and compares outcomes to compute policy gradients; best-of-𝑊 strategies generate 
+
+𝑊 completions and select the highest-scoring one. In the language of Section 4, the prompt serves as the starting state 
+
+𝑠 , each completion is a rollout with binary outcome 𝑅 𝑗 , and the empirical success rate ˆ 𝑉 𝑊 (𝑠 ) = 𝑊 −1 Í 𝑗 𝑅 𝑗 is the multi-rollout estimator of Definition 11. These methods therefore inherit both the variance reduction of Proposition 4 and the correlation cap of Theorem 2: effective width saturates at 𝑊 eff ≤ 1/𝜌 , where 𝜌 reflects shared reasoning patterns activated by the prompt and encoded in the pretrained weights. Applying Corollary 4 with LLM parameters reveals a tension with the temperature analysis of Section I.1. Higher temperature lowers 𝜌 by diversifying continuations, which increases 𝑊 eff and extends the critical horizon 𝐻 crit =Emadi: The Critical Horizon  
+
+> Article submitted to
+
+EC17 ln (𝑛 · 𝑊 eff · Δ2)/ ln (1/𝜂 ). But Section I.1 showed that higher temperature also strengthens semantic contraction (smaller 
+
+𝜂 ), which increases ln (1/𝜂 ) in the denominator and shrinks 𝐻 crit . Width-based methods therefore face diminishing returns at both extremes of the temperature dial: low temperature yields high correlation ( 𝑊 eff ≈ 1), while high temperature yields strong contraction. The practical operating regime is an intermediate temperature where both effects are moderate. The preceding analysis assumes that errors are diverse: different rollouts make different mistakes, so averaging reduces noise. When rollouts share systematic error patterns, the effective correlation 𝜌 increases and width-based methods become less effective, reinforcing the need for process supervision in deep reasoning chains.

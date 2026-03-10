@@ -1,17 +1,57 @@
 {
   "mode": "standard",
-  "generated_at": "2026-03-10T17:05:20.706359+00:00",
+  "generated_at": "2026-03-10T17:18:10.018385+00:00",
   "stats": {
     "mode": "standard",
-    "tag_count": 1,
-    "deep_divecandidates": 5,
-    "deep_cap": 6,
-    "deep_selected": 5,
-    "quick_candidates": 34,
-    "quick_skim_target": 11,
-    "quick_selected": 11
+    "tag_count": 2,
+    "deep_divecandidates": 60,
+    "deep_cap": 7,
+    "deep_selected": 19,
+    "quick_candidates": 121,
+    "quick_skim_target": 12,
+    "quick_selected": 12
   },
   "deep_dive": [
+    {
+      "id": "2602.19373v1",
+      "title": "Stable Deep Reinforcement Learning via Isotropic Gaussian Representations",
+      "abstract": "Deep reinforcement learning systems often suffer from unstable training dynamics due to non-stationarity, where learning objectives and data distributions evolve over time. We show that under non-stationary targets, isotropic Gaussian embeddings are provably advantageous. In particular, they induce stable tracking of time-varying targets for linear readouts, achieve maximal entropy under a fixed variance budget, and encourage a balanced use of all representational dimensions--all of which enable agents to be more adaptive and stable. Building on this insight, we propose the use of Sketched Isotropic Gaussian Regularization for shaping representations toward an isotropic Gaussian distribution during training. We demonstrate empirically, over a variety of domains, that this simple and computationally inexpensive method improves performance under non-stationarity while reducing representation collapse, neuron dormancy, and training instability.",
+      "authors": [
+        "Ali Saheb",
+        "Johan Obando-Ceron",
+        "Aaron Courville",
+        "Pouya Bashivan",
+        "Pablo Samuel Castro"
+      ],
+      "primary_category": "cs.LG",
+      "categories": [
+        "cs.LG",
+        "cs.AI"
+      ],
+      "published": "2026-02-22T22:55:27+00:00",
+      "link": "https://arxiv.org/pdf/2602.19373v1",
+      "tags": [
+        "keyword:DRL",
+        "keyword:DRL JSP",
+        "query:DRL",
+        "query:DRL JSP"
+      ],
+      "llm_score": 10.0,
+      "llm_evidence_en": "improving training stability via isotropic Gaussian representations",
+      "llm_evidence_cn": "通过各向同性高斯表示提高训练稳定性",
+      "llm_evidence": "通过各向同性高斯表示提高训练稳定性",
+      "canonical_evidence": "通过各向同性高斯表示提高训练稳定性",
+      "llm_tldr_en": "Proposes isotropic Gaussian regularization to stabilize DRL training under non-stationary targets.",
+      "llm_tldr_cn": "提出了各向同性高斯正则化，以在非平稳目标下稳定深度强化学习训练。",
+      "llm_tldr": "提出了各向同性高斯正则化，以在非平稳目标下稳定深度强化学习训练。",
+      "llm_tags": [
+        "query:drl"
+      ],
+      "matched_query_tag": "query:drl",
+      "matched_query_text": "techniques for improving training stability and convergence in DRL",
+      "matched_requirement_id": "req-10",
+      "selection_source": "fresh_fetch"
+    },
     {
       "id": "2602.21546v1",
       "title": "Mamba Meets Scheduling: Learning to Solve Flexible Job Shop Scheduling with Efficient Sequence Modeling",
@@ -34,13 +74,13 @@
         "query:DRL JSP"
       ],
       "llm_score": 10.0,
-      "llm_evidence_en": "Learning to solve Flexible Job Shop Scheduling with Mamba architecture",
-      "llm_evidence_cn": "利用Mamba架构学习解决柔性作业车间调度问题",
-      "llm_evidence": "利用Mamba架构学习解决柔性作业车间调度问题",
-      "canonical_evidence": "利用Mamba架构学习解决柔性作业车间调度问题",
-      "llm_tldr_en": "Introduces a Mamba-based architecture for FJSP to capture long-range dependencies in scheduling.",
-      "llm_tldr_cn": "引入基于Mamba的架构来解决FJSP问题，有效捕捉调度中的长程依赖关系。",
-      "llm_tldr": "引入基于Mamba的架构来解决FJSP问题，有效捕捉调度中的长程依赖关系。",
+      "llm_evidence_en": "Learning to solve Flexible Job Shop Scheduling",
+      "llm_evidence_cn": "学习解决柔性作业车间调度问题",
+      "llm_evidence": "学习解决柔性作业车间调度问题",
+      "canonical_evidence": "学习解决柔性作业车间调度问题",
+      "llm_tldr_en": "Harnesses Mamba state-space models for efficient sequence modeling in Flexible Job Shop Scheduling Problems.",
+      "llm_tldr_cn": "利用Mamba状态空间模型在柔性作业车间调度问题中进行高效的序列建模。",
+      "llm_tldr": "利用Mamba状态空间模型在柔性作业车间调度问题中进行高效的序列建模。",
       "llm_tags": [
         "query:drl-jsp"
       ],
@@ -73,13 +113,13 @@
         "query:DRL JSP"
       ],
       "llm_score": 10.0,
-      "llm_evidence_en": "Solving flexible job shop scheduling using deep reinforcement learning with graph networks",
-      "llm_evidence_cn": "利用带有图网络的深度强化学习解决柔性作业车间调度问题",
-      "llm_evidence": "利用带有图网络的深度强化学习解决柔性作业车间调度问题",
-      "canonical_evidence": "利用带有图网络的深度强化学习解决柔性作业车间调度问题",
-      "llm_tldr_en": "Uses DRL with heterogeneous graph networks to solve FJSP with limited buffers and material kitting constraints.",
-      "llm_tldr_cn": "利用异构图神经网络的深度强化学习解决具有有限缓冲区和物料配套约束的柔性作业车间调度问题。",
-      "llm_tldr": "利用异构图神经网络的深度强化学习解决具有有限缓冲区和物料配套约束的柔性作业车间调度问题。",
+      "llm_evidence_en": "Solving flexible job shop scheduling using deep reinforcement learning",
+      "llm_evidence_cn": "使用深度强化学习解决柔性作业车间调度问题",
+      "llm_evidence": "使用深度强化学习解决柔性作业车间调度问题",
+      "canonical_evidence": "使用深度强化学习解决柔性作业车间调度问题",
+      "llm_tldr_en": "Uses DRL with heterogeneous graph networks to solve flexible job shop scheduling with practical constraints.",
+      "llm_tldr_cn": "利用带有异构图网络的深度强化学习解决具有实际约束的柔性作业车间调度问题。",
+      "llm_tldr": "利用带有异构图网络的深度强化学习解决具有实际约束的柔性作业车间调度问题。",
       "llm_tags": [
         "query:drl-jsp"
       ],
@@ -113,13 +153,13 @@
         "query:DRL JSP"
       ],
       "llm_score": 10.0,
-      "llm_evidence_en": "DRL-based improvement heuristics for Flexible Job Shop Scheduling",
-      "llm_evidence_cn": "基于深度强化学习的柔性作业车间调度改进启发式方法",
-      "llm_evidence": "基于深度强化学习的柔性作业车间调度改进启发式方法",
-      "canonical_evidence": "基于深度强化学习的柔性作业车间调度改进启发式方法",
-      "llm_tldr_en": "Develops a memory-enhanced DRL approach for improvement-based flexible job shop scheduling.",
-      "llm_tldr_cn": "开发了一种增强记忆的深度强化学习方法，用于改进式柔性作业车间调度。",
-      "llm_tldr": "开发了一种增强记忆的深度强化学习方法，用于改进式柔性作业车间调度。",
+      "llm_evidence_en": "DRL for flexible job shop scheduling",
+      "llm_evidence_cn": "深度强化学习用于柔性作业车间调度",
+      "llm_evidence": "深度强化学习用于柔性作业车间调度",
+      "canonical_evidence": "深度强化学习用于柔性作业车间调度",
+      "llm_tldr_en": "Develops memory-enhanced DRL improvement heuristics for solving flexible job shop scheduling problems.",
+      "llm_tldr_cn": "开发了增强记忆的深度强化学习改进启发式算法，用于解决柔性作业车间调度问题。",
+      "llm_tldr": "开发了增强记忆的深度强化学习改进启发式算法，用于解决柔性作业车间调度问题。",
       "llm_tags": [
         "query:drl-jsp"
       ],
@@ -147,16 +187,17 @@
       "link": "https://arxiv.org/pdf/2603.07020v1",
       "tags": [
         "keyword:DRL JSP",
+        "query:DRL",
         "query:DRL JSP"
       ],
       "llm_score": 10.0,
-      "llm_evidence_en": "Minimalist DRL framework for Flexible Job Shop Scheduling Problem (FJSP)",
-      "llm_evidence_cn": "用于柔性作业车间调度问题 (FJSP) 的极简深度强化学习框架",
-      "llm_evidence": "用于柔性作业车间调度问题 (FJSP) 的极简深度强化学习框架",
-      "canonical_evidence": "用于柔性作业车间调度问题 (FJSP) 的极简深度强化学习框架",
-      "llm_tldr_en": "ReSched simplifies FJSP states and uses a Transformer architecture to improve DRL-based scheduling efficiency.",
-      "llm_tldr_cn": "ReSched 通过简化 FJSP 状态空间和 Transformer 架构提升了基于深度强化学习的调度效率。",
-      "llm_tldr": "ReSched 通过简化 FJSP 状态空间和 Transformer 架构提升了基于深度强化学习的调度效率。",
+      "llm_evidence_en": "Solving flexible job shop scheduling using deep reinforcement learning",
+      "llm_evidence_cn": "使用深度强化学习解决柔性作业车间调度问题",
+      "llm_evidence": "使用深度强化学习解决柔性作业车间调度问题",
+      "canonical_evidence": "使用深度强化学习解决柔性作业车间调度问题",
+      "llm_tldr_en": "Introduces ReSched, a minimalist DRL framework for Flexible Job Shop Scheduling with simplified states.",
+      "llm_tldr_cn": "引入 ReSched，一个用于柔性作业车间调度的极简深度强化学习框架。",
+      "llm_tldr": "引入 ReSched，一个用于柔性作业车间调度的极简深度强化学习框架。",
       "llm_tags": [
         "query:drl-jsp"
       ],
@@ -166,47 +207,9 @@
       "selection_source": "fresh_fetch"
     },
     {
-      "id": "2602.22774v1",
-      "title": "Transformer Actor-Critic for Efficient Freshness-Aware Resource Allocation",
-      "abstract": "Emerging applications such as autonomous driving and industrial automation demand ultra-reliable and low-latency communication (URLLC), where maintaining fresh and timely information is critical. A key performance metric in such systems is the age of information (AoI). This paper addresses AoI minimization in a multi-user uplink wireless network using non-orthogonal multiple access (NOMA), where users offload tasks to a base station. The system must handle user heterogeneity in task sizes, AoI thresholds, and penalty sensitivities, while adhering to NOMA constraints on user scheduling. We propose a deep reinforcement learning (DRL) framework based on proximal policy optimization (PPO), enhanced with a Transformer encoder. The attention mechanism allows the agent to focus on critical user states and capture inter-user dependencies, improving policy performance and scalability. Extensive simulations show that our method reduces average AoI compared to baselines. We also analyze the evolution of attention weights during training and observe that the model progressively learns to prioritize high-importance users. Attention maps reveal meaningful structure: early-stage policies exhibit uniform attention, while later stages show focused patterns aligned with user priority and NOMA constraints. These results highlight the promise of attention-driven DRL for intelligent, priority-aware resource allocation in next-generation wireless systems.",
-      "authors": [
-        "Maryam Ansarifard",
-        "Mohit K. Sharma",
-        "Kishor C. Joshi",
-        "George Exarchakos"
-      ],
-      "primary_category": "eess.SY",
-      "categories": [
-        "eess.SY"
-      ],
-      "published": "2026-02-26T09:10:43+00:00",
-      "link": "https://arxiv.org/pdf/2602.22774v1",
-      "tags": [
-        "keyword:DRL JSP",
-        "query:DRL JSP"
-      ],
-      "llm_score": 8.0,
-      "llm_evidence_en": "DRL for resource allocation and user scheduling",
-      "llm_evidence_cn": "深度强化学习用于资源分配与用户调度",
-      "llm_evidence": "深度强化学习用于资源分配与用户调度",
-      "canonical_evidence": "深度强化学习用于资源分配与用户调度",
-      "llm_tldr_en": "A Transformer-based DRL framework for efficient resource allocation and scheduling.",
-      "llm_tldr_cn": "一种基于Transformer的深度强化学习框架，用于高效的资源分配与调度。",
-      "llm_tldr": "一种基于Transformer的深度强化学习框架，用于高效的资源分配与调度。",
-      "llm_tags": [
-        "query:drl-jsp"
-      ],
-      "matched_query_tag": "query:drl-jsp",
-      "matched_query_text": "Deep Reinforcement Learning for scheduling",
-      "matched_requirement_id": "req-1",
-      "selection_source": "fresh_fetch"
-    }
-  ],
-  "quick_skim": [
-    {
-      "id": "2602.11346v1",
-      "title": "Divide and Learn: Multi-Objective Combinatorial Optimization at Scale",
-      "abstract": "Multi-objective combinatorial optimization seeks Pareto-optimal solutions over exponentially large discrete spaces, yet existing methods sacrifice generality, scalability, or theoretical guarantees. We reformulate it as an online learning problem over a decomposed decision space, solving position-wise bandit subproblems via adaptive expert-guided sequential construction. This formulation admits regret bounds of $O(d\\sqrt{T \\log T})$ depending on subproblem dimensionality \\(d\\) rather than combinatorial space size. On standard benchmarks, our method achieves 80--98\\% of specialized solvers performance while achieving two to three orders of magnitude improvement in sample and computational efficiency over Bayesian optimization methods. On real-world hardware-software co-design for AI accelerators with expensive simulations, we outperform competing methods under fixed evaluation budgets. The advantage grows with problem scale and objective count, establishing bandit optimization over decomposed decision spaces as a principled alternative to surrogate modeling or offline training for multi-objective optimization.",
+      "id": "2602.08616v1",
+      "title": "Breaking the Grid: Distance-Guided Reinforcement Learning in Large Discrete and Hybrid Action Spaces",
+      "abstract": "Reinforcement Learning is increasingly applied to logistics, scheduling, and recommender systems, but standard algorithms struggle with the curse of dimensionality in such large discrete action spaces. Existing algorithms typically rely on restrictive grid-based structures or computationally expensive nearest-neighbor searches, limiting their effectiveness in high-dimensional or irregularly structured domains. We propose Distance-Guided Reinforcement Learning (DGRL), combining Sampled Dynamic Neighborhoods (SDN) and Distance-Based Updates (DBU) to enable efficient RL in spaces with up to 10$^\\text{20}$ actions. Unlike prior methods, SDN leverages a semantic embedding space to perform stochastic volumetric exploration, provably providing full support over a local trust region. Complementing this, DBU transforms policy optimization into a stable regression task, decoupling gradient variance from action space cardinality and guaranteeing monotonic policy improvement. DGRL naturally generalizes to hybrid continuous-discrete action spaces without requiring hierarchical dependencies. We demonstrate performance improvements of up to 66% against state-of-the-art benchmarks across regularly and irregularly structured environments, while simultaneously improving convergence speed and computational complexity.",
       "authors": [
         "Esha Singh",
         "Dongxia Wu",
@@ -223,143 +226,209 @@
       "published": "2026-02-11T20:29:35+00:00",
       "link": "https://arxiv.org/pdf/2602.11346v1",
       "tags": [
-        "keyword:DRL JSP",
+        "query:DRL",
         "query:DRL JSP"
       ],
-      "llm_score": 7.0,
-      "llm_evidence_en": "Multi-objective combinatorial optimization via online learning",
-      "llm_evidence_cn": "通过在线学习解决多目标组合优化",
-      "llm_evidence": "通过在线学习解决多目标组合优化",
-      "canonical_evidence": "通过在线学习解决多目标组合优化",
-      "llm_tldr_en": "Reformulates multi-objective combinatorial optimization as an online learning problem for better scalability.",
-      "llm_tldr_cn": "将多目标组合优化重新表述为在线学习问题，以提高可扩展性。",
-      "llm_tldr": "将多目标组合优化重新表述为在线学习问题，以提高可扩展性。",
-      "llm_tags": [
-        "query:drl-jsp:composite"
-      ],
-      "matched_query_tag": "query:drl-jsp:composite",
-      "matched_query_text": "Papers central to 深度强化学习解决作业车间调度问题 (JSP), especially work that connects or combines: Deep Reinforcement Learning for scheduling; s; Deep reinforcement learning approaches for job shop scheduling problems; Solving flexible job shop scheduling using deep reinforcement learning; End to end deep reinforcement learning for production scheduling; Comparison of DRL algorithms for manufacturing scheduling; Dynamic job shop scheduling via deep reinforcement learning.",
-      "matched_requirement_id": "req-composite-drl-jsp",
-      "selection_source": "fresh_fetch",
-      "quick_tier": "7"
-    },
-    {
-      "id": "2602.11826v1",
-      "title": "Combinatorial Perpetual Scheduling",
-      "abstract": "This paper introduces a framework for combinatorial variants of perpetual-scheduling problems. Given a set system $(E,\\mathcal{I})$, a schedule consists of an independent set $I_t \\in \\mathcal{I}$ for every time step $t \\in \\mathbb{N}$, with the objective of fulfilling frequency requirements on the occurrence of elements in $E$. We focus specifically on combinatorial bamboo garden trimming, where elements accumulate height at growth rates $g(e)$ for $e \\in E$ given as a convex combination of incidence vectors of $\\mathcal{I}$ and are reset to zero when scheduled, with the goal of minimizing the maximum height attained by any element.   Using the integrality of the matroid-intersection polytope, we prove that, when $(E,\\mathcal{I})$ is a matroid, it is possible to guarantee a maximum height of at most 2, which is optimal. We complement this existential result with efficient algorithms for specific matroid classes, achieving a maximum height of 2 for uniform and partition matroids, and 4 for graphic and laminar matroids. In contrast, we show that for general set systems, the optimal guaranteed height is $Θ(\\log |E|)$ and can be achieved by an efficient algorithm. For combinatorial pinwheel scheduling, where each element $e\\in E$ needs to occur in the schedule at least every $a_e \\in \\mathbb{N}$ time steps, our results imply bounds on the density sufficient for schedulability.",
-      "authors": [
-        "Mirabel Mendoza-Cadena",
-        "Arturo Merino",
-        "Mads Anker Nielsen",
-        "Kevin Schewior"
-      ],
-      "primary_category": "cs.DS",
-      "categories": [
-        "cs.DS"
-      ],
-      "published": "2026-02-12T11:11:11+00:00",
-      "link": "https://arxiv.org/pdf/2602.11826v1",
-      "tags": [
-        "query:DRL JSP"
-      ],
-      "llm_score": 6.0,
-      "llm_evidence_en": "Framework for combinatorial perpetual scheduling problems",
-      "llm_evidence_cn": "组合永续调度问题的框架",
-      "llm_evidence": "组合永续调度问题的框架",
-      "canonical_evidence": "组合永续调度问题的框架",
-      "llm_tldr_en": "Introduces a framework for combinatorial perpetual scheduling to minimize maximum height in growth systems.",
-      "llm_tldr_cn": "引入组合永续调度框架，旨在最小化增长系统中的最大高度。",
-      "llm_tldr": "引入组合永续调度框架，旨在最小化增长系统中的最大高度。",
+      "llm_score": 9.0,
+      "llm_evidence_en": "RL for scheduling in large discrete action spaces",
+      "llm_evidence_cn": "针对大规模离散动作空间调度问题的强化学习",
+      "llm_evidence": "针对大规模离散动作空间调度问题的强化学习",
+      "canonical_evidence": "针对大规模离散动作空间调度问题的强化学习",
+      "llm_tldr_en": "Enables efficient RL for scheduling and logistics in spaces with up to 10^20 actions.",
+      "llm_tldr_cn": "实现了在拥有高达10^20个动作的空间中进行高效的调度和物流强化学习。",
+      "llm_tldr": "实现了在拥有高达10^20个动作的空间中进行高效的调度和物流强化学习。",
       "llm_tags": [
         "query:drl-jsp"
       ],
       "matched_query_tag": "query:drl-jsp",
       "matched_query_text": "Deep Reinforcement Learning for scheduling",
       "matched_requirement_id": "req-1",
-      "selection_source": "fresh_fetch",
-      "quick_tier": "6"
+      "selection_source": "fresh_fetch"
     },
     {
-      "id": "2602.13668v1",
-      "title": "Efficient Data-Driven Production Scheduling in Pharmaceutical Manufacturing",
-      "abstract": "This paper develops a data-driven, constraint-based optimization framework for a complex industrial job shop scheduling problem variant in pharmaceutical manufacturing. The formulation captures fixed routings and designated machines, explicit resource calendars with weekends and planned maintenance, and campaign sequencing through sequence-dependent cleaning times derived from site tables. The model is implemented with an open source constraint solver and evaluated on deterministic snapshots from a solid oral dosage facility under three objective formulations: makespan, makespan plus total tardiness, and makespan plus average tardiness. On three industrial instances of increasing size (10, 30, and 84 jobs) the proposed schedules dominate reference plans that solve a simplified variant without the added site rules. Makespan reductions reach \\(88.1\\%\\), \\(77.6\\%\\), and \\(54.9\\%\\) and total tardiness reductions reach \\(72.1\\%\\), \\(58.7\\%\\), and \\(18.2\\%\\), respectively. The composite objectives further decrease late job counts with negligible makespan change on the smaller instances and a modest increase on the largest instance. Optimality is proven on the small case, with relative gaps of \\(0.77\\%\\) and \\(14.92\\%\\) on the medium and large cases under a fixed time limit. The results show that a compact constraint programming formulation can deliver feasible, transparent schedules that respect site rules while improving adherence to due dates on real industrial data.",
+      "id": "2602.09726v1",
+      "title": "ExO-PPO: an Extended Off-policy Proximal Policy Optimization Algorithm",
+      "abstract": "Deep reinforcement learning has been able to solve various tasks successfully, however, due to the construction of policy gradient and training dynamics, tuning deep reinforcement learning models remains challenging. As one of the most successful deep reinforcement-learning algorithm, the Proximal Policy Optimization algorithm (PPO) clips the policy gradient within a conservative on-policy updates, which ensures reliable and stable policy improvement. However, this training pattern may sacrifice sample efficiency. On the other hand, off-policy methods make more adequate use of data through sample reuse, though at the cost of increased the estimation variance and bias. To leverage the advantages of both, in this paper, we propose a new PPO variant based on the stability guarantee from conservative on-policy iteration with a more efficient off-policy data utilization. Specifically, we first derive an extended off-policy improvement from an expectation form of generalized policy improvement lower bound. Then, we extend the clipping mechanism with segmented exponential functions for a suitable surrogate objective function. Third, the trajectories generated by the past $M$ policies are organized in the replay buffer for off-policy training. We refer to this method as Extended Off-policy Proximal Policy Optimization (ExO-PPO). Compared with PPO and some other state-of-the-art variants, we demonstrate an improved performance of ExO-PPO with balanced sample efficiency and stability on varied tasks in the empirical experiments.",
       "authors": [
-        "Ioannis Balatsos",
-        "Athanasios Liakos",
-        "Panagiotis Karakostas",
-        "Tao Song",
-        "Vassilios Pantazopoulos",
-        "Christos Papalitsas"
+        "Hanyong Wang",
+        "Menglong Yang"
       ],
-      "primary_category": "cs.PF",
+      "primary_category": "cs.LG",
       "categories": [
-        "cs.PF"
+        "cs.LG",
+        "cs.AI"
       ],
-      "published": "2026-02-14T08:31:22+00:00",
-      "link": "https://arxiv.org/pdf/2602.13668v1",
+      "published": "2026-02-10T12:29:57+00:00",
+      "link": "https://arxiv.org/pdf/2602.09726v1",
       "tags": [
+        "keyword:DRL",
         "keyword:DRL JSP",
+        "query:DRL",
         "query:DRL JSP"
       ],
-      "llm_score": 7.0,
-      "llm_evidence_en": "Constraint-based optimization for industrial job shop scheduling",
-      "llm_evidence_cn": "工业作业车间调度的约束优化框架",
-      "llm_evidence": "工业作业车间调度的约束优化框架",
-      "canonical_evidence": "工业作业车间调度的约束优化框架",
-      "llm_tldr_en": "Develops a data-driven constraint-based framework for complex pharmaceutical job shop scheduling.",
-      "llm_tldr_cn": "为复杂的制药作业车间调度开发了一个数据驱动的约束优化框架。",
-      "llm_tldr": "为复杂的制药作业车间调度开发了一个数据驱动的约束优化框架。",
+      "llm_score": 9.0,
+      "llm_evidence_en": "improving training stability and sample efficiency in PPO",
+      "llm_evidence_cn": "提高PPO的训练稳定性和样本效率",
+      "llm_evidence": "提高PPO的训练稳定性和样本效率",
+      "canonical_evidence": "提高PPO的训练稳定性和样本效率",
+      "llm_tldr_en": "Proposes ExO-PPO to balance on-policy stability with off-policy sample efficiency.",
+      "llm_tldr_cn": "提出ExO-PPO算法，平衡同策略稳定性与离策略样本效率。",
+      "llm_tldr": "提出ExO-PPO算法，平衡同策略稳定性与离策略样本效率。",
       "llm_tags": [
-        "query:drl-jsp"
+        "query:drl"
       ],
-      "matched_query_tag": "query:drl-jsp",
-      "matched_query_text": "Deep reinforcement learning approaches for job shop scheduling problems",
-      "matched_requirement_id": "req-3",
-      "selection_source": "fresh_fetch",
-      "quick_tier": "7"
+      "matched_query_tag": "query:drl",
+      "matched_query_text": "techniques for improving training stability and convergence in DRL",
+      "matched_requirement_id": "req-10",
+      "selection_source": "fresh_fetch"
     },
     {
-      "id": "2602.12913v1",
-      "title": "Hierarchical Reinforcement Learning for Cooperative Air-Ground Delivery in Urban System",
-      "abstract": "Cooperative air-ground delivery has emerged as a promising logistics paradigm by leveraging the complementary strengths of UAVs and ground carriers. However, effective dispatching in such heterogeneous systems faces two critical challenges: i) the heterogeneity between flight and road dynamics, ii) the scalability bottleneck raised by the exponential decision variables in large-scale fleets. To address these challenges, we propose HRL4AG, a Hierarchical Reinforcement Learning framework for cooperative Air-Ground delivery. Specifically, HRL4AG employs a high-level manager to tackle the scalability bottleneck by decomposing the joint action space, and mode-specific workers that encode distinct flight and road dynamics to address the heterogeneity. Furthermore, a novel internal reward mechanism is designed to guide the hierarchical policy learning, addressing the credit assignment problem in sparse-reward settings. Extensive experiments on two real-world datasets and an evaluation platform demonstrate that HRL4AG significantly outperforms state-of-the-art baselines, improving the delivery success rate by up to 26% while achieving an 80-fold increase in computational efficiency.",
+      "id": "2602.09810v2",
+      "title": "A Controlled Study of Double DQN and Dueling DQN Under Cross-Environment Transfer",
+      "abstract": "Transfer learning in deep reinforcement learning is often motivated by improved stability and reduced training cost, but it can also fail under substantial domain shift. This paper presents a controlled empirical study examining how architectural differences between Double Deep Q-Networks (DDQN) and Dueling DQN influence transfer behavior across environments. Using CartPole as a source task and LunarLander as a structurally distinct target task, we evaluate a fixed layer-wise representation transfer protocol under identical hyperparameters and training conditions, with baseline agents trained from scratch used to contextualize transfer effects. Empirical results show that DDQN consistently avoids negative transfer under the examined setup and maintains learning dynamics comparable to baseline performance in the target environment. In contrast, Dueling DQN consistently exhibits negative transfer under identical conditions, characterized by degraded rewards and unstable optimization behavior. Statistical analysis across multiple random seeds confirms a significant performance gap under transfer. These findings suggest that architectural inductive bias is strongly associated with robustness to cross-environment transfer in value-based deep reinforcement learning under the examined transfer protocol.",
       "authors": [
-        "Songxin Lei",
-        "Chunming Ma",
-        "Haomin Wen",
-        "Yexin Li",
-        "Lizhenghe Chen",
-        "Qianyu Yang",
-        "Fugee Tsung",
-        "Lei Chen",
-        "Sijie Ruan",
-        "Yuxuan Liang"
+        "Azkaa Nasir",
+        "Fatima Dossa",
+        "Muhammad Ahmed Atif",
+        "Mohammad Shahid Shaikh"
       ],
-      "primary_category": "cs.CY",
+      "primary_category": "cs.LG",
       "categories": [
-        "cs.CY"
+        "cs.LG",
+        "cs.AI"
       ],
-      "published": "2026-02-13T13:19:59+00:00",
-      "link": "https://arxiv.org/pdf/2602.12913v1",
+      "published": "2026-02-10T14:18:03+00:00",
+      "link": "https://arxiv.org/pdf/2602.09810v2",
       "tags": [
+        "keyword:DRL",
         "keyword:DRL JSP",
+        "query:DRL"
+      ],
+      "llm_score": 9.0,
+      "llm_evidence_en": "architectural study of Double DQN and Dueling DQN for stability",
+      "llm_evidence_cn": "Double DQN 与 Dueling DQN 架构稳定性的研究",
+      "llm_evidence": "Double DQN 与 Dueling DQN 架构稳定性的研究",
+      "canonical_evidence": "Double DQN 与 Dueling DQN 架构稳定性的研究",
+      "llm_tldr_en": "Compares DRL architectures to understand their impact on stability and transfer performance.",
+      "llm_tldr_cn": "比较了深度强化学习架构，以了解其对稳定性和迁移性能的影响。",
+      "llm_tldr": "比较了深度强化学习架构，以了解其对稳定性和迁移性能的影响。",
+      "llm_tags": [
+        "query:drl:composite"
+      ],
+      "matched_query_tag": "query:drl:composite",
+      "matched_query_text": "Papers central to 深度强化学习, especially work that connects or combines: fundamental concepts and architectures of deep reinforcement learning; core principles and mathematical foundations of deep reinforcement learning; techniques for improving training stability and convergence in DRL; state of the art algorithms in deep reinforcement learning research.",
+      "matched_requirement_id": "req-composite-drl",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2602.10609v1",
+      "title": "Online Causal Kalman Filtering for Stable and Effective Policy Optimization",
+      "abstract": "Reinforcement learning for large language models suffers from high-variance token-level importance sampling (IS) ratios, which would destabilize policy optimization at scale. To improve stability, recent methods typically use a fixed sequence-level IS ratio for all tokens in a sequence or adjust each token's IS ratio separately, thereby neglecting temporal off-policy derivation across tokens in a sequence. In this paper, we first empirically identify that local off-policy deviation is structurally inconsistent at the token level, which may distort policy-gradient updates across adjacent tokens and lead to training collapse. To address the issue, we propose Online Causal Kalman Filtering for stable and effective Policy Optimization (KPO). Concretely, we model the desired IS ratio as a latent state that evolves across tokens and apply a Kalman filter to update this state online and autoregressively based on the states of past tokens, regardless of future tokens. The resulting filtered IS ratios preserve token-wise local structure-aware variation while strongly smoothing noise spikes, yielding more stable and effective policy updates. Experimentally, KPO achieves superior results on challenging math reasoning datasets compared with state-of-the-art counterparts.",
+      "authors": [
+        "Shuo He",
+        "Lang Feng",
+        "Xin Cheng",
+        "Lei Feng",
+        "Bo An"
+      ],
+      "primary_category": "cs.CL",
+      "categories": [
+        "cs.CL",
+        "cs.AI"
+      ],
+      "published": "2026-02-11T07:57:43+00:00",
+      "link": "https://arxiv.org/pdf/2602.10609v1",
+      "tags": [
+        "query:DRL"
+      ],
+      "llm_score": 9.0,
+      "llm_evidence_en": "Technique for stable policy optimization using Kalman filtering",
+      "llm_evidence_cn": "使用卡尔曼滤波稳定策略优化的技术",
+      "llm_evidence": "使用卡尔曼滤波稳定策略优化的技术",
+      "canonical_evidence": "使用卡尔曼滤波稳定策略优化的技术",
+      "llm_tldr_en": "Proposes KPO to address token-level inconsistency and stabilize training in large language model RL.",
+      "llm_tldr_cn": "提出KPO以解决Token级不一致性，并稳定大语言模型强化学习中的训练。",
+      "llm_tldr": "提出KPO以解决Token级不一致性，并稳定大语言模型强化学习中的训练。",
+      "llm_tags": [
+        "query:drl"
+      ],
+      "matched_query_tag": "query:drl",
+      "matched_query_text": "techniques for improving training stability and convergence in DRL",
+      "matched_requirement_id": "req-10",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2602.10693v2",
+      "title": "VESPO: Variational Sequence-Level Soft Policy Optimization for Stable Off-Policy LLM Training",
+      "abstract": "Training stability remains a central challenge in reinforcement learning (RL) for large language models (LLMs). Policy staleness, asynchronous training, and mismatches between training and inference engines all cause the behavior policy to diverge from the current policy, risking training collapse. Importance sampling provides a principled correction for this distribution shift but suffers from high variance; existing remedies such as token-level clipping and sequence-level normalization lack a unified theoretical foundation. We propose Variational sEquence-level Soft Policy Optimization (VESPO). By incorporating variance reduction into a variational formulation over proposal distributions, VESPO derives a closed-form reshaping kernel that operates directly on sequence-level importance weights without length normalization. Experiments on mathematical reasoning benchmarks show that VESPO maintains stable training under staleness ratios up to 64x and fully asynchronous execution, and delivers consistent gains across both dense and Mixture-of-Experts models. Code is available at https://github.com/FloyedShen/VESPO",
+      "authors": [
+        "Guobin Shen",
+        "Chenxiao Zhao",
+        "Xiang Cheng",
+        "Lei Huang",
+        "Xing Yu"
+      ],
+      "primary_category": "cs.LG",
+      "categories": [
+        "cs.LG",
+        "cs.AI"
+      ],
+      "published": "2026-02-11T09:48:08+00:00",
+      "link": "https://arxiv.org/pdf/2602.10693v2",
+      "tags": [
+        "query:DRL",
         "query:DRL JSP"
       ],
-      "llm_score": 6.0,
-      "llm_evidence_en": "Hierarchical RL for logistics dispatching and scheduling",
-      "llm_evidence_cn": "用于物流调度和排程的分层强化学习",
-      "llm_evidence": "用于物流调度和排程的分层强化学习",
-      "canonical_evidence": "用于物流调度和排程的分层强化学习",
-      "llm_tldr_en": "Proposes a hierarchical RL framework for cooperative air-ground delivery to solve large-scale fleet dispatching.",
-      "llm_tldr_cn": "提出一种用于空地协同配送的分层强化学习框架，解决大规模车队调度问题。",
-      "llm_tldr": "提出一种用于空地协同配送的分层强化学习框架，解决大规模车队调度问题。",
+      "llm_score": 9.0,
+      "llm_evidence_en": "Variational formulation for stable off-policy training",
+      "llm_evidence_cn": "用于稳定离线策略训练的变分公式",
+      "llm_evidence": "用于稳定离线策略训练的变分公式",
+      "canonical_evidence": "用于稳定离线策略训练的变分公式",
+      "llm_tldr_en": "Introduces VESPO to reduce variance and prevent training collapse in off-policy RL for LLMs.",
+      "llm_tldr_cn": "引入VESPO以减少方差并防止大语言模型离线强化学习中的训练崩溃。",
+      "llm_tldr": "引入VESPO以减少方差并防止大语言模型离线强化学习中的训练崩溃。",
       "llm_tags": [
-        "query:drl-jsp"
+        "query:drl"
       ],
-      "matched_query_tag": "query:drl-jsp",
-      "matched_query_text": "Deep Reinforcement Learning for scheduling",
-      "matched_requirement_id": "req-1",
-      "selection_source": "fresh_fetch",
-      "quick_tier": "6"
+      "matched_query_tag": "query:drl",
+      "matched_query_text": "techniques for improving training stability and convergence in DRL",
+      "matched_requirement_id": "req-10",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2602.10838v1",
+      "title": "Mirror descent actor-critic methods for entropy regularised MDPs in general spaces: stability and convergence",
+      "abstract": "We provide theoretical guarantees for convergence of discrete-time policy mirror descent with inexact advantage functions updated using temporal difference (TD) learning for entropy regularised MDPs in Polish state and action spaces. We rigorously derive sufficient conditions under which the single-loop actor-critic scheme is stable and convergent. To weaken these conditions, we introduce a variant that performs multiple TD steps per policy update and derive an explicit lower bound on the number of TD steps required to ensure stability. Finally, we establish sub-linear convergence when the number of TD steps grows logarithmically with the number of policy updates, and linear convergence when it grows linearly under a concentrability assumption.",
+      "authors": [
+        "Denis Zorba",
+        "David Šiška",
+        "Lukasz Szpruch"
+      ],
+      "primary_category": "math.OC",
+      "categories": [
+        "math.OC"
+      ],
+      "published": "2026-02-11T13:24:07+00:00",
+      "link": "https://arxiv.org/pdf/2602.10838v1",
+      "tags": [
+        "query:DRL",
+        "query:DRL JSP"
+      ],
+      "llm_score": 9.0,
+      "llm_evidence_en": "stability and convergence of actor-critic methods",
+      "llm_evidence_cn": "演员-评论家方法的稳定性与收敛性",
+      "llm_evidence": "演员-评论家方法的稳定性与收敛性",
+      "canonical_evidence": "演员-评论家方法的稳定性与收敛性",
+      "llm_tldr_en": "Provides theoretical guarantees for stability and convergence of mirror descent actor-critic methods.",
+      "llm_tldr_cn": "为镜像下降演员-评论家方法的稳定性和收敛性提供理论保证。",
+      "llm_tldr": "为镜像下降演员-评论家方法的稳定性和收敛性提供理论保证。",
+      "llm_tags": [
+        "query:drl"
+      ],
+      "matched_query_tag": "query:drl",
+      "matched_query_text": "techniques for improving training stability and convergence in DRL",
+      "matched_requirement_id": "req-10",
+      "selection_source": "fresh_fetch"
     },
     {
       "id": "2602.18109v1",
@@ -386,30 +455,544 @@
       "published": "2026-02-20T09:56:23+00:00",
       "link": "https://arxiv.org/pdf/2602.18109v1",
       "tags": [
-        "keyword:DRL JSP",
+        "query:DRL",
         "query:DRL JSP"
       ],
-      "llm_score": 7.0,
-      "llm_evidence_en": "Reinforcement learning scheduler for real-time task dispatching",
-      "llm_evidence_cn": "用于实时任务调度的强化学习调度器",
-      "llm_evidence": "用于实时任务调度的强化学习调度器",
-      "canonical_evidence": "用于实时任务调度的强化学习调度器",
-      "llm_tldr_en": "TempoNet uses a Transformer-guided RL approach for adaptive real-time task scheduling and dispatching.",
-      "llm_tldr_cn": "TempoNet 采用 Transformer 引导的强化学习方法进行自适应实时任务调度与分派。",
-      "llm_tldr": "TempoNet 采用 Transformer 引导的强化学习方法进行自适应实时任务调度与分派。",
+      "llm_score": 9.0,
+      "llm_evidence_en": "reinforcement learning scheduler for real-time dispatch",
+      "llm_evidence_cn": "用于实时调度的强化学习调度器",
+      "llm_evidence": "用于实时调度的强化学习调度器",
+      "canonical_evidence": "用于实时调度的强化学习调度器",
+      "llm_tldr_en": "Presents TempoNet, a Transformer-guided RL scheduler for deadline-centric real-time tasks.",
+      "llm_tldr_cn": "提出 TempoNet，一种用于以截止日期为核心的实时任务的 Transformer 引导强化学习调度器。",
+      "llm_tldr": "提出 TempoNet，一种用于以截止日期为核心的实时任务的 Transformer 引导强化学习调度器。",
       "llm_tags": [
         "query:drl-jsp"
       ],
       "matched_query_tag": "query:drl-jsp",
       "matched_query_text": "Deep Reinforcement Learning for scheduling",
       "matched_requirement_id": "req-1",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2602.21534v1",
+      "title": "ARLArena: A Unified Framework for Stable Agentic Reinforcement Learning",
+      "abstract": "Agentic reinforcement learning (ARL) has rapidly gained attention as a promising paradigm for training agents to solve complex, multi-step interactive tasks. Despite encouraging early results, ARL remains highly unstable, often leading to training collapse. This instability limits scalability to larger environments and longer interaction horizons, and constrains systematic exploration of algorithmic design choices. In this paper, we first propose ARLArena, a stable training recipe and systematic analysis framework that examines training stability in a controlled and reproducible setting. ARLArena first constructs a clean and standardized testbed. Then, we decompose policy gradient into four core design dimensions and assess the performance and stability of each dimension. Through this fine-grained analysis, we distill a unified perspective on ARL and propose SAMPO, a stable agentic policy optimization method designed to mitigate the dominant sources of instability in ARL. Empirically, SAMPO achieves consistently stable training and strong performance across diverse agentic tasks. Overall, this study provides a unifying policy gradient perspective for ARL and offers practical guidance for building stable and reproducible LLM-based agent training pipelines.",
+      "authors": [
+        "Xiaoxuan Wang",
+        "Han Zhang",
+        "Haixin Wang",
+        "Yidan Shi",
+        "Ruoyan Li",
+        "Kaiqiao Han",
+        "Chenyi Tong",
+        "Haoran Deng",
+        "Renliang Sun",
+        "Alexander Taylor",
+        "Yanqiao Zhu",
+        "Jason Cong",
+        "Yizhou Sun",
+        "Wei Wang"
+      ],
+      "primary_category": "cs.AI",
+      "categories": [
+        "cs.AI"
+      ],
+      "published": "2026-02-25T03:43:34+00:00",
+      "link": "https://arxiv.org/pdf/2602.21534v1",
+      "tags": [
+        "query:DRL",
+        "query:DRL JSP"
+      ],
+      "llm_score": 9.0,
+      "llm_evidence_en": "framework for stable agentic reinforcement learning and training collapse analysis",
+      "llm_evidence_cn": "稳定智能体强化学习及训练崩溃分析框架",
+      "llm_evidence": "稳定智能体强化学习及训练崩溃分析框架",
+      "canonical_evidence": "稳定智能体强化学习及训练崩溃分析框架",
+      "llm_tldr_en": "Proposes ARLArena, a framework to analyze and improve the training stability of agentic reinforcement learning.",
+      "llm_tldr_cn": "提出 ARLArena 框架，用于分析和提高智能体强化学习的训练稳定性。",
+      "llm_tldr": "提出 ARLArena 框架，用于分析和提高智能体强化学习的训练稳定性。",
+      "llm_tags": [
+        "query:drl"
+      ],
+      "matched_query_tag": "query:drl",
+      "matched_query_text": "techniques for improving training stability and convergence in DRL",
+      "matched_requirement_id": "req-10",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2603.00963v1",
+      "title": "Stabilizing Policy Optimization via Logits Convexity",
+      "abstract": "While reinforcement learning (RL) has been central to the recent success of large language models (LLMs), RL optimization is notoriously unstable, especially when compared to supervised fine-tuning (SFT). In this work, we investigate the stability gap between SFT and RL from a gradient-based perspective, and show that the convexity of the SFT loss with respect to model logits plays a key role in enabling stable training. Our theoretical analysis demonstrates that this property induces favorable gradient directionality during optimization. In contrast, Proximal Policy Optimization (PPO), a widely adopted policy gradient algorithm utilizing a clipped surrogate objective, lacks this stabilizing property. Motivated by this observation, we propose Logits Convex Optimization (LCO), a simple yet effective policy optimization framework that aligns the learned policy with an optimal target derived from the original RL objective, thereby emulating the stabilizing effects of logits-level convexity. Extensive experiments across multiple model families show that our LCO framework consistently improves training stability and outperforms conventional RL methods on a broad range of benchmarks.",
+      "authors": [
+        "Hongzhan Chen",
+        "Tao Yang",
+        "Yuhua Zhu",
+        "Shiping Gao",
+        "Xiaojun Quan",
+        "Ting Yao"
+      ],
+      "primary_category": "cs.LG",
+      "categories": [
+        "cs.LG",
+        "cs.CL"
+      ],
+      "published": "2026-03-01T07:40:12+00:00",
+      "link": "https://arxiv.org/pdf/2603.00963v1",
+      "tags": [
+        "query:DRL",
+        "query:DRL JSP"
+      ],
+      "llm_score": 9.0,
+      "llm_evidence_en": "stabilizing policy optimization via logits convexity",
+      "llm_evidence_cn": "通过Logits凸性稳定策略优化",
+      "llm_evidence": "通过Logits凸性稳定策略优化",
+      "canonical_evidence": "通过Logits凸性稳定策略优化",
+      "llm_tldr_en": "Proposes Logits Convex Optimization to bridge the stability gap between RL and supervised fine-tuning.",
+      "llm_tldr_cn": "提出了Logits凸优化，以弥合强化学习与监督微调之间的稳定性差距。",
+      "llm_tldr": "提出了Logits凸优化，以弥合强化学习与监督微调之间的稳定性差距。",
+      "llm_tags": [
+        "query:drl"
+      ],
+      "matched_query_tag": "query:drl",
+      "matched_query_text": "techniques for improving training stability and convergence in DRL",
+      "matched_requirement_id": "req-10",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2603.01365v1",
+      "title": "Align and Filter: Improving Performance in Asynchronous On-Policy RL",
+      "abstract": "Distributed training and increasing the gradient update frequency are practical strategies to accelerate learning and improve performance, but both exacerbate a central challenge: \\textit{policy lag}, which is the mismatch between the behavior policy generating data and the learning policy being updated. Policy lag can hinder the scaling of on-policy learning algorithms to larger problems. In this paper, we identify the sources of policy lag caused by distributed learning and high update frequency. We use the findings to propose \\textit{total Variation-based Advantage aligned Constrained policy Optimization (\\methodacronym)} as a practical approach to mitigate policy lag. We empirically validate our method and show that it offers better robustness to policy lag in classic RL tasks and a modern RL for LLM math reasoning task.",
+      "authors": [
+        "Homayoun Honari",
+        "Roger Creus Castanyer",
+        "Michael Przystupa",
+        "Michael Noukhovitch",
+        "Pablo Samuel Castro",
+        "Glen Berseth"
+      ],
+      "primary_category": "cs.LG",
+      "categories": [
+        "cs.LG",
+        "cs.AI",
+        "cs.RO",
+        "eess.SY"
+      ],
+      "published": "2026-03-02T01:52:34+00:00",
+      "link": "https://arxiv.org/pdf/2603.01365v1",
+      "tags": [
+        "query:DRL",
+        "query:DRL JSP"
+      ],
+      "llm_score": 9.0,
+      "llm_evidence_en": "improving training stability in asynchronous RL",
+      "llm_evidence_cn": "提高异步强化学习中的训练稳定性",
+      "llm_evidence": "提高异步强化学习中的训练稳定性",
+      "canonical_evidence": "提高异步强化学习中的训练稳定性",
+      "llm_tldr_en": "Introduces a constrained policy optimization method to mitigate policy lag in distributed asynchronous RL training.",
+      "llm_tldr_cn": "引入一种约束策略优化方法，以减轻分布式异步强化学习训练中的策略滞后问题。",
+      "llm_tldr": "引入一种约束策略优化方法，以减轻分布式异步强化学习训练中的策略滞后问题。",
+      "llm_tags": [
+        "query:drl"
+      ],
+      "matched_query_tag": "query:drl",
+      "matched_query_text": "techniques for improving training stability and convergence in DRL",
+      "matched_requirement_id": "req-10",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2603.01501v1",
+      "title": "GAC: Stabilizing Asynchronous RL Training for LLMs via Gradient Alignment Control",
+      "abstract": "Asynchronous execution is essential for scaling reinforcement learning (RL) to modern large model workloads, including large language models and AI agents, but it can fundamentally alter RL optimization behavior. While prior work on asynchronous RL focuses on training throughput and distributional correction, we show that naively applying asynchrony to policy-gradient updates can induce qualitatively different training dynamics and lead to severe training instability. Through systematic empirical and theoretical analysis, we identify a key signature of this instability: asynchronous training exhibits persistently high cosine similarity between consecutive policy gradients, in contrast to the near-orthogonal updates observed under synchronized training. This stale-aligned gradient effect amplifies correlated updates and increases the risk of overshooting and divergence. Motivated by this observation, we propose GRADIENT ALIGNMENT CONTROL(GAC), a simple dynamics-aware stabilization method that regulates asynchronous RL progress along stale-aligned directions via gradient projection. We establish convergence guarantees under bounded staleness and demonstrate empirically that GAC recovers stable, on-policy training dynamics and matches synchronized baselines even at high staleness.",
+      "authors": [
+        "Haofeng Xu",
+        "Junwei Su",
+        "Yukun Tian",
+        "Lansong Diao",
+        "Zhengping Qian",
+        "Chuan Wu"
+      ],
+      "primary_category": "cs.LG",
+      "categories": [
+        "cs.LG",
+        "cs.AI"
+      ],
+      "published": "2026-03-02T06:19:43+00:00",
+      "link": "https://arxiv.org/pdf/2603.01501v1",
+      "tags": [
+        "query:DRL",
+        "query:DRL JSP"
+      ],
+      "llm_score": 9.0,
+      "llm_evidence_en": "improving training stability in asynchronous RL",
+      "llm_evidence_cn": "提高异步强化学习的训练稳定性",
+      "llm_evidence": "提高异步强化学习的训练稳定性",
+      "canonical_evidence": "提高异步强化学习的训练稳定性",
+      "llm_tldr_en": "Proposes Gradient Alignment Control to stabilize asynchronous RL training for large model workloads.",
+      "llm_tldr_cn": "提出了梯度对齐控制，以稳定大模型工作负载下的异步强化学习训练。",
+      "llm_tldr": "提出了梯度对齐控制，以稳定大模型工作负载下的异步强化学习训练。",
+      "llm_tags": [
+        "query:drl"
+      ],
+      "matched_query_tag": "query:drl",
+      "matched_query_text": "techniques for improving training stability and convergence in DRL",
+      "matched_requirement_id": "req-10",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2603.02654v1",
+      "title": "Generalized Per-Agent Advantage Estimation for Multi-Agent Policy Optimization",
+      "abstract": "In this paper, we propose a novel framework for multi-agent reinforcement learning that enhances sample efficiency and coordination through accurate per-agent advantage estimation. The core of our approach is Generalized Per-Agent Advantage Estimator (GPAE), which employs a per-agent value iteration operator to compute precise per-agent advantages. This operator enables stable off-policy learning by indirectly estimating values via action probabilities, eliminating the need for direct Q-function estimation. To further refine estimation, we introduce a double-truncated importance sampling ratio scheme. This scheme improves credit assignment for off-policy trajectories by balancing sensitivity to the agent's own policy changes with robustness to non-stationarity from other agents. Experiments on benchmarks demonstrate that our approach outperforms existing approaches, excelling in coordination and sample efficiency for complex scenarios.",
+      "authors": [
+        "Seongmin Kim",
+        "Giseung Park",
+        "Woojun Kim",
+        "Jiwon Jeon",
+        "Seungyeol Han",
+        "Youngchul Sung"
+      ],
+      "primary_category": "cs.MA",
+      "categories": [
+        "cs.MA"
+      ],
+      "published": "2026-03-03T06:37:50+00:00",
+      "link": "https://arxiv.org/pdf/2603.02654v1",
+      "tags": [
+        "query:DRL",
+        "query:DRL JSP"
+      ],
+      "llm_score": 9.0,
+      "llm_evidence_en": "multi-agent policy optimization algorithm",
+      "llm_evidence_cn": "多智能体策略优化算法",
+      "llm_evidence": "多智能体策略优化算法",
+      "canonical_evidence": "多智能体策略优化算法",
+      "llm_tldr_en": "Proposes a per-agent advantage estimator to enhance sample efficiency and coordination in multi-agent RL.",
+      "llm_tldr_cn": "提出了一种针对每个智能体的优势估计器，以增强多智能体强化学习中的样本效率和协调性。",
+      "llm_tldr": "提出了一种针对每个智能体的优势估计器，以增强多智能体强化学习中的样本效率和协调性。",
+      "llm_tags": [
+        "query:drl"
+      ],
+      "matched_query_tag": "query:drl",
+      "matched_query_text": "state of the art algorithms in deep reinforcement learning research",
+      "matched_requirement_id": "req-11",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2603.04918v1",
+      "title": "BandPO: Bridging Trust Regions and Ratio Clipping via Probability-Aware Bounds for LLM Reinforcement Learning",
+      "abstract": "Proximal constraints are fundamental to the stability of the Large Language Model reinforcement learning. While the canonical clipping mechanism in PPO serves as an efficient surrogate for trust regions, we identify a critical bottleneck: fixed bounds strictly constrain the upward update margin of low-probability actions, disproportionately suppressing high-advantage tail strategies and inducing rapid entropy collapse. To address this, we introduce Band-constrained Policy Optimization (BandPO). BandPO replaces canonical clipping with Band, a unified theoretical operator that projects trust regions defined by f-divergences into dynamic, probability-aware clipping intervals. Theoretical analysis confirms that Band effectively resolves this exploration bottleneck. We formulate this mapping as a convex optimization problem, guaranteeing a globally optimal numerical solution while deriving closed-form solutions for specific divergences. Extensive experiments across diverse models and datasets demonstrate that BandPO consistently outperforms canonical clipping and Clip-Higher, while robustly mitigating entropy collapse.",
+      "authors": [
+        "Yuan Li",
+        "Bo Wang",
+        "Yufei Gao",
+        "Yuqian Yao",
+        "Xinyuan Wang",
+        "Zhangyue Yin",
+        "Xipeng Qiu"
+      ],
+      "primary_category": "cs.LG",
+      "categories": [
+        "cs.LG",
+        "cs.AI"
+      ],
+      "published": "2026-03-05T08:03:05+00:00",
+      "link": "https://arxiv.org/pdf/2603.04918v1",
+      "tags": [
+        "query:DRL",
+        "query:DRL JSP"
+      ],
+      "llm_score": 9.0,
+      "llm_evidence_en": "Improving training stability and convergence via probability-aware bounds",
+      "llm_evidence_cn": "通过概率感知边界提高训练稳定性和收敛性",
+      "llm_evidence": "通过概率感知边界提高训练稳定性和收敛性",
+      "canonical_evidence": "通过概率感知边界提高训练稳定性和收敛性",
+      "llm_tldr_en": "Introduces BandPO to replace PPO clipping with dynamic bounds, enhancing stability and preventing entropy collapse.",
+      "llm_tldr_cn": "引入 BandPO 以动态边界取代 PPO 裁剪，增强稳定性并防止熵崩溃。",
+      "llm_tldr": "引入 BandPO 以动态边界取代 PPO 裁剪，增强稳定性并防止熵崩溃。",
+      "llm_tags": [
+        "query:drl"
+      ],
+      "matched_query_tag": "query:drl",
+      "matched_query_text": "techniques for improving training stability and convergence in DRL",
+      "matched_requirement_id": "req-10",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2603.07698v1",
+      "title": "Global Convergence of Average Reward Constrained MDPs with Neural Critic and General Policy Parameterization",
+      "abstract": "We study infinite-horizon Constrained Markov Decision Processes (CMDPs) with general policy parameterizations and multi-layer neural network critics. Existing theoretical analyses for constrained reinforcement learning largely rely on tabular policies or linear critics, which limits their applicability to high-dimensional and continuous control problems. We propose a primal-dual natural actor-critic algorithm that integrates neural critic estimation with natural policy gradient updates and leverages Neural Tangent Kernel (NTK) theory to control function-approximation error under Markovian sampling, without requiring access to mixing-time oracles. We establish global convergence and cumulative constraint violation rates of $\\tilde{\\mathcal{O}}(T^-1/4)$ up to approximation errors induced by the policy and critic classes. Our results provide the first such guarantees for CMDPs with general policies and multi-layer neural critics, substantially extending the theoretical foundations of actor-critic methods beyond the linear-critic regime.",
+      "authors": [
+        "Anirudh Satheesh",
+        "Pankaj Kumar Barman",
+        "Washim Uddin Mondal",
+        "Vaneet Aggarwal"
+      ],
+      "primary_category": "cs.LG",
+      "categories": [
+        "cs.LG"
+      ],
+      "published": "2026-03-08T15:53:59+00:00",
+      "link": "https://arxiv.org/pdf/2603.07698v1",
+      "tags": [
+        "query:DRL",
+        "query:DRL JSP"
+      ],
+      "llm_score": 9.0,
+      "llm_evidence_en": "global convergence of constrained MDPs with neural critics",
+      "llm_evidence_cn": "带神经评论器的受限MDP的全局收敛性",
+      "llm_evidence": "带神经评论器的受限MDP的全局收敛性",
+      "canonical_evidence": "带神经评论器的受限MDP的全局收敛性",
+      "llm_tldr_en": "Establishes global convergence for primal-dual natural actor-critic algorithms in constrained RL using NTK theory.",
+      "llm_tldr_cn": "利用NTK理论确立了受限强化学习中原对偶自然演员-评论家算法的全局收敛性。",
+      "llm_tldr": "利用NTK理论确立了受限强化学习中原对偶自然演员-评论家算法的全局收敛性。",
+      "llm_tags": [
+        "query:drl"
+      ],
+      "matched_query_tag": "query:drl",
+      "matched_query_text": "core principles and mathematical foundations of deep reinforcement learning",
+      "matched_requirement_id": "req-9",
+      "selection_source": "fresh_fetch"
+    }
+  ],
+  "quick_skim": [
+    {
+      "id": "2602.09782v1",
+      "title": "Flexible Entropy Control in RLVR with Gradient-Preserving Perspective",
+      "abstract": "Reinforcement Learning with Verifiable Rewards (RLVR) has emerged as a critical method for enhancing the reasoning capabilities of Large Language Models (LLMs). However, continuous training often leads to policy entropy collapse, characterized by a rapid decay in entropy that results in premature overconfidence, reduced output diversity, and vanishing gradient norms that inhibit learning. Gradient-Preserving Clipping is a primary factor influencing these dynamics, but existing mitigation strategies are largely static and lack a framework connecting clipping mechanisms to precise entropy control. This paper proposes reshaping entropy control in RL from the perspective of Gradient-Preserving Clipping. We first theoretically and empirically verify the contributions of specific importance sampling ratio regions to entropy growth and reduction. Leveraging these findings, we introduce a novel regulation mechanism using dynamic clipping threshold to precisely manage entropy. Furthermore, we design and evaluate dynamic entropy control strategies, including increase-then-decrease, decrease-increase-decrease, and oscillatory decay. Experimental results demonstrate that these strategies effectively mitigate entropy collapse, and achieve superior performance across multiple benchmarks.",
+      "authors": [
+        "Kun Chen",
+        "Peng Shi",
+        "Fanfan Liu",
+        "Haibo Qiu",
+        "Zhixiong Zeng",
+        "Siqi Yang",
+        "Wenji Mao"
+      ],
+      "primary_category": "cs.LG",
+      "categories": [
+        "cs.LG",
+        "cs.AI",
+        "cs.CL"
+      ],
+      "published": "2026-02-10T13:42:12+00:00",
+      "link": "https://arxiv.org/pdf/2602.09782v1",
+      "tags": [
+        "query:DRL"
+      ],
+      "llm_score": 8.0,
+      "llm_evidence_en": "entropy control for training stability in RL",
+      "llm_evidence_cn": "强化学习训练稳定性中的熵控制",
+      "llm_evidence": "强化学习训练稳定性中的熵控制",
+      "canonical_evidence": "强化学习训练稳定性中的熵控制",
+      "llm_tldr_en": "Proposes gradient-preserving clipping to prevent entropy collapse and improve RL training stability.",
+      "llm_tldr_cn": "提出梯度保持裁剪方法，以防止熵崩溃并提高强化学习训练稳定性。",
+      "llm_tldr": "提出梯度保持裁剪方法，以防止熵崩溃并提高强化学习训练稳定性。",
+      "llm_tags": [
+        "query:drl"
+      ],
+      "matched_query_tag": "query:drl",
+      "matched_query_text": "techniques for improving training stability and convergence in DRL",
+      "matched_requirement_id": "req-10",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "8plus"
+    },
+    {
+      "id": "2602.08253v1",
+      "title": "G-LNS: Generative Large Neighborhood Search for LLM-Based Automatic Heuristic Design",
+      "abstract": "While Large Language Models (LLMs) have recently shown promise in Automated Heuristic Design (AHD), existing approaches typically formulate AHD around constructive priority rules or parameterized local search guidance, thereby restricting the search space to fixed heuristic forms. Such designs offer limited capacity for structural exploration, making it difficult to escape deep local optima in complex Combinatorial Optimization Problems (COPs). In this work, we propose G-LNS, a generative evolutionary framework that extends LLM-based AHD to the automated design of Large Neighborhood Search (LNS) operators. Unlike prior methods that evolve heuristics in isolation, G-LNS leverages LLMs to co-evolve tightly coupled pairs of destroy and repair operators. A cooperative evaluation mechanism explicitly captures their interaction, enabling the discovery of complementary operator logic that jointly performs effective structural disruption and reconstruction. Extensive experiments on challenging COP benchmarks, such as Traveling Salesman Problems (TSP) and Capacitated Vehicle Routing Problems (CVRP), demonstrate that G-LNS significantly outperforms LLM-based AHD methods as well as strong classical solvers. The discovered heuristics not only achieve near-optimal solutions with reduced computational budgets but also exhibit robust generalization across diverse and unseen instance distributions.",
+      "authors": [
+        "Baoyun Zhao",
+        "He Wang",
+        "Liang Zeng"
+      ],
+      "primary_category": "cs.AI",
+      "categories": [
+        "cs.AI"
+      ],
+      "published": "2026-02-09T04:13:35+00:00",
+      "link": "https://arxiv.org/pdf/2602.08253v1",
+      "tags": [
+        "query:DRL JSP"
+      ],
+      "llm_score": 7.0,
+      "llm_evidence_en": "automated heuristic design for combinatorial optimization",
+      "llm_evidence_cn": "组合优化问题的自动启发式设计",
+      "llm_evidence": "组合优化问题的自动启发式设计",
+      "canonical_evidence": "组合优化问题的自动启发式设计",
+      "llm_tldr_en": "Uses LLMs to co-evolve LNS operators for complex combinatorial optimization problems.",
+      "llm_tldr_cn": "利用大模型共同进化LNS算子，以解决复杂的组合优化问题。",
+      "llm_tldr": "利用大模型共同进化LNS算子，以解决复杂的组合优化问题。",
+      "llm_tags": [
+        "query:drl-jsp:composite"
+      ],
+      "matched_query_tag": "query:drl-jsp:composite",
+      "matched_query_text": "Papers central to 深度强化学习解决作业车间调度问题 (JSP), especially work that connects or combines: Deep Reinforcement Learning for scheduling; s; Deep reinforcement learning approaches for job shop scheduling problems; Solving flexible job shop scheduling using deep reinforcement learning; End to end deep reinforcement learning for production scheduling; Comparison of DRL algorithms for manufacturing scheduling; Dynamic job shop scheduling via deep reinforcement learning.",
+      "matched_requirement_id": "req-composite-drl-jsp",
       "selection_source": "fresh_fetch",
       "quick_tier": "7"
     },
     {
-      "id": "2602.13691v1",
-      "title": "PhGPO: Pheromone-Guided Policy Optimization for Long-Horizon Tool Planning",
-      "abstract": "Recent advancements in Large Language Model (LLM) agents have demonstrated strong capabilities in executing complex tasks through tool use. However, long-horizon multi-step tool planning is challenging, because the exploration space suffers from a combinatorial explosion. In this scenario, even when a correct tool-use path is found, it is usually considered an immediate reward for current training, which would not provide any reusable information for subsequent training. In this paper, we argue that historically successful trajectories contain reusable tool-transition patterns, which can be leveraged throughout the whole training process. Inspired by ant colony optimization where historically successful paths can be reflected by the pheromone, we propose Pheromone-Guided Policy Optimization (PhGPO), which learns a trajectory-based transition pattern (i.e., pheromone) from historical trajectories and then uses the learned pheromone to guide policy optimization. This learned pheromone provides explicit and reusable guidance that steers policy optimization toward historically successful tool transitions, thereby improving long-horizon tool planning. Comprehensive experimental results demonstrate the effectiveness of our proposed PhGPO.",
+      "id": "2602.09394v2",
+      "title": "The Critical Horizon: Inspection Design Principles for Multi-Stage Operations and Deep Reasoning",
+      "abstract": "Manufacturing lines, service journeys, supply chains, and AI reasoning chains share a common challenge: attributing a terminal outcome to the intermediate stage that caused it. We establish an information-theoretic barrier to this credit assignment problem: the signal connecting early steps to final outcomes decays exponentially with depth, creating a critical horizon beyond which reliable learning from endpoint data alone requires exponentially many samples. We prove four results. First, a Signal Decay Bound: sample complexity for attributing outcomes to early stages grows exponentially in the number of intervening steps. Second, Width Limits: parallel rollouts provide only logarithmic relief, with correlation capping the effective number of independent samples. Third, an Objective Mismatch: additive reward aggregation optimizes the wrong quantity when sequential validity requires all steps to be correct. Fourth, Optimal Inspection Design: uniform checkpoint spacing is minimax-optimal under homogeneous signal attenuation, while a greedy algorithm yields optimal non-uniform schedules under heterogeneous attenuation. Together, these results provide a common analytical foundation for inspection design in operations and supervision design in AI.",
+      "authors": [
+        "Seyed Morteza Emadi"
+      ],
+      "primary_category": "stat.ML",
+      "categories": [
+        "stat.ML",
+        "cs.AI",
+        "cs.IT",
+        "cs.LG"
+      ],
+      "published": "2026-02-10T04:02:29+00:00",
+      "link": "https://arxiv.org/pdf/2602.09394v2",
+      "tags": [
+        "query:DRL JSP"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "Credit assignment in multi-stage manufacturing operations",
+      "llm_evidence_cn": "多阶段制造运营中的信用分配问题",
+      "llm_evidence": "多阶段制造运营中的信用分配问题",
+      "canonical_evidence": "多阶段制造运营中的信用分配问题",
+      "llm_tldr_en": "Analyzes credit assignment barriers in multi-stage operations like manufacturing lines.",
+      "llm_tldr_cn": "分析了包括制造流水线在内的多阶段运营中的信用分配障碍。",
+      "llm_tldr": "分析了包括制造流水线在内的多阶段运营中的信用分配障碍。",
+      "llm_tags": [
+        "query:drl-jsp:composite"
+      ],
+      "matched_query_tag": "query:drl-jsp:composite",
+      "matched_query_text": "Papers central to 深度强化学习解决作业车间调度问题 (JSP), especially work that connects or combines: Deep Reinforcement Learning for scheduling; s; Deep reinforcement learning approaches for job shop scheduling problems; Solving flexible job shop scheduling using deep reinforcement learning; End to end deep reinforcement learning for production scheduling; Comparison of DRL algorithms for manufacturing scheduling; Dynamic job shop scheduling via deep reinforcement learning.",
+      "matched_requirement_id": "req-composite-drl-jsp",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    },
+    {
+      "id": "2602.10539v1",
+      "title": "What Makes Value Learning Efficient in Residual Reinforcement Learning?",
+      "abstract": "Residual reinforcement learning (RL) enables stable online refinement of expressive pretrained policies by freezing the base and learning only bounded corrections. However, value learning in residual RL poses unique challenges that remain poorly understood. In this work, we identify two key bottlenecks: cold start pathology, where the critic lacks knowledge of the value landscape around the base policy, and structural scale mismatch, where the residual contribution is dwarfed by the base action. Through systematic investigation, we uncover the mechanisms underlying these bottlenecks, revealing that simple yet principled solutions suffice: base-policy transitions serve as an essential value anchor for implicit warmup, and critic normalization effectively restores representation sensitivity for discerning value differences. Based on these insights, we propose DAWN (Data-Anchored Warmup and Normalization), a minimal approach targeting efficient value learning in residual RL. By addressing these bottlenecks, DAWN demonstrates substantial efficiency gains across diverse benchmarks, policy architectures, and observation modalities.",
+      "authors": [
+        "Guozheng Ma",
+        "Lu Li",
+        "Haoyu Wang",
+        "Zixuan Liu",
+        "Pierre-Luc Bacon",
+        "Dacheng Tao"
+      ],
+      "primary_category": "cs.LG",
+      "categories": [
+        "cs.LG"
+      ],
+      "published": "2026-02-11T05:25:39+00:00",
+      "link": "https://arxiv.org/pdf/2602.10539v1",
+      "tags": [
+        "query:DRL",
+        "query:DRL JSP"
+      ],
+      "llm_score": 8.0,
+      "llm_evidence_en": "Improving efficiency and stability in residual RL",
+      "llm_evidence_cn": "提高残差强化学习的效率与稳定性",
+      "llm_evidence": "提高残差强化学习的效率与稳定性",
+      "canonical_evidence": "提高残差强化学习的效率与稳定性",
+      "llm_tldr_en": "Identifies and solves bottlenecks in residual RL value learning to enable stable policy refinement.",
+      "llm_tldr_cn": "识别并解决了残差强化学习价值学习中的瓶颈，实现了对预训练策略的稳定在线微调。",
+      "llm_tldr": "识别并解决了残差强化学习价值学习中的瓶颈，实现了对预训练策略的稳定在线微调。",
+      "llm_tags": [
+        "query:drl"
+      ],
+      "matched_query_tag": "query:drl",
+      "matched_query_text": "techniques for improving training stability and convergence in DRL",
+      "matched_requirement_id": "req-10",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "8plus"
+    },
+    {
+      "id": "2602.08499v1",
+      "title": "Contextual Rollout Bandits for Reinforcement Learning with Verifiable Rewards",
+      "abstract": "Reinforcement Learning with Verifiable Rewards (RLVR) is an effective paradigm for improving the reasoning capabilities of large language models. However, existing RLVR methods utilize rollouts in an indiscriminate and short-horizon manner: responses of heterogeneous quality within each prompt are treated uniformly, and historical rollouts are discarded after a single use. This leads to noisy supervision, poor sample efficiency, and suboptimal policy updates. We address these issues by formulating rollout scheduling in RLVR as a contextual bandit problem and proposing a unified neural scheduling framework that adaptively selects high-value rollouts throughout training. Each rollout is treated as an arm whose reward is defined by the induced performance gain between consecutive optimization steps. The resulting scheduler supports both noise-aware intra-group selection and adaptive global reuse of historical rollouts within a single principled framework. We provide theoretical justification by deriving sublinear regret bounds and showing that enlarging the rollout buffer improves the achievable performance upper bound. Experiments on six mathematical reasoning benchmarks demonstrate consistent gains in performance and training efficiency across multiple RLVR optimization methods.",
+      "authors": [
+        "Xiaodong Lu",
+        "Xiaohan Wang",
+        "Jiajun Chai",
+        "Guojun Yin",
+        "Wei Lin",
+        "Zhijun Chen",
+        "Yu Luo",
+        "Fuzhen Zhuang",
+        "Yikun Ban",
+        "Deqing Wang"
+      ],
+      "primary_category": "cs.LG",
+      "categories": [
+        "cs.LG",
+        "cs.AI"
+      ],
+      "published": "2026-02-09T10:51:58+00:00",
+      "link": "https://arxiv.org/pdf/2602.08499v1",
+      "tags": [
+        "query:DRL",
+        "query:DRL JSP"
+      ],
+      "llm_score": 7.0,
+      "llm_evidence_en": "Scheduling rollouts to improve RL training stability and efficiency",
+      "llm_evidence_cn": "调度回滚以提高强化学习训练的稳定性和效率",
+      "llm_evidence": "调度回滚以提高强化学习训练的稳定性和效率",
+      "canonical_evidence": "调度回滚以提高强化学习训练的稳定性和效率",
+      "llm_tldr_en": "Formulates rollout scheduling as a bandit problem to adaptively select high-value data for RL training.",
+      "llm_tldr_cn": "将回滚调度建模为多臂老虎机问题，以自适应地选择高价值数据进行强化学习训练。",
+      "llm_tldr": "将回滚调度建模为多臂老虎机问题，以自适应地选择高价值数据进行强化学习训练。",
+      "llm_tags": [
+        "query:drl"
+      ],
+      "matched_query_tag": "query:drl",
+      "matched_query_text": "techniques for improving training stability and convergence in DRL",
+      "matched_requirement_id": "req-10",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "7"
+    },
+    {
+      "id": "2602.11220v1",
+      "title": "Patch the Distribution Mismatch: RL Rewriting Agent for Stable Off-Policy SFT",
+      "abstract": "Large language models (LLMs) have made rapid progress, yet adapting them to downstream scenarios still commonly relies on supervised fine-tuning (SFT). When downstream data exhibit a substantial distribution shift from the model's prior training distribution, SFT can induce catastrophic forgetting. To narrow this gap, data rewriting has been proposed as a data-centric approach that rewrites downstream training data prior to SFT. However, existing methods typically sample rewrites from a prompt-induced conditional distribution, so the resulting targets are not necessarily aligned with the model's natural QA-style generation distribution. Moreover, reliance on fixed templates can lead to diversity collapse. To address these issues, we cast data rewriting as a policy learning problem and learn a rewriting policy that better matches the backbone's QA-style generation distribution while preserving diversity. Since distributional alignment, diversity and task consistency are automatically evaluable but difficult to optimize end-to-end with differentiable objectives, we leverage reinforcement learning to optimize the rewrite distribution under reward feedback and propose an RL-based data-rewriting agent. The agent jointly optimizes QA-style distributional alignment and diversity under a hard task-consistency gate, thereby constructing a higher-quality rewritten dataset for downstream SFT. Extensive experiments show that our method achieves downstream gains comparable to standard SFT while reducing forgetting on non-downstream benchmarks by 12.34% on average. Our code is available at https://anonymous.4open.science/r/Patch-the-Prompt-Gap-4112 .",
+      "authors": [
+        "Jiacheng Wang",
+        "Ping Jian",
+        "Zhen Yang",
+        "Zirong Chen",
+        "Keren Liao",
+        "Zhongbin Guo"
+      ],
+      "primary_category": "cs.LG",
+      "categories": [
+        "cs.LG",
+        "cs.CL"
+      ],
+      "published": "2026-02-11T11:51:37+00:00",
+      "link": "https://arxiv.org/pdf/2602.11220v1",
+      "tags": [
+        "query:DRL"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "RL agent for stable off-policy fine-tuning",
+      "llm_evidence_cn": "用于稳定离策微调的强化学习智能体",
+      "llm_evidence": "用于稳定离策微调的强化学习智能体",
+      "canonical_evidence": "用于稳定离策微调的强化学习智能体",
+      "llm_tldr_en": "Uses an RL rewriting agent to align downstream data with model distributions for stable fine-tuning.",
+      "llm_tldr_cn": "使用强化学习重写智能体将下游数据与模型分布对齐，以实现稳定的微调。",
+      "llm_tldr": "使用强化学习重写智能体将下游数据与模型分布对齐，以实现稳定的微调。",
+      "llm_tags": [
+        "query:drl"
+      ],
+      "matched_query_tag": "query:drl",
+      "matched_query_text": "techniques for improving training stability and convergence in DRL",
+      "matched_requirement_id": "req-10",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    },
+    {
+      "id": "2602.10598v1",
+      "title": "Neuro-symbolic Action Masking for Deep Reinforcement Learning",
+      "abstract": "Deep reinforcement learning (DRL) may explore infeasible actions during training and execution. Existing approaches assume a symbol grounding function that maps high-dimensional states to consistent symbolic representations and a manually specified action masking techniques to constrain actions. In this paper, we propose Neuro-symbolic Action Masking (NSAM), a novel framework that automatically learn symbolic models, which are consistent with given domain constraints of high-dimensional states, in a minimally supervised manner during the DRL process. Based on the learned symbolic model of states, NSAM learns action masks that rules out infeasible actions. NSAM enables end-to-end integration of symbolic reasoning and deep policy optimization, where improvements in symbolic grounding and policy learning mutually reinforce each other. We evaluate NSAM on multiple domains with constraints, and experimental results demonstrate that NSAM significantly improves sample efficiency of DRL agent while substantially reducing constraint violations.",
       "authors": [
         "Yu Li",
         "Guangfeng Cai",
@@ -427,58 +1010,66 @@
       "published": "2026-02-14T09:24:55+00:00",
       "link": "https://arxiv.org/pdf/2602.13691v1",
       "tags": [
+        "keyword:DRL",
         "keyword:DRL JSP",
+        "query:DRL",
         "query:DRL JSP"
       ],
-      "llm_score": 6.0,
-      "llm_evidence_en": "Pheromone-guided policy optimization for long-horizon tool planning and combinatorial spaces",
-      "llm_evidence_cn": "用于长时程工具规划和组合空间的费洛蒙引导策略优化",
-      "llm_evidence": "用于长时程工具规划和组合空间的费洛蒙引导策略优化",
-      "canonical_evidence": "用于长时程工具规划和组合空间的费洛蒙引导策略优化",
-      "llm_tldr_en": "Combines ant colony optimization with RL to solve long-horizon planning problems in combinatorial spaces.",
-      "llm_tldr_cn": "将蚁群算法与强化学习结合，解决组合空间中的长时程规划问题。",
-      "llm_tldr": "将蚁群算法与强化学习结合，解决组合空间中的长时程规划问题。",
+      "llm_score": 8.0,
+      "llm_evidence_en": "Action masking to constrain exploration and improve DRL training",
+      "llm_evidence_cn": "通过动作掩码约束探索并改进深度强化学习训练",
+      "llm_evidence": "通过动作掩码约束探索并改进深度强化学习训练",
+      "canonical_evidence": "通过动作掩码约束探索并改进深度强化学习训练",
+      "llm_tldr_en": "Introduces Neuro-symbolic Action Masking to automatically learn constraints and improve DRL safety and efficiency.",
+      "llm_tldr_cn": "引入神经符号动作掩码，自动学习约束条件以提高深度强化学习的安全性和效率。",
+      "llm_tldr": "引入神经符号动作掩码，自动学习约束条件以提高深度强化学习的安全性和效率。",
       "llm_tags": [
-        "query:drl-jsp:composite"
+        "query:drl"
       ],
-      "matched_query_tag": "query:drl-jsp:composite",
-      "matched_query_text": "Papers central to 深度强化学习解决作业车间调度问题 (JSP), especially work that connects or combines: Deep Reinforcement Learning for scheduling; s; Deep reinforcement learning approaches for job shop scheduling problems; Solving flexible job shop scheduling using deep reinforcement learning; End to end deep reinforcement learning for production scheduling; Comparison of DRL algorithms for manufacturing scheduling; Dynamic job shop scheduling via deep reinforcement learning.",
-      "matched_requirement_id": "req-composite-drl-jsp",
+      "matched_query_tag": "query:drl",
+      "matched_query_text": "techniques for improving training stability and convergence in DRL",
+      "matched_requirement_id": "req-10",
       "selection_source": "fresh_fetch",
       "quick_tier": "6"
     },
     {
-      "id": "2602.19277v1",
-      "title": "Dynamic Repair and Maintenance of Heterogeneous Machines Dispersed on a Network: A Rollout Method for Online Reinforcement Learning",
-      "abstract": "We consider a problem in which a single repairer is responsible for the maintenance and repair of a collection of machines, positioned at different locations on a network of nodes and edges. Machines deteriorate according to stochastic processes and incur increasing costs as they approach complete failure. The times needed for repairs to be performed, and the amounts of time needed for the repairer to switch between different machines, are random and machine-dependent. The problem is formulated as a Markov decision process (MDP) in which the objective is to minimize long-run average costs. We prove the equivalence of an alternative formulation based on rewards and use this to develop an index heuristic policy, which is shown to be optimal in certain special cases. We then use rollout-based reinforcement learning techniques to develop a novel online policy improvement (OPI) approach, which uses the index heuristic as a base policy and also as an insurance option at decision epochs where the best action cannot be selected with sufficient confidence. Results from extensive numerical experiments, involving randomly-generated network layouts and parameter values, show that the OPI heuristic is able to achieve close-to-optimal performance in fast-changing systems with state transitions occurring 100 times per second, suggesting that it is suitable for online implementation.",
+      "id": "2602.08734v1",
+      "title": "Finite-State Controllers for (Hidden-Model) POMDPs using Deep Reinforcement Learning",
+      "abstract": "Solving partially observable Markov decision processes (POMDPs) requires computing policies under imperfect state information. Despite recent advances, the scalability of existing POMDP solvers remains limited. Moreover, many settings require a policy that is robust across multiple POMDPs, further aggravating the scalability issue. We propose the Lexpop framework for POMDP solving. Lexpop (1) employs deep reinforcement learning to train a neural policy, represented by a recurrent neural network, and (2) constructs a finite-state controller mimicking the neural policy through efficient extraction methods. Crucially, unlike neural policies, such controllers can be formally evaluated, providing performance guarantees. We extend Lexpop to compute robust policies for hidden-model POMDPs (HM-POMDPs), which describe finite sets of POMDPs. We associate every extracted controller with its worst-case POMDP. Using a set of such POMDPs, we iteratively train a robust neural policy and consequently extract a robust controller. Our experiments show that on problems with large state spaces, Lexpop outperforms state-of-the-art solvers for POMDPs as well as HM-POMDPs.",
       "authors": [
-        "Dongnuan Tian",
-        "Rob Shone"
+        "David Hudák",
+        "Maris F. L. Galesloot",
+        "Martin Tappler",
+        "Martin Kurečka",
+        "Nils Jansen",
+        "Milan Češka"
       ],
-      "primary_category": "math.OC",
+      "primary_category": "cs.AI",
       "categories": [
-        "math.OC"
+        "cs.AI"
       ],
-      "published": "2026-02-22T17:19:42+00:00",
-      "link": "https://arxiv.org/pdf/2602.19277v1",
+      "published": "2026-02-09T14:39:16+00:00",
+      "link": "https://arxiv.org/pdf/2602.08734v1",
       "tags": [
+        "keyword:DRL",
         "keyword:DRL JSP",
+        "query:DRL",
         "query:DRL JSP"
       ],
       "llm_score": 7.0,
-      "llm_evidence_en": "Online reinforcement learning for dynamic machine maintenance and repair scheduling",
-      "llm_evidence_cn": "在线强化学习用于动态机器维护和修理调度",
-      "llm_evidence": "在线强化学习用于动态机器维护和修理调度",
-      "canonical_evidence": "在线强化学习用于动态机器维护和修理调度",
-      "llm_tldr_en": "Develops an online RL rollout method for the dynamic repair and maintenance of machines on a network.",
-      "llm_tldr_cn": "开发了一种在线强化学习展开方法，用于网络中机器的动态维修和保养。",
-      "llm_tldr": "开发了一种在线强化学习展开方法，用于网络中机器的动态维修和保养。",
+      "llm_evidence_en": "deep reinforcement learning for solving POMDPs with neural policies",
+      "llm_evidence_cn": "利用深度强化学习和神经策略解决部分可观测马尔可夫决策过程",
+      "llm_evidence": "利用深度强化学习和神经策略解决部分可观测马尔可夫决策过程",
+      "canonical_evidence": "利用深度强化学习和神经策略解决部分可观测马尔可夫决策过程",
+      "llm_tldr_en": "Uses deep RL to train neural policies for POMDPs and extracts verifiable finite-state controllers.",
+      "llm_tldr_cn": "利用深度强化学习训练 POMDP 神经策略，并提取可验证的有限状态控制器。",
+      "llm_tldr": "利用深度强化学习训练 POMDP 神经策略，并提取可验证的有限状态控制器。",
       "llm_tags": [
-        "query:drl-jsp"
+        "query:drl"
       ],
-      "matched_query_tag": "query:drl-jsp",
-      "matched_query_text": "Dynamic job shop scheduling via deep reinforcement learning",
-      "matched_requirement_id": "req-7",
+      "matched_query_tag": "query:drl",
+      "matched_query_text": "fundamental concepts and architectures of deep reinforcement learning",
+      "matched_requirement_id": "req-8",
       "selection_source": "fresh_fetch",
       "quick_tier": "7"
     },
@@ -503,134 +1094,13 @@
         "query:DRL JSP"
       ],
       "llm_score": 6.0,
-      "llm_evidence_en": "Simultaneous task allocation and scheduling for robot teams",
-      "llm_evidence_cn": "机器人团队的同步任务分配与调度",
-      "llm_evidence": "机器人团队的同步任务分配与调度",
-      "canonical_evidence": "机器人团队的同步任务分配与调度",
-      "llm_tldr_en": "Presents TRAITS, a framework for multi-robot task allocation and scheduling under resource constraints.",
-      "llm_tldr_cn": "提出TRAITS框架，用于在资源约束下进行多机器人任务分配与调度。",
-      "llm_tldr": "提出TRAITS框架，用于在资源约束下进行多机器人任务分配与调度。",
-      "llm_tags": [
-        "query:drl-jsp"
-      ],
-      "matched_query_tag": "query:drl-jsp",
-      "matched_query_text": "Deep Reinforcement Learning for scheduling",
-      "matched_requirement_id": "req-1",
-      "selection_source": "fresh_fetch",
-      "quick_tier": "6"
-    },
-    {
-      "id": "2602.23935v1",
-      "title": "Green or Fast? Learning to Balance Cold Starts and Idle Carbon in Serverless Computing",
-      "abstract": "Serverless computing simplifies cloud deployment but introduces new challenges in managing service latency and carbon emissions. Reducing cold-start latency requires retaining warm function instances, while minimizing carbon emissions favors reclaiming idle resources. This balance is further complicated by time-varying grid carbon intensity and varying workload patterns, under which static keep-alive policies are inefficient. We present LACE-RL, a latency-aware and carbon-efficient management framework that formulates serverless pod retention as a sequential decision problem. LACE-RL uses deep reinforcement learning to dynamically tune keep-alive durations, jointly modeling cold-start probability, function-specific latency costs, and real-time carbon intensity. Using the Huawei Public Cloud Trace, we show that LACE-RL reduces cold starts by 51.69% and idle keep-alive carbon emissions by 77.08% compared to Huawei's static policy, while achieving better latency-carbon trade-offs than state-of-the-art heuristic and single-objective baselines, approaching Oracle performance.",
-      "authors": [
-        "Bowen Sun",
-        "Christos D. Antonopoulos",
-        "Evgenia Smirni",
-        "Bin Ren",
-        "Nikolaos Bellas",
-        "Spyros Lalis"
-      ],
-      "primary_category": "cs.DC",
-      "categories": [
-        "cs.DC",
-        "cs.AI",
-        "cs.PF"
-      ],
-      "published": "2026-02-27T11:35:15+00:00",
-      "link": "https://arxiv.org/pdf/2602.23935v1",
-      "tags": [
-        "keyword:DRL JSP",
-        "query:DRL JSP"
-      ],
-      "llm_score": 7.0,
-      "llm_evidence_en": "Deep reinforcement learning for serverless pod retention scheduling",
-      "llm_evidence_cn": "深度强化学习用于无服务器Pod保留调度",
-      "llm_evidence": "深度强化学习用于无服务器Pod保留调度",
-      "canonical_evidence": "深度强化学习用于无服务器Pod保留调度",
-      "llm_tldr_en": "Applies DRL to balance latency and carbon emissions in serverless computing resource management.",
-      "llm_tldr_cn": "应用深度强化学习在无服务器计算中平衡延迟与碳排放的资源调度。",
-      "llm_tldr": "应用深度强化学习在无服务器计算中平衡延迟与碳排放的资源调度。",
-      "llm_tags": [
-        "query:drl-jsp"
-      ],
-      "matched_query_tag": "query:drl-jsp",
-      "matched_query_text": "End to end deep reinforcement learning for production scheduling",
-      "matched_requirement_id": "req-5",
-      "selection_source": "fresh_fetch",
-      "quick_tier": "7"
-    },
-    {
-      "id": "2602.13999v1",
-      "title": "It Takes Two to Tango: A Holistic Simulator for Joint Order Scheduling and Multi-Agent Path Finding in Robotic Warehouses",
-      "abstract": "The prevailing paradigm in Robotic Mobile Fulfillment Systems (RMFS) typically treats order scheduling and multi-agent pathfinding as isolated sub-problems. We argue that this decoupling is a fundamental bottleneck, masking the critical dependencies between high-level dispatching and low-level congestion. Existing simulators fail to bridge this gap, often abstracting away heterogeneous kinematics and stochastic execution failures. We propose WareRover, a holistic simulation platform that enforces a tight coupling between OS and MAPF via a unified, closed-loop optimization interface. Unlike standard benchmarks, WareRover integrates dynamic order streams, physics-aware motion constraints, and non-nominal recovery mechanisms into a single evaluation loop. Experiments reveal that SOTA algorithms often falter under these realistic coupled constraints, demonstrating that WareRover provides a necessary and challenging testbed for robust, next-generation warehouse coordination. The project and video is available at https://hhh-x.github.io/WareRover/.",
-      "authors": [
-        "Haozheng Xu",
-        "Wenhao Li",
-        "Zifan Wei",
-        "Bo Jin",
-        "Hongxing Bai",
-        "Ben Yang",
-        "Xiangfeng Wang"
-      ],
-      "primary_category": "cs.RO",
-      "categories": [
-        "cs.RO"
-      ],
-      "published": "2026-02-15T05:51:58+00:00",
-      "link": "https://arxiv.org/pdf/2602.13999v1",
-      "tags": [
-        "keyword:DRL JSP",
-        "query:DRL JSP"
-      ],
-      "llm_score": 6.0,
-      "llm_evidence_en": "Joint order scheduling and path finding in robotic warehouses",
-      "llm_evidence_cn": "机器人仓库中的订单调度与路径规划联合优化",
-      "llm_evidence": "机器人仓库中的订单调度与路径规划联合优化",
-      "canonical_evidence": "机器人仓库中的订单调度与路径规划联合优化",
-      "llm_tldr_en": "WareRover provides a holistic simulator for joint optimization of scheduling and logistics in warehouses.",
-      "llm_tldr_cn": "WareRover 为仓库订单调度与物流路径规划的联合优化提供了一个整体模拟平台。",
-      "llm_tldr": "WareRover 为仓库订单调度与物流路径规划的联合优化提供了一个整体模拟平台。",
-      "llm_tags": [
-        "query:drl-jsp"
-      ],
-      "matched_query_tag": "query:drl-jsp",
-      "matched_query_text": "End to end deep reinforcement learning for production scheduling",
-      "matched_requirement_id": "req-5",
-      "selection_source": "fresh_fetch",
-      "quick_tier": "6"
-    },
-    {
-      "id": "2602.24182v1",
-      "title": "Multi-Objective Reinforcement Learning for Large-Scale Tote Allocation in Human-Robot Collaborative Fulfillment Centers",
-      "abstract": "Optimizing the consolidation process in container-based fulfillment centers requires trading off competing objectives such as processing speed, resource usage, and space utilization while adhering to a range of real-world operational constraints. This process involves moving items between containers via a combination of human and robotic workstations to free up space for inbound inventory and increase container utilization. We formulate this problem as a large-scale Multi-Objective Reinforcement Learning (MORL) task with high-dimensional state spaces and dynamic system behavior. Our method builds on recent theoretical advances in solving constrained RL problems via best-response and no-regret dynamics in zero-sum games, enabling principled minimax policy learning. Policy evaluation on realistic warehouse simulations shows that our approach effectively trades off objectives, and we empirically observe that it learns a single policy that simultaneously satisfies all constraints, even if this is not theoretically guaranteed. We further introduce a theoretical framework to handle the problem of error cancellation, where time-averaged solutions display oscillatory behavior. This method returns a single iterate whose Lagrangian value is close to the minimax value of the game. These results demonstrate the promise of MORL in solving complex, high-impact decision-making problems in large-scale industrial systems.",
-      "authors": [
-        "Sikata Sengupta",
-        "Guangyi Liu",
-        "Omer Gottesman",
-        "Joseph W Durham",
-        "Michael Kearns",
-        "Aaron Roth",
-        "Michael Caldara"
-      ],
-      "primary_category": "cs.LG",
-      "categories": [
-        "cs.LG"
-      ],
-      "published": "2026-02-27T17:04:57+00:00",
-      "link": "https://arxiv.org/pdf/2602.24182v1",
-      "tags": [
-        "keyword:DRL JSP",
-        "query:DRL JSP"
-      ],
-      "llm_score": 7.0,
-      "llm_evidence_en": "Multi-objective RL for large-scale allocation and resource usage in fulfillment centers",
-      "llm_evidence_cn": "用于履行中心大规模分配和资源利用的多目标强化学习",
-      "llm_evidence": "用于履行中心大规模分配和资源利用的多目标强化学习",
-      "canonical_evidence": "用于履行中心大规模分配和资源利用的多目标强化学习",
-      "llm_tldr_en": "Applies MORL to optimize resource allocation and space utilization in complex fulfillment center environments.",
-      "llm_tldr_cn": "应用多目标强化学习优化履行中心的大规模资源分配与空间利用。",
-      "llm_tldr": "应用多目标强化学习优化履行中心的大规模资源分配与空间利用。",
+      "llm_evidence_en": "multi-objective combinatorial optimization at scale using online learning",
+      "llm_evidence_cn": "利用在线学习解决大规模多目标组合优化问题",
+      "llm_evidence": "利用在线学习解决大规模多目标组合优化问题",
+      "canonical_evidence": "利用在线学习解决大规模多目标组合优化问题",
+      "llm_tldr_en": "Reformulates combinatorial optimization as online learning, relevant to complex scheduling tasks.",
+      "llm_tldr_cn": "将组合优化重新表述为在线学习，适用于复杂的调度任务。",
+      "llm_tldr": "将组合优化重新表述为在线学习，适用于复杂的调度任务。",
       "llm_tags": [
         "query:drl-jsp:composite"
       ],
@@ -638,7 +1108,117 @@
       "matched_query_text": "Papers central to 深度强化学习解决作业车间调度问题 (JSP), especially work that connects or combines: Deep Reinforcement Learning for scheduling; s; Deep reinforcement learning approaches for job shop scheduling problems; Solving flexible job shop scheduling using deep reinforcement learning; End to end deep reinforcement learning for production scheduling; Comparison of DRL algorithms for manufacturing scheduling; Dynamic job shop scheduling via deep reinforcement learning.",
       "matched_requirement_id": "req-composite-drl-jsp",
       "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    },
+    {
+      "id": "2602.11142v1",
+      "title": "Data-Efficient Hierarchical Goal-Conditioned Reinforcement Learning via Normalizing Flows",
+      "abstract": "Hierarchical goal-conditioned reinforcement learning (H-GCRL) provides a powerful framework for tackling complex, long-horizon tasks by decomposing them into structured subgoals. However, its practical adoption is hindered by poor data efficiency and limited policy expressivity, especially in offline or data-scarce regimes. In this work, Normalizing flow-based hierarchical implicit Q-learning (NF-HIQL), a novel framework that replaces unimodal gaussian policies with expressive normalizing flow policies at both the high- and low-levels of the hierarchy is introduced. This design enables tractable log-likelihood computation, efficient sampling, and the ability to model rich multimodal behaviors. New theoretical guarantees are derived, including explicit KL-divergence bounds for Real-valued non-volume preserving (RealNVP) policies and PAC-style sample efficiency results, showing that NF-HIQL preserves stability while improving generalization. Empirically, NF-HIQL is evaluted across diverse long-horizon tasks in locomotion, ball-dribbling, and multi-step manipulation from OGBench. NF-HIQL consistently outperforms prior goal-conditioned and hierarchical baselines, demonstrating superior robustness under limited data and highlighting the potential of flow-based architectures for scalable, data-efficient hierarchical reinforcement learning.",
+      "authors": [
+        "Shaswat Garg",
+        "Matin Moezzi",
+        "Brandon Da Silva"
+      ],
+      "primary_category": "cs.RO",
+      "categories": [
+        "cs.RO",
+        "cs.AI",
+        "cs.LG"
+      ],
+      "published": "2026-02-11T18:54:48+00:00",
+      "link": "https://arxiv.org/pdf/2602.11142v1",
+      "tags": [
+        "query:DRL",
+        "query:DRL JSP"
+      ],
+      "llm_score": 8.0,
+      "llm_evidence_en": "hierarchical goal-conditioned RL",
+      "llm_evidence_cn": "分层目标条件强化学习",
+      "llm_evidence": "分层目标条件强化学习",
+      "canonical_evidence": "分层目标条件强化学习",
+      "llm_tldr_en": "Introduces a data-efficient hierarchical RL framework using normalizing flows for complex tasks.",
+      "llm_tldr_cn": "引入一种利用归一化流的数据高效分层强化学习框架，处理复杂长程任务。",
+      "llm_tldr": "引入一种利用归一化流的数据高效分层强化学习框架，处理复杂长程任务。",
+      "llm_tags": [
+        "query:drl"
+      ],
+      "matched_query_tag": "query:drl",
+      "matched_query_text": "state of the art algorithms in deep reinforcement learning research",
+      "matched_requirement_id": "req-11",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "8plus"
+    },
+    {
+      "id": "2602.08813v1",
+      "title": "Robust Policy Optimization to Prevent Catastrophic Forgetting",
+      "abstract": "Large language models are commonly trained through multi-stage post-training: first via RLHF, then fine-tuned for other downstream objectives. Yet even small downstream updates can compromise earlier learned behaviors (e.g., safety), exposing a brittleness known as catastrophic forgetting. This suggests standard RLHF objectives do not guarantee robustness to future adaptation. To address it, most prior work designs downstream-time methods to preserve previously learned behaviors. We argue that preventing this requires pre-finetuning robustness: the base policy should avoid brittle high-reward solutions whose reward drops sharply under standard fine-tuning.   We propose Fine-tuning Robust Policy Optimization (FRPO), a robust RLHF framework that optimizes reward not only at the current policy, but across a KL-bounded neighborhood of policies reachable by downstream adaptation. The key idea is to ensure reward stability under policy shifts via a max-min formulation. By modifying GRPO, we develop an algorithm with no extra computation, and empirically show it substantially reduces safety degradation across multiple base models and downstream fine-tuning regimes (SFT and RL) while preserving downstream task performance. We further study a math-focused RL setting, demonstrating that FRPO preserves accuracy under subsequent fine-tuning.",
+      "authors": [
+        "Mahdi Sabbaghi",
+        "George Pappas",
+        "Adel Javanmard",
+        "Hamed Hassani"
+      ],
+      "primary_category": "cs.LG",
+      "categories": [
+        "cs.LG"
+      ],
+      "published": "2026-02-09T15:50:05+00:00",
+      "link": "https://arxiv.org/pdf/2602.08813v1",
+      "tags": [
+        "query:DRL"
+      ],
+      "llm_score": 7.0,
+      "llm_evidence_en": "improving training stability and robustness in RLHF",
+      "llm_evidence_cn": "提高RLHF训练的稳定性和鲁棒性",
+      "llm_evidence": "提高RLHF训练的稳定性和鲁棒性",
+      "canonical_evidence": "提高RLHF训练的稳定性和鲁棒性",
+      "llm_tldr_en": "Proposes a robust RLHF framework to prevent catastrophic forgetting during downstream adaptation.",
+      "llm_tldr_cn": "提出了一种鲁棒的RLHF框架，以防止下游适配过程中的灾难性遗忘。",
+      "llm_tldr": "提出了一种鲁棒的RLHF框架，以防止下游适配过程中的灾难性遗忘。",
+      "llm_tags": [
+        "query:drl"
+      ],
+      "matched_query_tag": "query:drl",
+      "matched_query_text": "techniques for improving training stability and convergence in DRL",
+      "matched_requirement_id": "req-10",
+      "selection_source": "fresh_fetch",
       "quick_tier": "7"
+    },
+    {
+      "id": "2602.12492v1",
+      "title": "Composable Model-Free RL for Navigation with Input-Affine Systems",
+      "abstract": "As autonomous robots move into complex, dynamic real-world environments, they must learn to navigate safely in real time, yet anticipating all possible behaviors is infeasible. We propose a composable, model-free reinforcement learning method that learns a value function and an optimal policy for each individual environment element (e.g., goal or obstacle) and composes them online to achieve goal reaching and collision avoidance. Assuming unknown nonlinear dynamics that evolve in continuous time and are input-affine, we derive a continuous-time Hamilton-Jacobi-Bellman (HJB) equation for the value function and show that the corresponding advantage function is quadratic in the action and optimal policy. Based on this structure, we introduce a model-free actor-critic algorithm that learns policies and value functions for static or moving obstacles using gradient descent. We then compose multiple reach/avoid models via a quadratically constrained quadratic program (QCQP), yielding formal obstacle-avoidance guarantees in terms of value-function level sets, providing a model-free alternative to CLF/CBF-based controllers. Simulations demonstrate improved performance over a PPO baseline applied to a discrete-time approximation.",
+      "authors": [
+        "Xinhuan Sang",
+        "Abdelrahman Abdelgawad",
+        "Roberto Tron"
+      ],
+      "primary_category": "cs.RO",
+      "categories": [
+        "cs.RO",
+        "cs.LG"
+      ],
+      "published": "2026-02-13T00:19:35+00:00",
+      "link": "https://arxiv.org/pdf/2602.12492v1",
+      "tags": [
+        "query:DRL"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "model-free RL for dynamic navigation",
+      "llm_evidence_cn": "用于动态导航的无模型强化学习",
+      "llm_evidence": "用于动态导航的无模型强化学习",
+      "canonical_evidence": "用于动态导航的无模型强化学习",
+      "llm_tldr_en": "Develops a composable model-free RL method for real-time robot navigation and collision avoidance.",
+      "llm_tldr_cn": "开发了一种可组合的无模型强化学习方法，用于机器人实时导航和避障。",
+      "llm_tldr": "开发了一种可组合的无模型强化学习方法，用于机器人实时导航和避障。",
+      "llm_tags": [
+        "query:drl"
+      ],
+      "matched_query_tag": "query:drl",
+      "matched_query_text": "state of the art algorithms in deep reinforcement learning research",
+      "matched_requirement_id": "req-11",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
     }
   ]
 }

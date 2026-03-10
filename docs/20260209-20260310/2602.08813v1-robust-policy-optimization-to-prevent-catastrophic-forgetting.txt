@@ -1,0 +1,1242 @@
+Title: Robust Policy Optimization to Prevent Catastrophic Forgetting
+
+URL Source: https://arxiv.org/pdf/2602.08813v1
+
+Published Time: Tue, 10 Feb 2026 03:43:00 GMT
+
+Number of Pages: 26
+
+Markdown Content:
+# Robust Policy Optimization to Prevent Catastrophic Forgetting 
+
+# Mahdi Sabbaghi *1 , George Pappas 1, Adel Javanmard 2, and Hamed Hassani 1
+
+> 1
+
+University of Pennsylvania 2University of Southern California 
+
+Abstract 
+
+Large language models are commonly trained through multi-stage post-training: first via RLHF, then fine-tuned for other downstream objectives. Yet even small downstream updates can compromise earlier learned behaviors (e.g., safety), exposing a brittleness known as catastrophic forgetting. This suggests standard RLHF objectives do not guarantee robustness to future adaptation. To address it, most prior work designs downstream-time methods to preserve previously learned behaviors. We argue that preventing this requires pre-finetuning robustness: the base policy should avoid brittle high-reward solutions whose reward drops sharply under standard fine-tuning. We propose Fine-tuning Robust Policy Optimization (FRPO), a robust RLHF framework that optimizes reward not only at the current policy, but across a KL-bounded neighborhood of policies reachable by downstream adaptation. The key idea is to ensure reward stability under policy shifts via a max-min formulation. By modifying GRPO, we develop an algorithm with no extra computation, and empirically show it substantially reduces safety degradation across multiple base models and downstream fine-tuning regimes (SFT and RL) while preserving downstream task performance. We further study a math-focused RL setting, demonstrating that FRPO preserves accuracy under subsequent fine-tuning. 
+
+§ https://github.com/Helloworld10011/FRPO 
+
+# 1 Introduction 
+
+Large language models (LLMs) are becoming the driving force of agentic systems, ranging from everyday chat and mathematical reasoning to robotics (Ahn et al., 2022; Schick et al., 2023; Driess et al., 2023; Achiam et al., 2023). Such broad deployment requires training a single base model capable of supporting diverse tasks, and, in some cases, fine-tuning for specific downstream applications. However, optimizing for a downstream objective can compromise other capabilities developed during earlier training (de Masson D’Autume et al., 2019; Sun et al., 2019). Addressing this trade-off is the core challenge of continual learning : training models on new tasks without losing prior knowledge (De Lange et al., 2021; Wang et al., 2022b,a). We study a two-stage continual learning setting in LLM pipelines: (1) the model acquires a behavior such as safety guardrails or a specific capability; and then (2) it is adapted to a downstream task while maintaining the earlier behavior. Recent studies (Qi et al., 2023; Zhan et al., 2023; Qi et al., 2024) show that this often fails: downstream fine-tuning can degrade previously learned behaviors, a phenomenon known as catastrophic forgetting . Figure 1(right) illustrates this failure mode: fine-tuning on a math task such as GSM8K inadvertently leads to “forgetting” the safety guardrails. To mitigate forgetting, many studies focus on developing methods at downstream time to preserve the model’s capabilities. Rehearsal methods augment downstream training with a subset of previous data (Rolnick et al., 2019; Sun et al., 2019; Scialom et al., 2022; Huang et al., 2024). Parameter-efficient fine-tuning (PEFT) constrains downstream updates into separate modules (e.g., LoRA), thereby reducing parameter interference between the objectives (Hu et al., 2022; Hsu et al., 2024; Qiao and Mahdavi, 2024). Regularization strategies constrain optimization through penalties that prevent the policy from drifting excessively (Li and Hoiem, 2017; Schulman et al., 2017; Lee et al., 2019; Kirkpatrick et al., 2017). Finally, model merging methods aim to combine task-specific models post-hoc to retain all capabilities without expensive retraining (Ilharco et al., 2022; Wortsman et al., 2022; Yi et al., 2024; Djuhera et al., 2025). 
+
+> *Correspondence can be made to: smahdi@seas.upenn.edu
+
+1
+
+> arXiv:2602.08813v1 [cs.LG] 9 Feb 2026
+
+Figure 1: Illustration of FRPO. Standard RLHF finds high-reward policies that may lie in sharp regions, whereas our method optimizes for reward-flatness within a KL neighborhood, finding policies that maintain high reward after downstream adaptation. Downstream-time methods are effective only when used within their intended fine-tuning procedures. Consequently, any later “ordinary” fine-tuning that deviates from these procedures can still compromise previously learned behaviors. Much of the existing literature continues to rely on standard approaches— supervised fine-tuning (SFT) or RL-based methods such as GRPO (Ouyang et al., 2022; Shao et al., 2024)— which focus on optimizing the immediate downstream objective. However, the central issue remains: “The base model must be made robust to future fine-tuning, regardless of the downstream task or algorithm.” 
+
+To this end, we propose Fine-tuning Robust Policy Optimization (FRPO), a new algorithm aimed at making the policy robust to downstream fine-tuning. Since downstream adaptations typically remain within a neighborhood of the current policy (e.g., bounded in KL divergence), achieving robustness requires avoiding high-reward solutions that reside in sharp regions of the policy space, where even small updates can lead to substantial reward degradation. Rather than maximizing reward solely at the current policy, our objective explicitly considers a neighborhood around the policy and seeks flatter regions, leading to policy stability. Formally, to account for future downstream adaptations, we consider the set of all policies reachable within a KL-bounded neighborhood around the current policy as illustrated in Figure 1. This formulation is agnostic 
+
+to the downstream fine-tuning, assuming only that the policy remains within this KL neighborhood—reflecting standard practices like KL regularization in RLHF (Ouyang et al., 2022) and implicit constraints from limited learning rates or LoRA. We then propose an objective that maximizes the minimum reward over this set. By deriving the dual form, we show that this robustness criterion is equivalent to penalizing low-reward rollouts under the current policy. This leads to an entropic-risk objective that emphasizes low-reward trajectories and discourages policies with high reward variance. Finally, we derive FRPO to optimize this objective within the standard GRPO framework, with no additional computation. 
+
+Our contributions are summarized as follows: • RLHF framework for fine-tuning robustness. We consider a max-min optimization that accounts for all downstream shifts within a KL ball centered at the base policy. We show that this formulation is equivalent to optimizing an entropic-risk objective, with a tunable parameter λ controlling sensitivity to low-reward trajectories. • FRPO with no extra computation. We present FRPO, a policy gradient method that integrates seamlessly with the GRPO framework. FRPO derives from a closed-form solution to the max-min problem, includes a baseline for stable optimization, and recovers GRPO as λ→∞.• Experimental results. We evaluate several fine-tuning schemes, including instruction-following and math (see Figures 3 and 4) to demonstrate that FRPO-trained models are significantly more effective at preserving safety guardrails and prior capabilities compared to other methods. Lastly, we fine-tune math-trained models on code generation to show that FRPO maintains 22% higher accuracy on MATH than GRPO. 21.1 Related Work 
+
+RLHF. RLHF optimizes a KL-regularized objective to align LLMs (Christiano et al., 2017; Ouyang et al., 2022; Bai et al., 2022; Stiennon et al., 2020). PPO (Schulman et al., 2017) is the standard choice but requires a learned critic, whereas GRPO and RLOO (Shao et al., 2024; Ahmadian et al., 2024) remove this requirement via group-based advantages. DPO (Rafailov et al., 2023) bypasses reward modeling entirely. We modify GRPO to incorporate robustness while preserving its computational simplicity. 
+
+Distributionally robust optimization and robust RL. Distributionally robust optimization (DRO) opti-mizes worst-case performance over uncertainty sets (Shapiro and Kleywegt, 2002; Kuhn et al., 2019; Duchi and Namkoong, 2021; Shapiro, 2017). Applications include group distributionally robustness and domain adaptation (Sagawa et al., 2019; Oren et al., 2019; Sinha et al., 2017). In RL, robust MDPs consider adversarial dynamics (Vinitsky et al., 2020; Pinto et al., 2017), while risk-sensitive RL optimizes CVaR (Chow et al., 2015; Tamar et al., 2015) or entropic risk (Osogami, 2012; Fei et al., 2021b,a). Unlike robust MDPs (Smirnova et al., 2019; Eysenbach and Levine, 2021; Zhang et al., 2020; Derman and Mannor, 2020) that perturb environment dynamics and demand robust decisions, our method perturbs the policy itself in an RLHF setting to stay robust to downstream fine-tuning. We apply DRO to the policy space with KL constraints, yielding an entropic risk objective over trajectories. 
+
+Flat minima and sharpness-aware optimization. Flat minima in the loss landscape correlate with better generalization (Keskar et al., 2016; Jiang et al., 2019; Cha et al., 2021). This motivates sharpness-aware minimization (SAM) (Foret et al., 2020) and variants (Kwon et al., 2021; Zhuang et al., 2022; Kim et al., 2022). SAM considers a min-max loss in the parameter space, seeking flat regions. Our method is analogous but operates in policy space on the reward landscape: we seek “reward flatness” over a KL neighborhood. This yields policies stable under downstream perturbations—a different notion from parameter-space flatness. 
+
+Adversarial training for alignment. Several methods train models to preserve alignment after adversarial fine-tuning. TAR (Tamirisa et al., 2024) performs iterative adversarial fine-tuning to identify vulnerable config-urations; Circuit Breaking (Zou et al., 2024) projects unsafe inputs to incoherent outputs, and Representation Noising (Rosati et al., 2024) drives harmful representations toward random noise. These methods involve expensive inner-loop optimization (TAR) or modify internal representations (Representation Rerouting) that is primarily applicable to safety rather than a general objective. In contrast, we derive a closed-form solution for optimizing a general-purpose reward and demonstrate broader effectiveness on mathematical reasoning and continual learning as well. Additional related work is provided in Section A. 
+
+# 2 Preliminaries: RLHF and Fine-tuning 
+
+We study the scenario where a base model is fine-tuned on a downstream task. Let x ∼ p(x) denote a prompt and yi = ( yi,1 , . . . , yi,|yi |) ∼ π(· | x) a full generated sample, where yi,t ∼ π(· | [x, yi,<t]) . We denote the reference policy with πref as the model before the RLHF stage. At training time, we aim to optimize the policy 
+
+πθ as the base policy we want to be robust to downstream fine-tuning. At the downstream stage, we wish to optimize a policy Q initialized from πθ . Therefore, the chain of models is: πref → πθ → Q.
+
+RLHF objective and policy optimization. Following standard RLHF and given a reward signal, we define the trajectory return r(x, y) = ∑|yi | 
+
+> t=1
+
+rt(x, y≤t) (often implemented as an outcome reward, i.e., one reward for the entire response). The RLHF objective then maximizes (Ouyang et al., 2022): 
+
+max  
+
+> θ
+
+Ex∼p Ey∼πθ (·| x)
+
+r(x, y) − β Ex∼p
+
+ KL (πθ (·| x) ∥ πref (·| x)) 
+
+In practice, this objective is optimized with PPO-style policy gradients using on-policy samples from a lagged policy πold (Schulman et al., 2017); we adopt GRPO (Shao et al., 2024) as an efficient algorithm for optimizing this objective, which we summarize next. 3GRPO for policy optimization. For each prompt x, GRPO samples a group of responses yi 
+
+> Gi=1
+
+∼ πold (· | 
+
+x). It then updates the trainable policy πθ using a PPO-style clipped importance ratio. Without a learned critic, advantages are obtained from within-group reward statistics, and a KL penalty to a fixed reference policy is added directly to the loss: 
+
+J(θ) = Ex∼p
+
+"
+
+1
+
+G
+
+> G
+
+# ∑
+
+> i=1
+
+1
+
+|yi| 
+
+> |yi|
+
+# ∑
+
+> t=1
+
+min 
+
+(
+
+πθ (yi,t|x, yi,<t)
+
+πold (yi,t|x, yi,<t) Ai,t,
+
+ πθ (yi,t|x, yi,<t)
+
+πold (yi,t|x, yi,<t)
+
+1+ϵ
+
+> 1−ϵ
+
+Ai,t
+
+)! # 
+
+− β KL (πθ ∥πref ) (2.1) where Ai,t ≡ Ai = ri − 1 
+
+> G
+
+∑Gj=1 rj as we only work with an outcome-based reward. Unlike the approach of (Shao et al., 2024), we do not normalize the advantages by the standard deviation to avoid the difficulty bias reported in (Liu et al., 2025). The KL divergence is estimated with the following approximately unbiased estimator (Ouyang et al., 2022): 
+
+KL (πθ (· | x) ∥ πref (· | x)) ≈ 1
+
+G
+
+> G
+
+# ∑
+
+> i=1
+
+1
+
+|yi| 
+
+> |yi|
+
+# ∑
+
+> t=1
+
+ πref (yi,t|x, yi,<t)
+
+πθ (yi,t|x, yi,<t) − log πref (yi,t|x, yi,<t)
+
+πθ (yi,t|x, yi,<t) − 1
+
+
+
+(2.2) 
+
+KL-bounded fine-tuning. In standard downstream adaptation, the fine-tuned policy Q does not move arbitrarily far from its initialization πθ . In RL-based methods, this is enforced explicitly via trust-region updates (Schulman et al., 2015) or the KL regularizer (the RLHF penalty to a reference policy) (Schulman et al., 2017; Ouyang et al., 2022). In SFT, this is controlled implicitly through conservative optimization choices like small learning rates and early stopping (Mosbach et al., 2020; Dodge et al., 2020), or parameter-efficient updates such as LoRA (Hu et al., 2022). This is validated in Figure 2, where the KL grows controllably during SFT. In contrast, aggressive fine-tuning with large learning rates or extensive epochs often leads to overfitting; this is illustrated in Section F.1, where fine-tuning on Alpaca (Taori et al., 2023) with a high learning rate causes a significant harm to the general capabilities. Motivated by this, we model downstream adaptation as a policy Q that remains within a KL neighborhood of πθ .
+
+# 3 Problem Formulation: Robust RLHF 
+
+Our primary objective is to train a policy πθ that preserves its expected reward across all fine-tuned variants Q
+
+lying within a specified distance of πθ . More concretely, let p(x) be a distribution over contexts, let πθ (y | x)
+
+denote the trainable base policy, let πref (y | x) be a fixed reference policy (e.g., the pre-RLHF model), and let 
+
+r(x, y) be a scalar reward. We consider any arbitrary Q(y|x) that is an adaptation of πθ (·| x) in downstream fine-tuning, but that must stay within an average KL ball of radius ρ > 0:
+
+max 
+
+> πθ
+
+inf  
+
+> Q
+
+Ex∼p Ey∼Q(·| x)[ r(x, y) ] 
+
+| {z }
+
+> robust reward
+
+−β KL  πθ ∥πref 
+
+ (3.1) s.t. Ex∼p
+
+h
+
+KL  Q(· | x) πθ (· | x)i
+
+≤ ρ, ∀x :
+
+> Z
+
+Q(dy | x) = 1. 
+
+Crucially, the constraint is imposed in expectation over the prompt distribution p(x), rather than point-wise for each x. This allows the downstream policy to change significantly on task-relevant prompts (where fine-tuning occurs), but requires it to stay close on average. We use the following lemma from (Shapiro, 2017; Duchi and Namkoong, 2021) modified to handle the additional expectation over x. The proof can be found in Section C. 
+
+Lemma 3.1 (Inner optimization under a general f –divergence) . Let f : R → R+ ∪ { +∞} be a convex function with f (1) = 0. Define the likelihood ratio L(y | x) := Q(y|x) 
+
+> π(y|x)
+
+. Then, the inner problem in Equation (3.1) under the average constraint: 
+
+Ex∼p Ey∼π(·| x)[ f (L(y | x)) ] ≤ ρ, Ey∼π(·| x)[ L(y | x) ] = 1 ∀x
+
+4admits the following dual form: 
+
+inf  
+
+> Q
+
+Ex∼p Ey∼Q(·| x)[ r(x, y) ] = sup  
+
+> λ≥0, η:X → R
+
+n
+
+− λρ − Ex∼p η(x)
+
+− λ Ex∼p Ey∼π(·| x)
+
+h
+
+f ∗ − r(x, y) − η(x)
+
+λ
+
+io 
+
+, (3.2) 
+
+where f ∗(s) := sup t≥0{st − f (t)} is the Fenchel conjugate. In addition, if the supremum is finite, it is attained at some (λ∗, η∗).
+
+In our setting, we take f (x) = x log (x) that leads to the forward KL divergence between Q and πθ . Then, it is easy to see that the conjugate is f ∗(y) = exp (y − 1), and the corresponding optimal likelihood ratio is 
+
+L(y|x) = exp (−r(x,y)/λ) 
+
+> Ey∼πθ(·| x)
+
+[e− r(x,y)/λ ] . The optimization problem thus becomes: 
+
+sup  
+
+> λ,η
+
+n
+
+Ex∼p Ey∼πθ (·| x)
+
+h
+
+− λ exp   − 1
+
+λ (r(x, y) + η(x) + λ) − η(x)
+
+i
+
+− λρ 
+
+o
+
+For each x, Equation (3.2) can be optimized w.r.t. η(x) separately. After plugging in, we obtain: 
+
+min  
+
+> L
+
+max  
+
+> λ≥0, η
+
+L = max  
+
+> λ≥0
+
+max  
+
+> η(x)
+
+min  
+
+> L
+
+L(L, λ, η) = max 
+
+> λ≥0
+
+ − Ex∼p
+
+λ log Z(x) − λρ , (3.3) 
+
+Z(x) := Ey∼πθ (·| x)
+
+h
+
+e− r(x,y)/λi
+
+Combining with Equation (3.1), the saddle problem reduces to the following max–max program where we can swap the order of the two maxes to obtain the following: 
+
+max  
+
+> λ≥0
+
+max 
+
+> πθ
+
+n
+
+− Ex∼p
+
+h
+
+λ log 
+
+
+
+Ey∼πθ (·| x) e− r(x,y)/λi 
+
+− λρ − β KL  πθ ∥πref 
+
+o
+
+(3.4) Eventually, we view λ as a tunable hyperparameter in the policy optimization. Therefore, the final optimization is: 
+
+max 
+
+> πθ
+
+
+
+− Ex∼p
+
+h
+
+λ log 
+
+
+
+Ey∼πθ (·| x) e− r(x,y)/λi 
+
+− β KL  πθ ∥πref 
+
+| {z } 
+
+> Jλ(θ)
+
+
+
+(3.5) 
+
+Remark 3.2. If ρ = 0 (unperturbed objective), then the optimal λ is λ∗ = ∞, which recovers GRPO and the term E[r(x, y)] in the objective as λ → ∞. To see this, we start from ρ = 0 and write (3.3) as 
+
+− min λ≥0[Ex∼p
+
+λ log Z(x) + λρ ]. Now, by the Jensen’s inequality and the concavity of the log function, we have log Z(x) ≥ Ey∼πθ (·| x)[−r(x, y)/λ], and also Ex∼p
+
+λ log Z(x) ≥ E[−r(x, y)] . Furthermore, by taking λ → ∞ we can achieve this minimum. Therefore, the optimal value is λ∗ = ∞.
+
+Remark 3.3. The max-min formulation yields the entropic risk −λ log Eπθ e−r/λ, where smaller λ yields a more risk-averse objective. For large λ, by a Taylor expansion in 1/ λ and keeping O(1/ λ), the first two terms in (3.4) become: 
+
+max  
+
+> λ≥0
+
+max 
+
+> πθ
+
+
+
+E[r(x, y)] − 12λ Var (r(x, y)) − λρ 
+
+
+
+= max 
+
+> πθ
+
+
+
+E[r(x, y)] −
+
+q
+
+2ρVar (r(x, y)) 
+
+
+
+This shows a trade-off between mean reward and variance in the objective, favoring more consistent policies. Then, this reward consistency in the dual problem transfers to policy robustness in the primal problem. 5Algorithm 1 Fine-tuning Robust Policy Optimization (FRPO)  
+
+> 1:
+
+Initialize policy parameters θ. 
+
+> 2:
+
+for iteration k = 1, 2, . . . do  
+
+> 3:
+
+πold ← πθ ▷ lagged sampling policy; updated every iteration (or every K iterations)  
+
+> 4:
+
+for all x in minibatch do  
+
+> 5:
+
+Sample {yi}Gi=1 ∼ πold (· | x) 
+
+> 6:
+
+ri ← r(x, yi); Ai ← ri − 1 
+
+> G
+
+∑Gj=1 rj ▷ centered group advantages  
+
+> 7:
+
+Compute ˆZλ(x) using clipped ratios πθ 
+
+> πold
+
+(Eq. 4.1) ▷ partition function  
+
+> 8:
+
+Compute leave-one-out ˆZλ,−j(x) for j = 1, . . . , G 
+
+> 9:
+
+log ˜ Zλ(x) ← G log ˆ Zλ(x) − G−1 
+
+> G
+
+∑Gj=1 log ˆ Zλ,−j(x) ▷ jackknife: reduces O(1/ G) bias  
+
+> 10:
+
+J(θ) ← Ex
+
+h
+
+− λ log ˜ Zλ(x) − β KL (πθ ∥πref )
+
+i
+
++ baseline (Eq. 4.2) ▷ add the baseline and the KL  
+
+> 11:
+
+Update θ ← θ + η∇θ J(θ).
+
+# 4 FRPO Algorithm 
+
+We derived the robust objective Jλ(θ) in Equation (3.5). Following the discussion in Section 2, we focus on the outcome-based setting where ri,t = ri = r(x, yi), and use the centered advantages: Ai = ri − 1 
+
+> G
+
+∑Gj=1 rj.We now explain how to optimize this objective using a GRPO-style policy gradient. First, we rewrite the inner expectation under πold using importance sampling, as samples are drawn from the lagged policy. The objective becomes: 
+
+Jλ(θ) = Ex∼p
+
+
+
+−λ log 
+
+
+
+Ey∼πold (·| x)
+
+πθ (y|x)
+
+πold (y|x) e− r(x,y)/λ
+
+− β KL  πθ ∥πref 
+
+
+
+We replace rewards with advantages in the equation above; we show in Section D that subtracting the group average does not affect the gradient. Using token-wise ratios and clipping in Equation (2.1), the Monte Carlo estimate of the objective becomes: 
+
+Jλ(θ) = Ex∼p
+
+h
+
+− λ log   ˆZλ(x) − KL (πθ ∥ πref )
+
+i
+
+, (4.1) 
+
+ˆZλ(x) := 1
+
+G
+
+> G
+
+# ∑
+
+> i=1
+
+1
+
+|yi| 
+
+> |yi|
+
+# ∑
+
+> t=1
+
+e−Ai,t /λ
+
+ πθ (yi,t|x, yi,<t)
+
+πold (yi,t|x, yi,<t)
+
+1+ϵ
+
+Here we use that eA/λ ≥ 0, and min {u, u 1+ϵ
+
+> 1−ϵ
+
+} = u 1+ϵ for u ≥ 0, and KL is plugged in from Equation (2.2). 
+
+Baseline. In Section D, we show that when λ is large, the gradient of the log-partition function estimate 
+
+log (Z) has a high variance, leading to convergence issues as discussed in several prior works (Chung et al., 2021; Mei et al., 2022). We address this by adding a baseline to the objective that completely cancels the leading drift term in the gradient for large λ, but does not change the expected gradient. This extra term makes our algorithm converge to GRPO as λ → ∞ (see Theorem 3.2). 
+
+Jlow-variance (θ) = J(θ) + λ Ex∼p
+
+1
+
+G
+
+> G
+
+# ∑
+
+> i=1
+
+1
+
+|yi| 
+
+> |yi|
+
+# ∑
+
+> t=1
+
+ πθ (yi,t|x, yi,<t)
+
+πold (yi,t|x, yi,<t)
+
+1+ϵ!| {z }
+
+> baseline
+
+(4.2) The term inside the sum is independent of the advantages and only adds a constant to the objective in expectation. 
+
+Bias reduction. In Section E, we show that the Monte Carlo approximation of log Z(x) introduces a bias of order O(1/ G) in ∇θ Jλ(θ). This bias is problematic when the group size G is small (the standard group size is typically between 4 and 16). Then, we show that the jackknife technique reduces this bias to O(1/ G2).6Figure 2: (left/middle) The safety reward for Mistral and Qwen as the policy moves from the base by increasing the KL during fine-tuning, when sweeping λ, and evaluated on a split of the safety prompts; λ = 0.2 better preserves the safety reward for both models and yields the most flat landscape. (right) KL is the average 
+
+sequence-level on safety prompts which increases under a constant-lr schedule. Skipping the KL regularizer and the baseline term for readability, we write the corrected objective as: 
+
+Jcorrected (θ) = Ex∼p
+
+"
+
+− λG log   ˆZλ(x) + λ G − 1
+
+G
+
+> G
+
+# ∑
+
+> j=1
+
+log   ˆZλ,−j(x) #
+
+(4.3) where ˆZλ,−j(x) is the leave-one-out estimate with index j removed. The full algorithm with the baseline and the jackknife correction is summarized in Algorithm 1. 
+
+# 5 Experiments 
+
+Our experimental investigation focuses on two scenarios: (i) Safety training with RLHF , where we aim to mitigate the catastrophic forgetting of safety guardrails; and (ii) Math training with RL , which represents a broader non-safety application where we study the preservation of mathematical accuracy after fine-tuning on code generation. 
+
+# 5.1 Robustness in Safety Training 
+
+We train two model families: Mistral-v0.1-Instruct (Jiang et al., 2023) and Qwen2.5-7B-Instruct (Qwen et al., 2025). We include Mistral because its lack of built-in guardrails makes the contrast between our method and GRPO clearer. Additionally, Qwen is a more capable model and a standard baseline for GRPO in the literature and does not have strong guardrails. 
+
+Training Results. Our safety dataset contains 1000 harmful and 1000 harmless prompts (to avoid over-refusal). We use separate rewards: a safety score for harmful prompts, and a helpfulness reward for harmless prompts. Details are in Section B.1. We show that FRPO achieves similar training results as GRPO (Figure 6) with no difference in safety evaluations (see below). Additionally, in Section B.3, we show that allowing for a larger KL by reducing β enables FRPO to find more reward-flat solutions that better preserve the reward under fine-tuning. 
+
+Evaluations. we report the refusal rate on HarmBench and the harmfulness score from StrongREJECT (Mazeika et al., 2024; Souly et al., 2024) under three downstream fine-tuning settings: (i) SFT on Alpaca (Taori et al., 2023), which prior work (Qi et al., 2023) reports can harm the guardrails; (ii) SFT on GSM8K (Cobbe et al., 2021), testing vulnerability under math fine-tuning similar to (Qi et al., 2024); (iii) RL on UltraFeedback (Cui et al., 2023), probing the helpfulness-harmlessness tradeoff (Bai et al., 2022; Tan et al., 2025). All results are averaged over 3 runs. 7Selection of λ. For FRPO, we sweep values in [0.05, 5] and select λ based on the safety reward after downstream fine-tuning. Importantly, we perform this selection only once using Alpaca and keep the same λ
+
+for all other downstream tasks . This is justified because the optimal λ in Equation (3.3) depends on the KL range and reward statistics, not the specific downstream task. 
+
+Baselines. Our primary baselines are GRPO-trained models using the same base model and safety dataset, which ensures a controlled comparison. For broader comparison, we include: (i) Llama-3.1-8B (Meta AI, 2024), a model with standard guardrails; (ii) Llama-3-TAR-refusal (Tamirisa et al., 2024), which runs iterative adversarial fine-tuning to find vulnerable policies; (iii) Llama-3-RR and Mistral-RR (Zou et al., 2024) models, which use an unlearning approach; (iv) Llama-3-derta (Yuan et al., 2025), which improves robustness to jailbreaking attacks. 
+
+5.1.1 SFT on Alpaca 
+
+We evaluate the robustness of the guardrails to instruction-tuning by SFT on Alpaca (Taori et al., 2023), a chat-based fine-tuning dataset, following the setting of (Qi et al., 2023). We use a small learning rate (lr = 10 −6) to better preserve general capabilities; in Section F.1, we show that larger learning rates degrade both general capabilities and safety reward. We fine-tune the models for 1 epoch, and use a constant learning rate (with a warm-up) so that the KL from the base model increases steadily (see Figure 2, right). We first study how the value of λ impacts robustness, and find that λ = 0.2 is optimal for both Mistral and Qwen models. We then compare the results with those of other baselines. 
+
+Role of λ in the reward landscape. We fine-tune all models and measure the safety reward on the safety-training data. For different values of λ, Figure 2 (left/middle) shows the trajectory of the safety reward on the landscape during fine-tuning as the KL increases. When decreasing λ from GRPO ( λ → ∞), the final reward improves up to the optimal point and decreases afterwards. Early in fine-tuning, when the KL is small, GRPO has the highest reward because it optimizes the average reward. But as KL grows, its reward falls below other λ values. For Mistral, λ ∈ { 0.2, 0.5 } perform best in the explored KL range. The model with λ = 0.2 
+
+starts slightly below λ = 0.5 for small KL, but surpasses it later as KL increases (larger ρ in Equation (3.1) leads to a smaller λ in the dual problem). We therefore use λ = 0.2 in the main comparisons. For Qwen, the separation is larger and λ = 0.2 better preserves the reward. 
+
+Main results. We compare the results on HarmBench and StrongREJECT in Figure 3. The first two columns compare methods starting from the same base model, showing gains over GRPO baselines and Mistral-RR, even though Mistral-RR effectively unlearns unsafe content. The right column compares against other baselines. After downstream fine-tuning, models trained with FRPO and λ = 0.2 maintain the highest refusal rates on HarmBench and match Llama-3-RR on StrongREJECT. As a sanity check, we also verify that improved safety is not due to overfitting or performing worse on the downstream task. This is studied in Section F.2: we show that the results on Alpaca are similar to those of GRPO and that general capabilities, measured by the helpfulness reward on UltraFeedback, remain similar across models. 
+
+5.1.2 SFT on GSM8K 
+
+We test whether safety alignment is preserved under math fine-tuning with GSM8K (Cobbe et al., 2021). This is motivated by Qi et al. (2024) that show fine-tuning on GSM8K increases the attack success rate on Llama-2 models. We fine-tune the safety-trained models with SFT on GSM8K solutions for 1 epoch with 
+
+lr = 6 × 10 −6. We compare only with the Mistral- and Qwen-based baselines here, and a broader comparison is deferred to Section F.3. 
+
+Safety during fine-tuning. The safety evaluations on HarmBench and StrongREJECT can be seen in Figure 4. The Qwen model trained with our method and λ = 0.2 better preserves the safety on both benchmarks. The gap with GRPO is larger for Mistral, and our method significantly slows the safety degradation. In general, we observe a sharper drop in safety for Mistral models than for Qwen and other baselines under GSM8K SFT. We hypothesize that this is due to Mistral’s weaker GSM8K performance, leading to stronger training signals during fine-tuning. 8(a) (b) (c)   
+
+> (d) (e) (f)
+
+Figure 3: Safety evaluation after Alpaca SFT on HarmBench ( ↑ is better) and StrongREJECT ( ↓ is better). (a,d) 
+
+and (b,e) compare models from the same reference (Mistral and Qwen), showing consistent improvements of our method over GRPO baselines. (c,f) Broader comparison with other safety-focused methods; our approach achieves the highest refusal rates on HarmBench and competitive StrongREJECT scores. 
+
+Figure 4: Safety metrics during GSM8k SFT for Mistral and Qwen models. Our method maintains higher refusal rates (left, ↑ is better) and better StrongREJECT scores (right, ↓ is better) compared to GRPO baselines. 
+
+Is improved safety an artifact of reduced downstream adaptation? We analyze whether the preservation of safety guardrails could reflect a weaker downstream adaptation (i.e., the model changes less and therefore forgets less). We evaluate the models before and after GSM8K fine-tuning on the following benchmarks: GSM8K, MMLU (general capabilities), IFEval (instruction-following), and HumanEval (coding). As Table 1 shows, post fine-tuning metrics on these benchmarks are similar for our method and GRPO. This indicates that the improved safety is not explained by a failure to learn the downstream task, but rather by finding updates that better preserve safety while maintaining comparable downstream performance. 
+
+5.1.3 RL on Helpfulness 
+
+We consider RL fine-tuning and test if the robustness observed under SFT persists. Prior work shows that harmlessness and helpfulness often conflict (Bai et al., 2022; Tan et al., 2025). We study this tradeoff by fine-tuning on 15k UltraFeedback prompts (Cui et al., 2023) with GRPO, using Llama-3.1-8B-Instruct-RM-RB2 (Malik et al., 2025) as the reward model. We again sweep λ and tune β to keep all models at roughly the same KL distance from their base policy. 9GSM8K (maj@8) MMLU (5-shot) IFEval (pass@1) HumanEval Base Models Base FT Base FT Base FT Base FT Mistral-v0.1-Instruct 50.5 57.4 55.0 53.7 39.6 37.2 28.7 23.2 Mistral-GRPO 48.4 55.5 54.9 54.1 34.4 38.0 32.3 24.4 Mistral-FRPO( λ=0.2) 48.7 56.2 55.2 54.2 36.6 37.0 31.1 24.4 Table 1: Downstream task performance before (Base) and after (FT) GSM8K fine-tuning. FRPO achieves similar scores to GRPO across all benchmarks. This confirms that the improved safety retention shown in Figure 4 is not due to weaker downstream adaptation. 
+
+Figure 5: (left) Fine-tuning the models on UltraFeedback with GRPO leads to a significant increase in the average response length, inducing more detailed answers to harmful demands. (right) Helpfulness vs. Safety score (1 − StrongREJECT score) for Mistral models after GRPO on UltraFeedback. λ = 0.5 has better safety score but also lower helpfulness. λ = 2.0 and GRPO have the higher helpfulness score. 
+
+Helpfulness-safety trade-off under RL. UltraFeedback consists of complex prompts (e.g., multi-step coding tasks) that require long responses. Accordingly, the average response length increases during training (see Figure 5, left). This affects the responses to unsafe prompts, and models tend to generate more detailed harmful content. Figure 5 (right) shows StrongREJECT scores declining over training across all models (initial values shown in Figure 2, left). We observe a clear tradeoff: smaller λ better preserves safety (StrongREJECT), while larger λ slightly improves helpfulness at the cost of safety. Overall, GRPO and λ ∈ { 2.0, 1.0, 0.5, 0.2 }
+
+lie on a Pareto frontier. This behavior matches the intuition in Figure 1: within a specific KL ball, the best λ
+
+yields a more reward-flat landscape, thus reducing drift toward helpfulness as the two objectives conflict. 
+
+# 5.2 Robustness in Math Training 
+
+We test whether our method reduces forgetting of math capabilities after further fine-tuning. We start from Qwen2.5-Math-7B and train on MATH (Hendrycks et al., 2021) (levels 3–5) using the Qwen-Math template, following (Liu et al., 2025). We use an outcome-only 0–1 reward that verifies the final answer, with a small bonus when a final answer is provided (details in Section B.2). We train with GRPO and FRPO for 
+
+λ ∈ [0.1, 10 ]. We first show that all models reach a similar accuracy on MATH500. We then fine-tune all math-trained models with SFT on 25k samples from "nvidia/OpenCodeInstruct" (Ahmad et al., 2025), an instruction-tuning dataset for code generation. The goal is to improve performance on coding benchmarks such as MBPP+ (Austin et al., 2021; Liu et al., 2023) while avoiding an accuracy drop on MATH500, thereby demonstrating improved continual learning across math and coding. 
+
+Math training. Training results are provided in Section B.2. All the models behave similarly during training and converge to a similar accuracy: the top row of Table 2 shows that all models reach roughly 73% on MATH500, improving over Qwen2.5-Math-7B (56.6%). We also report MBPP+ results after math training in the third row of Table 2. All models remain close to the base MBPP+ accuracy (57.4%). 
+
+Code fine-tuning We fine-tune all math-trained models on "OpenCodeInstruct" using SFT. In initial experi-ments, full-parameter fine-tuning without LoRA caused a substantial drop in MATH500 accuracy, so we use LoRA with rank r = 16 and lr = 5 × 10 −5 for all models. Results on MATH500 and MBPP+ are summarized 10 GRPO (λ→∞)FRPO (λ=10) FRPO (λ=4) FRPO (λ=2) FRPO (λ=1) FRPO (λ=0.5) FRPO (λ=0.2) FRPO (λ=0.1) MATH500 Base 73.0 73.0 73.2 73.0 73.0 73.4 73.4 71.6 FT 42.3 ( ± 2) 44.5 ( ± 3) 61.0 ( ± 3) 64.5 (± 2) 63.1( ± 2) 53.6( ± 2) 59.3 ( ± 4) 54.6 ( ± 3) MBPP+ Base 57.1 57.9 57.4 57.9 58.2 57.9 57.1 57.7 FT 62.5 62.2 61.2 62.4 62.0 61.8 61.7 61.7 
+
+Table 2: Performance before (Base) and after (FT) code fine-tuning all the math-trained model on "OpenCode-Instruct". FRPO with λ = 2.0 best preserves math accuracy while achieving comparable coding performance. Results are averaged over 3 fine-tuning seeds. in Table 2. FRPO with λ = 2.0 preserves MATH500 accuracy best across models, outperforming GRPO by 22%. On MBPP+, all the models improve similarly, with a 4–5% gain. The optimal λ here differs from the optimal λ in safety training. This is because the optimal λ must be derived from Equation (3.3), and depends on training reward statistics; in particular, it is related to the reward standard deviation. In the math setting, the final standard deviation is roughly 10 × larger than in safety training ( ∼ 0.5 vs. ∼ 0.05 ). 
+
+# 6 Conclusion 
+
+We proposed that robustness to downstream fine-tuning should be incorporated directly into the base policy during RLHF, rather than relying on later interventions. Our approach begins by optimizing reward stability within a KL-bounded neighborhood of policies. Solving this resulting max–min formulation yields FRPO, a robust policy gradient method that identifies reward-flat regions in policy space. Experiments demonstrate that this form of robustness transfers across diverse domains, including safety alignment and mathematical reasoning. Notably, FRPO maintained up to 22% higher mathematical accuracy under code fine-tuning. This work opens several promising directions. The principle of optimizing for robustness to future adaptation may extend beyond RLHF to pretraining and supervised fine-tuning. Moreover, understanding which capabilities are inherently easier, or harder, to make robust remains an open question, with implications for alignment and continual learning. 
+
+# Acknowledgment 
+
+This research has been supported by Coefficient Giving and the UK AI Security Institute. AJ was supported in part by the Sloan fellowship in mathematics, the NSF Award DMS-2311024, an Amazon Faculty Research Award, an Adobe Faculty Research Award and an iORB grant form USC Marshall School of Business. 11 References 
+
+Josh Achiam, Steven Adler, Sandhini Agarwal, Lama Ahmad, Ilge Akkaya, Florencia Leoni Aleman, Diogo Almeida, Janko Altenschmidt, Sam Altman, Shyamal Anadkat, et al. Gpt-4 technical report. arXiv preprint arXiv:2303.08774 , 2023. Armen Aghajanyan, Akshat Shrivastava, Anchit Gupta, Naman Goyal, Luke Zettlemoyer, and Sonal Gupta. Better fine-tuning by reducing representational collapse. arXiv preprint arXiv:2008.03156 , 2020. Wasi Uddin Ahmad, Aleksander Ficek, Mehrzad Samadi, Jocelyn Huang, Vahid Noroozi, Somshubra Majum-dar, and Boris Ginsburg. Opencodeinstruct: A large-scale instruction tuning dataset for code llms. arXiv preprint arXiv:2504.04030 , 2025. Arash Ahmadian, Chris Cremer, Matthias Gallé, Marzieh Fadaee, Julia Kreutzer, Olivier Pietquin, Ahmet Üstün, and Sara Hooker. Back to basics: Revisiting reinforce style optimization for learning from human feedback in llms. arXiv preprint arXiv:2402.14740 , 2024. Michael Ahn, Anthony Brohan, Noah Brown, Yevgen Chebotar, Omar Cortes, Byron David, Chelsea Finn, Chuyuan Fu, Keerthana Gopalakrishnan, Karol Hausman, et al. Do as i can, not as i say: Grounding language in robotic affordances. arXiv preprint arXiv:2204.01691 , 2022. Jacob Austin, Augustus Odena, Maxwell Nye, Maarten Bosma, Henryk Michalewski, David Dohan, Ellen Jiang, Carrie Cai, Michael Terry, Quoc Le, et al. Program synthesis with large language models. arXiv preprint arXiv:2108.07732 , 2021. Yuntao Bai, Andy Jones, Kamal Ndousse, Amanda Askell, Anna Chen, Nova DasSarma, Dawn Drain, Stanislav Fort, Deep Ganguli, Tom Henighan, et al. Training a helpful and harmless assistant with reinforcement learning from human feedback. arXiv preprint arXiv:2204.05862 , 2022. Dan Biderman, Jacob Portes, Jose Javier Gonzalez Ortiz, Mansheej Paul, Philip Greengard, Connor Jennings, Daniel King, Sam Havens, Vitaliy Chiley, Jonathan Frankle, et al. Lora learns less and forgets less. arXiv preprint arXiv:2405.09673 , 2024. Junbum Cha, Sanghyuk Chun, Kyungjae Lee, Han-Cheol Cho, Seunghyun Park, Yunsung Lee, and Sungrae Park. Swad: Domain generalization by seeking flat minima. Advances in Neural Information Processing Systems , 34:22405–22418, 2021. Yinlam Chow, Aviv Tamar, Shie Mannor, and Marco Pavone. Risk-sensitive and robust decision-making: a cvar optimization approach. In C. Cortes, N. Lawrence, D. Lee, M. Sugiyama, and R. Garnett, editors, 
+
+Advances in Neural Information Processing Systems , volume 28. Curran Associates, Inc., 2015. URL https: //proceedings.neurips.cc/paper_files/paper/2015/file/64223ccf70bbb65a3a4aceac37e21016-Paper.pdf. Paul F Christiano, Jan Leike, Tom Brown, Miljan Martic, Shane Legg, and Dario Amodei. Deep reinforcement learning from human preferences. Advances in neural information processing systems , 30, 2017. Wesley Chung, Valentin Thomas, Marlos C Machado, and Nicolas Le Roux. Beyond variance reduction: Understanding the true impact of baselines on policy optimization. In International conference on machine learning , pages 1999–2009. PMLR, 2021. Karl Cobbe, Vineet Kosaraju, Mohammad Bavarian, Mark Chen, Heewoo Jun, Lukasz Kaiser, Matthias Plappert, Jerry Tworek, Jacob Hilton, Reiichiro Nakano, et al. Training verifiers to solve math word problems. arXiv preprint arXiv:2110.14168 , 2021. Ganqu Cui, Lifan Yuan, Ning Ding, Guanming Yao, Bingxiang He, Wei Zhu, Yuan Ni, Guotong Xie, Ruobing Xie, Yankai Lin, et al. Ultrafeedback: Boosting language models with scaled ai feedback. arXiv preprint arXiv:2310.01377 , 2023. Justin Cui, Wei-Lin Chiang, Ion Stoica, and Cho-Jui Hsieh. Or-bench: An over-refusal benchmark for large language models. arXiv preprint arXiv:2405.20947 , 2024. 12 Matthias De Lange, Rahaf Aljundi, Marc Masana, Sarah Parisot, Xu Jia, Aleš Leonardis, Gregory Slabaugh, and Tinne Tuytelaars. A continual learning survey: Defying forgetting in classification tasks. IEEE transactions on pattern analysis and machine intelligence , 44(7):3366–3385, 2021. Cyprien de Masson D’Autume, Sebastian Ruder, Lingpeng Kong, and Dani Yogatama. Episodic memory in lifelong language learning. Advances in Neural Information Processing Systems , 32, 2019. Esther Derman and Shie Mannor. Distributional robustness and regularization in reinforcement learning. arXiv preprint arXiv:2003.02894 , 2020. Aladin Djuhera, Swanand Ravindra Kadhe, Farhan Ahmed, Syed Zawad, and Holger Boche. Safemerge: Preserving safety alignment in fine-tuned large language models via selective layer-wise model merging. 
+
+arXiv preprint arXiv:2503.17239 , 2025. Jesse Dodge, Gabriel Ilharco, Roy Schwartz, Ali Farhadi, Hannaneh Hajishirzi, and Noah Smith. Fine-tuning pretrained language models: Weight initializations, data orders, and early stopping. arXiv preprint arXiv:2002.06305 , 2020. Danny Driess, Fei Xia, Mehdi SM Sajjadi, Corey Lynch, Aakanksha Chowdhery, Ayzaan Wahid, Jonathan Tompson, Quan Vuong, Tianhe Yu, Wenlong Huang, et al. Palm-e: An embodied multimodal language model. arXiv preprint arXiv:2303.03378 , 2023. John C Duchi and Hongseok Namkoong. Learning models with uniform performance via distributionally robust optimization. The Annals of Statistics , 49(3):1378–1406, 2021. Benjamin Eysenbach and Sergey Levine. Maximum entropy rl (provably) solves some robust rl problems. 
+
+arXiv preprint arXiv:2103.06257 , 2021. Yingjie Fei, Zhuoran Yang, Yudong Chen, and Zhaoran Wang. Exponential bellman equation and improved regret bounds for risk-sensitive reinforcement learning. Advances in neural information processing systems ,34:20436–20446, 2021a. Yingjie Fei, Zhuoran Yang, and Zhaoran Wang. Risk-sensitive reinforcement learning with function approx-imation: A debiasing approach. In International Conference on Machine Learning , pages 3198–3207. PMLR, 2021b. Pierre Foret, Ariel Kleiner, Hossein Mobahi, and Behnam Neyshabur. Sharpness-aware minimization for efficiently improving generalization. arXiv preprint arXiv:2010.01412 , 2020. Robert M French. Catastrophic forgetting in connectionist networks. Trends in cognitive sciences , 3(4): 128–135, 1999. Shaona Ghosh, Prasoon Varshney, Makesh Narsimhan Sreedhar, Aishwarya Padmakumar, Traian Rebedea, Jibin Rajan Varghese, and Christopher Parisien. Aegis2. 0: A diverse ai safety dataset and risks taxonomy for alignment of llm guardrails. arXiv preprint arXiv:2501.09004 , 2025. Ian J Goodfellow, Mehdi Mirza, Da Xiao, Aaron Courville, and Yoshua Bengio. An empirical investigation of catastrophic forgetting in gradient-based neural networks. arXiv preprint arXiv:1312.6211 , 2013. Tyler L Hayes, Nathan D Cahill, and Christopher Kanan. Memory efficient experience replay for streaming learning. In 2019 International Conference on Robotics and Automation (ICRA) , pages 9769–9776. IEEE, 2019. Dan Hendrycks, Collin Burns, Saurav Kadavath, Akul Arora, Steven Basart, Eric Tang, Dawn Song, and Jacob Steinhardt. Measuring mathematical problem solving with the math dataset. arXiv preprint arXiv:2103.03874 , 2021. Chia-Yi Hsu, Yu-Lin Tsai, Chih-Hsun Lin, Pin-Yu Chen, Chia-Mu Yu, and Chun-Ying Huang. Safe lora: The silver lining of reducing safety risks when finetuning large language models. Advances in Neural Information Processing Systems , 37:65072–65094, 2024. 13 Yen-Chang Hsu, Yen-Cheng Liu, Anita Ramasamy, and Zsolt Kira. Re-evaluating continual learning scenarios: A categorization and case for strong baselines. arXiv preprint arXiv:1810.12488 , 2018. Edward J Hu, Yelong Shen, Phillip Wallis, Zeyuan Allen-Zhu, Yuanzhi Li, Shean Wang, Lu Wang, Weizhu Chen, et al. Lora: Low-rank adaptation of large language models. ICLR , 1(2):3, 2022. Jianheng Huang, Leyang Cui, Ante Wang, Chengyi Yang, Xinting Liao, Linfeng Song, Junfeng Yao, and Jinsong Su. Mitigating catastrophic forgetting in large language models with self-synthesized rehearsal. 
+
+arXiv preprint arXiv:2403.01244 , 2024. Gabriel Ilharco, Marco Tulio Ribeiro, Mitchell Wortsman, Suchin Gururangan, Ludwig Schmidt, Hannaneh Hajishirzi, and Ali Farhadi. Editing models with task arithmetic. arXiv preprint arXiv:2212.04089 , 2022. Albert Q. Jiang, Alexandre Sablayrolles, Arthur Mensch, Chris Bamford, Devendra Singh Chaplot, Diego de las Casas, Florian Bressand, Gianna Lengyel, Guillaume Lample, Lucile Saulnier, Lélio Renard Lavaud, Marie-Anne Lachaux, Pierre Stock, Teven Le Scao, Thibaut Lavril, Thomas Wang, Timothée Lacroix, and William El Sayed. Mistral 7b, 2023. URL https://arxiv.org/abs/2310.06825. Liwei Jiang, Kavel Rao, Seungju Han, Allyson Ettinger, Faeze Brahman, Sachin Kumar, Niloofar Mireshghal-lah, Ximing Lu, Maarten Sap, Yejin Choi, et al. Wildteaming at scale: From in-the-wild jailbreaks to (adversarially) safer language models. Advances in Neural Information Processing Systems , 37:47094– 47165, 2024. Yiding Jiang, Behnam Neyshabur, Hossein Mobahi, Dilip Krishnan, and Samy Bengio. Fantastic generalization measures and where to find them. arXiv preprint arXiv:1912.02178 , 2019. Jiantao Jiao and Yanjun Han. Bias correction with jackknife, bootstrap, and taylor series. IEEE Transactions on Information Theory , 66(7):4392–4418, 2020. Nitish Shirish Keskar, Dheevatsa Mudigere, Jorge Nocedal, Mikhail Smelyanskiy, and Ping Tak Peter Tang. On large-batch training for deep learning: Generalization gap and sharp minima. arXiv preprint arXiv:1609.04836 , 2016. Minyoung Kim, Da Li, Shell X Hu, and Timothy Hospedales. Fisher sam: Information geometry and sharpness aware minimisation. In International Conference on Machine Learning , pages 11148–11161. PMLR, 2022. Taeyoun Kim, Fahim Tajwar, Aditi Raghunathan, and Aviral Kumar. Reasoning as an adaptive defense for safety. arXiv preprint arXiv:2507.00971 , 2025. James Kirkpatrick, Razvan Pascanu, Neil Rabinowitz, Joel Veness, Guillaume Desjardins, Andrei A Rusu, Kieran Milan, John Quan, Tiago Ramalho, Agnieszka Grabska-Barwinska, et al. Overcoming catastrophic forgetting in neural networks. Proceedings of the national academy of sciences , 114(13):3521–3526, 2017. Suhas Kotha, Jacob Mitchell Springer, and Aditi Raghunathan. Understanding catastrophic forgetting in language models via implicit inference. arXiv preprint arXiv:2309.10105 , 2023. Daniel Kuhn, Peyman Mohajerin Esfahani, Viet Anh Nguyen, and Soroosh Shafieezadeh-Abadeh. Wasserstein distributionally robust optimization: Theory and applications in machine learning. In Operations research & management science in the age of analytics , pages 130–166. Informs, 2019. Jungmin Kwon, Jeongseop Kim, Hyunseo Park, and In Kwon Choi. Asam: Adaptive sharpness-aware minimization for scale-invariant learning of deep neural networks. In International conference on machine learning , pages 5905–5914. PMLR, 2021. Cheolhyoung Lee, Kyunghyun Cho, and Wanmo Kang. Mixout: Effective regularization to finetune large-scale pretrained language models. arXiv preprint arXiv:1909.11299 , 2019. Zhizhong Li and Derek Hoiem. Learning without forgetting. IEEE transactions on pattern analysis and machine intelligence , 40(12):2935–2947, 2017. 14 Jiawei Liu, Chunqiu Steven Xia, Yuyao Wang, and Lingming Zhang. Is your code generated by chatgpt really correct? rigorous evaluation of large language models for code generation. Advances in Neural Information Processing Systems , 36:21558–21572, 2023. Zichen Liu, Changyu Chen, Wenjun Li, Penghui Qi, Tianyu Pang, Chao Du, Wee Sun Lee, and Min Lin. Understanding r1-zero-like training: A critical perspective. arXiv preprint arXiv:2503.20783 , 2025. Yun Luo, Zhen Yang, Fandong Meng, Yafu Li, Jie Zhou, and Yue Zhang. An empirical study of catastrophic forgetting in large language models during continual fine-tuning. IEEE Transactions on Audio, Speech and Language Processing , 2025. Saumya Malik, Valentina Pyatkin, Sander Land, Jacob Morrison, Noah A Smith, Hannaneh Hajishirzi, and Nathan Lambert. Rewardbench 2: Advancing reward model evaluation. arXiv preprint arXiv:2506.01937 ,2025. Todor Markov, Chong Zhang, Sandhini Agarwal, Florentine Eloundou Nekoul, Theodore Lee, Steven Adler, Angela Jiang, and Lilian Weng. A holistic approach to undesired content detection in the real world. In 
+
+Proceedings of the AAAI conference on artificial intelligence , volume 37(12), pages 15009–15018, 2023. Mantas Mazeika, Long Phan, Xuwang Yin, Andy Zou, Zifan Wang, Norman Mu, Elham Sakhaee, Nathaniel Li, Steven Basart, Bo Li, et al. Harmbench: A standardized evaluation framework for automated red teaming and robust refusal. arXiv preprint arXiv:2402.04249 , 2024. Michael McCloskey and Neal J Cohen. Catastrophic interference in connectionist networks: The sequential learning problem. In Psychology of learning and motivation , volume 24, pages 109–165. Elsevier, 1989. Jincheng Mei, Wesley Chung, Valentin Thomas, Bo Dai, Csaba Szepesvari, and Dale Schuurmans. The role of baselines in policy gradient optimization. Advances in Neural Information Processing Systems , 35: 17818–17830, 2022. Meta AI. The llama 3 herd of models, 2024. URL https://arxiv.org/abs/2407.21783. Rupert G. Miller. The jackknife–a review. Biometrika , 61(1):1–15, 1974. ISSN 00063444, 14643510. URL http://www.jstor.org/stable/2334280. Marius Mosbach, Maksym Andriushchenko, and Dietrich Klakow. On the stability of fine-tuning bert: Misconceptions, explanations, and strong baselines. arXiv preprint arXiv:2006.04884 , 2020. Amin Heyrani Nobari, Kaveh Alim, Ali ArjomandBigdeli, Akash Srivastava, Faez Ahmed, and Navid Azizan. Activation-informed merging of large language models, 2025. URL https://arxiv.org/abs/2502.02421. Yonatan Oren, Shiori Sagawa, Tatsunori B Hashimoto, and Percy Liang. Distributionally robust language modeling. arXiv preprint arXiv:1909.02060 , 2019. Takayuki Osogami. Robustness and risk-sensitivity in markov decision processes. Advances in neural information processing systems , 25, 2012. Long Ouyang, Jeffrey Wu, Xu Jiang, Diogo Almeida, Carroll Wainwright, Pamela Mishkin, Chong Zhang, Sandhini Agarwal, Katarina Slama, Alex Ray, et al. Training language models to follow instructions with human feedback. Advances in neural information processing systems , 35:27730–27744, 2022. Art B. Owen. Monte Carlo theory, methods and examples . https://artowen.su.domains/mc/, 2013. Rui Pan, Xiang Liu, Shizhe Diao, Renjie Pi, Jipeng Zhang, Chi Han, and Tong Zhang. Lisa: Layerwise impor-tance sampling for memory-efficient large language model fine-tuning. Advances in Neural Information Processing Systems , 37:57018–57049, 2024. Lerrel Pinto, James Davidson, Rahul Sukthankar, and Abhinav Gupta. Robust adversarial reinforcement learning. In International conference on machine learning , pages 2817–2826. PMLR, 2017. Ameya Prabhu, Philip HS Torr, and Puneet K Dokania. Gdumb: A simple approach that questions our progress in continual learning. In European conference on computer vision , pages 524–540. Springer, 2020. 15 Xiangyu Qi, Yi Zeng, Tinghao Xie, Pin-Yu Chen, Ruoxi Jia, Prateek Mittal, and Peter Henderson. Fine-tuning aligned language models compromises safety, even when users do not intend to! arXiv preprint arXiv:2310.03693 , 2023. Xiangyu Qi, Ashwinee Panda, Kaifeng Lyu, Xiao Ma, Subhrajit Roy, Ahmad Beirami, Prateek Mittal, and Peter Henderson. Safety alignment should be made more than just a few tokens deep. arXiv preprint arXiv:2406.05946 , 2024. Fuli Qiao and Mehrdad Mahdavi. Learn more, but bother less: parameter efficient continual learning. In A. Globerson, L. Mackey, D. Belgrave, A. Fan, U. Paquet, J. Tomczak, and C. Zhang, editors, Ad-vances in Neural Information Processing Systems , volume 37, pages 97476–97498. Curran Associates, Inc., 2024. doi: 10.52202/079017-3092. URL https://proceedings.neurips.cc/paper_files/paper/2024/file/ b0bc711f48724237b38823c4d9cee10b-Paper-Conference.pdf. Qwen, :, An Yang, Baosong Yang, Beichen Zhang, Binyuan Hui, Bo Zheng, Bowen Yu, Chengyuan Li, Dayiheng Liu, Fei Huang, Haoran Wei, Huan Lin, Jian Yang, Jianhong Tu, Jianwei Zhang, Jianxin Yang, Jiaxi Yang, Jingren Zhou, Junyang Lin, Kai Dang, Keming Lu, Keqin Bao, Kexin Yang, Le Yu, Mei Li, Mingfeng Xue, Pei Zhang, Qin Zhu, Rui Men, Runji Lin, Tianhao Li, Tianyi Tang, Tingyu Xia, Xingzhang Ren, Xuancheng Ren, Yang Fan, Yang Su, Yichang Zhang, Yu Wan, Yuqiong Liu, Zeyu Cui, Zhenru Zhang, and Zihan Qiu. Qwen2.5 technical report, 2025. URL https://arxiv.org/abs/2412.15115. Rafael Rafailov, Archit Sharma, Eric Mitchell, Christopher D Manning, Stefano Ermon, and Chelsea Finn. Direct preference optimization: Your language model is secretly a reward model. Advances in neural information processing systems , 36:53728–53741, 2023. Roger Ratcliff. Connectionist models of recognition memory: constraints imposed by learning and forgetting functions. Psychological review , 97(2):285, 1990. David Rolnick, Arun Ahuja, Jonathan Schwarz, Timothy Lillicrap, and Gregory Wayne. Experience replay for continual learning. Advances in neural information processing systems , 32, 2019. Domenic Rosati, Jan Wehner, Kai Williams, Lukasz Bartoszcze, Robie Gonzales, Subhabrata Majumdar, Hassan Sajjad, Frank Rudzicz, et al. Representation noising: A defence mechanism against harmful finetuning. Advances in Neural Information Processing Systems , 37:12636–12676, 2024. Andrei A Rusu, Neil C Rabinowitz, Guillaume Desjardins, Hubert Soyer, James Kirkpatrick, Koray Kavukcuoglu, Razvan Pascanu, and Raia Hadsell. Progressive neural networks. arXiv preprint arXiv:1606.04671 , 2016. Shiori Sagawa, Pang Wei Koh, Tatsunori B Hashimoto, and Percy Liang. Distributionally robust neural networks for group shifts: On the importance of regularization for worst-case generalization. arXiv preprint arXiv:1911.08731 , 2019. Mikayel Samvelyan, Sharath Chandra Raparthy, Andrei Lupu, Eric Hambro, Aram Markosyan, Manish Bhatt, Yuning Mao, Minqi Jiang, Jack Parker-Holder, Jakob Foerster, et al. Rainbow teaming: Open-ended generation of diverse adversarial prompts. Advances in Neural Information Processing Systems , 37: 69747–69786, 2024. Timo Schick, Jane Dwivedi-Yu, Roberto Dessì, Roberta Raileanu, Maria Lomeli, Eric Hambro, Luke Zettle-moyer, Nicola Cancedda, and Thomas Scialom. Toolformer: Language models can teach themselves to use tools. Advances in Neural Information Processing Systems , 36:68539–68551, 2023. John Schulman, Sergey Levine, Pieter Abbeel, Michael Jordan, and Philipp Moritz. Trust region policy optimization. In International conference on machine learning , pages 1889–1897. PMLR, 2015. John Schulman, Filip Wolski, Prafulla Dhariwal, Alec Radford, and Oleg Klimov. Proximal policy optimization algorithms. arXiv preprint arXiv:1707.06347 , 2017. Thomas Scialom, Tuhin Chakrabarty, and Smaranda Muresan. Fine-tuned language models are continual learners. arXiv preprint arXiv:2205.12393 , 2022. 16 Zhihong Shao, Peiyi Wang, Qihao Zhu, Runxin Xu, Junxiao Song, Xiao Bi, Haowei Zhang, Mingchuan Zhang, YK Li, Yang Wu, et al. Deepseekmath: Pushing the limits of mathematical reasoning in open language models. arXiv preprint arXiv:2402.03300 , 2024. Alexander Shapiro. Distributionally robust stochastic programming. SIAM Journal on Optimization , 27(4): 2258–2275, 2017. doi: 10.1137/16M1058297. URL https://doi.org/10.1137/16M1058297. Alexander Shapiro and Anton Kleywegt. Minimax analysis of stochastic problems. Optimization Methods and Software , 17(3):523–542, 2002. doi: 10.1080/1055678021000034008. Aman Sinha, Hongseok Namkoong, Riccardo Volpi, and John Duchi. Certifying some distributional robustness with principled adversarial training. arXiv preprint arXiv:1710.10571 , 2017. Elena Smirnova, Elvis Dohmatob, and Jérémie Mary. Distributionally robust reinforcement learning. arXiv preprint arXiv:1902.08708 , 2019. Alexandra Souly, Qingyuan Lu, Dillon Bowen, Tu Trinh, Elvis Hsieh, Sana Pandey, Pieter Abbeel, Justin Svegliato, Scott Emmons, Olivia Watkins, et al. A strongreject for empty jailbreaks. Advances in Neural Information Processing Systems , 37:125416–125440, 2024. Nisan Stiennon, Long Ouyang, Jeffrey Wu, Daniel Ziegler, Ryan Lowe, Chelsea Voss, Alec Radford, Dario Amodei, and Paul F Christiano. Learning to summarize with human feedback. Advances in neural information processing systems , 33:3008–3021, 2020. Fan-Keng Sun, Cheng-Hao Ho, and Hung-Yi Lee. Lamol: Language modeling for lifelong language learning. 
+
+arXiv preprint arXiv:1909.03329 , 2019. Aviv Tamar, Yonatan Glassner, and Shie Mannor. Optimizing the cvar via sampling. In Proceedings of the AAAI Conference on Artificial Intelligence , volume 29(1), 2015. Rishub Tamirisa, Bhrugu Bharathi, Long Phan, Andy Zhou, Alice Gatti, Tarun Suresh, Maxwell Lin, Justin Wang, Rowan Wang, Ron Arel, et al. Tamper-resistant safeguards for open-weight llms. arXiv preprint arXiv:2408.00761 , 2024. Yingshui Tan, Yilei Jiang, Yanshi Li, Jiaheng Liu, Xingyuan Bu, Wenbo Su, Xiangyu Yue, Xiaoyong Zhu, and Bo Zheng. Equilibrate rlhf: Towards balancing helpfulness-safety trade-off in large language models. arXiv preprint arXiv:2502.11555 , 2025. Rohan Taori, Ishaan Gulrajani, Tianyi Zhang, Yann Dubois, Xuechen Li, Carlos Guestrin, Percy Liang, and Tatsunori B. Hashimoto. Stanford alpaca: An instruction-following llama model. https://github.com/tatsu-lab/stanford_alpaca, 2023. Eugene Vinitsky, Yuqing Du, Kanaad Parvate, Kathy Jang, Pieter Abbeel, and Alexandre Bayen. Robust reinforcement learning using adversarial populations. arXiv preprint arXiv:2008.01825 , 2020. Leandro von Werra, Younes Belkada, Lewis Tunstall, Edward Beeching, Tristan Thrush, Nathan Lambert, Shengyi Huang, Kashif Rasul, and Quentin Gallouédec. Trl: Transformer reinforcement learning. https: //github.com/huggingface/trl, 2020. Liyuan Wang, Xingxing Zhang, Hang Su, and Jun Zhu. A comprehensive survey of continual learning: Theory, method and application. IEEE transactions on pattern analysis and machine intelligence , 46(8):5362–5383, 2024. Xiao Wang, Tianze Chen, Qiming Ge, Han Xia, Rong Bao, Rui Zheng, Qi Zhang, Tao Gui, and Xuan-Jing Huang. Orthogonal subspace learning for language model continual learning. In Findings of the Association for Computational Linguistics: EMNLP 2023 , pages 10658–10671, 2023. Zifeng Wang, Zizhao Zhang, Sayna Ebrahimi, Ruoxi Sun, Han Zhang, Chen-Yu Lee, Xiaoqi Ren, Guolong Su, Vincent Perot, Jennifer Dy, et al. Dualprompt: Complementary prompting for rehearsal-free continual learning. In European conference on computer vision , pages 631–648. Springer, 2022a. 17 Zifeng Wang, Zizhao Zhang, Chen-Yu Lee, Han Zhang, Ruoxi Sun, Xiaoqi Ren, Guolong Su, Vincent Perot, Jennifer Dy, and Tomas Pfister. Learning to prompt for continual learning. In Proceedings of the IEEE/CVF conference on computer vision and pattern recognition , pages 139–149, 2022b. Mitchell Wortsman, Gabriel Ilharco, Samir Ya Gadre, Rebecca Roelofs, Raphael Gontijo-Lopes, Ari S Morcos, Hongseok Namkoong, Ali Farhadi, Yair Carmon, Simon Kornblith, et al. Model soups: averaging weights of multiple fine-tuned models improves accuracy without increasing inference time. In International conference on machine learning , pages 23965–23998. PMLR, 2022. Xianjun Yang, Xiao Wang, Qi Zhang, Linda Petzold, William Yang Wang, Xun Zhao, and Dahua Lin. Shadow alignment: The ease of subverting safely-aligned language models. arXiv preprint arXiv:2310.02949 , 2023. Xin Yi, Shunfan Zheng, Linlin Wang, Xiaoling Wang, and Liang He. A safety realignment framework via subspace-oriented model fusion for large language models. Knowledge-Based Systems , 306:112701, 2024. Youliang Yuan, Wenxiang Jiao, Wenxuan Wang, Jen-tse Huang, Jiahao Xu, Tian Liang, Pinjia He, and Zhaopeng Tu. Refuse whenever you feel unsafe: Improving safety in llms via decoupled refusal training. In 
+
+Proceedings of the 63rd Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers) , pages 3149–3167, 2025. Friedemann Zenke, Ben Poole, and Surya Ganguli. Continual learning through synaptic intelligence. In 
+
+International conference on machine learning , pages 3987–3995. PMLR, 2017. Qiusi Zhan, Richard Fang, Rohan Bindu, Akul Gupta, Tatsunori Hashimoto, and Daniel Kang. Removing rlhf protections in gpt-4 via fine-tuning. arXiv preprint arXiv:2311.05553 , 2023. Huan Zhang, Hongge Chen, Chaowei Xiao, Bo Li, Mingyan Liu, Duane Boning, and Cho-Jui Hsieh. Robust deep reinforcement learning against adversarial perturbations on state observations. Advances in neural information processing systems , 33:21024–21037, 2020. Juntang Zhuang, Boqing Gong, Liangzhe Yuan, Yin Cui, Hartwig Adam, Nicha Dvornek, Sekhar Tatikonda, James Duncan, and Ting Liu. Surrogate gap minimization improves sharpness-aware training. arXiv preprint arXiv:2203.08065 , 2022. Andy Zou, Long Phan, Justin Wang, Derek Duenas, Maxwell Lin, Maksym Andriushchenko, J Zico Kolter, Matt Fredrikson, and Dan Hendrycks. Improving alignment and robustness with circuit breakers. Advances in Neural Information Processing Systems , 37:83345–83373, 2024. 18 A Additional Related Work 
+
+Catastrophic forgetting. Catastrophic forgetting—the abrupt loss of previously learned knowledge when training on new tasks—has been studied since early neural network research (McCloskey and Cohen, 1989; Ratcliff, 1990; French, 1999). The phenomenon arises because gradient updates for new objectives overwrite parameters critical to earlier tasks (Goodfellow et al., 2013; Kirkpatrick et al., 2017). In LLMs, fine-tuning degrades capabilities acquired during pretraining or alignment (Kotha et al., 2023; Luo et al., 2025). Recent work shows that even benign fine-tuning can remove safety guardrails (Qi et al., 2023; Yang et al., 2023), and task-specific adaptation (e.g., math) degrades safety (Qi et al., 2024; Zhan et al., 2023). This motivates building robustness into the pre-fine-tuning policy rather than relying solely on downstream interventions. 
+
+Continual learning. Continual learning methods aim to learn new tasks while preserving prior knowledge (De Lange et al., 2021; Wang et al., 2024). Regularization-based approaches constrain updates: EWC (Kirkpatrick et al., 2017) uses Fisher information, synaptic intelligence (SI) (Zenke et al., 2017) accumulates importance online, and LwF (Li and Hoiem, 2017) applies knowledge distillation. For LLMs, MixOut (Lee et al., 2019) stochastically resets toward pretrained weights, while other methods prevent the policy from drifting too far (Li and Hoiem, 2017; Schulman et al., 2017; Lee et al., 2019), or ensure that the model’s latent representations are preserved (Kirkpatrick et al., 2017; Aghajanyan et al., 2020; Pan et al., 2024). Rehearsal methods augment downstream training with a subset of previous data or synthetic data generated by the model (Rolnick et al., 2019; Sun et al., 2019; Scialom et al., 2022; Huang et al., 2024). Parameter-efficient fine-tuning (PEFT) constrain downstream updates to separate modules (e.g., LoRA (Hu et al., 2022) and progressive networks (Rusu et al., 2016)), thereby reducing parameter interference between the objectives (Hsu et al., 2024; Qiao and Mahdavi, 2024), or aiming to keep the features orthogonal (Wang et al., 2023; Qiao and Mahdavi, 2024). Finally, recent model merging methods aim to mathematically combine task-specific models post-hoc to retain all capabilities without expensive retraining (Ilharco et al., 2022; Wortsman et al., 2022; Yi et al., 2024; Djuhera et al., 2025; Nobari et al., 2025). All these methods operate at downstream time; our approach instead builds robustness into the upstream policy, making it agnostic to the downstream fine-tuning protocol. 
+
+Limitations of downstream methods. Downstream methods have several limitations. Replay-based methods require curating samples that cover all capabilities prone to being forgotten. Also, buffer size and sample selection impact both effectiveness and training efficiency, and poor choices lead to continued forgetting (Hayes et al., 2019; Prabhu et al., 2020). Regularization approaches like EWC and SI have been shown to fail when task similarity is low (Hsu et al., 2018). Parameter-efficient methods, despite widespread adoption, do not reliably prevent forgetting—LoRA fine-tuning still degrades prior capabilities, sometimes comparably to full fine-tuning (Biderman et al., 2024). Most critically, all these methods assume the downstream optimization follows a prescribed recipe. Our upstream approach avoids these issues by building robustness directly into the base policy, making it agnostic to how downstream adaptation is performed. 
+
+# B Training Details 
+
+# B.1 Safety Training 
+
+In order to fine-tune the models with our algorithm, we modified TRL’s implementation of GRPO (von Werra et al., 2020). We used 8xH200s for training our models. 
+
+Dataset. The safety dataset, adapted from (Kim et al., 2025), contains 1000 harmful and 1000 harmless samples. Harmful prompts are from WildJailbreak, Aegis AI Content Safety Dataset 2.0, and RainbowTeaming jailbreaking prompts (Jiang et al., 2024; Ghosh et al., 2025; Samvelyan et al., 2024). Harmless prompts come from OR-Bench (Cui et al., 2024) and are used to preserve general instruction-following behavior and mitigate over-refusal. 
+
+Reward models. We use separate rewards for harmful vs. harmless subsets. For harmful prompts, the reward is 1 − (s1 + s2)/2, where s1, s2 are scores from OpenAI Moderation API and StrongREJECT judge (Markov et al., 2023; Souly et al., 2024). For harmless prompts, we use an off-the-shelf helpfulness reward model: 19 (a) (b) (c)   
+
+> (d) (e) (f)
+
+Figure 6: Safety training curves for Mistral and Qwen with GRPO and FRPO for λ ∈ { 0.5, 0.2, 0.1 }. (a, d) 
+
+show that all Mistral and Qwen models converge in the safety score. (b,e) show that the Helpfulness (Normal) reward for the models slightly improve on OR-Bench, meaning that over-refusals are avoided. (c, f) We tune β
+
+such that all models converge to roughly the same per-token-KL to ensure a controlled comparison. “Llama-3.1-8B-Instruct-RM-RB2” (Malik et al., 2025). This component is only added to avoid over-refusal, and our focus is not on improving helpfulness. 
+
+Hyper-parameters. To avoid overfitting in both GRPO and our algorithm, we use a relatively large β and tune it to keep the “per-token KL” near 0.1 for all models. This makes comparisons meaningful: each method is effectively searching for the best policy within a similar KL ball around the same reference model. We used group size G = 8 for all the experiments. As noted before, we compute the advantages by subtracting the group average reward in Equation (4.1) but do not divide them by the standard deviation. Instead, we ensure the rewards are scaled between 0 and 1—the safety reward is naturally between 0 and 1, the normal reward model’s output is passed through a sigmoid function—to keep both the safety and normal signals relevant. We use LoRA (Hu et al., 2022) with r = 64 and α = 64 for safety training of all the models. The learning-rate is 
+
+lr = 10 −5 for the Mistral models and lr = 3 × 10 −5 for Qwen models. In order to keep the gradient norm consistent across values of λ, we omitted the λ factor in Equation (4.1) and tuned β to keep the final KL bounded, rather than changing the learning-rate for each λ. We used 2 epochs on 2000 samples of the training data for training the Mistral models and 3 epochs for the Qwen models. We found that the Qwen models need more steps for convergence as they begin with higher rewards and a smaller standard deviation, leading to smaller gradient signals. 
+
+Results. The training results are shown in Figure 6, where the safety rewards converge for all the models with negligibly higher rewards for GRPO. As demonstrated in Figure 6(b) and (e), the models trained with our algorithm achieve higher rewards on harmless prompts; as λ decreases, our algorithm becomes more sensitive to a response with a low reward (near-zero reward for over-refusal) when the group average is high, leading to a large signal in Equation (4.1). Finally, Figure 6(c) and (f) show that we keep the KL to the reference models bounded after training. The values of the allowed KL are determined so that the normal reward and the policy’s entropy are not affected. 20 Figure 7: We have two rewards for math training: (left) shows that the format reward (whether the response contains any final answer) increases to ∼0.9 for all the training models; (right) shows that the correctness reward increases similarly for all model, and roughly reaches 0.7. 
+
+# B.2 Math Training 
+
+As described in Section 5.2, we use a final answer verifier as the 0-1 reward for the RL training. We also add a small format reward if there is only one final answer within "\boxed{ }". We average the two rewards with weights [0.8, 0.2 ]. The Qwen-Math system prompt is: "Please reason step by step, and put your final answer within \boxed{}." . We use lr = 6 × 10 −6 for both GRPO and FRPO with λ ∈ { 10.0, 4.0, 2.0, 1.0 }
+
+and lr = 5 × 10 −6 for λ ∈ { 0.5, 0.2, 0.1 } due to larger gradient norms for smaller λ. We choose a small 
+
+β = 10 −4 for all the models, consistent with other math training settings (Liu et al., 2025). We use LoRA adapters with r = 64 and α = 128 . We train all the models for 3 epochs on the MATH training dataset (Levels 3-5). 
+
+Results. The results of the training are presented in Figure 7, where all the models roughly converge to the same point. Figure 7 (left) shows that the format reward converges to ≈ 0.9 for all models. Figure 7 (right) shows that the initial training accuracy is 44% for all the models, and all of them reach around 70% by the end of training. The first row of Table 2 shows the final accuracy on MATH500 for all the models. 
+
+# B.3 Ablation: Effect of Training KL Budget on Downstream Robustness 
+
+During safety training, we tune β to control the KL divergence to the reference model. Specifically, β is chosen such that the resulting KL preserves the helpfulness reward while maintaining roughly constant policy entropy (noting that smaller β typically reduces output entropy). Among such KL values below a given threshold, Figure 8 shows that larger KL (smaller β) yields policies with higher safety reward after downstream fine-tuning. This occurs because Equation (3.5) defines optimization over a KL ball around πref whose radius shrinks with larger β; a smaller ball overly constrains the reward-flatness objective in the first term 
+
+− Ex∼p
+
+h
+
+λ log 
+
+
+
+Ey∼πθ (·| x) e−r(x,y)/λi 
+
+, hindering its optimization. 
+
+# C Proof of Lemma 3.1 
+
+Denoting the likelihood ratio of Q over πθ as L(y | x) := Q(y|x)  
+
+> πθ(y|x)
+
+, we can rewrite the KL term as: 
+
+KL  Q(· | x) π(· | x) =
+
+> Z
+
+f   Q(y | x)
+
+π(y | x)
+
+π(dy | x) = Ey∼π(·| x)
+
+ f (L(y | x)) 
+
+where f (x) = x log (x). Moreover, using the Radon–Nikodym derivative, we parametrize the Lagrangian for solving the infimum over Q as a function of L(y | x), a global multiplier λ ≥ 0 for the average KL constraint 21 Figure 8: During training, among KL values that preserve the helpfulness reward and avoid reducing the policy entropy, using a larger KL (i.e., smaller β) yields a more robust solution with flatter rewards. and a per-x multiplier η(x) for normalization ( Eπ [L | x] = 1): 
+
+L(L, λ, η) = Ex∼p Ey∼πθ (·| x)
+
+ L r (x, y) + λ  Ex∼p Ey∼πθ (·| x)[ f (L(y | x)] − ρ
+
++
+
+Z
+
+η(x) L(y | x) − 1π(dy | x)dx 
+
+If we redefine η(x) ← η(x) 
+
+> p(x)
+
+as the new multiplier: 
+
+L(L, λ, η) = Ex∼p Ey∼πθ (·| x)
+
+h
+
+L r (x, y) + λ f (L) + η(x) L − 1 i
+
+− λρ 
+
+It is easy to see that the primal problem is convex since f (x) is a convex function, which results in strong duality min L max λ≥0, η L = max λ≥0, η min L L. Thus, minimizing over L in terms of the Fenchel conjugate function gives: 
+
+min  
+
+> L
+
+L = min 
+
+> L
+
+n
+
+Ex∼p Ey∼πθ (·| x)
+
+h
+
+L r (x, y) + λ f (L) + η(x) L io 
+
+− E η(x) − λρ 
+
+= Ex∼p Ey∼πθ (·| x)
+
+h
+
+min 
+
+> L
+
+n
+
+(r(x, y) + η(x)) L + λ f (L)
+
+oi 
+
+− E η(x) − λρ 
+
+= Ex∼p Ey∼πθ (·| x)
+
+h
+
+− λ f ∗  −r(x, y) − η(x)
+
+λ
+
+ − η(x)
+
+i
+
+− λρ (C.1) 
+
+# D Gradient of the Objective 
+
+Figure 9 shows that omitting the baseline in FRPO causes the policy to collapse, resulting in a completely random token distribution (maximum entropy in Figure 9, right). This occurs because without a baseline, the variance is high. Furthermore, all trajectories are suppressed because the gradient assigns negative coefficients to all of them as we will show in Equation (D.1). This convergence issue is discussed in prior work (Chung et al., 2021; Mei et al., 2022), which demonstrates that the baseline’s role extends beyond variance reduction and can determine the convergence point. We compute the gradient of J(θ) defined in Equation (4.1). We drop the thresholding for simplicity. Define: 
+
+u(θ) := 1
+
+G
+
+> G
+
+# ∑
+
+> i=1
+
+1
+
+|yi| 
+
+> |yi|
+
+# ∑
+
+> t=1
+
+πθ (yi,t|x, yi,<t)
+
+πold (yi,t|x, yi,<t) e−Ai,t /λ .
+
+22 Figure 9: The policy collapses in the absence of the derived baseline in Equation (4.2) for FRPO; i.e., the token distribution becomes random and the policy entropy explodes, and the helpfulness (Normal) reward collapses as the responses become gibberish. So, 
+
+∇J(θ) = Ex∼p
+
+"
+
+−λ ∇u(θ)
+
+u(θ) − β 1
+
+G
+
+> G
+
+# ∑
+
+> i=1
+
+1
+
+|yi| 
+
+> |yi|
+
+# ∑
+
+> t=1
+
+
+
+− πref (yi,t|x, yi,<t)
+
+πθ (yi,t|x, yi,<t)2 ∇πθ (yi,t|x, yi,<t) + ∇ log πθ (yi,t|x, yi,<t)
+
+#
+
+= Ex∼p
+
+"
+
+−λ ∇u(θ)
+
+u(θ) − β 1
+
+G
+
+> G
+
+# ∑
+
+> i=1
+
+1
+
+|yi| 
+
+> |yi|
+
+# ∑
+
+> t=1
+
+
+
+− πref (yi,t|x, yi,<t)
+
+πθ (yi,t|x, yi,<t) ∇ log πθ (yi,t|x, yi,<t) + ∇ log πθ (yi,t|x, yi,<t)
+
+#
+
+In addition, 
+
+∇u(θ) = 1
+
+G
+
+> G
+
+# ∑
+
+> i=1
+
+1
+
+|yi| 
+
+> |yi|
+
+# ∑
+
+> t=1
+
+∇πθ (yi,t|x, yi,<t)
+
+πold (yi,t|x, yi,<t) e−Ai,t /λ = 1
+
+G
+
+> G
+
+# ∑
+
+> i=1
+
+1
+
+|yi| 
+
+> |yi|
+
+# ∑
+
+> t=1
+
+πθ (yi,t|x, yi,<t)
+
+πold (yi,t|x, yi,<t) e−Ai,t /λ∇ log πθ (yi,t|x, yi,<t)
+
+where we use the log-derivative trick to derive the gradient as in other policy gradient algorithms. Putting it back into ∇J(θ), we obtain: 
+
+∇J(θ) = Ex∼p
+
+"
+
+1
+
+G
+
+> G
+
+# ∑
+
+> i=1
+
+1
+
+|yi| 
+
+> |yi|
+
+# ∑
+
+> t=1
+
+(
+
+− πθ (yi,t|x, yi,<t)
+
+πold (yi,t|x, yi,<t)
+
+λe−Ai,t /λ
+
+u(θ) + β πref (yi,t|x, yi,<t)
+
+πθ (yi,t|x, yi,<t) − β
+
+)
+
+∇ log πθ (yi,t|x, yi,<t)
+
+#
+
+Now, similar to GRPO (Shao et al., 2024), we simplify the analysis by assuming that the model only has a single update following each exploration stage, thereby ensuring that πold = πθ . Doing this, we can write 
+
+u(θ) = 1
+
+G
+
+> G
+
+# ∑
+
+> i=1
+
+1
+
+|yi| 
+
+> |yi|
+
+# ∑
+
+> t=1
+
+e−Ai,t /λ ,
+
+and 
+
+∇J(θ) = Ex∼p
+
+"
+
+1
+
+G
+
+> G
+
+# ∑
+
+> i=1
+
+1
+
+|yi| 
+
+> |yi|
+
+# ∑
+
+> t=1
+
+(
+
+− λe−Ai,t /λ
+
+u(θ) + β πref (yi,t|x, yi,<t)
+
+πθ (yi,t|x, yi,<t) − β
+
+)
+
+∇ log πθ (yi,t|x, yi,<t)
+
+#
+
+(D.1) The term above shows that adding a constant to the advantages of a group does not change the gradient, and it cancels out from the numerator and denominator of the first term in Equation (D.1). Therefore, rewards can be replaced with advantages in Equation (4.1). 
+
+Baseline derivation. Note that if λ ≫ 1, we can apply the Taylor expansion for the terms inside Equa-tion (D.1): 23 Figure 10: (left) The bias in the gradient estimator does not show itself in the safety training curves and the training without the jackknife trick looks similar. (right) However, at the downstream time, the model that is trained without the jackknife trick is less robust and the StrongREJECT score ( ↓ is better) grows more compared to the model with the Jackknife trick. 
+
+∇J(θ) ≈ Ex∼p
+
+"
+
+1
+
+G
+
+> G
+
+# ∑
+
+> i=1
+
+1
+
+|yi| 
+
+> |yi|
+
+# ∑
+
+> t=1
+
+(
+
+−λ
+
+ 1 − Ai,t/λ + O( 1 
+
+> λ2
+
+)
+
+1 − ⟨ Ai,t⟩/λ + O( 1 
+
+> λ2
+
+) + β πref (yi,t|x, yi,<t)
+
+πθ (yi,t|x, yi,<t) − β
+
+)
+
+∇ log πθ (yi,t|x, yi,<t)
+
+#
+
+= Ex∼p
+
+"
+
+1
+
+G
+
+> G
+
+# ∑
+
+> i=1
+
+1
+
+|yi| 
+
+> |yi|
+
+# ∑
+
+> t=1
+
+  − λ + Ai,t + O( 1
+
+λ ) + β πref (yi,t|x, yi,<t)
+
+πθ (yi,t|x, yi,<t) − β
+
+
+
+∇ log πθ (yi,t|x, yi,<t)
+
+#
+
+In the second line, we note that ⟨Ai,t⟩ = 0 because we subtract the group average from each reward, similar to GRPO. Then, the λ term can be removed since Ey∼πθ (·| x)
+
+∇θ log πθ (y|x) = 0: any baseline b(x) that does not depend on y can be subtracted without changing the expectation of the gradient. This recovers the gradient from GRPO. This term would cause a large variance in cases where λ is large. 
+
+# E Bias of the Partition Function 
+
+Unlike the baseline discussed in Section D, the gradient bias arising from the Monte Carlo estimation of the log partition function in Equation (E.1) does not impact the training curves, as shown in Figure 10 (left). However, Figure 10 (right) reveals that when the model is fine-tuned downstream, the reward drops more sharply and the harmfulness score increases relative to the model trained with the jackknife trick. We now explain why this bias appears and how we address it. Starting from the gradient derived in Equation (D.1), consider the first term: 
+
+∇θ J = − Ex∼p
+
+"
+
+λ
+
+∑i e− A(x,yi )/λ ∑
+
+> i
+
+e− A(x,yi )/λ∇θ log πθ (yi,j | xi)
+
+#
+
+(E.1) While this estimator converges to the expected value for large G, it is a biased estimator. This term is in fact self-normalized importance sampling (SNIS). SNIS is known to have a bias of order O(1/ G) (Owen, 2013, § 9). More explicitly, the gradient term has the form of a ratio estimator :
+
+ˆg = ∑Gi=1 wi ϕi
+
+∑Gi=1 wi
+
+, wi := e−Ai /λ, ϕi := ∇θ log πθ (yi | x),
+
+which is exactly SNIS for expectations under Q(y | x) ∝ πθ (y | x)e−A/λ. Even if both ∑i wiϕi and ∑i wi
+
+are unbiased for their respective expectations, their ratio is not: by a first-order Taylor (i.e., delta-method) expansion around (E[wϕ], E[w]) , one obtains a bias term proportional to Cov (wϕ, w)/(E[w]) 2, yielding the standard O(1/ G) bias for SNIS. This effect is most pronounced when G is small or when the weights wi
+
+24 Figure 11: The model trained with FRPO and λ = 0.5 fine-tuned on Alpaca; (left/middle) we consider a higher choice of learning rate for SFT on Alpaca (described in Section 5.1.1) to show that it slightly degrades the safety but the helpfulness score is highly impacted. (right) This shows that a higher learning rate still changes the KL controllably but with higher slope, confirming our constraint in Section 3. are heavy-tailed (which happens for small λ). 
+
+The jackknife technique. Consider an estimator ˆg(X) for the underlying parameter g, computed from a sample size |X| = k. Let X−i denote the sample vector in which the i-th sample is deleted, and ˆg(X−i ) denote the estimator in the absence of the i-th sample. Then, the Jackknife estimator is: 
+
+˜g(X) = k ˆg(X) − k − 1
+
+k ∑
+
+> i
+
+ˆg(X−i)
+
+It can be easily seen that if the bias of the original estimator is e ˆg = c/k + O(1/ k2), then the jackknife technique reduces this to e ˜g = O(1/ k2) (Miller, 1974; Jiao and Han, 2020). The jackknife targets this bias by using the leave-one-out terms ˆg(X−j) to estimate the leading 1/ k term in the Taylor expansion of the bias, and subtracting it via the linear combination in ˜g(X). As a result, the O(1/ k) term cancels and the remaining bias is O(1/ k2).
+
+# F Additional Experiments 
+
+# F.1 High learning-rate SFT without LoRA Degrades the Capabilities 
+
+In this paper we posit that the KL constraint is implicitly satisfied in SFT when LoRA is deployed, or when the learning rate and training duration are moderate; we verified this empirically in Figure 3 (right). Here, we show that in a high-learning-rate regime, even though safety degrades faster, general capabilities—measured by the general reward model “Llama-3.1-8B-Instruct-RM-RB2” (Malik et al., 2025)—deteriorate significantly as well. We repeat the SFT on Alpaca experiment for Mistral model as described in Section 5.1.1, but with 
+
+lr = 1e − 5 rather than lr = 1e − 6. Figure 11 (left) shows that the higher learning rate results in a slightly lower safety reward. This corresponds to a slightly higher KL with the base model in Figure 11 (right), a level that the lower learning rate would eventually reach given more training steps. However, as Figure 11 (middle) shows, the helpfulness score is highly compromised. This indicates that higher learning rates are more prone to overfitting in general, suggesting that our KL constraint remains applicable as long as the fine-tuning scheme avoids overfitting. 
+
+# F.2 Evaluations on Alpaca 
+
+It is important to demonstrate that the safety robustness conferred by FRPO does not come at the expense of downstream performance. Figure 3 (left) shows that the SFT loss of the FRPO-trained model aligns closely with that of GRPO and Llama-3.1. In contrast, models such as Llama3-TAR (Tamirisa et al., 2024) and Llama3-derta (Yuan et al., 2025) exhibit an initial jump in loss. These models are adversarially trained to 25 Figure 12: (left) We measure the SFT loss during fine-tuning to show that the FRPO-trained model fits the downstream task as well as other models. (right) FRPO also keeps the general capabilities higher that GRPO after fine-tuning. 
+
+Figure 13: The refusal rate and the StrongREJECT score of the models during fine-tuning on GSM8K. Llama-3-TAR loses its general capabilities after fine-tuning, and thus the harmfulness score drops as well. resist adaptation, preventing them from fitting the downstream data as effectively as models trained with other methods. We also track the helpfulness reward during SFT on Alpaca in Figure 12 (right). The results indicate that the general capabilities of the models, as measured by helpfulness score, follow similar trajectories. Notably, FRPO maintains a higher reward than GRPO by the end of fine-tuning. This suggests that the superior safety score is not an artifact of overfitting. 
+
+# F.3 Full Comparison on GSM8K 
+
+We compare the Qwen model trained with FRPO and λ = 0.2 against other baselines on HarmBench and StrongREJECT after fine-tuning on GSM8K (we already compared with Qwen and Mistral models in Section 5.1.2). As Figure 13 shows, our model outperforms others except for Llama-3-RR (Zou et al., 2024); this model has effectively unlearned unsafe responses and is not directly comparable to our robust RLHF method. Nevertheless, we show in Section 5.1.1 that the model trained with FRPO outperforms Llama-3-RR after fine-tuning on Alpaca. It must be noted that the drop in the StrongREJECT score of Llama-3-TAR is due to a significant drop in the helpfulness score (down to ∼ 0.1 ). As mentioned earlier in Section F.2, this model strictly resists fine-tuning, even if it comes at the cost of losing its general capabilities. In contrast, we show in Table 1 that our models maintain their general capabilities and improve on GSM8K. 26

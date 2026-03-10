@@ -1,0 +1,5549 @@
+Title: Global Convergence of Average Reward Constrained MDPs with Neural Critic and General Policy Parameterization
+
+URL Source: https://arxiv.org/pdf/2603.07698v1
+
+Published Time: Tue, 10 Mar 2026 01:28:28 GMT
+
+Number of Pages: 39
+
+Markdown Content:
+Global Convergence of Average Reward CMDPs with Neural Critic Parameterization 
+
+# Global Convergence of Average Reward Constrained MDPs with Neural Critic and General Policy Parameterization 
+
+Anirudh Satheesh anirudhs@terpmail.umd.edu 
+
+Department of Computer Science University of Maryland College Park, MD 20740, USA 
+
+Pankaj Kumar Barman pankajkb24@iitk.ac.in 
+
+Indian Institute of Technology, Kanpur Uttar Pradesh, 208016, India 
+
+Washim Uddin Mondal wmondal@iitk.ac.in 
+
+Department of Electrical Engineering Indian Institute of Technology, Kanpur Uttar Pradesh, 208016, India 
+
+Vaneet Aggarwal vaneet@purdue.edu 
+
+Department of Industrial Engineering Purdue University West Lafayette, IN 47907, USA 
+
+Abstract 
+
+We study infinite-horizon Constrained Markov Decision Processes (CMDPs) with general policy parameterizations and multi-layer neural network critics. Existing theoretical anal-yses for constrained reinforcement learning largely rely on tabular policies or linear critics, which limits their applicability to high-dimensional and continuous control problems. We propose a primal–dual natural actor–critic algorithm that integrates neural critic estimation with natural policy gradient updates and leverages Neural Tangent Kernel (NTK) theory to control function-approximation error under Markovian sampling, without requiring ac-cess to mixing-time oracles. We establish global convergence and cumulative constraint violation rates of ˜O(T −1/4) up to approximation errors induced by the policy and critic classes. Our results provide the first such guarantees for CMDPs with general policies and multi-layer neural critics, substantially extending the theoretical foundations of actor–critic methods beyond the linear-critic regime. 
+
+Keywords: constrained markov decision processes, average reward reinforcement learn-ing, neural tangent kernel, general policy parameterization, actor-critic 
+
+1 INTRODUCTION 
+
+Reinforcement Learning (RL) has achieved remarkable empirical success in solving com-plex, high-dimensional continuous control problems, an advancement largely driven by the representational power of deep neural networks. However, as RL is increasingly deployed in safety-critical applications such as transportation (Al-Abbasi et al., 2019), healthcare (Tam-boli et al., 2024), and robotics (Gonzalez et al., 2023), it is imperative to ensure that these agents adhere to strict operational constraints. This requirement is naturally formulated as a Constrained Markov Decision Process (CMDP), wherein the objective is to maximize 
+
+1
+
+> arXiv:2603.07698v1 [cs.LG] 8 Mar 2026
+
+Global Convergence of Average Reward CMDPs with Neural Critic Parameterization 
+
+a primary reward signal while maintaining auxiliary cost signals below predefined thresh-olds. To solve continuous-space CMDPs, primal-dual actor-critic algorithms have emerged as a dominant paradigm. In these methods, the actor updates a parameterized policy via gradient ascent, a critic evaluates the policy’s performance to construct the gradient, and a dual variable dynamically penalizes constraint violations. Despite the widespread practical adoption of deep actor-critic methods, the theoretical understanding of these algorithms remains limited. Early theoretical frameworks establish-ing global convergence for actor-critic algorithms were predominantly restricted to tabular settings or linear function approximations (Chen et al., 2022; Bai et al., 2023; Xu et al., 2025). While linear models provide mathematical tractability, they fail to capture the complex, non-linear feature abstractions that characterize modern deep RL. More recently, literature has begun to bridge this gap by analyzing neural network parameterizations through the lens of Neural Tangent Kernel (NTK) theory (Gaur et al., 2024; Ganesh et al., 2025). However, these theoretical advancements have largely been confined to unconstrained Markov Decision Processes or discounted reward formulations, leaving the average reward constrained setting unexplored. Thus, we ask the following question: 
+
+Can we design a primal-dual actor-critic algorithm with general policy parameteriza-tions and multi-layer neural network critics that achieves provable global convergence for average-reward CMDPs under Markovian sampling, without requiring a mixing-time oracle? 
+
+Table 1: Comparison of relevant algorithms for infinite-horizon average-reward Reinforce-ment Learning in the model-free setting. Our work is the first to provide average reward global convergence and constraint violation results for constrained MDPs with general policy and multi-layer neural network critic parametrization. We provide a more detailed comparison to prior work in Appendix A. References Global Convergence Violation Reward Setting Infinite State Action Space Mixing Time Unknown? Critic Parameterization Policy Parameterization (Cayci et al., 2024) ˜O(T −1/5) N/A Discounted ✗ ✓ Multi layer NN Multi layer NN (Gaur et al., 2024) ˜O(T −1/3) N/A Discounted ✓ ✓ Multi layer NN General (Ganesh et al., 2025) ˜O(T −1/2) N/A Discounted ✓ ✗ Multi layer NN General (Mondal and Aggarwal, 2024b) ˜O(T −1/2) ˜O(T −1/2) Discounted ✓ ✓ N/A General (Agarwal et al., 2022b,a) ˜O(T −1/2) 0 Average ✗ ✗ Tabular Tabular (Ghosh et al., 2023) ˜O(T −1/2) ˜O(T −1/2) Average ✓ ✗ Linear MDP Tabular (Bai et al., 2024) ˜O(T −1/5) ˜O(T −1/5) Average ✓ ✗ N/A General (Xu et al., 2025) ˜O(T −1/2) ˜O(T −1/2) Average ✓ ✓ Linear General          
+
+> This work ˜O(T−1/4)˜O(T−1/4)Average ✓✓Multi layer NN General
+
+1.1 Challenges and Contributions 
+
+Addressing this problem requires overcoming three central technical obstacles. First, han-dling Markovian sampling dependence is typically achieved through data dropping strategies that rely on a mixing time oracle to specify appropriate discard intervals. Such assumptions are restrictive and often impractical. Second, analyzing a multi-layer neural critic in the Neural Tangent Kernel (NTK) regime demands precise control of its approximation bias. 
+
+2Global Convergence of Average Reward CMDPs with Neural Critic Parameterization 
+
+If this bias does not decay sufficiently fast, the resulting Natural Policy Gradient (NPG) updates become inaccurate and unstable. Third, the infinite-horizon average-reward set-ting presents a fundamental difficulty: unlike discounted formulations, the average-reward Bellman operator is not contractive. This lack of contraction destabilizes critic evaluation. When combined with the saddle-point structure of constrained Markov decision processes (CMDPs), the coupled estimation errors from the actor, critic, and dual variables can ac-cumulate and potentially lead to divergence. To address these challenges, we introduce the Primal-Dual Natural Actor-Critic with Neural Critic (PDNAC-NC) algorithm and establish its global convergence guarantees. To remove the dependence on a mixing-time oracle, we incorporate a Multi-Level Monte Carlo (MLMC) estimator that samples trajectory lengths from a geometric distribution. This construction corrects Markovian bias without discarding data. To manage the nonlinear neural critic, we restrict its parameters to remain within an NTK neighborhood around initialization and prove that its approximation bias decays proportionally to the mean-squared error, ensuring reliable NPG estimation. Finally, to handle the non-contractive Bellman operator and the primal-dual structure, we develop a refined coupled analysis that carefully tracks error propagation across actor, critic, and dual updates. This approach controls error amplification throughout the min-max dynamics and yields a convergence rate of ˜O(T −1/4) in both optimality gap and constraint violation. To our knowledge, this is the first result establishing global convergence for average-reward CMDPs with multi-layer neural critics and general policy parameterizations, without assuming access to a mixing-time oracle. 
+
+2 Related works 
+
+Neural Actor-Critic and Markovian Sampling: Recent theoretical advancements have begun to bridge the gap between deep reinforcement learning practice and theory by ana-lyzing actor-critic methods equipped with multi-layer neural networks via Neural Tangent Kernel (NTK) theory (Fu et al., 2020; Cayci et al., 2024; Tian et al., 2023; Gaur et al., 2024; Ganesh et al., 2025). While these contemporary works achieve state-of-the-art sam-ple complexities for general policy parameterizations, their analyses are strictly confined to standard, unconstrained MDPs with discounted rewards. Furthermore, under Marko-vian sampling, these approaches rely on restrictive data-dropping techniques that discard collected transitions based on a known mixing-time oracle to mitigate statistical dependen-cies. However, this results in only one out of every τmix samples used for policy updates. To bypass this, recent theoretical works have adapted Multi-Level Monte Carlo (MLMC) estimation to RL (Beznosikov et al., 2023; Xu et al., 2025), providing unbiased gradient estimates that correct for Markovian bias without sample thinning. However, these MLMC techniques have previously been restricted to algorithms utilizing linear function approxi-mations for the critic. We are the first to extend this technique to the neural critic setting, mitigating the issues of data dropping. 
+
+Constrained Average-Reward MDPs: For safe reinforcement learning, infinite-horizon average-reward Constrained MDPs (CMDPs) present a difficult challenge due to coupled primal-dual dynamics and the lack of Bellman operator contractivity. Consequently, existing theoretical guarantees for average-reward CMDPs have predominantly relied on 
+
+> 3Global Convergence of Average Reward CMDPs with Neural Critic Parameterization
+
+tabular settings, exact gradients, linear MDP, or linear critic approximations (Paternain et al., 2019; Ding et al., 2020; Chen et al., 2022; Bai et al., 2024; Xu et al., 2025; Ghosh et al., 2023; Wei et al., 2022; Satheesh and Aggarwal, 2026), failing to capture the com-plex, non-linear feature representations characteristic of deep RL. Our work distinguishes itself by being the first to theoretically analyze a primal-dual natural actor-critic algorithm for average-reward CMDPs utilizing multi-layer neural network critics. By uniquely inte-grating MLMC within a nested-loop structure to simultaneously evaluate a neural critic and estimate the Natural Policy Gradient (NPG), our approach eliminates the need for a mixing-time oracle while achieving global convergence in this setting. 
+
+3 Formulation 
+
+Consider an infinite-horizon average reward constrained Markov Decision Process (CMDP) denoted as M = ( S, A, r, c, P, ρ ) where S is the state space, A is the action space of size A,
+
+r : S × A → [0 , 1] represents the reward function, c : S × A → [−1, 1] denotes the constraint cost function, P : S × A → ∆( S) is the state transition function where ∆( S) denotes the probability simplex over S, and ρ ∈ ∆( S) indicates the initial distribution of states. A stationary policy π : S → ∆( A) maps each state to a distribution over actions. Un-der policy π, the agent generates trajectories {(st, a t)}∞ 
+
+> t=0
+
+where at ∼ π(·| st) and st+1 ∼
+
+P (·| st, a t). The policy induces a state transition kernel P π : S → ∆( S) defined by 
+
+P π(s, s ′) = P 
+
+> a∈A
+
+π(a|s)P (s′|s, a ) for all s, s ′ ∈ S .We assume the CMDP is ergodic throughout this work. 
+
+Assumption 1 (Ergodicity) The CMDP M is ergodic, i.e., the Markov chain {st}t≥0
+
+induced under every policy π is irreducible and aperiodic. 
+
+Under ergodicity, for each policy π, there exists a unique ρ-independent stationary distribution dπ ∈ ∆( S) satisfying P πdπ = dπ. We define the state-action occupancy measure as νπ(s, a ) ≜ dπ(s)π(a|s) for all ( s, a ) ∈ S × A .
+
+Definition 2 (Mixing Time) The mixing time of the CMDP M with respect to a policy 
+
+π is defined as 
+
+τ π 
+
+> mix
+
+:= min 
+
+
+
+t ≥ 1 ∥(P π)t(s, ·) − dπ∥TV ≤ 14 , ∀s
+
+
+
+, (1) 
+
+where ∥ · ∥ TV denotes the total variation distance. The uniform mixing time is τmix := sup π τ π
+
+> mix
+
+, which is finite under ergodicity. 
+
+The average reward and average constraint cost of a policy π are defined as 
+
+Jπg ≜ lim  
+
+> T→∞
+
+1
+
+T Eπ
+
+"T −1X
+
+> t=0
+
+g(st, a t) s0 ∼ ρ
+
+#
+
+, g ∈ { r, c }, (2) where the expectation is over the distribution of π-induced trajectories. Under ergodicity, 
+
+Jπg is independent of ρ and can be written as Jπg = E(s,a )∼νπ [g(s, a )]. Our objective is to maximize the average reward while ensuring the average cost exceeds a given threshold. Without loss of generality, we formulate this as max  
+
+> π
+
+Jπr subject to Jπc ≥ 0. (3) 
+
+> 4
+
+Global Convergence of Average Reward CMDPs with Neural Critic Parameterization 
+
+When the state space S is large or continuous, we consider a class of parametrized policies {πθ | θ ∈ Θ} indexed by a d-dimensional parameter θ ∈ Rd where d ≪ |S||A| .Using the shorthand Jg(θ) = Jπθ 
+
+> g
+
+for g ∈ { r, c }, the optimization problem (3) becomes max  
+
+> θ∈Θ
+
+Jr(θ) subject to Jc(θ) ≥ 0. (4) We assume the optimization problem (4) satisfies the Slater condition, which ensures the existence of an interior point solution. 
+
+Assumption 3 (Slater Condition) There exists δs ∈ (0 , 1) and ¯θ ∈ Θ such that Jc(¯θ) ≥
+
+δs.
+
+The action-value function corresponding to policy πθ for g ∈ { r, c } is defined for all ( s, a ) ∈S × A as 
+
+Qπθ 
+
+> g
+
+(s, a ) = Eπθ
+
+" ∞X
+
+> t=0
+
+(g(st, a t) − Jg(θ)) s0 = s, a 0 = a
+
+#
+
+. (5) The state-value function is V πθ 
+
+> g
+
+(s) = Ea∼πθ (·| s)[Qπθ 
+
+> g
+
+(s, a )] for all s ∈ S , and the advantage function is Aπθ 
+
+> g
+
+(s, a ) ≜ Qπθ 
+
+> g
+
+(s, a ) − V πθ 
+
+> g
+
+(s). The Bellman equation for average reward MDPs takes the form 
+
+Qπθ 
+
+> g
+
+(s, a ) = g(s, a ) − Jg(θ) + Es′∼P (·| s,a )
+
+V πθ 
+
+> g
+
+(s′) (6) for all ( s, a ) ∈ S × A and g ∈ { r, c }. We solve (4) via a primal-dual approach based on the saddle point optimization max  
+
+> θ∈Θ
+
+min  
+
+> λ≥0
+
+L(θ, λ ) ≜ Jr(θ) + λJ c(θ), (7) where L(·, ·) is the Lagrange function and λ ≥ 0 is the dual variable. The policy gradient theorem Sutton et al. (1999) provides the gradient of the average reward for g ∈ { r, c }:
+
+∇θJg(θ) = E s∼dπθ 
+
+> a∼πθ(·| s)
+
+Aπθ 
+
+> g
+
+(s, a )∇θ log πθ(a|s) . (8) Rather than updating along the vanilla gradient, we employ the Natural Policy Gradient (NPG) direction 
+
+ω∗ 
+
+> g,θ
+
+≜ F (θ)−1∇θJg(θ), (9) where F (θ) ∈ Rd×d is the Fisher information matrix defined as 
+
+F (θ) = E [∇θ log πθ(a|s) ⊗ ∇ θ log πθ(a|s)] , (10) with ⊗ denoting the outer product and the expectation taken under the state-action occu-pancy measure. The NPG direction ω∗ 
+
+> g,θ
+
+can equivalently be expressed as the solution to the strongly convex optimization problem min  
+
+> ω∈Rd
+
+fg(θ, ω ) := 12 ω⊤F (θ)ω − ω⊤∇θJg(θ), (11) whose gradient is ∇ωfg(θ, ω ) = F (θ)ω − ∇ θJg(θ). 
+
+5Global Convergence of Average Reward CMDPs with Neural Critic Parameterization 
+
+Since the gradients in (8) and (11) depend on the unknown action-value function Qπθ 
+
+> g
+
+,we introduce a neural network critic to approximate it. Let ϕ : S × A → Rn be a fixed feature map satisfying ∥ϕ(s, a )∥ ≤ 1 for all ( s, a ). For each g ∈ { r, c }, we parameterize the Q-function using an L-layer feedforward neural network defined by 
+
+x(l) = 1
+
+√m σ
+
+
+
+Wlx(l−1) 
+
+, l ∈ { 1, 2, . . . , L }, (12) where x(0) = ϕ(s, a ) ∈ Rn is the input, W1 ∈ Rm×n and Wl ∈ Rm×m for 2 ≤ l ≤ L
+
+are weight matrices, m is the network width, and σ(·) is the activation function applied element-wise. The approximate Q-function is then 
+
+Qg(ϕ(s, a ); ζg) = 1
+
+√m b⊤ 
+
+> g
+
+x(L), (13) where ζg = (Vec( W1); . . . ; Vec( WL)) ∈ Rm(n+( L−1) m) collects all trainable weights with Vec( ·) denoting vectorization by stacking columns, and bg ∈ Rm is a fixed random vector. The network is initialized by drawing each entry of W 0 
+
+> l
+
+i.i.d. from N (0 , 1) and each entry of bg uniformly from {− 1, +1 }. We denote ζg, 0 = (Vec( W 01 ); . . . ; Vec( W 0
+
+> L
+
+)) as the initial parameters. 
+
+Assumption 4 (Smooth Activation) The activation function σ(·) is L1-Lipschitz and 
+
+L2-smooth, i.e., for all y1, y 2 ∈ R: |σ(y1) − σ(y2)| ≤ L1|y1 − y2| and |σ′(y1) − σ′(y2)| ≤ 
+
+L2|y1 − y2|.
+
+Assumption 4 is satisfied by smooth approximations of ReLU such as Sigmoid, ELU, and GeLU, which are commonly used in practice Clevert et al. (2015); Hendrycks (2016). This provides an O(m−1/2)-smooth property for the neural Q-function. To enable Neural Tangent Kernel (NTK) analysis, we constrain the critic parameters to a ball around initialization: 
+
+SR := {ζ : ∥ζ − ζ0∥2 ≤ R} , (14) and denote the Euclidean projection onto SR as Π SR . The local linearization of the neural Q-network at initialization defines the function class 
+
+FR,m := 
+
+n ˆQg(·; ζ) = Qg(·; ζg, 0) + ⟨∇ ζ Qg(·; ζg, 0), ζ − ζg, 0⟩ ζ ∈ S R
+
+o
+
+. (15) 
+
+4 Algorithm 
+
+We solve (4) via a primal-dual algorithm that updates the policy parameter θ and dual variable λ iteratively. Starting from an arbitrary initial point ( θ0, λ 0 = 0), the ideal updates are 
+
+θk+1 = θk + αF (θk)−1∇θL(θk, λ k) (16) 
+
+λk+1 = P[0 ,2/δ ] [λk − βJ c(θk)] , (17) where α and β are primal and dual learning rates respectively, δ is the Slater parameter from Assumption 3, and PΛ denotes projection onto Λ. Since ∇θL(θk, λ k), F (θk), and 
+
+> 6
+
+Global Convergence of Average Reward CMDPs with Neural Critic Parameterization 
+
+Jc(θk) are not exactly computable due to the unknown transition kernel P and stationary distribution νπθk , we employ approximate updates 
+
+θk+1 = θk + αω k, λk+1 = P[0 ,2/δ ]
+
+h
+
+λk − βη kc
+
+i
+
+, (18) where ωk estimates the NPG direction F (θk)−1∇θL(θk, λ k) and ηkc estimates Jc(θk). Our algorithm, Primal-Dual Natural Actor-Critic with Neural Critic (PDNAC-NC), is presented in Algorithm 1. It employs a Multi-Level Monte Carlo (MLMC) estimation procedure within a nested loop structure where the outer loop of length K updates the primal-dual parameters, and the inner loops of length H execute the neural critic and NPG estimation subroutines. 
+
+4.1 Neural Critic Estimation 
+
+At the k-th epoch, the critic estimation subroutine serves two purposes: (i) obtain an estimate ηkg of the average reward/cost Jg(θk) for g ∈ { r, c }, and (ii) obtain the neural network parameters ζkg that approximate the Q-function Qπθk 
+
+> g
+
+. For the average reward estimation, note that Jg(θk) solves the optimization min  
+
+> η∈R
+
+Rg(θk, η ) = 12 Eνπθkg
+
+(η − g(s, a )) 2 (19) where the expectation is taken over the state-action occupancy measure. For the Q-function approximation, we minimize the mean-squared projected Bellman error using the linearized neural network class FR,m . Define the critic objective 
+
+Eg(θk, ζ ) = 12 Eνπθkg
+
+
+
+Qg(ϕ(s, a ); ζ) − Qπθk 
+
+> g
+
+(s, a )
+
+2
+
+(20) Thus, by the Bellman equation, the gradients are represented as 
+
+∇ηRg(θk, η ) = Eνπθkg
+
+[η − g(s, a )] (21) 
+
+∇ζ Eg(θk, ζ ) = Eνπθkg
+
+  Qg(ϕ(s, a ); ζ) − g(s, a ) + Jg(θk) − EQπθk 
+
+> g
+
+(s′, a ′) ∇ζ Q(ϕ(s, a ); ζg, 0),
+
+(22) where the expectation for ∇ζ E(θk, ζ ) is taken over s′ ∼ P (·| s, a ), and a′ ∼ πθk (·| s′). How-ever, we cannot compute the exact gradients as we do not know the state-action occupancy measure. Thus, we perform the following gradient descent steps: 
+
+ηkg,h +1 = ηkg,h − cγ γξ ˆ∇ηR(θk, η kg,h ) (23) 
+
+7Global Convergence of Average Reward CMDPs with Neural Critic Parameterization 
+
+Algorithm 1 Primal-Dual Natural Actor-Critic with Neural Critic (PDNAC-NC) 
+
+Require: Initial parameters θ0, λ0 = 0; neural critic initialization ζg, 0 for g ∈ { r, c }; step sizes α, β, γ ξ, γ ω; outer loops K; inner loops H; truncation Tmax ; projection radius R 
+
+> 1:
+
+Initialize: s0 ∼ ρ(·) 
+
+> 2:
+
+Critic Initialization: Draw each entry of W 0 
+
+> l
+
+∼ N (0 , 1) for l = 1 , . . . , L , and each entry of bg ∼ Unif {− 1, +1 } 
+
+> 3:
+
+for k = 0 , . . . , K − 1 do  
+
+> 4:
+
+ξkg, 0 ← [0 , ζ ⊤
+
+> g, 0
+
+]⊤, ωkg, 0 ← 0 for all g ∈ { r, c } 
+
+> 5:
+
+for h = 0 , . . . , H − 1 do  
+
+> 6:
+
+s0 
+
+> kh
+
+← s0, draw P kh ∼ Geom(1 /2)  
+
+> 7:
+
+ℓkh ← (2 P kh − 1) 1(2 P kh ≤ Tmax ) + 1  
+
+> 8:
+
+for t = 0 , . . . , ℓ kh − 1 do  
+
+> 9:
+
+Take action atkh ∼ πθk (·| stkh ) 
+
+> 10:
+
+Observe st+1  
+
+> kh
+
+∼ P (·| stkh , a tkh ) 
+
+> 11:
+
+Observe g(stkh , a tkh ) for g ∈ { r, c } 
+
+> 12:
+
+end for  
+
+> 13:
+
+s0 ← sℓkh  
+
+> kh
+> 14:
+
+Compute vMLMC  
+
+> g
+
+(θk, ξ kg,h ) via (26) for g ∈ { r, c } 
+
+> 15:
+
+Update ξkg,h +1 ← ΠSR
+
+
+
+ξkg,h − γξvMLMC  
+
+> g
+
+(θk, ξ kg,h )
+
+ 
+
+> 16:
+
+end for  
+
+> 17:
+
+for h = 0 , . . . , H − 1 do  
+
+> 18:
+
+s0 
+
+> kh
+
+← s0, draw Qkh ∼ Geom(1 /2)  
+
+> 19:
+
+ℓkh ← (2 Qkh − 1) 1(2 Qkh ≤ Tmax ) + 1  
+
+> 20:
+
+for t = 0 , . . . , ℓ kh − 1 do  
+
+> 21:
+
+Take action atkh ∼ πθk (·| stkh ) 
+
+> 22:
+
+Observe st+1  
+
+> kh
+
+∼ P (·| stkh , a tkh ) 
+
+> 23:
+
+Observe g(stkh , a tkh ) for g ∈ { r, c } 
+
+> 24:
+
+end for  
+
+> 25:
+
+s0 ← sℓkh  
+
+> kh
+> 26:
+
+Compute ug(θk, ω kg,h , ξ kg ) via (32) for g ∈ { r, c } 
+
+> 27:
+
+Update ωkg,h +1 ← ωkg,h − γωug(θk, ω kg,h , ξ kg ) 
+
+> 28:
+
+end for  
+
+> 29:
+
+ξkg ← ξkg,H , ωkg ← ωkg,H for g ∈ { r, c } 
+
+> 30:
+
+ωk ← ωkr + λkωkc 
+
+> 31:
+
+θk+1 ← θk + αω k 
+
+> 32:
+
+λk+1 ← P [0 ,2/δ ]
+
+λk − βη kc
+
+ 
+
+> 33:
+
+end for 
+
+ζkg,h +1 = PSR
+
+
+
+ζkg,h − γξ ˆ∇ζ E(θk, ζ kg,h )
+
+
+
+(24) where PSR is the projection onto NTK ball, cγ is a scaling parameter, γξ is the learning rate, and ˆ∇ηR and ˆ∇ζ E are estimates of the gradients. We can also represent this through the combined critic parameter ξkg,h =
+
+h
+
+ηkg,h ζkg,h 
+
+> ⊤
+
+i⊤
+
+and the combined gradient 
+
+8Global Convergence of Average Reward CMDPs with Neural Critic Parameterization 
+
+vg(θ, ξ kg,h ; zjkh ) = 
+
+cγ ˆ∇ηR
+
+
+
+θk, η kg,h ; zjkh 
+
+
+
+ˆ∇ζ E
+
+
+
+θk, ζ kg,h ; zjkh 
+
+ (25) where ˆ∇ηR
+
+
+
+θk, η kg,h ; zjkh 
+
+
+
+and ˆ∇ζ E
+
+
+
+θk, ζ kg,h ; zjkh 
+
+
+
+are single transition estimates of the cor-responding gradients. To reduce bias from Markovian sampling while maintaining com-putational efficiency, we employ MLMC estimation. For each inner iteration h, we draw 
+
+P kh ∼ Geom(1 /2) and generate a trajectory of length ℓkh = (2 P kh − 1) 1(2 P kh ≤ Tmax ) + 1. The MLMC estimate is 
+
+vMLMC  
+
+> g
+
+(θk, ξ kg,h ) = v0 
+
+> g,kh
+
++
+
+
+
+2P kh
+
+
+
+vP kh 
+
+> g,kh
+
+− vP kh −1
+
+> g,kh
+
+
+
+if 2 P kh ≤ Tmax 
+
+0, otherwise (26) where vjg,kh = 2 −j P2j −1 
+
+> t=0
+
+vg(θk, ξ kg,h ; ztkh ) for j ∈ { 0, P kh − 1, P kh }. The critic parameters are updated via projected gradient descent: 
+
+ξkg,h +1 = Π SR
+
+
+
+ξkg,h − γξvMLMC  
+
+> g
+
+(θk, ξ kg,h )
+
+
+
+, (27) where γξ is the critic learning rate and Π SR projects only the ζ portion onto the set SR.After H inner iterations, we obtain ξkg = ξkg,H = [ ηkg , (ζkg )⊤]⊤.The MLMC estimator achieves the same bias as averaging Tmax samples but requires only O(log Tmax ) samples on average. Moreover, since drawing from a geometric distribution does not require knowledge of the mixing time, our algorithm eliminates the mixing time oracle assumption used in prior works (Ganesh et al., 2025). 
+
+4.2 Natural Policy Gradient Estimation 
+
+Given the critic estimates ξkg = [ ηkg , (ζkg )⊤]⊤ from the previous subroutine, we now esti-mate the NPG direction ω∗ 
+
+> g,θ k
+
+= F (θk)−1∇θJg(θk). Recall from (11) that ω∗ 
+
+> g,θ k
+
+minimizes 
+
+fg(θk, ω ) = 12 ω⊤F (θk)ω − ω⊤∇θJg(θk). For a transition zjkh = ( sjkh , a jkh , s j+1  
+
+> kh
+
+), we define the single-sample estimates ˆF (θk; zjkh ) = ∇θ log πθk (ajkh |sjkh )⊗∇ θ log πθk (ajkh |sjkh ), (28) ˆ∇θJg(θk, ξ kg ; zjkh ) = ˆAπθk 
+
+> g
+
+(ξkg ; zjkh )∇θ log πθk (ajkh |sjkh ), (29) where the advantage is estimated via the neural temporal difference error ˆAπθk 
+
+> g
+
+(ξkg ; zjkh ) = g(sjkh , a jkh ) − ηkg + Qg(ϕ(sj+1  
+
+> kh
+
+, a ′); ζkg ) − Qg(ϕ(sjkh , a jkh ); ζkg ), (30) with a′ ∼ πθk (·| sj+1  
+
+> kh
+
+). The single-sample NPG gradient estimate is 
+
+∇ω ˆfg(θk, ω kg,h , ξ kg ; zjkh ) = ˆF (θk; zjkh )ωkg,h − ˆ∇θJg(θk, ξ kg ; zjkh ). (31) 
+
+9Global Convergence of Average Reward CMDPs with Neural Critic Parameterization 
+
+Similarly to the critic estimation, we apply MLMC to obtain variance-reduced estimates. For each inner iteration h, we draw Qkh ∼ Geom(1 /2) and generate a trajectory of length 
+
+ℓkh = (2 Qkh − 1) 1(2 Qkh ≤ Tmax ) + 1. The MLMC estimate is 
+
+ug(θk, ω kg,h , ξ kg ) = u0 
+
+> g,kh
+
++
+
+
+
+2Qkh
+
+
+
+uQkh 
+
+> g,kh
+
+− uQkh−1
+
+> g,kh
+
+
+
+, if 2 Qkh ≤ Tmax 
+
+0, otherwise (32) where ujg,kh = 2 −j P2j −1 
+
+> t=0
+
+∇ω ˆfg(θk, ω kg,h , ξ kg ; ztkh ) for j ∈ { 0, Q kh − 1, Q kh}. The NPG parame-ters are updated as 
+
+ωkg,h +1 = ωkg,h − γωug(θk, ω kg,h , ξ kg ), (33) where γω is the NPG learning rate. After H inner iterations, we obtain ωkg = ωkg,H for each 
+
+g ∈ { r, c }.
+
+4.3 Key Algorithmic and Technical Novelties 
+
+Several aspects of Algorithm 1 merit further discussion. 
+
+MLMC for Mixing Time Independence. The MLMC estimators (26) and (32) achieve the same bias as averaging Tmax samples while requiring only O(log Tmax ) samples in ex-pectation. Crucially, since the geometric distribution Geom(1 /2) does not depend on the mixing time, our algorithm eliminates the need for a mixing time oracle, a requirement in many prior works (Bai et al., 2024; Ganesh et al., 2025). This allows us to achieve convergence rates without knowledge of the exact value of τmix , simply an upper bound suffices. 
+
+Neural Tangent Kernel Regime. The projection Π SR onto the ball of radius R around the initialization ζg, 0 ensures the critic parameters remain in the NTK regime. In this regime, the neural network behaves approximately linearly (Jacot et al., 2018), enabling us to leverage the linearized function class FR,m for analysis. When the width m is sufficiently large, the linearization error becomes negligible. 
+
+Runtime Efficiency. Unlike recent neural actor-critic algorithms that rely on data drop-ping techniques to mitigate statistical dependencies (Gaur et al., 2024; Ganesh et al., 2025) by utilizing only one sample out of every τmix steps, our MLMC-based approach eliminates the need to discard data. By correcting for Markovian bias through multi-level estimation rather than sample thinning, our algorithm utilizes the entire collected trajectory. 
+
+5 Assumptions 
+
+We now state the assumptions required for our analysis. 
+
+5.1 Policy Parameterization Assumptions Assumption 5 (Bounded and Lipschitz Score) For all θ, θ 1, θ 2 ∈ Θ and (s, a ) ∈ S × A:
+
+∥∇ θ log πθ(a|s)∥ ≤ G1 (34) 
+
+10 Global Convergence of Average Reward CMDPs with Neural Critic Parameterization 
+
+∥∇ θ log πθ1 (a|s)−∇ θ log πθ2 (a|s)∥ ≤ G2∥θ1 − θ2∥ (35) Assumption 5 requires that the score function ∇θ log πθ(a|s) is uniformly bounded and Lipschitz continuous in θ. This is a standard assumption in policy gradient analysis (Liu et al., 2020; Agarwal et al., 2021; Papini et al., 2018; Fatkhullin et al., 2023; Mondal and Aggarwal, 2024a). It holds for many common policy parameterizations, including Gaussian policies with linearly parameterized means and bounded covariance, softmax policies with bounded features, and certain neural network policies with bounded weights. 
+
+Assumption 6 (Fisher Non-degeneracy) There exists μ > 0 such that F (θ) ⪰ μI d for all θ ∈ Θ, where Id denotes the d-dimensional identity matrix. 
+
+Assumption 6 ensures that the Fisher information matrix F (θ) has eigenvalues bounded away from zero. This guarantees that the NPG direction ω∗ = F (θ)−1∇θJ(θ) is well-defined and that the optimization problem (11) is μ-strongly convex. This assumption is standard for deriving global complexity bounds in policy gradient methods (Liu et al., 2020; Zhang et al., 2021; Bai et al., 2023; Fatkhullin et al., 2023; Mondal and Aggarwal, 2024a). 
+
+Assumption 7 (Transferred Compatible Function Approximation) Define for θ, ω ∈
+
+Rd, λ ≥ 0, and ν ∈ ∆( S × A ):
+
+Lν (ω, θ, λ ) = Eν
+
+h
+
+(∇θ log πθ(a|s) · ω − Aπθ (s, a )) 2i
+
+. (36) 
+
+where Aπθ (s, a ) = Aπθ 
+
+> r
+
+(s, a )+ λA πθ 
+
+> c
+
+(s, a ) is the combined advantage function and the expecta-tion is taken under the distribution ν. Let ω∗ 
+
+> θ,λ
+
+= arg min ω Lνπθ (ω, θ, λ ) = F (θ)−1∇θL(θ, λ ).There exists ϵbias ≥ 0 such that 
+
+Lνπθ∗ (ω∗
+
+> θ,λ
+
+, θ, λ ) ≤ ϵbias (37) 
+
+for all θ ∈ Θ and λ ∈ [0 , 2/δ ], where πθ∗ is optimal for the average reward CMDP (3) and 
+
+νπθ∗ is the state-action occupancy measure. 
+
+Assumption 7 bounds the transferred compatible function approximation error, mea-suring how well the NPG direction computed under the current policy πθ approximates the advantage function under the optimal policy πθ∗ , and is a common assumption in policy gradient literature (Agarwal et al., 2021; Fatkhullin et al., 2023; Ganesh et al., 2025; Ganesh and Aggarwal, 2025; Satheesh and Aggarwal, 2026). The term ϵbias reflects the expressivity of the policy parameterization. When the policy class is expressive enough to represent any policy, ϵbias = 0. One example for where this holds is for tabular policies with softmax parameterization. If the policy class is not expressive enough, then ϵbias > 0, but recent work has shown that this factor is negligble when using neural network parameterizations common in deep RL (Wang et al., 2020). 
+
+5.2 Neural Network Assumptions Assumption 8 (Neural Critic Approximation Error) The worst-case critic approxi-mation error 
+
+ϵapp = sup 
+
+> θ∈Θ
+
+max  
+
+> g∈{ r,c }
+
+Eνπθ
+
+h Qπθ 
+
+> g
+
+(s, a ) − ΠFR,m Qπθ 
+
+> g
+
+(s, a )2i
+
+(38) 
+
+> 11 Global Convergence of Average Reward CMDPs with Neural Critic Parameterization
+
+is finite, where ΠFR,m denotes projection onto the linearized function class (15) and the expectation is taken under the state-action occupancy measure νπθ .
+
+Assumption 8 ensures that the linearized neural network class FR,m can approximate the true Q-function Qπθ 
+
+> g
+
+with bounded error. This is analogous to the realizability assumption in linear function approximation but adapted to the NTK regime. 
+
+6 Theoretical Analysis 
+
+In this section, we provide the theoretical guarantees for PDNAC-NC. Our analysis relies on the Neural Tangent Kernel (NTK) regime, where the neural network is well-approximated by its linearization around initialization. We proceed in three steps: (1) analyzing the neural critic by bounding its deviation from the linearized updates and establishing convergence, (2) bounding the error of the Natural Policy Gradient (NPG) estimator, and (3) establishing the global convergence of the primal-dual updates. 
+
+6.1 Neural Critic Analysis 
+
+We first analyze the behavior of the neural critic parameters ξkg,h (Algorithm 1, Line 15). To facilitate the analysis, we introduce a reference sequence of linearized updates { ˜ξkg,h }h≥0,defined as: ˜ξkg,h +1 = Π SR
+
+ ˜ξkg,h − γξ ˆvg(θk, ˜ξkg,h )
+
+
+
+, ˜ξkg, 0 = ξkg, 0 = 0 , (39) where ˆ vg is the gradient using the linearized network approximation. The following lemma bounds the deviation between the actual neural updates and this linearized sequence. 
+
+Lemma 9 (Linearized Update Bounds) Suppose the assumptions in Section 5 hold. Let γξ = 8 log TλH . Then, for any epoch k, the expected squared difference between the neural and linearized critic iterates satisfies: 
+
+Eθk
+
+h
+
+∥ ˜ξkg,h +1 − ξkg,h +1 ∥2i
+
+≤ ˜O
+
+ R2τmix 
+
+λT max 
+
++ R2 log( H/δ ) log Tmax 
+
+λ√m
+
+
+
+(40) 
+
+Proof (Sketch). This result (proven as Lemma 9 in the Appendix) leverages the projection ΠSR to keep parameters in the NTK regime, where the Hessian of the network is small. By induction, we show that the accumulated linearization error (proportional to m−1/2) and the difference in gradients due to MLMC noise remain bounded. The projection ensures stability, preventing the neural parameters from drifting too far from the initialization where the linear approximation is valid. Next, we establish the convergence of the critic. Let ξkg, ∗ be the optimal parameter in the linearized function class FR,m . We provide the second-order bound for the critic estimator. 
+
+Lemma 10 (Critic Second Order Bound) Under the same settings as Lemma 9, after 
+
+H inner iterations, the critic estimator ξkg,H satisfies: 
+
+Eθk
+
+h
+
+∥ξkg,H − ξkg, ∗∥2i
+
+> 12 Global Convergence of Average Reward CMDPs with Neural Critic Parameterization
+
+≤ ˜O ∥ξkg, 0 − ξkg, ∗∥2
+
+T 2 + c2 
+
+> γ
+
+log( H/δ )τmix 
+
+λ2H + 1
+
+√m
+
+!
+
+(41) 
+
+Proof (Sketch). Corresponds to Lemma 24 in the Appendix. The proof relies on analyzing the contraction of the distance to the optimum ξkg, ∗ under the linearized dynamics. Since the objective is strongly convex in the linearized regime (Assumption 3.5), the error contracts geometrically. We then account for the variance of the stochastic MLMC gradients and the deviation from the true neural dynamics (bounded by Lemma 9). Unrolling the recursion yields the T −2 convergence rate for the initial error, plus steady-state error terms dominated by MLMC variance and linearization error. 
+
+6.2 NPG Estimation Error 
+
+Using the critic bounds, we analyze the Natural Policy Gradient estimator ωkg . The estima-tor minimizes a quadratic objective whose gradient depends on the critic. We characterize its error in terms of the critic’s error and MLMC sampling noise. 
+
+Theorem 11 (NPG Estimation Error) Suppose the assumptions of Section 3 hold. Let 
+
+γω = 2 log TμH and ωkg, 0 = 0 . Let ωkg, ∗ = F (θk)−1∇θJg(θk). Then: 1. The mean-squared error satisfies: 
+
+Ek
+
+h
+
+∥ωkg − ωkg, ∗∥2i
+
+≤ ˜O
+
+ τ 3mix 
+
+H + 1
+
+√m + τ 2mix ϵapp 
+
+
+
+(42) 
+
+2. The squared bias satisfies: 
+
+∥Ek[ωkg ] − ωkg, ∗∥2 ≤ ˜O
+
+ log( H/δ )
+
+H + 1
+
+√m + τ 2mix ϵapp 
+
+
+
+(43) 
+
+Proof (Sketch). See Theorem 27 in the Appendix. The NPG estimator solves a quadratic problem using stochastic gradients estimated via MLMC. We first bound the bias and variance of these gradients (Lemma 25), which depend on the quality of the critic ξkg .The error in ωkg decomposes into optimization error (decaying with H), gradient variance (handled by MLMC), and gradient bias. The gradient bias is dominated by the critic’s bias 
+
+∥E[ξkg ] − ξkg, ∗∥2 and the inherent function approximation error ϵapp . Substituting the critic bound from Lemma 10 yields the final rates. 
+
+6.3 Global Convergence 
+
+Finally, we combine the NPG error bounds with the primal-dual analysis for CMDPs. The following theorem establishes the convergence rate of PDNAC-NC. 
+
+Theorem 12 (Global Convergence) Suppose the assumptions in Section 5 hold. Let the step sizes be α = β = Θ( T −1/4), K = Θ( T 1/2), H = Θ( T 1/2), and Tmax = T . The sequence of policies generated by Algorithm 1 satisfies: 
+
+1
+
+K E
+
+"K−1X
+
+> k=0
+
+
+
+Jπ∗ 
+
+> r
+
+− Jr(θk)
+
+#
+
+> 13 Global Convergence of Average Reward CMDPs with Neural Critic Parameterization
+
+≤ ˜O
+
+√ϵbias + √ϵapp + T −1/4 + m−1/4
+
+(44) 1
+
+K E
+
+"K−1X
+
+> k=0
+
+−Jc(θk)
+
+#
+
+≤ ˜O
+
+√ϵbias + √ϵapp + T −1/4 + m−1/4
+
+(45) 
+
+Proof (Sketch). See Theorem 28 in the Appendix. The proof follows the standard primal-dual analysis for CMDPs but replaces the exact NPG update with our estimated ωkg . We bound the drift terms using the bias and variance of ωkg . The approximation errors ϵbias 
+
+and ϵapp appear as irreducible terms due to the limitations of the policy and critic function classes. The m−1/4 term reflects the NTK linearization error, and taking m = Θ( T ) yields an ϵ-optimal solution. 
+
+7 Conclusion 
+
+In this work, we provide the first global convergence guarantees for infinite-horizon average-reward Constrained MDPs (CMDPs) utilizing multi-layer neural network critics and gen-eral policy parameterizations. By leveraging Neural Tangent Kernel (NTK) theory, we successfully characterize the function approximation error of deep neural critics in the con-tinuous state-action regime. Furthermore, by integrating a nested Multi-Level Monte Carlo (MLMC) estimation subroutine, our algorithm bypasses the need for sample-thinning tech-niques and mixing-time oracles, ensuring that the entirety of the collected Markovian tra-jectories is utilized. We establish a convergence rate of ˜O(T −1/4) for both the optimality gap and constraint violation. While our work establishes strong theoretical guarantees for neural actor-critic methods in CMDPs, the achieved rate of ˜O(T −1/4) is not order-optimal when compared to recent analysis for unconstrained natural actor-critic methods under Markovian sampling. The primary technical bottleneck in the constrained setting arises due to the mean squared error of the critic, as prior work in the linear regime uses the sharper squared bias term (Ganesh et al., 2025; Xu et al., 2025). However, directly applying the squared bias bound in our case is difficult due to the projection operator from the NTK analysis. Overcoming this technical challenge to improve the bounds and achieve optimal rates remains an interesting open problem. 
+
+References 
+
+A. Agarwal, S. M. Kakade, J. D. Lee, and G. Mahajan. On the theory of policy gradient methods: Optimality, approximation, and distribution shift. Journal of Machine Learning Research , 22(98):1–76, 2021. URL http://jmlr.org/papers/v22/19-736.html .M. Agarwal, Q. Bai, and V. Aggarwal. Concave utility reinforcement learning with zero-constraint violations. Transactions on Machine Learning Research , 2022a. M. Agarwal, Q. Bai, and V. Aggarwal. Regret guarantees for model-based reinforcement learning with long-term average constraints. In Uncertainty in Artificial Intelligence ,pages 22–31. PMLR, 2022b. 
+
+> 14 Global Convergence of Average Reward CMDPs with Neural Critic Parameterization
+
+A. O. Al-Abbasi, A. Ghosh, and V. Aggarwal. Deeppool: Distributed model-free algorithm for ride-sharing using deep reinforcement learning. IEEE Transactions on Intelligent Transportation Systems , 20(12):4714–4727, 2019. E. Altman. Constrained Markov decision processes . Routledge, 2021. Q. Bai, A. S. Bedi, and V. Aggarwal. Achieving zero constraint violation for constrained reinforcement learning via conservative natural policy gradient primal-dual algorithm. In 
+
+Proceedings of the AAAI Conference on Artificial Intelligence , volume 37, pages 6737– 6744, 2023. Q. Bai, W. U. Mondal, and V. Aggarwal. Learning general parameterized policies for infi-nite horizon average reward constrained mdps via primal-dual policy gradient algorithm. 
+
+Advances in Neural Information Processing Systems , 37:108566–108599, 2024. A. Beznosikov, S. Samsonov, M. Sheshukova, A. Gasnikov, A. Naumov, and E. Moulines. First order methods with markovian noise: from acceleration to variational inequalities. 
+
+Advances in Neural Information Processing Systems , 36:44820–44835, 2023. J. H. Blanchet and P. W. Glynn. Unbiased monte carlo for optimization and functions of expectations via multi-level randomization. In 2015 Winter Simulation Conference (WSC) , pages 3656–3667. IEEE, 2015. S. Cayci, N. He, and R. Srikant. Linear convergence of entropy-regularized natural policy gradient with linear function approximation. arXiv preprint arXiv:2106.04096 , 2021. S. Cayci, N. He, and R. Srikant. Finite-time analysis of entropy-regularized neural natural actor-critic algorithm. Transactions on Machine Learning Research , 2024, 2024. L. Chen, R. Jain, and H. Luo. Learning infinite-horizon average-reward Markov decision process with constraints. In International Conference on Machine Learning , pages 3246– 3270. PMLR, 2022. D.-A. Clevert, T. Unterthiner, and S. Hochreiter. Fast and accurate deep network learning by exponential linear units (elus). arXiv preprint arXiv:1511.07289 , 4(5):11, 2015. D. Ding, K. Zhang, T. Basar, and M. Jovanovic. Natural policy gradient primal-dual method for constrained markov decision processes. Advances in Neural Information Processing Systems , 33:8378–8390, 2020. I. Fatkhullin, A. Barakat, A. Kireeva, and N. He. Stochastic policy gradient methods: Im-proved sample complexity for fisher-non-degenerate policies. In International Conference on Machine Learning , pages 9827–9869. PMLR, 2023. Z. Fu, Z. Yang, and Z. Wang. Single-timescale actor-critic provably finds globally optimal policy. arXiv preprint arXiv:2008.00483 , 2020. S. Ganesh and V. Aggarwal. Regret analysis of average-reward unichain MDPs via an actor-critic approach. In The Thirty-ninth Annual Conference on Neural Information Processing Systems , 2025. URL https://openreview.net/forum?id=rl2aAyJfQz .
+
+> 15 Global Convergence of Average Reward CMDPs with Neural Critic Parameterization
+
+S. Ganesh, J. Chen, W. U. Mondal, and V. Aggarwal. Order-optimal global convergence for actor-critic with general policy and neural critic parametrization. In Proceedings of the Forty-First Conference on Uncertainty in Artificial Intelligence , pages 1358–1380, 2025. M. Gaur, A. S. Bedi, D. Wang, and V. Aggarwal. Closing the gap: achieving global convergence (last iterate) of actor-critic under markovian sampling with neural network parametrization. In Proceedings of the 41st International Conference on Machine Learn-ing , pages 15153–15179, 2024. A. Ghosh, X. Zhou, and N. Shroff. Achieving Sub-linear Regret in Infinite Horizon Aver-age Reward Constrained MDP with Linear Function Approximation. In The Eleventh International Conference on Learning Representations , 2023. G. Gonzalez, M. Balakuntala, M. Agarwal, T. Low, B. Knoth, A. W. Kirkpatrick, J. McKee, G. Hager, V. Aggarwal, Y. Xue, R. Voyles, and J. Wachs. Asap: A semi-autonomous pre-cise system for telesurgery during communication delays. IEEE Transactions on Medical Robotics and Bionics , 5(1):66–78, 2023. doi: 10.1109/TMRB.2023.3239674. D. Hendrycks. Gaussian error linear units (gelus). arXiv preprint arXiv:1606.08415 , 2016. A. Jacot, F. Gabriel, and C. Hongler. Neural tangent kernel: Convergence and generalization in neural networks. Advances in neural information processing systems , 31, 2018. Z. Ke, Z. Wen, and J. Zhang. An improved finite-time analysis of temporal difference learning with deep neural networks. In International Conference on Machine Learning ,pages 23407–23429. PMLR, 2024. S. Khodadadian, Z. Chen, and S. T. Maguluri. Finite-sample analysis of off-policy natural actor-critic algorithm. In International Conference on Machine Learning , pages 5420– 5431. PMLR, 2021. Y. Liu, K. Zhang, T. Basar, and W. Yin. An improved analysis of (variance-reduced) policy gradient and natural policy gradient methods. Advances in Neural Information Processing Systems , 33:7624–7636, 2020. W. U. Mondal and V. Aggarwal. Improved sample complexity analysis of natural policy gradient algorithm with general parameterization for infinite horizon discounted reward markov decision processes. In International Conference on Artificial Intelligence and Statistics , pages 3097–3105. PMLR, 2024a. W. U. Mondal and V. Aggarwal. Sample-efficient constrained reinforcement learning with general parameterization. Advances in Neural Information Processing Systems , 37:68380– 68405, 2024b. M. Papini, D. Binaghi, G. Canonaco, M. Pirotta, and M. Restelli. Stochastic variance-reduced policy gradient. In International conference on machine learning , pages 4026– 4035. PMLR, 2018. 
+
+> 16 Global Convergence of Average Reward CMDPs with Neural Critic Parameterization
+
+S. Paternain, L. Chamon, M. Calvo-Fullana, and A. Ribeiro. Constrained reinforcement learning has zero duality gap. Advances in Neural Information Processing Systems , 32, 2019. A. Satheesh and V. Aggarwal. Regret analysis of unichain average reward constrained mdps with general parameterization. arXiv preprint arXiv:2602.08000 , 2026. R. S. Sutton, D. McAllester, S. Singh, and Y. Mansour. Policy gradient methods for reinforcement learning with function approximation. Advances in neural information processing systems , 12, 1999. D. Tamboli, J. Chen, K. P. Jotheeswaran, D. Yu, and V. Aggarwal. Reinforced sequential decision-making for sepsis treatment: The posnegdm framework with mortality classifier and transformer. IEEE Journal of Biomedical and Health Informatics , 2024. H. Tian, A. Olshevsky, and Y. Paschalidis. Convergence of actor-critic with multi-layer neural networks. Advances in neural information processing systems , 36:9279–9321, 2023. L. Wang, Q. Cai, Z. Yang, and Z. Wang. Neural policy gradient methods: Global optimality and rates of convergence. In International Conference on Learning Representations , 2020. H. Wei, X. Liu, and L. Ying. A provably-efficient model-free algorithm for infinite-horizon average-reward constrained markov decision processes. Proceedings of the AAAI Confer-ence on Artificial Intelligence , 36(4):3868–3876, Jun. 2022. doi: 10.1609/aaai.v36i4.20302. T. Xu, Y. Liang, and G. Lan. Crpo: A new approach for safe reinforcement learning with convergence guarantee. In International Conference on Machine Learning , pages 11480–11491, 2021. Y. Xu, S. Ganesh, W. U. Mondal, Q. Bai, and V. Aggarwal. Global convergence for average reward constrained mdps with primal-dual actor critic algorithm. In The Thirty-ninth Annual Conference on Neural Information Processing Systems , 2025. J. Zhang, C. Ni, C. Szepesvari, M. Wang, et al. On the convergence and sample efficiency of variance-reduced policy gradient method. Advances in Neural Information Processing Systems , 34:2228–2240, 2021. 
+
+> 17 Global Convergence of Average Reward CMDPs with Neural Critic Parameterization
+
+Appendix A. Related Work 
+
+Constrained Markov Decision Processes (CMDPs) and Safe RL The CMDP framework is the standard mathematical formulation for safe reinforcement learning, orig-inally formalized by Altman (2021). Early solutions relied on linear programming, which struggled with the curse of dimensionality. Recently, primal-dual Policy Gradient (PG) and Natural Policy Gradient (NPG) methods have become the standard for high-dimensional CMDPs (Ding et al., 2020; Paternain et al., 2019). While initial non-asymptotic analyses of these methods were limited to tabular settings or linear function approximation (Xu et al., 2021; Chen et al., 2022; Bai et al., 2023), recent works have extended them to general policy parameterizations. However, most of these guarantees are confined to the discounted reward setting. 
+
+Average-Reward Setting: While discounted reward MDPs have been extensively studied, infinite-horizon average-reward MDPs are notoriously more challenging due to the lack of contraction properties in their Bellman operators. Early theoretical advancements in average-reward CMDPs were restricted to tabular cases or required generative models. Chen et al. (2022); Agarwal et al. (2022b,a) provided convergence rates for average-reward CMDPs but relied on tabular policies. More recently, Bai et al. (2024); Xu et al. (2025) explored general parameterized policies for average-reward CMDPs via a primal-dual policy gradient algorithm, but their analysis relies heavily on access to exact gradients or limits the critic’s function approximation capacity, leaving the gap for deep neural network critics unexplored. 
+
+Actor-Critic Methods and Neural Function Approximation: Actor-Critic (AC) algorithms are ubiquitous in practical RL, but their theoretical analysis has historically lagged behind their empirical success. Foundational analyses of AC algorithms established finite-time global convergence but primarily assumed linear critic approximations (Kho-dadadian et al., 2021; Cayci et al., 2021). To bridge the gap between theory and deep RL practice, recent literature has adopted Neural Tangent Kernel (NTK) theory to analyze multi-layer neural network critics (Jacot et al., 2018). Works such as Fu et al. (2020); Cayci et al. (2024) and Tian et al. (2023) integrated neural critics into AC methods but analyzed them strictly within standard, unconstrained MDPs. Even the most recent state-of-the-art analyses of neural actor-critic methods such as Gaur et al. (2024) and Ganesh et al. (2025) achieve sample complexities of ˜O(ϵ−3) and ˜O(ϵ−2) respectively, but are limited to the dis-counted, unconstrained setting. Our work fundamentally extends this line of inquiry by applying NTK analysis to the coupled primal-dual dynamics required for the constrained average-reward setting. 
+
+Markovian Sampling and Multi-Level Monte Carlo (MLMC): A primary bot-tleneck in the analysis of RL algorithms under Markovian sampling is the statistical de-pendence across sequential transitions. Traditional analyses mitigate this by utilizing data-dropping or sample-thinning techniques, where only one out of every τmix samples is used to construct gradient estimates (Gaur et al., 2024; Ganesh et al., 2025). This approach not only wastes collected data but also necessitates the restrictive assumption of possessing a mixing-time oracle to know the exact value of the mixing time. To circumvent this, recent theoretical works have adapted Multi-Level Monte Carlo (MLMC) estimation techniques (Blanchet and Glynn, 2015) to RL (Beznosikov et al., 2023). By drawing trajectory lengths 
+
+> 18
+
+Global Convergence of Average Reward CMDPs with Neural Critic Parameterization 
+
+from a geometric distribution, MLMC provides unbiased gradient estimates that system-atically correct for Markovian bias without requiring sample thinning. While Xu et al. (2025) successfully applied MLMC to primal-dual natural policy gradients, their work was restricted to linear critics. Our algorithm is the first to integrate MLMC to simultaneously evaluate a neural network critic and estimate the NPG direction, thereby entirely removing the need for a mixing-time oracle in neural actor-critic methods. 
+
+Appendix B. Preliminary Results for MLMC Estimation 
+
+We begin by establishing fundamental properties of the Multi-Level Monte Carlo (MLMC) estimator that will be used throughout the analysis. 
+
+B.1 Markovian Sampling Bounds 
+
+The following lemma bounds the variance of sample averages under Markovian sampling. 
+
+Lemma 13 (Lemma 1, Beznosikov et al. (2023)) Consider a time-homogeneous, er-godic Markov chain {Zt}t≥0 with unique stationary distribution dZ and mixing time τmix .Let h(Z) be a function satisfying ∥h(Zt) − EdZ [h(Z)] ∥2 ≤ σ2 for all t ≥ 0. Then 
+
+E
+
+ 1
+
+N 
+
+> N−1
+
+X
+
+> t=0
+
+h(Zt) − EdZ [h(Z)] 
+
+> 2
+
+ ≤ C1τmix 
+
+N σ2, (46) 
+
+where C1 = 16(1 + 1 / ln 2 4) and the expectation is over trajectories from any initial distri-bution. 
+
+B.2 MLMC Estimator Properties 
+
+The MLMC estimator combines samples at multiple resolutions to achieve low bias with few samples. 
+
+Lemma 14 (Lemma B.2, Xu et al. (2025)) Consider a time-homogeneous, ergodic Markov chain {Zt}t≥0 with stationary distribution dZ and mixing time τmix . Let g(·) satisfy: 
+
+• ∥EdZ [g(Z)] − ∇ F (x)∥2 ≤ δ2 (bias at stationarity) 
+
+• ∥g(Zt) − EdZ [g(Z)] ∥2 ≤ σ2 for all t ≥ 0 (bounded variance) Let Q ∼ Geom(1 /2) and define the MLMC estimator 
+
+gMLMC = g0 +
+
+(
+
+2Q(gQ − gQ−1), if 2Q ≤ Tmax 
+
+0, otherwise (47) 
+
+where gj = 2 −j P2j −1 
+
+> t=0
+
+g(Zt) for j ∈ { 0, Q − 1, Q }. Then: 
+
+E[gMLMC ] = E[g⌊log 2 Tmax ⌋] (48) 
+
+E[∥gMLMC − ∇ F (x)∥2] ≤ O(σ2τmix log 2 Tmax + δ2) (49) 
+
+∥E[gMLMC ] − ∇ F (x)∥2 ≤ O(σ2τmix T −1max + δ2) (50) 
+
+19 Global Convergence of Average Reward CMDPs with Neural Critic Parameterization 
+
+Appendix C. Neural Critic Analysis 
+
+We analyze the convergence of the neural critic estimator. Recall from Section 4.1 that the combined critic parameter is ξkg . We define the linearized single-sample gradient of the critic objective at ξg, 0 as ˆvg(θk, ξ kg,h ; zjkh ) = Ag(θk; zjkh )ξkg,h − bg(θk; zjkh ), (51) where the single-sample matrix and vector are defined as: 
+
+Ag(θk; zjkh ) = 
+
+"cγ 0
+
+ψjg ψjg
+
+
+
+ψjg − ψj+1 
+
+> g
+
+⊤
+
+#
+
+, (52) 
+
+bg(θk; zjkh ) = 
+
+" cγ g(sjkh , a jkh )
+
+g(sjkh , a jkh ) − Qjg, 0 + Qj+1 
+
+> g, 0
+
+
+
+ψjg
+
+#
+
+, (53) where ψjg := ∇ζ Qg(ϕ(sjkh , a jkh ); ζg, 0), ψj+1  
+
+> g
+
+:= ∇ζ Qg(ϕ(sj+1  
+
+> kh
+
+, a ′); ζg, 0), Qjg, 0 = Q(ϕ(sjkh , a jkh ); ζg, 0), 
+
+Qj+1  
+
+> g, 0
+
+= Q(ϕ(sj+1  
+
+> kh
+
+, a ′); ζg, 0), and we use the zero-initialization for ζg, 0. We define the ex-pected population matrices as: 
+
+Ag(θk) = E(s,a )∼νπθkg ,s ′∼P (s,a ),a ′∼πθk (·| s′) [Ag(θk; z)] , (54) 
+
+bg(θk) = E(s,a )∼νπθkg ,s ′∼P (s,a ),a ′∼πθk (·| s′) [bg(θk; z)] . (55) where z is the transition. For the following sections, we denote the above expectation as 
+
+Eθk .
+
+Lemma 15 (NTK Critic Bounds) Fix an outer iteration index k. Let ζkg,h ∈ S R ∀h ∈{0, 1, . . . , H } and R = O(log T ). Then, for all inner steps h ∈ { 1, . . . , H }, there exist positive constants C1, C ′
+
+> 1
+
+, {Ci}5 
+
+> i=2
+
+such that with probability at least 1 − δ − 2L exp( −Cm ),the following statements hold: 
+
+∥∇ ζ Q(ϕ(s, a ); ζkg,h )∥ ≤ C1, |Q(ϕ(s, a ); ζkg,h )| ≤ C′
+
+> 1
+
+plog( H/δ ) (56) 
+
+∥vg(θk, ζ kg,h ; zjkh ) − ˆvg(θk, ζ kg,h ; zjkh )∥ ≤ C2Rm −1/2plog( H/δ ) (57) 
+
+⟨vg(θk, ζ kg,h ; zjkh ) − ˆvg(θk, ζ kg,h ; zjkh ), ζ kg,h − ζ∗ 
+
+> g
+
+⟩ ≤ C3Rm −1/2plog( H/δ ) (58) 
+
+| ˆQ(ϕ(s, a ); ζkg,h ) − Q(ϕ(s, a ); ζkg,h )| ≤ C4m−1/2plog( H/δ ) (59) 
+
+∥∇ ζ Q(ϕ(s, a ); ζ0) − ∇ ζ Q(ϕ(s, a ); ζkg,h )∥ ≤ C5m−1/2plog( H/δ ) (60) 
+
+Proof Equation (56) follows from Lemma D.2 and D.3 in Ke et al. (2024), equations (57) and (58) follow from Lemma D.5, and equations (59) and (60) follow from Lemma D.4. 
+
+Lemma 16 (Bounds on Single-Sample Linearized Critic Matrices) Fix an outer it-eration index k and an inner step h ∈ { 0, . . . , H }. Let z = ( s, a, s ′) denote a single transition with a′ ∼ πθk (· | s′). Then, under the NTK bounds in Lemma 15, we have: 
+
+∥Ag(θk; z)∥ ≤ cγ + 3 C21 , (61) 
+
+20 Global Convergence of Average Reward CMDPs with Neural Critic Parameterization 
+
+∥bg(θk; z)∥ ≤ cγ + 3 C1C′
+
+> 1
+
+plog( H/δ ), (62) 
+
+∥Ag(θk; z) − Ag(θk)∥2 ≤ O  c2 
+
+> γ
+
++ C41
+
+ , (63) 
+
+∥bg(θk; z) − bg(θk)∥2 ≤ O 
+
+
+
+c2 
+
+> γ
+
++ C21 C′21 log( H/δ )
+
+
+
+(64) 
+
+Proof The bound for Ag follows from the triangle inequality: 
+
+∥Ag(θk; z)∥ ≤ cγ +∥∇ ζ Qg(ϕ(s, a ); ζg, 0)∥+∥∇ ζ Qg(ϕ(s, a ); ζg, 0)∥∥∇ ζ Qg(ϕ(s, a ); ζg, 0)−∇ ζ Qg(ϕ(s′, a ′); ζg, 0)∥
+
+(65) 
+
+≤ cγ + C1 + C1(2 C1) (66) 
+
+≤ cγ + 3 C21 (67) Similarly for bg, utilizing the fact that |g(s, a )| ≤ 1: 
+
+∥bg(θk; z)∥ ≤ cγ |g(s, a )| + |g(s, a ) − Q(ϕ(s, a ); ζg, 0) + Q(ϕ(s′, a ′); ζg, 0)|∥∇ ζ Q(ϕ(s, a ); ζg, 0)∥
+
+(68) 
+
+≤ cγ +
+
+
+
+1 + 2 C′
+
+> 1
+
+plog( H/δ )
+
+
+
+C1 (69) 
+
+≤ cγ + 3 C1C′
+
+> 1
+
+plog( H/δ ) (70) For the squared bias bounds, we have 
+
+∥Ag(θk; z) − Ag(θk)∥2 ≤ 2∥Ag(θk; z)∥2 + 2 ∥Ag(θk)∥2 (71) 
+
+≤ 2∥Ag(θk; z)∥2 + Eθk
+
+2∥Ag(θk; z)∥2 (72) 
+
+≤ O  c2 
+
+> γ
+
++ C41
+
+ (73) and 
+
+∥bg(θk; z) − bg(θk)∥2 ≤ 2∥bg(θk; z)∥2 + 2 ∥bg(θk)∥2 (74) 
+
+≤ 2∥bg(θk; z)∥2 + 2 Eθk [∥bg(θk; z)∥2] (75) 
+
+≤ O 
+
+
+
+c2 
+
+> γ
+
++ C21 C′21 log( H/δ )
+
+
+
+(76) 
+
+Lemma 17 (PSD of A g(θk)) Fix k and let Assumption 1 hold. Then if ξg ∈ ker( Ag(θk)) ⊥,there exists a λ > 0 such that the following holds: 
+
+ξ⊤ 
+
+> g
+
+Ag(θk)ξg ≥ λ
+
+2 ∥ξg∥22 (77) 
+
+Proof We first observe ker( Ag(θk)). By definition, for any ξg ∈ ker( Ag(θk)), we have 
+
+Ag(θk)ξg = Eθk
+
+"cγ 0
+
+ψg ψg
+
+
+
+ψg − ψ′
+
+> g
+
+⊤
+
+#
+
+ξg = 0 =⇒ cγ ηg = 0 = ⇒ ηg = 0 (78) 
+
+21 Global Convergence of Average Reward CMDPs with Neural Critic Parameterization 
+
+This yields 
+
+Aζg(θk)ζg := Eθk
+
+
+
+ψg
+
+
+
+ψg − ψ′
+
+> g
+
+⊤
+
+ζg
+
+
+
+= 0 (79) We then define 
+
+Se =
+
+n
+
+ζg ∈ Rm(n+( L−1) m) | ψg(s, a )⊤ζg = c, ∀(s, a ) ∈ supp( νπθk 
+
+> g
+
+), c ∈ R
+
+o
+
+(80) We wish to show that ker ( Ag(θk)) = Se. First, we choose an arbitrary ζg ∈ S e. Then 
+
+Aζg(θk)ζg = Eθk
+
+h
+
+ψg
+
+
+
+ψ⊤ 
+
+> g
+
+ζg − ψ′
+
+> g
+> ⊤
+
+ζg
+
+i 
+
+(81) 
+
+> (a)
+
+= Eθk [ψg(0)] (82) = 0 (83) where ( a) holds by the definition of Se. Thus, ζg ∈ ker( Aζg(θk)) and Se ⊆ ker( Aζg(θk)). Similarly, we choose an arbitrary ζ′ 
+
+> g
+
+∈ ker( Aζg(θk)). By definition, this yields 
+
+Aζg(θk)ζ′ 
+
+> g
+
+= 0 =⇒ ζ′⊤  
+
+> g
+
+Aζg(θk)ζ′ 
+
+> g
+
+= 0 (84) Expanding out this quadratic form yields 
+
+ζ′⊤  
+
+> g
+
+Aζg(θk)ζ′ 
+
+> g
+
+= ζ′⊤  
+
+> g
+
+Eθk
+
+
+
+ψg
+
+
+
+ψg − ψ′
+
+> g
+
+⊤
+
+ζ′ 
+
+> g
+
+= Eθk
+
+h 
+
+ζ′⊤  
+
+> g
+
+ψg
+
+  
+
+ψ⊤ 
+
+> g
+
+ζ′ 
+
+> g
+
+− ψ′⊤ 
+
+> g
+
+ζ′
+
+> g
+
+i 
+
+= E(ψ⊤ 
+
+> g
+
+ζ′
+
+> g
+
+, ψ ⊤ 
+
+> g
+
+ζ′
+
+> g
+
+) = 0 (85) where E(ψ⊤ 
+
+> g
+
+ζ′
+
+> g
+
+, ψ ⊤ 
+
+> g
+
+ζ′
+
+> g
+
+) is the Dirichlet form. Since the Dirichlet form is 0 and our MDP is irreducible and aperiodic by ergodicity, ψ⊤ 
+
+> g
+
+ζ′ 
+
+> g
+
+is constant on the support of νπθk 
+
+> g
+
+. Thus, 
+
+ζ′ 
+
+> g
+
+∈ S e and ker( Aζg(θk)) ⊆ S e. Since both Se ⊆ ker( Aζg(θk)) and ker( Aζg(θk)) ⊆ S e,ker( Aζg(θk)) = Se and ker( Aζg(θk)) ⊥ = S⊥ 
+
+> e
+
+.We have that the Dirichlet form is related to the variance through the spectral gap of the MDP λ∗:
+
+E
+
+
+
+ψ⊤ 
+
+> g
+
+ζg, ψ ⊤ 
+
+> g
+
+ζg
+
+
+
+≥ λ∗Var 
+
+
+
+ψ⊤ 
+
+> g
+
+ζg
+
+
+
+(86) Since we are given ξg ∈ ker ( Ag(θk)) ⊥, ζg ∈ S ⊥ 
+
+> e
+
+, and Var( ψ⊤ 
+
+> g
+
+ζg) > 0 on the support of νπθk 
+
+> g
+
+.We define 
+
+λ = min   
+
+> ∥ζg∥22=1 ,ζ g∈S ⊥
+> e
+
+ζ⊤ 
+
+> g
+
+Aζg(θk)ζg > 0 (87) which implies that ζ⊤ 
+
+> g
+
+Aζg(θk)ζg > λ ∥ζg∥22. Finally, we have 
+
+ξ⊤ 
+
+> g
+
+Ag(θk)ξg = cγ η2 
+
+> g
+
++ ηgζ⊤ 
+
+> g
+
+Eθk [ψg] + ζ⊤ 
+
+> g
+
+Aζg(θk)ζg (88) 
+
+> (a)
+
+≥ cγ η2 
+
+> g
+
+− C1|ηg|| ζg| + λ∥ζg∥22 (89) 
+
+22 Global Convergence of Average Reward CMDPs with Neural Critic Parameterization 
+
+> (b)
+
+≥ λ
+
+2 ∥ξg∥22 (90) where ( a) uses Lemma 15a, and ( b) holds when cγ ≥ λ 
+
+> 2
+
++ C21 
+
+> 2λ
+
+.
+
+Lemma 18 (MLMC Linearized Critic Matrix Error Bounds) Fix an outer iteration index k and inner iteration h ∈ { 0, . . . , H }. Let AMLMC  
+
+> g,kh
+
+and bMLMC  
+
+> g,kh
+
+denote the MLMC estimates of the linearized critic matrices at step h. Under the NTK bounds in Lemma 15 and the single-sample bounds in Lemma 16, we have 
+
+Ek,h 
+
+AMLMC 
+
+> g,kh
+
+ − Ag(θk) 2 = O
+
+  c2 
+
+> γ
+
++ C41
+
+ τmix T −1max 
+
+
+
+, (91) 
+
+Ek,h 
+
+h
+
+AMLMC  
+
+> g,kh
+
+− Ag(θk) 2i
+
+= O
+
+  c2 
+
+> γ
+
++ C41
+
+ τmix log Tmax 
+
+
+
+, (92) 
+
+Ek,h 
+
+bMLMC 
+
+> g,kh
+
+ − bg(θk) 2 = O
+
+  c2 
+
+> γ
+
++ C21 C′21 log( H/δ ) τmix T −1max 
+
+
+
+, (93) 
+
+Ek,h 
+
+h
+
+bMLMC  
+
+> g,kh
+
+− bg(θk) 2i
+
+= O
+
+  c2 
+
+> γ
+
++ C21 C′21 log( H/δ ) τmix log Tmax 
+
+
+
+, (94) 
+
+where Tmax is the maximum rollout length and Ek,h denotes the conditional expectation at timestep k given the history of the current inner loop. 
+
+Proof To find the MLMC error bounds, we first find the values of σ2
+
+> A
+
+, σ2
+
+> b
+
+, δ2
+
+> A
+
+, δ2
+
+> b
+
+, which denote the squared bias and variance terms for the single sample estimates. Since by definition Eθk [Ag(θk; z)] = Ag(θk) and Eθk [bg(θk; z)] = bg(θk), δ2 
+
+> A
+
+= δ2 
+
+> b
+
+= 0. Additionally, from Lemma 16, we have 
+
+Eθk
+
+∥Ag(θk; z) − Ag(θk)∥2 ≤ O  c2 
+
+> γ
+
++ C41
+
+ (95) 
+
+Eθk
+
+∥bg(θk; z) − bg(θk)∥2 ≤ O  c2 
+
+> γ
+
++ C21 C′21 log( H/δ ) (96) Thus, by Lemma 14, we have 
+
+Ek,h 
+
+AMLMC 
+
+> g,kh
+
+ − Ag(θk) 2 = O  σ2
+
+> A
+
+τmix T −1max + δ2
+
+> A
+
+ = O
+
+  c2 
+
+> γ
+
++ C41
+
+ τmix T −1max 
+
+
+
+, (97) 
+
+Ek,h 
+
+h
+
+AMLMC  
+
+> g,kh
+
+− Ag(θk) 2i
+
+= O  σ2
+
+> A
+
+τmix log Tmax + δ2
+
+> A
+
+ = O
+
+  c2 
+
+> γ
+
++ C41
+
+ τmix log Tmax 
+
+
+
+,
+
+(98) 
+
+Ek,h 
+
+bMLMC 
+
+> g,kh
+
+ − bg(θk) 2 = O  σ2
+
+> b
+
+τmix T −1max + δ2
+
+> b
+
+ = O
+
+  c2 
+
+> γ
+
++ C21 C′21 log( H/δ ) τmix T −1max 
+
+
+
+,
+
+(99) 
+
+Ek,h 
+
+h
+
+bMLMC  
+
+> g,kh
+
+− bg(θk) 2i
+
+= O  σ2
+
+> b
+
+τmix log Tmax + δ2
+
+> b
+
+ = O
+
+  c2 
+
+> γ
+
++ C21 C′21 log( H/δ ) τmix log Tmax 
+
+
+
+,
+
+(100) We also provide the following bounds on the original MLMC gradient estimate. 
+
+23 Global Convergence of Average Reward CMDPs with Neural Critic Parameterization 
+
+Lemma 19 (MLMC Critic Parameter Error Bounds) Assume the same setting as Lemma 18. Let vg(θk, ξ kg,h ) = Eθk
+
+h
+
+vg(θk, ξ kg,h ; z)
+
+i
+
+. Then we have the following bounds: 
+
+∥Ek,h 
+
+h
+
+vMLMC  
+
+> g
+
+(θk, ξ kg,h )
+
+i
+
+− vg(θk, ξ kg,h )∥2 ≤ O 
+
+  c2 
+
+> γ
+
++ C21 C′21 log( H/δ ) τmix T −1max 
+
+
+
+(101) 
+
+Ek,h vMLMC  
+
+> g
+
+(θk, ξ kg,h ) − vg(θk, ξ kg,h ) 2
+
+≤ O 
+
+  c2 
+
+> γ
+
++ C21 C′21 log( H/δ ) τmix log Tmax 
+
+
+
+(102) 
+
+Proof By the definition of the single sample combined gradient estimate, we have 
+
+∥vg(θk, ξ kg,h ; z)∥ ≤ cγ ∥ ˆ∇ηR(θk, η kg,h ; z)∥ + ∥ ˆ∇ζ E(θk, ζ kg,h ; z)∥ (103) = cγ ∥ηkg,h − g(sjkh , a jkh )∥
+
++ ∥Qg(ϕ(s, a ); ζkg,h ) + ηkg,h − g(s, a ) − Qg(ϕ(s′, a ′); ζkg,h )∥∥∇ ζ Qg(ϕ(s, a ); ζkg,h )∥
+
+(104) 
+
+≤ O 
+
+
+
+cγ + C1C′
+
+> 1
+
+plog( H/δ )
+
+
+
+(105) Additionally, we have 
+
+σ2 
+
+> v
+
+= ∥vg(θk, ξ kg,h ; z) − vg(θk, ξ kg,h )∥2 ≤ 2∥vg(θk, ξ kg,h ; z)∥2 + 2 ∥vg(θk, ξ kg,h )∥2 (106) 
+
+≤ 2∥vg(θk, ξ kg,h ; z)∥2 + Eθk
+
+h
+
+2∥vg(θk, ξ kg,h )∥2i
+
+(107) 
+
+≤ O  c2 
+
+> γ
+
++ C21 C′21 log( H/δ ) (108) and 
+
+δ2 
+
+> v
+
+= ∥Eθk
+
+h
+
+vg(θk, ξ kg,h ; z)
+
+i
+
+− vg(θk, ξ kg,h )∥ = 0 (109) Then by Lemma 14, we have 
+
+∥Ek,h 
+
+h
+
+vMLMC  
+
+> g
+
+(θk, ξ kg,h )
+
+i
+
+− vg(θk, ξ kg,h )∥2 ≤ O  σ2 
+
+> v
+
+τmix T −1max + δ2
+
+> v
+
+ = O
+
+  c2 
+
+> γ
+
++ C21 C′21 log( H/δ ) τmix T −1max 
+
+
+
+Ek,h vMLMC  
+
+> g
+
+(θk, ξ kg,h ) − vg(θk, ξ kg,h ) 2
+
+≤ O  σ2 
+
+> v
+
+τmix log Tmax + δ2
+
+> v
+
+ = O
+
+  c2 
+
+> γ
+
++ C21 C′21 log( H/δ ) τmix log Tmax 
+
+
+
+Lemma 20 (First Order Linearization Error of the MLMC Critic Estimator) Let the MLMC estimator use truncation level Tmax . Then 
+
+Ek,h 
+
+h
+
+vMLMC  
+
+> g
+
+(θk, ξ kg,h ) − ˆvMLMC  
+
+> g
+
+(θk, ξ kg,h )
+
+i
+
+= O
+
+
+
+C2Rm −1/2plog( H/δ ) log Tmax 
+
+
+
+.
+
+Proof We already have from Lemma 15 that ∥vg(θk, ξ kg,h ; zjkh )−ˆvg(θk, ξ kg,h ; zjkh )∥ ≤ C2Rm −1/2plog( H/δ )from equation (57). Then from the definition of the MLMC estimator, we have 
+
+Ek,h 
+
+h
+
+∥vMLMC  
+
+> g
+
+(θk, ξ kg,h ) − ˆvMLMC  
+
+> g
+
+(θk, ξ kg,h )∥
+
+i
+
+(110) 
+
+24 Global Convergence of Average Reward CMDPs with Neural Critic Parameterization 
+
+= Ek,h 
+
+EP kh
+
+ v0 
+
+> g,kh
+
+− ˆv0 
+
+> g,kh
+
++
+
+
+
+2P kh
+
+
+
+vP kh 
+
+> g,kh
+
+− vP kh −1 
+
+> g,kh
+
+− ˆvP kh 
+
+> g,kh
+
++ ˆ vP kh −1
+
+> g,kh
+
+
+
+if 2 P kh ≤ Tmax 
+
+0 otherwise k, h 
+
+
+
+(111) By definition, we have 
+
+vjg,kh − ˆvjg,kh = 12j 
+
+> 2j−1
+
+X
+
+> t=0
+
+
+
+vg(θk, ξ kg,h ; ztkh ) − ˆvg(θk, ξ kg,h ; ztkh )
+
+
+
+(112) 
+
+≤ 12j 
+
+> 2j−1
+
+X
+
+> t=0
+
+vg(θk, ξ kg,h ; ztkh ) − ˆvg(θk, ξ kg,h ; ztkh ) (113) 
+
+> (a)
+
+≤ 12j 
+
+> 2j−1
+
+X
+
+> t=0
+
+C2Rm −1/2plog( H/δ ) (114) = C2Rm −1/2plog( H/δ ) (115) where ( a) uses equation (57). Thus, we have 
+
+Ek,h 
+
+h
+
+∥vMLMC  
+
+> g
+
+(θk, ξ kg,h ) − ˆvMLMC  
+
+> g
+
+(θk, ξ kg,h )∥
+
+i
+
+(116) 
+
+≤ Ek,h 
+
+"
+
+EP kh
+
+"
+
+C2Rm −1/2plog( H/δ ) + 2 P kh +1 
+
+C2Rm −1/2plog( H/δ )
+
+
+
+I
+
+
+
+2P kh ≤ Tmax 
+
+
+
+k, h 
+
+## 
+
+(117) 
+
+> (a)
+
+≤ Ek,h 
+
+C2Rm −1/2plog( H/δ ) +  
+
+> ⌊log 2Tmax ⌋
+
+X
+
+> p=0
+
+2p 
+
+2C2Rm −1/2plog( H/δ )
+
+ 1212p−1
+
+ (118) = Ek,h 
+
+C2Rm −1/2plog( H/δ ) +  
+
+> ⌊log 2Tmax ⌋
+
+X
+
+> p=0
+
+
+
+2C2Rm −1/2plog( H/δ )
+
+ (119) = O
+
+
+
+log 2(Tmax )C2Rm −1/2plog( H/δ )
+
+
+
+(120) where ( a) uses the definition of the expectation for the truncated geometric distribution. 
+
+Lemma 21 (Second Order Linearization Error of the MLMC Critic Estimator) 
+
+Assume the same setting as Lemma 20. Then 
+
+Ek,h 
+
+h
+
+∥vMLMC  
+
+> g
+
+(θk, ξ kg,h ) − ˆvMLMC  
+
+> g
+
+(θk, ξ kg,h )∥2i
+
+≤ O  C22 R2m−1 log( H/δ )Tmax 
+
+ (121) 
+
+Proof We have 
+
+Ek,h 
+
+h
+
+∥vMLMC  
+
+> g
+
+(θk, ξ kg,h ) − ˆvMLMC  
+
+> g
+
+(θk, ξ kg,h )∥2i
+
+(122) 
+
+25 Global Convergence of Average Reward CMDPs with Neural Critic Parameterization 
+
+= Ek,h 
+
+"
+
+EP kh
+
+"
+
+v0 
+
+> g,kh
+
+− ˆv0 
+
+> g,kh
+
++ 2 P kh
+
+
+
+vP kh 
+
+> g,kh
+
+− vP kh −1 
+
+> g,kh
+
+− ˆvP kh 
+
+> g,kh
+
++ ˆ vP kh −1
+
+> g,kh
+
+
+
+I
+
+
+
+2P kh ≤ Tmax 
+
+ 2
+
+k, h 
+
+## 
+
+(123) 
+
+≤ 2Ek,h 
+
+∥v0 
+
+> g,kh
+
+− ˆv0
+
+> g,kh
+
+∥2 (124) + 2 Ek,h 
+
+"
+
+EP kh
+
+"
+
+2P kh
+
+
+
+vP kh 
+
+> g,kh
+
+− vP kh −1 
+
+> g,kh
+
+− ˆvP kh 
+
+> g,kh
+
++ ˆ vP kh −1
+
+> g,kh
+
+
+
+I
+
+
+
+2P kh ≤ Tmax 
+
+ 2
+
+k, h 
+
+## 
+
+(125) 
+
+> (a)
+
+≤ 2C22 R2m−1 log( H/δ ) + 4 C22 R2m−1 log( H/δ )Ek,h 
+
+"
+
+EP kh
+
+"
+
+22P kh I
+
+
+
+2P kh ≤ Tmax 
+
+
+
+k, h 
+
+## 
+
+(126) = 2 C22 R2m−1 log( H/δ ) + 4 C22 R2m−1 log( H/δ ) 
+
+> ⌊log 2Tmax ⌋
+
+X
+
+> p=0
+
+22p 12p+1 (127) = O  C22 R2m−1 log( H/δ )Tmax 
+
+ (128) where ( a) follows from Lemma 20 Now that we have bounds for the estimation error for the MLMC gradient and its parameters, we can find the bound between the linearized and original updates. 
+
+Lemma 22 (Linearized Update Bounds) We define the linearized sequence { ˜ξkg,h }h≥0
+
+that represents the linearized iterates of the neural update ˆvg:
+
+˜ξkg,h +1 = Π SR
+
+ ˜ξkg,h − γξ ˆvg(θk, ˜ξkg,h )
+
+ ˜ξkg, 0 = ξkg, 0 = 0 (129) 
+
+Let Π⊥ be the orthogonal projection onto ker ( Ag(θk)) . Then the following result holds: 
+
+Eθk
+
+˜ξkg,h +1 − ξkg,h +1 
+
+> 2
+
+≤ O R2(c2 
+
+> γ
+
++ C41 )τmix log TλT max 
+
++ R2plog( H/δ ) log Tmax log Tλm 1/2 + R2Tmax log( H/δ ) log THλm 
+
+!
+
+(130) 
+
+Proof Using the non-expansiveness of Π SR and Lemma 15, we have 
+
+Ek,h ˜ξkg,h +1 − ξkg,h +1 
+
+> 2
+
+= Ek,h ΠSR
+
+
+
+ξkg,h − γξvMLMC  
+
+> g
+
+(θk, ξ kg,h )
+
+
+
+− ΠSR
+
+ ˜ξkg,h − γξ ˆvMLMC 
+
+> g
+
+
+
+θk, ˜ξkg,h 
+
+ 2
+
+≤ Ek,h ξkg,h − γξvMLMC  
+
+> g
+
+(θk, ξ kg,h ) −
+
+ ˜ξkg,h − γξ ˆvMLMC 
+
+> g
+
+
+
+θk, ˜ξkg,h 
+
+ 2
+
+≤ Ek,h 
+
+
+
+ξkg,h − ˜ξkg,h 
+
+
+
+− γξ
+
+
+
+AMLMC  
+
+> g,kh
+
+(θk)
+
+
+
+ξkg,h − ˜ξkg,h 
+
+
+
++ vMLMC  
+
+> g
+
+(θk, ξ kg,h ) − ˆvMLMC  
+
+> g
+
+(θk, ξ kg,h )
+
+ 2
+
+≤ Ek,h ξkg,h − ˜ξkg,h 
+
+> 2
+
+− 2γξEk,h 
+
+D
+
+ξkg,h − ˜ξkg,h , AMLMC  
+
+> g,kh
+
+(θk)
+
+
+
+ξkg,h − ˜ξkg,h 
+
+E 
+
+− 2γξEk,h 
+
+D
+
+ξkg,h − ˜ξkg,h , v MLMC  
+
+> g
+
+(θk, ξ kg,h ) − ˆvMLMC  
+
+> g
+
+(θk, ξ kg,h )
+
+E
+
++ O  γ2 
+
+> ξ
+
+C22 R2m−1 log( H/δ )Tmax 
+
+
+
++ 2 γ2 
+
+> ξ
+
+Ek,h AMLMC  
+
+> g,kh
+
+(θk)
+
+
+
+ξkg,h − ˜ξkg,h 
+
+ 2
+
+26 Global Convergence of Average Reward CMDPs with Neural Critic Parameterization 
+
+≤ Ek,h ξkg,h − ˜ξkg,h 
+
+> 2
+
+− 2γξEk,h 
+
+D
+
+ξkg,h − ˜ξkg,h , AMLMC  
+
+> g,kh
+
+(θk)
+
+
+
+ξkg,h − ˜ξkg,h 
+
+E 
+
++ O
+
+
+
+γξR2 log Tmax m−1/2plog( H/δ )
+
+
+
++ O  γ2 
+
+> ξ
+
+C22 R2m−1 log( H/δ )Tmax 
+
+
+
++ 4 γ2 
+
+> ξ
+
+Ek,h Ag(θk)
+
+
+
+ξkg,h − ˜ξkg,h 
+
+ 2
+
++ 4 γ2 
+
+> ξ
+
+Ek,h AMLMC  
+
+> g,kh
+
+(θk)
+
+
+
+ξkg,h − ˜ξkg,h 
+
+
+
+− Ag(θk)
+
+
+
+ξkg,h − ˜ξkg,h 
+
+ 2
+
+≤ Ek,h ξkg,h − ˜ξkg,h 
+
+> 2
+
+− 2γξEk,h 
+
+D
+
+Π⊥
+
+
+
+ξkg,h − ˜ξkg,h 
+
+
+
+, Ag(θk)Π ⊥
+
+
+
+ξkg,h − ˜ξkg,h 
+
+E 
+
++ O γξR2(c2 
+
+> γ
+
++ C41 )τmix 
+
+Tmax 
+
+!
+
++ O
+
+
+
+γξR2 log Tmax m−1/2plog( H/δ )
+
+
+
++ O  γ2 
+
+> ξ
+
+C22 R2m−1 log( H/δ )Tmax 
+
+
+
++ O  γ2
+
+> ξ
+
+ c2 
+
+> γ
+
++ C41
+
+ Ek,h Π⊥
+
+
+
+ξkg,h − ˜ξkg,h 
+
+ 2
+
++ O  γ2
+
+> ξ
+
+ c2 
+
+> γ
+
++ C41
+
+ τmix log Tmax 
+
+ Π⊥
+
+
+
+ξkg,h − ˜ξkg,h 
+
+ 2
+
+≤ Ek,h ξkg,h − ˜ξkg,h 
+
+> 2
+
++ O γξR2(c2 
+
+> γ
+
++ C41 )τmix 
+
+Tmax 
+
+!
+
++ O
+
+
+
+γξR2 log Tmax m−1/2plog( H/δ )
+
+
+
++ O  γ2 
+
+> ξ
+
+C22 R2m−1 log( H/δ )Tmax 
+
+
+
+≤ O (h + 1) γξR2(c2 
+
+> γ
+
++ C41 )τmix 
+
+Tmax 
+
+!
+
++ O
+
+
+
+(h + 1) γξR2m−1/2plog( H/δ ) log Tmax 
+
+
+
++ O  (h + 1) γ2 
+
+> ξ
+
+C22 R2m−1 log( H/δ )Tmax 
+
+
+
+If we substitute γξ = 8 log TλH and take expectations on both sides, we have 
+
+Eθk
+
+˜ξkg,h +1 − ξkg,h +1 
+
+> 2
+
+≤ O R2(c2 
+
+> γ
+
++ C41 )τmix log TλT max 
+
++ R2plog( H/δ ) log Tmax log Tλm 1/2 + R2Tmax log( H/δ ) log THλm 
+
+!
+
+Before proceeding further with the neural critic analysis, we provide the following Lemma from Ganesh et al. (2025), adopted to the CMDP setting. 
+
+Lemma 23 (Lemma 9, Ganesh et al. (2025)) Let Zk := {z ∈ Rd : z = Ag(θk)†bg(θk)+ 
+
+v, v ∈ ker( Ag(θk)) } denote the set of minimum-norm least-squares solutions to Ag(θk)z ≈
+
+bg(θk), and let ξkg, ∗ be the projection of a fixed point ξ0 onto Zk. Then, under the update rule ˜ξkg,h = Π SR
+
+ ˜ξkg,h −1 − γξ ˆvg(θk; ˜ξkg,h −1)
+
+
+
+,
+
+where ˆvg(θk; ˜ξkg,h ) ∈ ker( Ag(θk)) ⊥, it holds that 
+
+˜ξkg,h − ξkg, ∗ ∈ ker( Ag(θk)) ⊥, for all h ≥ 0.
+
+Next, we derive the second order bound. 
+
+Lemma 24 (Critic Second Order Bound) Assume the same setting as Lemma 22. Then, after H inner critic updates, the critic iterate ξkg,H satisfies 
+
+Eθk
+
+h
+
+∥ξkg,H − ξkg, ∗∥2i
+
+≤ O Eθk ∥ ˜ξkg, 0 − ξkg, ∗∥2
+
+T 2 + c4 
+
+> γ
+
+τmix log( H/δ )R2 log Tλ4Tmax 
+
++ R2plog( H/δ ) log T log Tmax 
+
+λm −1/2
+
+27 Global Convergence of Average Reward CMDPs with Neural Critic Parameterization 
+
++ R2Tmax log( H/δ ) log THλm + c2 
+
+> γ
+
+log( H/δ )τmix log Tmax log Tλ2H
+
+!
+
+(131) 
+
+Proof 
+
+Ek,h ˜ξkg,h +1 − ξkg, ∗
+
+> 2
+
+= Ek,h ∥ΠSR
+
+ ˜ξkg,h − γξvMLMC  
+
+> g
+
+(θk; ˜ξkg,h )
+
+
+
+− ΠSR (ξkg, ∗)∥2
+
+≤ Ek,h ∥ ˜ξkg,h − γξvMLMC  
+
+> g
+
+(θk; ˜ξkg,h ) − ξkg, ∗∥2
+
+= Ek,h ∥ ˜ξkg,h − ξkg, ∗∥2 − 2γξEk,h 
+
+D ˜ξkg,h − ξkg, ∗, v MLMC  
+
+> g
+
+(θk; ˜ξkg,h )
+
+E
+
++ γ2 
+
+> ξ
+
+Ek,h ∥vMLMC  
+
+> g
+
+(θk; ˜ξkg,h )∥2
+
+= Ek,h ∥ ˜ξkg,h − ξkg, ∗∥2 − 2γξEk,h 
+
+D ˜ξkg,h − ξkg, ∗, ˆvMLMC  
+
+> g
+
+(θk; ˜ξkg,h )
+
+E
+
++ γ2 
+
+> ξ
+
+Ek,h ∥vMLMC  
+
+> g
+
+(θk; ˜ξkg,h )∥2
+
+− 2γξEk,h 
+
+D ˜ξkg,h − ξkg, ∗, v MLMC  
+
+> g
+
+(θk; ˜ξkg,h ) − ˆvMLMC  
+
+> g
+
+(θk; ˜ξkg,h )
+
+E
+
+≤ ∥ ˜ξkg,h − ξkg, ∗∥2 − 2γξ
+
+D ˜ξkg,h − ξkg, ∗, ˆvMLMC  
+
+> g
+
+(θk; ˜ξkg,h )
+
+E
+
+− 2γξ
+
+D ˜ξkg,h − ξkg, ∗, v MLMC  
+
+> g
+
+(θk; ˜ξkg,h ) − ˆvMLMC  
+
+> g
+
+(θk; ˜ξkg,h )
+
+E
+
++ 2 γ2 
+
+> ξ
+
+Ek,h ∥vg(θk; ˜ξkg,h )∥2 + 2 γ2 
+
+> ξ
+
+Ek,h vMLMC  
+
+> g
+
+(θk; ˜ξkg,h ) − vg(θk; ˜ξkg,h ) 2
+
+≤ ∥ ˜ξkg,h − ξkg, ∗∥2 − 2γξ
+
+D ˜ξkg,h − ξkg, ∗, Ag(θk)( ˜ξkg,h − ξkg, ∗)
+
+E
+
++ O  γ2
+
+> ξ
+
+ c2 
+
+> γ
+
++ C′21 C21
+
+ log( H/δ )τmix log Tmax 
+
+
+
+− 2γξ
+
+D ˜ξkg,h − ξkg, ∗, ˆvMLMC  
+
+> g
+
+(θk; ˜ξkg,h ) − Ag(θk)( ˜ξkg,h − ξkg, ∗)
+
+E
+
++ O
+
+
+
+γξ log( Tmax )C2R2m−1/2plog( H/δ )
+
+
+
+> (a)
+
+≤ ∥ ˜ξkg,h − ξkg, ∗∥2 − γξλ∥ ˜ξkg,h − ξkg, ∗∥ − 2γξ
+
+D ˜ξkg,h − ξkg, ∗, v g(θk; ˜ξkg,h ) − Ag(θk)( ˜ξkg,h − ξkg, ∗)
+
+E
+
++ O
+
+
+
+γξ log( Tmax )C2R2m−1/2plog( H/δ )
+
+
+
++ O  γ2
+
+> ξ
+
+ c2 
+
+> γ
+
++ C′21 C21
+
+ log( H/δ )τmix log Tmax 
+
+
+
+where we use Lemma 15 to bound vg(θk, ξ kg,h ) and ( a) follows from Lemma 17. We take the conditional expectation Ek,h 
+
+Ek,h ˜ξkg,h +1 − ξkg, ∗
+
+> 2
+
+≤ (1 − γξλ)∥ ˜ξkg,h − ξkg, ∗∥2 − 2γξ
+
+D ˜ξkg,h − ξkg, ∗, Ek,h 
+
+h
+
+ˆvMLMC  
+
+> g
+
+(θk; ˜ξkg,h ) − Ag(θk)( ˜ξkg,h − ξkg, ∗)
+
+iE 
+
++ O
+
+
+
+γξ log( Tmax )C2R2m−1/2plog( H/δ )
+
+
+
++ O  γ2
+
+> ξ
+
+ c2 
+
+> γ
+
++ C′21 C21
+
+ log( H/δ )τmix log Tmax 
+
+
+
+(132) We bound the second term as 
+
+− 2γξ
+
+D ˜ξkg,h − ξkg, ∗, Ek,h 
+
+h
+
+ˆvMLMC  
+
+> g
+
+(θk; ˜ξkg,h ) − Ag(θk)( ˜ξkg,h − ξkg, ∗)
+
+iE 
+
+(133) 
+
+≤ γξλ
+
+2 ∥ ˜ξkg,h − ξkg, ∗∥2 + 2γξ
+
+λ Ek,h 
+
+h
+
+ˆvMLMC  
+
+> g
+
+(θk; ˜ξkg,h ) − Ag(θk)
+
+ ˜ξkg,h − ξkg, ∗
+
+i 2
+
+(134) 
+
+≤ γξλ
+
+2 ∥ ˜ξkg,h − ξkg, ∗∥2 + 2γξ
+
+λ
+
+ Ek,h 
+
+AMLMC 
+
+> g,kh
+
+ − Ag(θk) ˜ξkg,h −  bg(θk) − Ek,h 
+
+bMLMC 
+
+> g,kh
+
+ 2
+
+(135) 
+
+≤ γξλ
+
+2 ∥ ˜ξkg,h − ξkg, ∗∥2 + 4γξ∆2
+
+> A
+
+∥ ˜ξkg,h ∥2 + 4 γξ∆2
+
+> b
+
+λ (136) 
+
+≤ γξλ
+
+2 ∥ ˜ξkg,h − ξkg, ∗∥2 +8γξ∆2
+
+> A
+
+
+
+∥ ˜ξkg,h − ξkg, ∗∥ + 4 λ−2Λ2
+
+> b
+
+
+
++ 4 γξ∆2
+
+> b
+
+λ (137) 
+
+28 Global Convergence of Average Reward CMDPs with Neural Critic Parameterization 
+
+where ∆ 2 
+
+> A
+
+= Ek,h 
+
+h
+
+AMLMC 
+
+> g,kh
+
+i
+
+− Ag(θk) 2
+
+, ∆ 2 
+
+> b
+
+= Ek,h 
+
+h
+
+bMLMC 
+
+> g,kh
+
+i
+
+− bg(θk) 2
+
+, and Λ 2 
+
+> b
+
+=
+
+∥bMLMC  
+
+> g,kh
+
+∥2. The last inequality is due to ∥ξk 
+
+> ∗
+
+∥2 = ∥Ag(θk)−1bg(θk)∥2 ≤ 4Λ 2 
+
+> b
+> λ2
+
+. We substitute this back to yield 
+
+Ek,h ˜ξkg,h +1 − ξkg, ∗
+
+> 2
+
+≤
+
+
+
+1 − γξλ
+
+2 + 8γξ∆2
+
+> A
+
+λ
+
+
+
+∥ ˜ξkg,h − ξkg, ∗∥2 + 4γξ
+
+λ
+
+ 8λ−2Λ2
+
+> b
+
+∆2 
+
+> A
+
++ ∆ 2
+
+> b
+
+
+
+(138) + O
+
+
+
+γξ log( Tmax )C2R2m−1/2plog( H/δ )
+
+
+
++ O  γ2
+
+> ξ
+
+ c2 
+
+> γ
+
++ C′21 C21
+
+ log( H/δ )τmix log Tmax 
+
+
+
+(139) For ∆ 2 
+
+> A
+
+≤ λ2 
+
+> 32
+
+, we have 
+
+Ek,h ˜ξkg,h +1 − ξkg, ∗
+
+> 2
+
+≤
+
+
+
+1 − γξλ
+
+4
+
+
+
+∥ ˜ξkg,h − ξkg, ∗∥2 + 4γξ
+
+λ
+
+ 8λ−2Λ2
+
+> b
+
+∆2 
+
+> A
+
++ ∆ 2
+
+> b
+
+ (140) + O
+
+
+
+γξ log( Tmax )C2R2m−1/2plog( H/δ )
+
+
+
++ O  γ2
+
+> ξ
+
+ c2 
+
+> γ
+
++ C′21 C21
+
+ log( H/δ )τmix log Tmax 
+
+
+
+(141) Taking expectations on both sides with respect to θk and substituting γξ = 8 log TλH yields 
+
+Eθk
+
+˜ξkg,H − ξkg, ∗
+
+> 2
+
+≤
+
+
+
+1 − γξλ
+
+4
+
+H
+
+Eθk ∥ ˜ξkg, 0 − ξkg, ∗∥2 + 4
+
+γξλ
+
+4γξ
+
+λ
+
+ 8λ−2Λ2
+
+> b
+
+∆2 
+
+> A
+
++ ∆ 2
+
+> b
+
+
+
++ O
+
+
+
+γξ log( Tmax )C2R2m−1/2plog( H/δ )
+
+
+
++ O  γ2
+
+> ξ
+
+ c2 
+
+> γ
+
++ C′21 C21
+
+ log( H/δ )τmix log Tmax 
+
+ !
+
+≤ exp 
+
+
+
+− Hγ ξλ
+
+4
+
+
+
+Eθk ∥ ˜ξkg, 0 − ξkg, ∗∥2 + 16 
+
+λ2
+
+ 8λ−2Λ2
+
+> b
+
+∆2 
+
+> A
+
++ ∆ 2
+
+> b
+
+
+
++ O
+
+
+
+λ−1 log( Tmax )C2R2m−1/2plog( H/δ )
+
+
+
++ O  λ−1γξ
+
+ c2 
+
+> γ
+
++ C′21 C21
+
+ log( H/δ )τmix log Tmax 
+
+ !
+
+≤ O Eθk ∥ ˜ξkg, 0 − ξkg, ∗∥2
+
+T 2
+
+!
+
++ O  λ−4(c2 
+
+> γ
+
++ C21 C′21 ) log( H/δ )  c2 
+
+> γ
+
++ C41
+
+ τmix T −1max 
+
+
+
++ O
+
+
+
+λ−1 log( Tmax )C2R2m−1/2plog( H/δ )
+
+
+
++ O log T  c2 
+
+> γ
+
++ C′21 C21
+
+ log( H/δ )τmix log Tmax 
+
+λ2H
+
+!
+
+Combining this with Lemma 22 yields 
+
+Eθk
+
+h
+
+∥ξkg,H − ξkg, ∗∥2i
+
+≤ 2Eθk
+
+h
+
+∥ ˜ξkg,H − ξkg, ∗∥2i
+
++ 2 Eθk
+
+h
+
+∥ ˜ξkg,H − ξkg,H ∥2i
+
+(142) 
+
+≤ O Eθk ∥ ˜ξkg, 0 − ξkg, ∗∥2
+
+T 2 + c4 
+
+> γ
+
+τmix log( H/δ )R2 log Tλ4Tmax 
+
++ R2plog( H/δ ) log T log Tmax 
+
+λm −1/2 + R2Tmax log( H/δ ) log THλm 
+
++ c2 
+
+> γ
+
+log( H/δ )τmix log Tmax log Tλ2H
+
+!
+
+(143) 
+
+29 Global Convergence of Average Reward CMDPs with Neural Critic Parameterization 
+
+Appendix D. NPG Analysis 
+
+We now provide the analysis for the convergence of the Natural Policy Gradient (NPG) subroutine in Algorithm 1. 
+
+Lemma 25 Consider the single sample estimates for the Fisher information matrix and the policy gradient ˆF (θk; z) and ˆ∇θJg(θk, ξ kg ; z). If Assumptions 5 and 8 hold, then the following bounds on the squared bias and variance hold: 
+
+Eθk
+
+h ˆF (θk; z)
+
+i
+
+− F (θk) 2
+
+≤ δ2 
+
+> F
+
+= 0 (144) 
+
+Ek
+
+h ˆF (θk; z)
+
+i
+
+− F (θk) 2
+
+≤ ¯δ2 
+
+> F
+
+= 0 (145) 
+
+Eθk
+
+
+
+ˆF (θk; z) − F (θk) 2
+
+≤ σ2 
+
+> F
+
+= 2 G41 (146) 
+
+Ek
+
+
+
+ˆF (θk; z) − F (θk) 2
+
+≤ ¯σ2 
+
+> F
+
+= 2 G41 (147) 
+
+Eθk
+
+h ˆ∇θJg(θk; z)
+
+i
+
+− ∇ θJg(θk) 2
+
+≤ δ2 
+
+> J
+
+= O
+
+
+
+C21 G21∥ξkg − ξkg, ∗∥2 + G21C24 log( H/δ )m−1 + G21τ 2mix ϵapp 
+
+
+
+(148) 
+
+Ek
+
+h ˆ∇θJg(θk; z)
+
+i
+
+− ∇ θJg(θk) 2
+
+≤ ¯δ2 
+
+> J
+
+= O
+
+
+
+C21 G21∥Ek
+
+h
+
+ξkg
+
+i
+
+− ξkg, ∗∥2 + G21C24 log( H/δ )m−1 + G21τ 2mix ϵapp 
+
+
+
+(149) 
+
+Eθk
+
+h ˆ∇θJg(θk; z)
+
+i
+
+− ∇ θJg(θk) 2
+
+≤ σ2 
+
+> J
+
+= O  G21C′21 log( H/δ ) (150) 
+
+Ek
+
+h ˆ∇θJg(θk; z)
+
+i
+
+− ∇ θJg(θk) 2
+
+≤ ¯σ2 
+
+> J
+
+= O  G21C′21 log( H/δ ) (151) 
+
+Proof By the definition of the single sample estimate for the Fisher Information Matrix, we have 
+
+Eθk
+
+h ˆF (θk; z)
+
+i
+
+− F (θk) 2
+
+= 0 (152) as the estimate is unbiased. We also have 
+
+ˆF (θk; z) − F (θk) 2
+
+≤ 2∥ ˆF (θk; z)∥2 (153) 
+
+≤ 2∥∇ θk log πθ(a|s)∥4 (154) 
+
+≤ 2G41 (155) For the policy gradient estimate ˆ∇θJg(θk, ξ kg ; z), we have 
+
+∥ ˆ∇θJg(θk, ξ kg ; z)∥2 = ˆAπθk 
+
+> g
+
+(ξkg ; z)2∥∇ θ log πθk (a|s)∥2
+
+≤ G21
+
+
+
+|g(s, a )| + |ηkg | + Qg(ϕ(s′, a ′); ζkg ) − Qg(ϕ(s, a ); ζkg )
+
+2
+
+(156) 
+
+≤ O  G21C′21 log( H/δ ) (157) 
+
+30 Global Convergence of Average Reward CMDPs with Neural Critic Parameterization 
+
+where the last inequality follows from the boundedness of the neural network output in the NTK regime (Lemma 15). Thus, the single-sample variance is bounded by a constant independent of Tmax . This results in the following bound 
+
+Eθk
+
+
+
+ˆ∇θJg(θk, ξ kg ; z) − ∇ θJg(θk) 2
+
+≤ O  G21C′21 log( H/δ ) (158) We now analyze the bias of the estimator. By definition, we have ξkg, ∗ = ( ηkg, ∗, ζ kg, ∗) as the optimal parameters in the linearized function class FR,m . We decompose the expected error Eθk [ ˆ∇θJg(θk, ξ kg ; z)] − ∇ θJg(θk) into four terms T0, T 0,lin , T 1, T 2:
+
+Eθk
+
+h ˆ∇θJg(θk, ξ kg ; z)
+
+i
+
+− ∇ θJg(θk)= Eθk
+
+"( 
+
+(ηkg, ∗ − ηkg ) + 
+
+ ˆQg(ϕ(s′, a ′); ζkg ) − ˆQg(ϕ(s′, a ′); ζkg, ∗)
+
+
+
+−
+
+ ˆQg(ϕ(s, a ); ζkg ) − ˆQg(ϕ(s, a ); ζkg, ∗)
+
+| {z }
+
+> T0:Optimization Error (Linearized)
+
++
+
+
+
+Qg(ϕ(s′, a ′); ζkg ) − ˆQg(ϕ(s′, a ′); ζkg )
+
+
+
+−
+
+
+
+Qg(ϕ(s, a ); ζkg ) − ˆQg(ϕ(s, a ); ζkg )
+
+| {z }
+
+> T0,lin :Linearization Residuals
+
++ Qπθk 
+
+> g
+
+(s′, a ′) − ˆQg(ϕ(s′, a ′); ζkg, ∗) −
+
+
+
+Qπθk 
+
+> g
+
+(s, a ) − ˆQg(ϕ(s, a ); ζkg, ∗)
+
+| {z }
+
+> T1:Function Approximation Error
+
++ g(s, a ) − ηkg, ∗ + Qπθk 
+
+> g
+
+(s′, a ′) − Qπθk 
+
+> g
+
+(s, a )
+
+| {z }
+
+> T2:True Advantage / Bellman Error
+
+)
+
+∇θ log πθk (a|s)
+
+#
+
+− ∇ θJg(θk) (159) Using the definition of the advantage function Aπg (s, a ) and the Policy Gradient Theorem: 
+
+Eθk [T2∇θ log πθk (a|s)] − ∇ θJg(θk)= Es,a ∼dπθk
+
+h
+
+Es′
+
+h
+
+g(s, a ) − ηkg, ∗ + Qπθk 
+
+> g
+
+(s′) − Qπθk 
+
+> g
+
+(s) s, a 
+
+i
+
+∇θ log πθk (a|s)
+
+i
+
+− ∇ θJg(θk)(160) 
+
+> (a)
+
+= Es,a ∼dπθk
+
+h
+
+Aπθk 
+
+> g
+
+(s, a )∇θ log πθk (a|s)
+
+i
+
+− ∇ θJg(θk) (161) = 0 (162) where ( a) uses the Bellman equation and that Jg(θk) = ηkg, ∗ by definition. Using the linearity of ˆQg with respect to ζ (defined via inner product with ∇ζ Qg(·; ζg, 0)): 
+
+T0 = ( ηkg, ∗ − ηkg ) + 
+
+ ˆQg(ϕ(s′, a ′); ζkg ) − ˆQg(ϕ(s′, a ′); ζkg, ∗)
+
+
+
+−
+
+ ˆQg(ϕ(s, a ); ζkg ) − ˆQg(ϕ(s, a ); ζkg, ∗)
+
+
+
+= ( ηkg, ∗ − ηkg ) + 
+
+D
+
+∇ζ Qg(ϕ(s′, a ′); ζ0) − ∇ ζ Qg(ϕ(s′, a ′); ζ0), ζ kg − ζkg, ∗
+
+E
+
+(163) 
+
+≤ 2C1∥ξkg − ξkg, ∗∥ (164) where the last inequality uses Lemma 15. Applying the Cauchy-Schwarz inequality and taking the squared expectation: 
+
+∥Eθk [T0∇θ log π]∥2 ≤ G21Eθk
+
+|T0|2 ≤ O 
+
+
+
+C21 G21∥ξkg − ξkg, ∗∥2
+
+(165) 
+
+31 Global Convergence of Average Reward CMDPs with Neural Critic Parameterization 
+
+Using Lemma 15, which bounds the difference between the neural network and its lineariza-tion in the NTK regime by O(m−1/2): 
+
+|T0,lin | =
+
+
+
+Qg(ϕ(s′, a ′); ζkg ) − ˆQg(ϕ(s′, a ′); ζkg )
+
+
+
+−
+
+
+
+Qg(ϕ(s, a ); ζkg ) − ˆQg(ϕ(s, a ); ζkg )
+
+
+
+≤ Qg(ϕ(s′, a ′); ζkg ) − ˆQg(ϕ(s′, a ′); ζkg ) + Qg(ϕ(s, a ); ζkg ) − ˆQg(ϕ(s, a ); ζkg )
+
+≤ O 
+
+
+
+C4m−1/2plog( H/δ )
+
+
+
+(166) Thus, the squared error contribution is: 
+
+∥Eθk [T0,lin ∇θ log π]∥2 ≤ G21Eθk [|T0,lin |2] ≤ O 
+
+ G21C24 log( H/δ )
+
+m
+
+
+
+(167) Using Assumption 3.4 (Neural Critic Approximation Error), which bounds the expected squared Bellman error of the optimal linearized critic ξkg, ∗:
+
+Eθk [T 21 ] = Eθk
+
+ 
+
+Qπg (s′, a ′) − ˆQg(ϕ(s′, a ′); ζkg, ∗)
+
+
+
+−
+
+
+
+Qπg (s, a ) − ˆQg(ϕ(s, a ); ζkg, ∗)
+
+ 2
+
+≤ O  τ 2mix ϵapp 
+
+ (168) using the average reward analogue of A.3 in Ke et al. (2024). We have 
+
+∥Eθk [T1∇θ log π]∥2 ≤ G21Eθk [T 21 ] ≤ O  G21τ 2mix ϵapp 
+
+ (169) Combining these terms, we have 
+
+Eθk
+
+h ˆ∇θJg(θk, ξ kg ; z)
+
+i
+
+− ∇ θJg(θk) 2
+
+≤ O 
+
+
+
+C21 G21∥ξkg − ξkg, ∗∥2 + G21C24 log( H/δ )m−1 + G21τ 2mix ϵapp 
+
+
+
+(170) Applying the same argument yields 
+
+EkEθk
+
+h ˆ∇θJg(θk, ξ kg ; z)
+
+i
+
+− ∇ θJg(θk) 2
+
+≤ O 
+
+
+
+C21 G21∥E
+
+h
+
+ξkg
+
+i
+
+− ξkg, ∗∥2 + G21C24 log( H/δ )m−1 + G21τ 2mix ϵapp 
+
+
+
+(171) 
+
+Lemma 26 We denote the MLMC estimators for the Fisher Information Matrix and the policy gradient as 
+
+F MLMC  
+
+> kh
+
+= F 0 
+
+> kh
+
++ 2 Qkh
+
+
+
+F Qkh 
+
+> kh
+
+− F Qkh−1
+
+> kh
+
+
+
+I
+
+
+
+2Qkh ≤ Tmax 
+
+
+
+(172) 
+
+∇θJMLMC  
+
+> g,kh
+
+= ∇θJ0 
+
+> g,kh
+
++ 2 Qkh
+
+
+
+∇θJQkh 
+
+> g,kh
+
+− ∇ θJQkh−1
+
+> g,kh
+
+
+
+I
+
+
+
+2Qkh ≤ Tmax 
+
+
+
+(173) 
+
+where Qkh ∼ Geom(1 /2) , F jkh = 12j
+
+P2j −1 
+
+> i=0
+
+ˆF (θk; zikh ), and ∇θJjg,kh = 12j
+
+P2j −1 
+
+> i=0
+
+ˆ∇θJg(θk; ξkg ; zikh ).Then the following bounds hold: 
+
+Ek,h 
+
+F MLMC 
+
+> kh
+
+ − F (θk) 2 ≤ O  G41τmix T −1max 
+
+ (174) 
+
+32 Global Convergence of Average Reward CMDPs with Neural Critic Parameterization 
+
+Ek,h 
+
+h
+
+F MLMC  
+
+> kh
+
+− F (θk) 2i
+
+≤ O  G41τmix log Tmax 
+
+ (175) 
+
+Ek,h 
+
+∇θJMLMC 
+
+> g,kh
+
+ − ∇ θJg(θk, ξ kg ) 2
+
+≤ O G21 log( H/δ )τmix T −1max + G21∥ξkg − ξkg, ∗∥2
+
++ G21 log( H/δ )m−1 + G21τ 2mix ϵapp 
+
+!
+
+(176) 
+
+Ek,h 
+
+
+
+∇θJMLMC  
+
+> g,kh
+
+− ∇ θJg(θk, ξ kg ) 2
+
+≤ O G21 log( H/δ )τmix log Tmax + G21∥ξkg − ξkg, ∗∥2
+
++ G21 log( H/δ )m−1 + G21τ 2mix ϵapp 
+
+!
+
+(177) 
+
+Ek
+
+∇θJMLMC 
+
+> g,kh
+
+ − ∇ θJg(θk, ξ kg ) 2
+
+≤ O G21 log( H/δ )τmix T −1max + G21∥Ek
+
+h
+
+ξkg
+
+i
+
+− ξkg, ∗∥2
+
++ G21 log( H/δ )m−1 + G21τ 2mix ϵapp 
+
+!
+
+(178) 
+
+Proof Using Lemma 25 with Lemma 14, we have 
+
+Ek,h 
+
+F MLMC 
+
+> kh
+
+ − F (θk) 2 ≤ O  σ2 
+
+> F
+
+τmix T −1max + δ2
+
+> F
+
+ = O  G41τmix T −1max 
+
+ (179) 
+
+Ek,h 
+
+h
+
+F MLMC  
+
+> kh
+
+− F (θk) 2i
+
+≤ O  σ2 
+
+> F
+
+τmix log Tmax + δ2
+
+> F
+
+ = O  G41τmix log Tmax 
+
+ (180) Similarly, we have 
+
+Ek,h 
+
+∇θJMLMC 
+
+> g,kh
+
+ − ∇ θJg(θk, ξ kg ) 2
+
+≤ O  σ2 
+
+> J
+
+τmix T −1max + δ2
+
+> J
+
+ (181) = O G21 log( H/δ )τmix T −1max + G21∥ξkg − ξkg, ∗∥2
+
++ G21 log( H/δ )m−1 + G21τ 2mix ϵapp 
+
+!
+
+(182) 
+
+Ek,h 
+
+
+
+∇θJMLMC  
+
+> g,kh
+
+− ∇ θJg(θk, ξ kg ) 2
+
+≤ O  σ2 
+
+> J
+
+τmix log Tmax + δ2
+
+> J
+
+ (183) = O G21 log( H/δ )τmix log Tmax + G21∥ξkg − ξkg, ∗∥2
+
++ G21 log( H/δ )m−1 + G21τ 2mix ϵapp 
+
+!
+
+(184) 
+
+Ek
+
+∇θJMLMC 
+
+> g,kh
+
+ − ∇ θJg(θk, ξ kg ) 2
+
+≤ O  ¯σ2 
+
+> J
+
+τmix T −1max + ¯δ2
+
+> J
+
+ (185) = O G21 log( H/δ )τmix T −1max + G21∥Ek
+
+h
+
+ξkg
+
+i
+
+− ξkg, ∗∥2
+
+33 Global Convergence of Average Reward CMDPs with Neural Critic Parameterization 
+
++ G21 log( H/δ )m−1 + G21τ 2mix ϵapp 
+
+!
+
+(186) 
+
+Theorem 27 (NPG Estimation Error Bounds) Suppose the assumptions in Section 5 hold. Let the NPG step size be set as γω = 2 log TμH and the initialization be ωkg, 0 = 0 . Let 
+
+ωkg, ∗ = F (θk)−1∇θJg(θk) denote the true Natural Policy Gradient direction. Then, after H
+
+inner iterations, the mean-squared error of the estimator ωkg satisfies: 
+
+Ek
+
+
+
+ωkg − ωkg, ∗
+
+> 2
+
+
+
+≤ G21τ 2mix 
+
+μ2T 2 + ˜O
+
+ G61τ 3mix 
+
+μ4
+
+ 1
+
+H + 1
+
+Tmax 
+
+
+
++ G21
+
+μ2√m + G21τ 2mix 
+
+μ2 ϵapp 
+
+
+
+,
+
+(187) 
+
+and the squared bias of the estimator satisfies: 
+
+Ek[ωkg ] − ωkg, ∗
+
+> 2
+
+≤ G21τ 2mix 
+
+μ2T 2 + ˜O
+
+ G61τ 3mix 
+
+μ4Tmax 
+
++ G21
+
+μ2√m + G21τ 2mix 
+
+μ2 ϵapp 
+
+
+
+, (188) 
+
+where ˜O hides polylogarithmic factors in H, T, T max , and 1/δ .
+
+Proof We note that by Lemma 26, that the conditions of Equation 36 in Theorem B.1 in Xu et al. (2025) are satisfied. Additionally, for any policy parameter θ, we have 
+
+μ ≤ ∥ F (θ)∥ ≤ O (G1) , ∥∇ θJ(θ)∥ ≤ O (G1τmix ) (189) from Theorem 4.7 in Xu et al. (2025). Thus, all conditions of Theorem B.1 in Xu et al. (2025) are satisfied, and we have 
+
+Ek
+
+
+
+ωkg − ωkg, ∗
+
+> 2
+
+
+
+≤ exp ( −Hγ ωμ) ω0 − ωkg, ∗
+
+> 2
+
++ O(γωR0 + R1)
+
+Ek[ωkg ] − ω∗
+
+> g,k
+> 2
+
+≤ exp( −Hγ ωμ) ω0 − ω∗ 
+
+> g,k
+> 2
+
++ μγ ω + 1 
+
+μ2
+
+
+
+O
+
+ G41τmix 
+
+Tmax 
+
+n
+
+ω0 − ω∗ 
+
+> g,k
+> 2
+
++ O(γωR0 + R1)
+
+o
+
++ ¯R1
+
+
+
+where 
+
+R0 = ˜O
+
+
+
+μ−3G61τ 3mix + μ−1G21 log( H/δ )( τmix + m−1) + μ−1G21Ek∥ξkg − ξkg, ∗∥2 + μ−1G21τ 2mix ϵapp 
+
+
+
+(190) 
+
+R1 = O
+
+
+
+μ−4G61τ 3mix T −1max + μ−2G21 log( H/δ )( τmix T −1max + m−1) + μ−2G21Ek∥ξkg − ξkg, ∗∥2 + μ−2G21τ 2mix ϵapp 
+
+
+
+(191) ¯R1 = O
+
+
+
+μ−2G61τ 3mix T −1max + G21 log( H/δ )( τmix T −1max + m−1) + G21∥Ek
+
+h
+
+ξkg
+
+i
+
+− ξkg, ∗∥2 + G21τ 2mix ϵapp 
+
+
+
+(192) 
+
+34 Global Convergence of Average Reward CMDPs with Neural Critic Parameterization 
+
+and we set γω = 2 log TμH . Using ω0 = 0 and ∥ωkg, ∗∥2 = ∥F (θk)−1∇θJ(θk)∥2 ≤ O  μ−1G1τmix 
+
+,this yields 
+
+Ek
+
+
+
+ωkg − ωkg, ∗
+
+> 2
+
+
+
+≤ G21τ 2mix 
+
+μ2T 2 + ˜O  H−1 + T −1max 
+
+   μ−4G61τ 3mix + μ−2G21 log( H/δ )τmix 
+
+
+
++ μ−2G21m−1/2 + μ−2G21Ek∥ξkg − ξkg, ∗∥2 + μ−2G21τ 2mix ϵapp 
+
+!
+
+Ek[ωkg ] − ω∗
+
+> g,k
+> 2
+
+≤
+
+ G21τ 2mix 
+
+μ2T 2 + G61τ 3mix 
+
+μ4Tmax 
+
+
+
++ ˜O
+
+
+
+μ−4G61τ 3mix T −1max + μ−2G21 log( H/δ )τmix T −1max + μ−2G1m−1/2
+
++ μ−2G21∥Ek
+
+h
+
+ξkg
+
+i
+
+− ξkg, ∗∥2 + μ−2G21τ 2mix ϵapp + G61τ 2mix 
+
+μ4Tmax 
+
+Ek∥ξkg − ξkg, ∗∥2
+
+
+
+≤
+
+ G21τ 2mix 
+
+μ2T 2 + G61τ 3mix 
+
+μ4Tmax 
+
+
+
++ ˜O
+
+
+
+μ−4G61τ 3mix T −1max + μ−2G21 log( H/δ )τmix T −1max + μ−2G1m−1/2
+
++ μ−2G21Ek
+
+h
+
+∥ξkg − ξkg, ∗∥2i
+
++ μ−2G21τ 2mix ϵapp + G61τ 2mix 
+
+μ4Tmax 
+
+Ek∥ξkg − ξkg, ∗∥2
+
+
+
+≤
+
+ G21τ 2mix 
+
+μ2T 2 + G61τ 3mix 
+
+μ4Tmax 
+
+
+
++ ˜O
+
+
+
+μ−4G61τ 3mix T −1max + μ−2G21 log( H/δ )τmix T −1max + μ−2G1m−1/2
+
++ μ−2G21Ek
+
+h
+
+∥ξkg − ξkg, ∗∥2i
+
++ μ−2G21τ 2mix ϵapp 
+
+
+
+Finally, we substitute the value for Ek
+
+∥ξkg − ξkg, ∗∥2 to yield 
+
+Ek
+
+
+
+ωkg − ωkg, ∗
+
+> 2
+
+
+
+≤ G21τ 2mix 
+
+μ2T 2 + ˜O
+
+ 1
+
+H + 1
+
+Tmax 
+
+  G61τ 3mix 
+
+μ4 + G21 log( H/δ )τmix 
+
+μ2
+
+
+
++ G21
+
+μ2√m + G21c2 
+
+> γ
+
+log( H/δ )τmix 
+
+λ2μ2H + G21τ 2mix 
+
+μ2 ϵapp 
+
+!
+
+(193) 
+
+Ek[ωkg ] − ω∗
+
+> g,k
+> 2
+
+≤ G21τ 2mix 
+
+μ2T 2 + ˜O
+
+ G61τ 3mix 
+
+Tmax μ4 + G21 log( H/δ )τmix 
+
+μ2Tmax 
+
++ G21
+
+μ2√m
+
++ G21c2 
+
+> γ
+
+log( H/δ )
+
+μ2λ2H + G21τ 2mix 
+
+μ2 ϵapp 
+
+
+
+(194) 
+
+Appendix E. CMDP Analysis 
+
+In this section, we formally analyze the convergence rate of the overall CMDP. 
+
+Theorem 28 Suppose the assumptions in Section 5 hold. Let the step sizes be α = β =Θ( T −1/4), the number of outer iterations be K = Θ( T 1/2), and the number of inner itera-tions be H = Θ( T 1/2). Let the MLMC truncation level be Tmax = T . Then, the sequence 
+
+35 Global Convergence of Average Reward CMDPs with Neural Critic Parameterization 
+
+of policies {θk}K−1 
+
+> k=0
+
+generated by Algorithm 1 satisfies the following bounds on the average reward gap and constraint violation: 
+
+1
+
+K E
+
+"K−1X
+
+> k=0
+
+
+
+Jπ∗ 
+
+> r
+
+− Jr(θk)
+
+#
+
+≤ ˜O
+
+√ϵbias + √ϵapp + T −1/4 + m−1/4
+
+, (195) 1
+
+K E
+
+"K−1X
+
+> k=0
+
+−Jc(θk)
+
+#
+
+≤ ˜O
+
+√ϵbias + √ϵapp + T −1/4 + m−1/4
+
+, (196) 
+
+where ˜O hides polylogarithmic factors in T .
+
+Proof Combining Theorem 27 with the fact that λk ∈ [0 , 2/δ s], we have 
+
+E [∥Ek [ωk] − ω∗
+
+> k
+
+∥] ≤
+
+
+
+1 + 2
+
+δs
+
+
+
+˜O G1τmix 
+
+μT + G31τ 2mix √Tmax μ2 + G1
+
+plog( H/δ )τmix 
+
+μ√Tmax 
+
++ G1
+
+μm 1/4
+
++ G1cγ
+
+plog( H/δ )
+
+μλ √H + G1τmix 
+
+μ
+
+√ϵapp 
+
+!
+
+(197) 
+
+Ek
+
+
+
+ωk − ω∗
+
+> k
+> 2
+
+
+
+≤
+
+
+
+1 + 4
+
+δ2
+
+> s
+
+
+
+˜O G21τ 2mix 
+
+μ2T 2 +
+
+ 1
+
+H + 1
+
+Tmax 
+
+  G61τ 3mix 
+
+μ4 + G21 log( H/δ )τmix 
+
+μ2
+
+
+
++ G21
+
+μ2√m + G21c2 
+
+> γ
+
+log( H/δ )τmix 
+
+λ2μ2H + G21τ 2mix 
+
+μ2 ϵapp 
+
+!
+
+(198) Using Lemma 4.6 and Lemma G.2 in Xu et al. (2025) and setting Tmax = T , we have 1
+
+K E
+
+"K−1X
+
+> k=0
+
+(L(π∗, λ k) − L (θk, λ k)) 
+
+#
+
+≤ √ϵbias + 1
+
+αK Es∼dπ∗ [KL (π∗(·| s)∥πθ0 (·| s))] +
+
+
+
+1 + 2
+
+δs
+
+
+
+˜O G31τ 2mix √T μ 2 + G1
+
+plog( H/δ )τmix 
+
+μ√T + G1
+
+μm 1/4 + G1τmix 
+
+μ
+
+√ϵapp + G1cγ
+
+plog( H/δ )
+
+μλ √H
+
+!
+
++ αG 2
+
+
+
+1 + 4
+
+δ2
+
+> s
+
+
+
+˜O G61τ 3mix 
+
+Hμ 4 + G21 log( H/δ )τmix 
+
+Hμ 2 + G21
+
+μ2√m + G21c2 
+
+> γ
+
+log( H/δ )τmix 
+
+λ2μ2H + G21τ 2mix 
+
+μ2 ϵapp 
+
+!
+
++ αO
+
+ 
+
+1 + 4
+
+δ2
+
+> s
+
+ G21τ 2mix 
+
+μ2
+
+
+
+(199) By the definition of the Lagrange function, we have 1
+
+K E
+
+"K−1X
+
+> k=0
+
+
+
+Jπ∗ 
+
+> r
+
+− Jr(θk)
+
+#
+
+≤ √ϵbias + 1
+
+αK Es∼dπ∗ [KL (π∗(·| s)∥πθ0 (·| s))] 
+
+36 Global Convergence of Average Reward CMDPs with Neural Critic Parameterization 
+
++
+
+
+
+1 + 2
+
+δs
+
+
+
+˜O G31τ 2mix √T μ 2 + G1
+
+plog( H/δ )τmix 
+
+μ√T + G1
+
+μm 1/4 + G1τmix 
+
+μ
+
+√ϵapp + G1cγ
+
+plog( H/δ )
+
+μλ √H
+
+!
+
++ αG 2
+
+
+
+1 + 4
+
+δ2
+
+> s
+
+
+
+˜O G61τ 3mix 
+
+Hμ 4 + G21 log( H/δ )τmix 
+
+Hμ 2 + G21
+
+μ2√m + G21c2 
+
+> γ
+
+log( H/δ )τmix 
+
+λ2μ2H + G21τ 2mix 
+
+μ2 ϵapp 
+
+!
+
++ αO
+
+ 
+
+1 + 4
+
+δ2
+
+> s
+
+ G21τ 2mix 
+
+μ2
+
+
+
+− 1
+
+K E
+
+"K−1X
+
+> k=0
+
+λk
+
+
+
+Jπ∗ 
+
+> c
+
+− Jc(θk)
+
+#
+
+(200) From Equation 75 in Xu et al. (2025), we have 
+
+− 1
+
+K E
+
+"K−1X
+
+> k=0
+
+λk
+
+
+
+Jπ∗ 
+
+> c
+
+− Jc(θk)
+
+#
+
+≤ 1
+
+K E
+
+"K−1X
+
+> k=0
+
+|λk|
+
+
+
+η∗ 
+
+> c
+
+(θk) − E
+
+h
+
+ηkc
+
+i #
+
++ β (201) 
+
+≤ ˜O G1cγ
+
+plog( H/δ )
+
+μλ √H + G1
+
+μm 1/4 + β
+
+!
+
+(202) Thus, 1
+
+K E
+
+"K−1X
+
+> k=0
+
+
+
+Jπ∗ 
+
+> r
+
+− Jr(θk)
+
+#
+
+≤ √ϵbias + 1
+
+αK Es∼dπ∗ [KL (π∗(·| s)∥πθ0 (·| s))] +
+
+
+
+1 + 2
+
+δs
+
+
+
+˜O G31τ 2mix √T μ 2 + G1
+
+plog( H/δ )τmix 
+
+μ√T + G1
+
+μm 1/4 + G1τmix 
+
+μ
+
+√ϵapp + G1cγ
+
+plog( H/δ )
+
+μλ √H
+
+!
+
++ αG 2
+
+
+
+1 + 4
+
+δ2
+
+> s
+
+
+
+˜O G61τ 3mix 
+
+Hμ 4 + G21 log( H/δ )τmix 
+
+Hμ 2 + G21
+
+μ2√m + G21c2 
+
+> γ
+
+log( H/δ )τmix 
+
+λ2μ2H + G21τ 2mix 
+
+μ2 ϵapp 
+
+!
+
++ αO
+
+ 
+
+1 + 4
+
+δ2
+
+> s
+
+ G21τ 2mix 
+
+μ2
+
+
+
++ ˜O G1cγ
+
+plog( H/δ )
+
+μλ √H + β
+
+!
+
+(203) 
+
+≤ ˜O √ϵbias + √ϵapp + 1
+
+αK + α + β +
+
+plog( H/δ )
+
+√H + m−1/4
+
+!
+
+(204) From Equation 79 in Xu et al. (2025), 1
+
+K E
+
+"K−1X
+
+> k=0
+
+Jc(θk)
+
+
+
+λk − 2
+
+δs
+
+#
+
+≤ 2
+
+δ2 
+
+> s
+
+βK + β
+
+2 (205) Since λkJπ∗ 
+
+> c
+
+≥ 0, we have 1
+
+K E
+
+"K−1X
+
+> k=0
+
+
+
+Jπ∗ 
+
+> r
+
+− Jr(θk)
+
+#
+
++ 2
+
+δsK E
+
+"K−1X
+
+> k=0
+
+−Jc(θk)
+
+#
+
+≤ √ϵbias + 2
+
+δ2 
+
+> s
+
+βK + β
+
+2 + 1
+
+αK Es∼dπ∗ [KL (π∗(·| s)∥πθ0 (·| s))] 
+
+37 Global Convergence of Average Reward CMDPs with Neural Critic Parameterization 
+
++
+
+
+
+1 + 2
+
+δs
+
+
+
+˜O G31τ 2mix √T μ 2 + G1
+
+plog( H/δ )τmix 
+
+μ√T + G1
+
+μm 1/4 + G1τmix 
+
+μ
+
+√ϵapp + G1cγ
+
+plog( H/δ )
+
+μλ √H
+
+!
+
++ αG 2
+
+
+
+1 + 4
+
+δ2
+
+> s
+
+
+
+˜O G61τ 3mix 
+
+Hμ 4 + G21 log( H/δ )τmix 
+
+Hμ 2 + G21
+
+μ2√m + G21c2 
+
+> γ
+
+log( H/δ )τmix 
+
+λ2μ2H + G21τ 2mix 
+
+μ2 ϵapp 
+
+!
+
++ αO
+
+ 
+
+1 + 4
+
+δ2
+
+> s
+
+ G21τ 2mix 
+
+μ2
+
+
+
+(206) Then by Lemma G.6 in Xu et al. (2025), we have 1
+
+K E
+
+"K−1X
+
+> k=0
+
+−Jc(θk)
+
+#
+
+≤ √ϵbias + 1
+
+δsβK + δsβ
+
+4 + δs
+
+2αK Es∼dπ∗ [KL (π∗(·| s)∥πθ0 (·| s))] +
+
+
+
+1 + δs
+
+2
+
+
+
+˜O G31τ 2mix √T μ 2 + G1
+
+plog( H/δ )τmix 
+
+μ√T + G1
+
+μm 1/4 + G1τmix 
+
+μ
+
+√ϵapp + G1cγ
+
+plog( H/δ )
+
+μλ √H
+
+!
+
++ αG 2
+
+ δs
+
+2 + 2
+
+δs
+
+
+
+˜O G61τ 3mix 
+
+Hμ 4 + G21 log( H/δ )τmix 
+
+Hμ 2 + G21
+
+μ2√m + G21c2 
+
+> γ
+
+log( H/δ )τmix 
+
+λ2μ2H + G21τ 2mix 
+
+μ2 ϵapp 
+
+!
+
++ αO
+
+ δs
+
+2 + 2
+
+δs
+
+ G21τ 2mix 
+
+μ2
+
+
+
+(207) 
+
+≤ ˜O √ϵbias + √ϵapp + 1
+
+αK + 1
+
+βK + α + β +
+
+plog( H/δ )
+
+√H + m−1/4
+
+!
+
+(208) Using K = H = Θ( T 1/2), α = β = Θ( T −1/4), we have 1
+
+K E
+
+"K−1X
+
+> k=0
+
+
+
+Jπ∗ 
+
+> r
+
+− Jr(θk)
+
+#
+
+≤ ˜O
+
+√ϵbias + √ϵapp + T −1/4 + m−1/4
+
+(209) 1
+
+K E
+
+"K−1X
+
+> k=0
+
+−Jc(θk)
+
+#
+
+≤ ˜O
+
+√ϵbias + √ϵapp + T −1/4 + m−1/4
+
+(210) 
+
+Appendix F. Limitations and Future Work 
+
+While our work establishes strong theoretical guarantees for neural actor-critic methods in CMDPs, it presents several limitations that open avenues for future research: 
+
+Beyond the NTK Regime Our theoretical analysis heavily relies on the Neural Tangent Kernel (NTK) regime, which requires the neural network’s width m to be highly overpa-rameterized to ensure the parameters remain close to their initialization. While this allows for mathematically tractable linearized dynamics, it limits the network’s ability to perform 
+
+38 Global Convergence of Average Reward CMDPs with Neural Critic Parameterization 
+
+deep feature representation learning. A vital future direction is to extend this analysis beyond the lazy training regime, potentially utilizing mean-field theory or representation learning frameworks to capture the true feature-learning capabilities of deep RL. 
+
+Ergodicity and Unichain Assumptions Our theoretical analysis relies on the uniform ergodicity assumption Assumption 1, which necessitates that the Markov chain induced by every parameterized policy is irreducible and aperiodic. In many practical safe RL domains, such as autonomous driving or robotics, policies may naturally lead to absorbing states (e.g., system failures) or possess disjoint transient regions. Currently, only MDPs with linear critics have been developed in the unichain setting (Ganesh and Aggarwal, 2025; Satheesh and Aggarwal, 2026). Extending neural critic approaches to these settings remains an open problem. 
+
+Order-Optimal Convergence Rates We established a global convergence rate and cumulative constraint violation of ˜O(T −1/4), which is not order-optimal natural actor-critic methods under Markovian sampling. The main bottleneck for CMDPs is the NTK analysis for the squared bias due to the projection operator. Extending our results by alleviating this bottleneck remains an interesting open problem.

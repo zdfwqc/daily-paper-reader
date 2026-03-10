@@ -1,0 +1,1123 @@
+Title: Finite-State Controllers for (Hidden-Model) POMDPs using Deep Reinforcement Learning
+
+URL Source: https://arxiv.org/pdf/2602.08734v1
+
+Published Time: Tue, 10 Feb 2026 03:17:45 GMT
+
+Number of Pages: 17
+
+Markdown Content:
+# Finite-State Controllers for (Hidden-Model) POMDPs using Deep Reinforcement Learning 
+
+# David Hudák 
+
+Brno University of Technology Brno, Czech Republic ihudak@fit.vutbr.cz 
+
+# Maris F. L. Galesloot 
+
+Radboud University Nijmegen, The Netherlands maris.galesloot@ru.nl 
+
+# Martin Tappler 
+
+TU Wien Vienna, Austria martin.tappler@tuwien.ac.at 
+
+# Martin Kurečka 
+
+Masaryk University Brno, Czech Republic martin.kurecka@fi.muni.cz 
+
+# Nils Jansen 
+
+Ruhr-Universtät Bochum, Germany Radboud University Nijmegen n.jansen@rub.de 
+
+# Milan Češka 
+
+Brno University of Technology Brno, Czech Republic ceskam@fit.vutbr.cz 
+
+## ABSTRACT 
+
+Solving partially observable Markov decision processes (POMDPs) requires computing policies under imperfect state information. De-spite recent advances, the scalability of existing POMDP solvers remains limited. Moreover, many settings require a policy that is 
+
+robust across multiple POMDPs, further aggravating the scalabil-ity issue. We propose the Lexpop framework for POMDP solving. 
+
+Lexpop (1) employs deep reinforcement learning to train a neural policy , represented by a recurrent neural network , and (2) constructs a finite-state controller mimicking the neural policy through effi-cient extraction methods. Crucially, unlike neural policies, such con-trollers can be formally evaluated, providing performance guaran-tees. We extend Lexpop to compute robust policies for hidden-model 
+
+POMDPs (HM-POMDPs), which describe finite sets of POMDPs. We associate every extracted controller with its worst-case POMDP. Using a set of such POMDPs, we iteratively train a robust neural pol-icy and consequently extract a robust controller. Our experiments shows that on problems with large state spaces, Lexpop outper-forms state-of-the-art solvers for POMDPs as well as HM-POMDPs. 
+
+## KEYWORDS 
+
+POMDPs; Deep Reinforcement Learning; Planning; Finite-State Controllers; Robustness; Model Uncertainty; Synthesis; Verification 
+
+ACM Reference Format: 
+
+David Hudák, Maris F. L. Galesloot, Martin Tappler, Martin Kurečka, Nils Jansen, and Milan Češka. 2026. Finite-State Controllers for (Hidden-Model) POMDPs using Deep Reinforcement Learning. In Proc. of the 25th Inter-national Conference on Autonomous Agents and Multiagent Systems (AA-MAS 2026), Paphos, Cyprus, May 25 – 29, 2026 , IFAAMAS, 17 pages. https: //doi.org/10.65109/TBFQ5922 
+
+## 1 INTRODUCTION 
+
+Partially observable Markov decision processes (POMDPs) [ 36 ] are a ubiquitous model for automated sequential decision-making under imperfect state information. Applications for POMDPs range from robotics [ 40 , 41 ], over network protocols [ 20 ], to healthcare [ 76 ].   
+
+> This work is licensed under a Creative Commons Attribution Inter-national 4.0 License.
+> Proc. of the 25th International Conference on Autonomous Agents and Multiagent Systems (AAMAS 2026), C. Amato, L. Dennis, V. Mascardi, J. Thangarajah (eds.), May 25 – 29, 2026, Paphos, Cyprus .©2026 International Foundation for Autonomous Agents and Multiagent Systems (www.ifaamas.org). https://doi.org/10.65109/TBFQ5922
+
+Solving a given discrete POMDP, i.e., computing policies that max-imize expected rewards, is intractable in general [ 46 ], as optimal policies may require an infinite memory. State-of-the-art model-based POMDP solvers thus leverage various approximation tech-niques or heuristics. Here, the primary focus is on (1) the analysis of belief states representing probability distributions over the un-observable states [ 29 , 41 , 64 ] and (2) symbolic search techniques over finite-state policies [ 4 , 39 ]. Furthermore, since exact environ-ment models are rarely available, recent research has considered computing robust policies that provide sufficient performance over a given set of POMDPs [ 16 , 22 , 23 ]. A joint limitation of the above model-based methods is their scalability with respect to the model size. These methods must either (1) unfold a very large belief space or (2) explore a very large space of potential finite-state policies. In contrast to model-based methods, model-free deep reinforce-ment learning (DRL) provides a means to mitigate these scalability challenges. DRL for POMDPs uses recurrent neural networks (RNNs) to represent memory, allowing policies to generalize behavior for similar states and observations using only interactions with the environment [ 37 , 66 ]. While DRL scales well to large state spaces, there are two crucial obstacles. First, aligning DRL with our goal of solving a given (set of) POMDPs presents a significant tech-nical challenge, as DRL must be set up correctly to achieve well-performing policies, requiring a highly efficient pipeline, combined with insights from the literature on addressing issues of sparse rewards, robustness, and partial observability [19, 55]. To the best of our knowledge, such a pipeline using DRL for solving discrete POMDPs has not yet been achieved. Second, the exact evaluation of DRL policies is not straightforward. This lack of guarantees regard-ing the performance of a policy restricts the utilization of DRL to games [ 72 ] or problems where soft guarantees are sufficient, such as language models [ 58 ]. The potential utilization of solving POMDPs in many safety-critical domains, such as autonomous driving or healthcare, requires means to exactly evaluate POMDP policies. 
+
+Contributions. Our main contribution is Lexpop – Learning-based policy EXtraction for POMDP Planning – that yields high-quality finite-state policies with verified performance. Lexpop builds on two key insights: (1) DRL, when engineered correctly, scales up to environments that are beyond reach of existing POMDP solvers. (2) Finite-state approximations of RNN-based policies often achieve comparable performance while enabling computationally tractable   
+
+> arXiv:2602.08734v1 [cs.AI] 9 Feb 2026 Model-Based
+> Worst-Case
+> Evaluation
+> Hidden Model
+> POMDP
+> Model
+> Worst-Case POMDP
+> Vectorized
+> Simulator
+> Black Box
+> Policy Extraction
+> Simulations
+> RNN-Based Policy Finite-State Policy
+> Initial
+> POMDP
+> Model-Free
+> DRL
+
+Figure 1: The overall idea of Lexpop , our RL-based FSC ex-traction. The robust extensions are depicted in green. 
+
+model-based evaluation, providing the required guarantees. We combine the strengths of these two directions. Figure 1 depicts the three steps of Lexpop : (1) Training an RNN-based neural policy using DRL equipped with a vectorized simulator that provides highly efficient access to the known POMDP model. (2) Extracting a stochastic finite-state controller (FSC) that mimics the behavior of the neural policy. (3) Model-based verification of the extracted FSC. We consider two sampling-based extraction methods: automata learning using Alergia [ 47 ] and a novel scalable method based on learning surrogate self-interpretable networks that provide flexible control over FSC sizes. Both methods are policy-architecture agnostic and treat policies as black boxes. Note that prior work on extracting finite-state policies from RNNs [ 10 , 23 ]has neglected the opportunities of DRL to scale up the model sizes. We further extend this approach towards robust FSCs, consid-ering hidden-model POMDPs (HM-POMDPs) [ 22 ]. Those capture sets of different environment models, i.e., sets of POMDPs with a shared action and observation space. We propose a robustified version of Lexpop that searches for an FSC that achieves the best worst-case performance for the given HM-POMDP. As depicted by the green parts of Figure 1, for the candidate FSCs, we identify the worst-case POMDPs that iteratively enter into the learning step, i.e, the trajectories from worst-case POMDPs are progressively used to train a robust neural policy and consequently to extract a ro-bust FSC. Similar to Galesloot et al . [22] , a deductive verification technique [5] finds the worst-case POMDPs. In summary, our main contributions are: (1) Lexpop , a scalable learning-based approach for computing high-quality FSCs in large POMDPs, (2) an extension of Lexpop computing robust FSCs for large HM-POMDPs via iterative learning from worst-case POMDPs, (3) a scalable extraction method that approximates complex neu-ral polices via stochastic FSCs. In our experimental evaluation, we focus on planning problems with large state spaces that go beyond the reach of existing model-based approaches. We demonstrate a clear advantage in terms of scalability when comparing Lexpop to state-of-the-art approaches in both the single POMDP and HM-POMDP settings. 
+
+## 2 PROBLEM FORMULATION 
+
+In this section, we begin with notation and preliminaries, then formulate the central problems addressed in the paper. The set of all distributions over a countable set 𝑋 is Δ(𝑋 ). For 
+
+𝑓 : 𝑋 → Δ(𝑌 ), we may write 𝑓 (𝑦 | 𝑥 ) to denote 𝑓 (𝑥 )( 𝑦 ). Below, we introduce (partially observable) Markov decision processes [61]. 
+
+## 2.1 MDPs, POMDPs and Policies 
+
+Definition 1 (MDP). A Markov decision process (MDP) is a tuple 
+
+𝑀 = ⟨𝑆, 𝑠 0, 𝐴,𝑇 , 𝑅 ⟩, where 𝑆 represents a countable set of states ,
+
+𝑠 0 ∈ 𝑆 is the initial state , 𝐴 is a finite set of actions , 𝑇 : 𝑆 ×𝐴 → Δ(𝑆 )
+
+is a transition function , and 𝑅 : 𝑆 × 𝐴 → R is a reward function .
+
+A Markov chain (MC) with rewards is an MDP without actions. To handle environments that do not provide precise state information, MDPs are extended to model partially observable states. 
+
+Definition 2 (POMDP). A partially observable Markov decision process (POMDP) [ 36 ] is a tuple M = (𝑀, 𝑍, 𝑂 ), where 𝑀 is an underlying MDP, 𝑍 is a finite set of observations , and 𝑂 : 𝑆 → 𝑍 is, w.l.o.g. [13], a deterministic and state-based observation function .
+
+We focus on a general form of reachability over an infinite hori-zon with rewards defined w.r.t. a set of target states 𝐺 ⊆ 𝑆 that are fully observable and absorbing [ 31 ]. It encompasses (1) reachabil-ity ; maximizing reachability probabilities of target states 𝐺 , and (2) reachability reward ; maximizing cumulative reward before reach-ing target states 𝐺 with probability one. For (1), the reward function is one for states 𝑔 ∈ 𝐺 and zero everywhere else. For (2), the states 
+
+𝑔 ∈ 𝐺 have no reward and are reachable from all states. Note that the reachability reward objective (2) generalizes the discounted reward setting [ 7]. For a sequence of states (𝑠 0, 𝑠 1, . . . , 𝑠 𝑡 ) its observable fragment is the observation history 𝑜 𝑡 = (𝑂 (𝑠 0), 𝑂 (𝑠 1), . . . , 𝑂 (𝑠 𝑡 )) .A trajectory is a sequence containing observations and actions. A 
+
+policy 𝜋 ∈ Π maps trajectories to distributions over actions We search for policies represented by finite-state controllers [26, 51]. 
+
+Definition 3 (FSC). A finite-state controller (FSC) is a tuple 
+
+𝜋 𝐹 = (𝑁 , 𝑛 0, 𝛿, 𝜂 ), where 𝑁 is a set of memory nodes (states), 𝑛 0 ∈ 𝑁 
+
+is an initial node , 𝛿 : 𝑁 × 𝑍 → Δ(𝐴 ) is a (stochastic) action function ,and 𝜂 : 𝑁 × 𝑍 → Δ(𝑁 ) is a (stochastic) memory update function .
+
+We employ stochastic Mealy-like FSCs [ 2 ] that select actions based on memory and observations and thus require fewer memory nodes compared to Moore-like FSCs as used, e.g., in You et al . [73] .The (uncountable) set of all (stochastic) FSCs for a POMDP M
+
+is FM . A POMDP M together with an FSC 𝜋 𝐹 constitutes the Markov chain M𝜋 𝐹 = ⟨𝑆 𝜋 𝐹 , ⟨𝑠 0, 𝑛 0⟩,𝑇 𝜋 𝐹 , 𝑅 𝜋 𝐹 ⟩ over the product state-space 𝑆 𝜋 𝐹 = 𝑆 × 𝑁 , with, for all ⟨𝑠, 𝑛 ⟩ ∈ 𝑆 𝜋 𝐹 , using 𝑧 = 𝑂 (𝑠 ):
+
+𝑇 𝜋 𝐹 (⟨ 𝑠 ′, 𝑛 ′⟩ | ⟨ 𝑠, 𝑛 ⟩) = 𝜂 (𝑛 ′ | 𝑛, 𝑧 )∑︁ 
+
+> 𝑎 ∈𝐴
+
+𝛿 (𝑎 | 𝑛, 𝑧 )𝑇 (𝑠 ′ | 𝑠, 𝑎 ),𝑅 𝜋 𝐹 (⟨ 𝑠, 𝑛 ⟩) =∑︁ 
+
+> 𝑎 ∈𝐴
+
+𝛿 (𝑎 | 𝑛, 𝑧 )𝑅 (𝑠, 𝑎 ).
+
+Consequently, the value-function of an FSC 𝜋 𝐹 in a POMDP M is the value-function 𝑉 𝜋 𝐹 : 𝑆 × 𝑁 → R of the MC M𝜋 𝐹 , given by the fixed point of the following equation [50], again using 𝑧 = 𝑂 (𝑠 ):𝑉 𝜋 𝐹 (⟨ 𝑠, 𝑛 ⟩) = 𝑅 𝜋 𝐹 (⟨ 𝑠, 𝑛 ⟩) + ∑︁  
+
+> ⟨𝑠 ′,𝑛 ′⟩
+
+𝑇 𝜋 𝐹 (⟨ 𝑠 ′, 𝑛 ′⟩ | ⟨ 𝑠, 𝑛 ⟩) 𝑉 𝜋 𝐹 (⟨ 𝑠 ′, 𝑛 ′⟩) .
+
+Then, the value 𝐽 𝜋 𝐹 = 𝑉 𝜋 𝐹 (⟨ 𝑠 0, 𝑛 0⟩) of the FSC 𝜋 𝐹 is deter-mined from the value function on the initial state of the MC M𝜋 𝐹 .
+
+Neural policies. Recurrent neural networks (RNN), similarly as FSCs, represent state machines. Nowadays, RNNs are a standard architecture implemented by gated recurrent units (GRU) [ 14 ], or long-short term memory (LSTM) [ 30 ] layers that give DRL the ca-pability of memory [ 27 , 55 ] and have been used to find FSCs for planning in (robust) POMDPs [ 10 , 23 ]. In contrast to FSCs, RNNs have an infinite space of memory, represented by the hidden state 
+
+ℎ ∈ R𝑑 , with size 𝑑 ∈ N . RNN policies typically consist of a param-eterized (deterministic) memory update 𝜂 𝜃 : R𝑑 × 𝑍 → R𝑑 and a parameterized (stochastic) action function 𝛿 𝜃 : R𝑑 → Δ(𝐴 ). Param-eters 𝜃 are optimized by back-propagating the gradients of DRL losses through time [ 70 , 71 ]. Just like an FSC, an RNN-based policy is of type 𝜋 RNN 𝜃 : 𝑍 ∗ → Δ(𝐴 ) and induces a value 𝐽 𝜋 RNN 𝜃 represent-ing the expected reward. It is, in general, intractable to compute it in closed form; thus, the value 𝐽 𝜋 RNN 𝜃 is typically approximated empirically by simulating the policy 𝜋 RNN 𝜃 in the POMDP M.
+
+## 2.2 Hidden-model POMDPs 
+
+Hidden-model POMDPs (HM-POMDPs) model a family of POMDPs that share the same state, observation, and action spaces but differ in their reward and transition functions. As such, HM-POMDPs capture uncertainty about the exact dynamics of the environments. Here, we largely follow Galesloot et al. [22]. 
+
+Definition 4 (HM-POMDP). A hidden-model POMDP (HM-POMDP) [ 22 ] is a tuple M = ⟨𝑆, 𝑠 0, 𝐴, {𝑇 𝑖 }𝑖 ∈𝐼 , {𝑅 𝑖 }𝑖 ∈𝐼 , 𝑍, 𝑂 ⟩, where 
+
+𝐼 is a finite set of indices, 𝑆 , 𝑠 0, 𝐴 , 𝑍 , and 𝑂 are defined as for stan-dard POMDPs, {𝑇 𝑖 }𝑖 ∈𝐼 and {𝑅 𝑖 }𝑖 ∈𝐼 are indexed sets of transition and reward functions, respectively, such that, for every 𝑖 ∈ 𝐼 , M𝑖 =
+
+⟨𝑆, 𝑠 0, 𝐴,𝑇 𝑖 , 𝑅 𝑖 , 𝑍, 𝑂 ⟩ is a POMDP. Consequently, an HM-POMDP M
+
+describes a finite set (a family) of POMDPs {M 𝑖 }𝑖 ∈𝐼 .
+
+Due to the shared action and observation spaces, all POMDPs in the HM-POMDP share the same set of FSCs FM . Additionally, struc-tural similarities, i.e., transitions with equivalent outcomes, can be merged in the construction of a quotient POMDP [ 22 ]. Given a set of POMDPs, an FSC 𝜋 𝐹 induces a set (family) of MCs {𝑀 𝜋 𝐹  
+
+> 𝑖
+
+}𝑖 ∈𝐼 [12 ]and an associated set of value-functions {𝑉 𝜋 𝐹  
+
+> 𝑖
+
+}𝑖 ∈𝐼 . We are interested in the robust value, i.e., the worst-case value among the models. 
+
+Definition 5 (Robust value). Given an HM-POMDP M and a policy 𝜋 𝐹 , the robust value is the worst-case value among the set: 
+
+J 𝜋 𝐹 = min   
+
+> 𝑖 ∈𝐼
+
+𝑉 𝜋 𝐹  
+
+> 𝑖
+
+(⟨ 𝑠 0, 𝑛 0⟩) . (1) As explained in Galesloot et al . [22] , the robust value can be found efficiently through deductive verification techniques [5]. 
+
+## 2.3 Problem Statement 
+
+Now, we are ready to define the main problems: maximizing reach-ability rewards (or probabilities) for either a single POMDP or an HM-POMDP. First, we define our problem for individual POMDPs. 
+
+Problem 1. Given a POMDP M, find an FSC policy 𝜋 𝐹 that max-imizes the value 𝑉 𝜋 𝐹 (⟨ 𝑠 0, 𝑛 0⟩) . Formally: 
+
+𝜋 ∗ 
+
+> 𝐹
+
+∈ sup  
+
+> 𝜋 𝐹 ∈ F M
+
+𝑉 𝜋 𝐹 (⟨ 𝑠 0, 𝑛 0⟩) . (2) Similarly, we define the robust problem for HM-POMDPs: 
+
+Problem 2. Given an HM-POMDP M , find an FSC policy 𝜋 𝐹 that maximizes the robust value J 𝜋 𝐹 as in Definition 5. Formally: 
+
+𝜋 ∗ 
+
+> 𝐹
+
+∈ sup  
+
+> 𝜋 𝐹 ∈ F M
+
+J 𝜋 𝐹 = sup  
+
+> 𝜋 𝐹 ∈ F M
+
+min   
+
+> 𝑖 ∈𝐼
+
+𝑉 𝜋 𝐹  
+
+> 𝑖
+
+(⟨ 𝑠 0, 𝑛 0⟩) . (3) Note that Problem 2 resembles two-player zero-sum Stackelberg games [ 77 ], which suggests that stochastic FSCs are necessary [ 22 ]. Similarly to POMDP planning with undiscounted infinite-horizon objectives, the decision variants of both Problem 1 and Problem 2 are undecidable in general [ 45 ]. Although there exist convergence guarantees for a variant of an infinite-horizon objective called Goal-POMDPs [ 31 ], which were recently also extended to a game set-ting [ 67 ], the practical performance of belief-based methods is limited [ 4], and the ideas cannot immediately be used for Problem 2. In this work, we aim to develop a scalable and sound algorithm to find the best possible FSC policy within a reasonable timeframe. To that end, we compute (stochastic) FSCs using DRL, specifically using RNN-based agents. In contrast to FSCs, the value of an RNN-based policy 𝜋 RNN 𝜃 cannot be found analytically, which is why we are ultimately interested in finding an FSC representation of 𝜋 RNN 𝜃 .
+
+## 3 ON USING DRL TO SOLVE POMDPS 
+
+In the following, we motivate the use of DRL with RNNs for solving POMDPs, even when the model is fully known. 
+
+## 3.1 Challenges of Solving POMDPs 
+
+In POMDPs, it is well-known that acting near-optimally requires a succinct representation of (past) observation-action sequences [ 63 ]. These sequences can be sufficiently compressed into beliefs , i.e., probability distributions over the underlying unobserved states, and a near-optimal policy can be found by constructing and solving a 
+
+belief-MDP [ 36 ]. Unfortunately, the complexity of updating a belief is quadratic in the size of the state-space [ 65 ], and the number of possible belief states grows exponentially in the horizon, rendering full exploration of belief-space intractable in general [45]. 
+
+Searching for FSCs. Exploration of FSCs offers an alternative method to belief-based policies with benefits in efficient verification and deployment. One direction is to optimize the parameters of an FSC, where the size and structure of the memory must be established beforehand [2, 35, 60]. An alternative direction is to build the FSC incrementally through various symbolic search techniques [ 4, 39 ]. However, both directions suffer from an enormous design space. 
+
+Robust policies. For many situations, the assumption that a single POMDP model describes all cases is too strong. Therefore, recent efforts focus on computing a robust policy for sets of POMDPs [ 16 ,22 , 23 , 57 ]. In a robust setting, the challenge is to find a single policy that works for (large) sets of POMDPs. Thus, the scalability chal-lenges and the importance of generalization are further increased, as existing approaches for POMDPs do not readily extend. Algorithm 1: Overview of Lexpop and Robust Lexpop  
+
+> 1:
+
+function TrainPolicy (𝜋 RNN 𝜃 , {M 𝑖 }𝑖 ∈𝐼 ′ ) 
+
+> 2:
+
+VecSimulator ← VecStorm ({M 𝑖 }𝑖 ∈𝐼 ′ ) 
+
+> 3:
+
+𝜋 ′ 
+
+> RNN 𝜃
+
+← DRL (𝜋 RNN 𝜃 , VecSimulator ) ⊲ Using PPO  
+
+> 4:
+
+return 𝜋 ′ 
+
+> RNN 𝜃
+> 5:
+
+function Lexpop (M: POMDP, 𝜋 RNN 𝜃 : Policy)  
+
+> 6:
+
+𝜋 RNN 𝜃 ← TrainPolicy (𝜋 RNN 𝜃 , {M})  
+
+> 7:
+
+𝜋 𝐹 ← ExtractFSC (𝜋 RNN 𝜃 ) ⊲ Using Alergia or SIG  
+
+> 8:
+
+𝐽 𝜋 𝐹 ← Evaluate (𝜋 𝐹 , M) ⊲ Using Storm  
+
+> 9:
+
+return 𝜋 𝐹 , 𝐽 𝜋 𝐹  
+
+> 10:
+
+function RobustLexpop (M : HM-POMDP, 𝜋 RNN 𝜃 : Policy)  
+
+> 11:
+
+𝐵 ← Initialize () ⊲ 𝐵 is a buffer of POMDPs  
+
+> 12:
+
+while ¬ TimeOut() do  
+
+> 13:
+
+𝜋 RNN 𝜃 ← TrainPolicy (𝜋 RNN 𝜃 , 𝐵 ) ⊲ See Section B.7  
+
+> 14:
+
+𝜋 𝐹 ← ExtractFSC (𝜋 RNN 𝜃 ) ⊲ Using Alergia or SIG  
+
+> 15:
+
+M, J 𝜋 𝐹 ← worstPOMDP (𝜋 𝐹 , M ) ⊲ Using Paynt  
+
+> 16:
+
+𝐵 ← 𝐵 ∪ {M}  
+
+> 17:
+
+return 𝜋 𝐹 , J 𝜋 𝐹 
+
+## 3.2 Opportunities and Challenges of DRL 
+
+To address the aforementioned challenges, we leverage model-free DRL, which does not rely on a model and instead optimizes over its simulations, enabling scaling to large state spaces. DRL handles partial observability, by using RNNs as memory representations for policies [ 27 , 55 , 71 ], due to their capability of generalization [ 55 ]and learning sufficient statistics of observation sequences [43]. 
+
+DRL for solving (HM-)POMDPs. In our setting, we are given a fully specified (HM-)POMDP model. As explained in the introduction, utilizing DRL to solve discrete (HM-)POMDPs presents its own challenges and remains an unsolved problem. We must compute a policy in symbolic form, specifically an FSC, such that we can evaluate its performance analytically. Thus, while we neglect the POMDP model in searching for the FSC, we still use it to provide guarantees on (i.e., verify) the policy. We observe that using RNNs to search for FSCs for a given POMDP has been very successful [ 10 ,23 ]. However, so far, training the RNN has relied on model-based information, which suffers from the fact that (1) it does not scale and (2) relies on suboptimal approximations. Lexpop fills this gap. 
+
+## 4 OVERVIEW OF OUR APPROACH 
+
+Algorithm 1 provides an overview of Lexpop .
+
+(Robust) policy training. Lexpop is agnostic to the DRL algorithm used to train the neural policy. We chose PPO [ 62 ], due to its stable performance on our challenging POMDP benchmarks. For efficient sampling, we developed a vectorized simulation framework on top of the Storm model-checker, enabling parallel simulations across single or multiple POMDPs (see Line 2). In Line 3, our agent, repre-sented by an RNN 𝜋 RNN 𝜃 with parameters 𝜃 , is optimized on a (new) set of POMDPs through multiple training iterations. DRL for the considered (HM-)POMDPs poses significant technical challenges (cf. [ 19 ]), including poorly defined and sparse rewards, partial ob-servability, and dynamic action spaces. We provide a description of our DRL pipeline, including important design choices and alterna-tive learning methods in Section B. 
+
+Lexpop for Problem 1. Given a POMDP M, Lexpop trains a neural policy 𝜋 RNN 𝜃 starting from a randomly initialized policy 𝜋 RNN 𝜃 (Line 6). The key step is the extraction of the FSC 𝜋 𝐹 from 𝜋 RNN 𝜃 (Line 7). We consider two methods discussed in Section 5. Finally, 𝜋 𝐹 is analytically evaluated by constructing and analyzing the Markov chain M𝜋 𝐹 in Storm [28], yielding its value 𝐽 𝜋 𝐹 (Line 8). 
+
+Lexpop for Problem 2. Given an HM-POMDP M , RobustLexpop 
+
+iteratively trains a robust neural policy and consequently extracts a robust FSC policy that performs well on the given set of POMDPs. 
+
+RobustLexpop maintains a candidate neural policy 𝜋 RNN 𝜃 and its finite-state approximation 𝜋 𝐹 . Every candidate 𝜋 𝐹 is associated with its worst-case POMDP M from M . These worst-case POMDPs are iteratively stored in a buffer 𝐵 . We start with a randomly initialized 
+
+𝜋 RNN 𝜃 and a randomly selected M (Line 11). In every iteration, we improve 𝜋 RNN 𝜃 through robust policy training, using the trajectories collected from all POMDPs stored in the buffer 𝐵 (Line 13). We provide more details in Section B.7. Then, we extract an improved 
+
+𝜋 𝐹 (Line 14) using the same extraction methods as in the single-POMDP setting (see Section 5). Finally, we analytically compute the robust value J 𝜋 𝐹 associated with 𝜋 𝐹 and the corresponding worst-case POMDP M ∈ M (Line 15) which we add to the buffer 
+
+𝐵 (Line 16). We employ Paynt [5 ] to efficiently search through the family of Markov chains {M 𝜋 𝐹  
+
+> 𝑖
+
+}𝑖 ∈𝐼 induced by M and 𝜋 𝐹 .
+
+## 5 POLICY EXTRACTION 
+
+The extraction of FSCs from RNN-based policies connects model-free policy learning and model-based policy verification. It relies on two insights: 1) for RNN policies, there often exists a smaller finite-state representation [ 38 ] and 2) for challenging POMDPs, there often exists a small FSC achieving a close-to-optimal value [4]. To get the underlying FSC, we propose two extraction methods with a common working principle: Provided an RNN-based policy 
+
+𝜋 RNN 𝜃 , synthesize an FSC-based policy 𝜋 𝐹 whose decisions match 
+
+𝜋 RNN 𝜃 on sampled training trajectories as closely as possible. Both methods learn stochastic FSCs from a sampled dataset of trajectories 
+
+D from a subset of POMDPs {𝑀 𝑖 }𝑖 ∈𝐼 ′ using policy 𝜋 RNN 𝜃 trained on that subset. The data set contains sequences of tuples (𝑧 𝑡 , 𝑎 𝑡 )
+
+of observations and actions selected by 𝜋 RNN 𝜃 at time 𝑡 . The first extraction method is a direct application of the automata learning algorithm Alergia [11 ], whereas the second method introduces a novel RNN training approach with a hidden-state space encoding. 
+
+## 5.1 Automata Learning 
+
+We learn stochastic Mealy machines [ 53 ] using a variant of Alergia 
+
+proposed for MDPs [ 47 ] and implemented in AALpy [ 54 ]. Therefore, we slightly adjust the FSC definition to 𝜋 𝐹 = (𝑁 , 𝑛 0, 𝜎 ), combining the memory update and action function into 𝜎 : 𝑁 ×𝑍 → Δ(𝑁 ×𝐴 ).Given the dataset D of trajectories, Alergia first transforms them into a prefix tree by merging common prefixes. Then, it merges tree nodes having compatible subtrees, i.e., nodes whose observed future behavior is similar. Compatibility checks recursively deter-mine if the action distributions conditioned on observation-action RNN  
+
+> (GRU)
+> Dense Layer
+> Loss
+> Gumbel
+> Softmax
+
+Figure 2: High-level architecture of the self-interpretable Gumbel softmax network. 
+
+histories are not statistically different. Therefore, merging compat-ible nodes creates an FSC memory structure that mimics 𝜋 RNN 𝜃 .After processing all possible merges, Alergia estimates action and update probability distributions. Instead of commonly used com-patibility checks based on Hoeffding bounds [ 11 , 47 ], we use 𝜒 2
+
+homogeneity tests. This better distinguishes memory nodes, at the cost of slightly larger FSCs and, thus, longer verification times. In the limit, Alergia [ 47 ] converges to an FSC that is isomorphic to the FSC underlying the RNN policy, if such underlying FSC exists. 
+
+## 5.2 Self-Interpretable Networks 
+
+As automata learning typically struggles with large action and ob-servation spaces, we additionally propose an approach that learns interpretable neural surrogate models. The core idea is to approxi-mate the behavior of the policy 𝜋 RNN 𝜃 using a neural network 𝜋 FSC 𝜙 ,which is explicitly designed to emulate an FSC. The idea of using a discrete memory structure is inspired by quantized bottleneck layers 
+
+proposed by Koul et al . [38] , which employs a hyperbolic tangent (tanh ) layer followed by rounding to quantize the RNN feedback. For training, they use a straight-through gradient estimator. Our ex-traction method, Self-Interpretable Gumbel Softmax Network (SIG), mitigates three significant limitations arising from this design: a) an exponential blow-up of the number of memory nodes caused by the flat quantization of the activation values; b) the lack of support for stochastic memory updates; and c) the bias of the straight-through gradient estimates. To combat these issues, we propose a bottleneck architecture that directly models the transition distribution to one of |𝑁 | memory states. 
+
+Architecture and Training. Figure 2 depicts the architecture for training the surrogate policy 𝜋 FSC 𝜙 . The recurrent part transforms hidden states ℎ𝑡 ∈ R𝑑 into a space of vectors 𝑚 𝑡 +1 ∈ [ 0, 1] |𝑁 | that resembles categorical distributions over one-hot encoded mem-ory nodes. The size |𝑁 | is a parameter of extraction. The forward pass first computes the vector 𝑝 𝑡 ∈ R|𝑁 | of non-normalized log-probabilities of the memory update. While the distilled FSC directly samples 𝑚 𝑡 +1 ∼ Softmax (𝑝 𝑡 ) to update the memory state, this ap-proach is not differentiable. Therefore, during training, we use a Gumbel Softmax layer [ 34 ] which is designed to sample 𝑚 𝑡 +1 in a differentiable way. We pay the cost that 𝑚 𝑡 +1 is no longer a one-hot vector, though its distribution is close to Softmax (𝑝 𝑡 ) (in the Wasserstein distance); the distance is controlled by a temperature parameter and is reduced during training. To train the SIG network, we minimize the empirical cross entropy between the actions from the dataset D and the computed action. 
+
+FSC Inference. To construct an FSC, we infer the actions and memory for each combination of memory node and input observa-tion [ 23 ]. Given a trained SIG with a bottleneck layer of size |𝑁 |,we create a placeholder FSC 𝜋 𝐹 with memory nodes 𝑁 . Then, for every node 𝑛 ∈ 𝑁 and observation 𝑧 ∈ 𝑍 , we perform these steps: (1) Create a one-hot encoding 𝑚 ∈ { 0, 1}|𝑁 | of 𝑛 .(2) Process 𝑧 and 𝑚 through the RNN to yield an action distri-bution 𝜎 𝑎 ∈ Δ(𝐴 ) and hidden state ℎ ∈ R𝑑 .(3) Process ℎ with the Gumbel encoder to get a distribution 
+
+𝜎 𝑛 ′ ∈ Δ(𝑁 ) over the next memory node 𝑛 ′ ∈ 𝑁 .(4) Add (𝑛, 𝑧 ) ↦ → 𝜎 𝑎 to 𝛿 and (𝑛, 𝑧 ) ↦ → 𝜎 𝑛 ′ to 𝜂 of the FSC 𝜋 𝐹 .Then, the above yields a fully specified FSC 𝜋 𝐹 . We prune nodes that are not reachable from the initial observation-memory tuple. While SIG does not provide convergence guarantees like Alergia ,we find that SIG works well and often even better in practice. 
+
+## 6 EXPERIMENTS 
+
+We derive two main research questions from the problems formu-lated in Section 2.3, and further refine them into sub-questions, considering the individual components of Lexpop :
+
+RQ1. Can Lexpop construct FSCs with a higher value than FSCs synthesized by a state-of-the-art POMDP solver Saynt [4]? 
+
+RQ1a Can the PPO algorithm train RNN-based neural policies that outperform the FSCs produced by Saynt ?
+
+RQ1b Does the FSC extraction from the neural policies preserve the value? 
+
+RQ1c Does the self-interpretable extraction improve the fidelity over stochastic automata learning using Alergia [47]? 
+
+RQ2. For the given HM-POMDPs, can Lexpop construct robust FSC policies with a higher robust value than the FSCs produced by the state-of-the-art model-based algorithm rfPG [22]? 
+
+RQ2a Does the FSC extraction preserve the robust value of the robustified neural policy on a given set of POMDPs? 
+
+RQ2b Can the robustified PPO algorithm, combined with FSC ex-traction, outperform the FSCs produced by rfPG ?
+
+RQ2c Is the worst-case POMDP selection important for solving HM-POMDPs? 
+
+Baseline Selection. RQ1 concerns the experimental comparison of DRL-based FSC synthesis and pure model-based planning. As a baseline, we selected one of the state-of-the-art approaches for offline POMDP planning, Saynt [ 4 ]: it has publicly available code, supports both reachability and undiscounted reward specifications, and to our knowledge, it works with the largest models. We also considered the recent work of Ho et al . [29] , which extends the heuristic search value iteration [ 64 ] to reachability specifications to outperform SARSOP [ 41 ]. Our preliminary experiments show that its implementation cannot handle our large reachability models, which are about two orders of magnitude larger than those in [ 29 ]. Unfortunately, we were unable to run the approach described in Carr et al . [10] , which also employs RNNs to extract FSCs. To our knowledge, the recently proposed rfPG algorithm [ 22 ] is the only available method that allows a direct comparison on HM-POMDPs within RQ2. The other approaches discussed in the related work, see Section 7, consider different formulations. Table 1: Results for the single POMDP setting using 30-minute timeout. In all models, the goal is to maximize the value. For 
+
+Lexpop , we report the interquartile mean (IQM) of the empirical values of the neural policies and the IQM of the extracted FSCs, along with their average sizes, using the two extraction methods. The values in brackets show the interquartile range (IQR). We highlight the best value(s) with statistical significance, excluding the empirical value for Lexpop .
+
+Dimensions Saynt Lexpop (RNN) Lexpop (Alergia) Lexpop (SIG) Model |𝑆 | |Z| |A| Value IQM (IQR) IQM (IQR) FSC Size IQM (IQR) FSC Size maze-10 4.8k 22 4 8.59 8.86 (0.03) 8.52 (0.10) 20.0 8.54 (0.47) 3.0 rocks-16 11k 2.7k 10 -36.91 -48.17 (1.43) -51.49 (1.41) 6.0 -48.70 (1.28) 3.0 network-3-8-20 17k 2.2k 5 -10.45 -7.36 (0.27) -8.07 (0.38) 5.0 -7.70 (0.15) 3.0 network-5-10-8 117k 3.7k 8 -16.12 -12.56 (0.20) -13.76 (0.92) 11.0 -12.71 (0.14) 3.0 intercept-16 130k 21k 6 0.80 1.00 (0.00) 0.98 (0.01) 6.0 0.99 (0.01) 3.0 evade-n17 314k 158k 7 0.58 0.85 (0.02) 0.85 (0.01) 4.0 0.84 (0.01) 3.0 drone-2-8-1 520k 889 6 0.40 0.61 (0.01) 0.58 (0.01) 5.0 0.58 (0.01) 3.0 
+
+Table 2: Results for the HM-POMDP setting using 1-hour timeout. The goal is to maximize the robust value. We report the interquartile mean and the best robust value achieved by FSCs produced by rfPG and by the two variants of Lexpop , together with the average reachable memory of the extracted FSCs. The highlighted value(s) are the best with statistical significance. 
+
+Dimensions rfPG Lexpop (Alergia) Lexpop (SIG) Model |𝑆 | |𝐼 | |𝑍 | |A| IQM Best IQM Best FSC Size IQM Best FSC Size rover 86 6000 18 5 299.24 299.40 290.17 296.14 7.70 294.68 297.65 2.8 obstacles-8-5 380 12000 25 9 -205.05 -193.93 -225.98 -212.46 2.50 -218.29 -207.63 2.9 network 4k 140 20 6 3.51 3.78 3.76 3.80 4.30 3.78 3.82 3.0 avoid 13k 1600 11 9 -174.23 -139.84 -161.01 -145.87 6.60 -163.15 -140.88 3.0 drone-2-6-1 44k 3200 432 7 0.01 0.04 0.59 0.62 7.50 0.59 0.62 10.0 avoid-large 45k 7056 11 9 -228.42 -166.14 -172.80 -154.02 4.40 -170.53 -141.63 8.8 moving_obstacles 262k 400 14 8 -2113.79 -2036.71 -158.98 -121.98 10.10 -86.86 -76.45 5.2 
+
+Benchmark Sets. The experimental evaluation is based on two benchmark sets. For RQ1, we use both original and enlarged POMDP models in the PRISM format [ 42 ] from the Saynt repository [ 4, 5]. For RQ2, we consider HM-POMDPs used in [ 22 ], excluding the DPM model with no observation features, to evaluate rfPG . More-over, we constructed new HM-POMDPs by extending models from RQ1 and by scaling up the original rfPG models. More details on the benchmarks are provided in Section A. The model statistics in Tables 1 and 2 are: |𝑆 | is the maximum number of reachable states across all POMDPs, and |𝐼 |, |𝑍 |, |𝐴 | are the number of POMDPs, observations, and actions, respectively. The goal is to maximize the reachability probability or the reachability reward. Our bench-marks are challenging for DRL due to sparse rewards and dynamic discrete action spaces as discussed in Section B.6. 
+
+Experimental Setting. We run experiments on a Ryzen 7 7840U processor with 32 GB of RAM. Lexpop uses the PPO [ 62 ] implemen-tation in the TensorFlow Agents framework [ 25 ], and a vectorized simulator implemented in the JAX framework [ 9 ]. Verification of FSCs and worst-case POMDP synthesis is performed using the PAYNT [ 5] toolkit based on the Storm model checker [ 28 ]. For au-tomata learning, we use Alergia [47 ] implemented in AALpy [ 54 ]. The Lexpop implementation is publicly available [33]. 
+
+Empirical Evaluation of Neural Policies. Neural policies are eval-uated using 512 independent simulations in a given POMDP M,performed in parallel using the vectorized simulator. We truncate simulations after a fixed number of steps (typically 600) to have at least 512 finished episodes. For the single-POMDP setting, such an evaluation provides us with statistically reliable estimates of the value. In the case of HM-POMDPs, the independent simulations are performed on a multiset of POMDPs in the current POMDP buffer (see Algorithm 1). More details are provided in Section D.1. 
+
+## RQ1: POMDP Planning 
+
+Setting. We train each neural policy for 4000 iterations on every model. Following DRL training, we extract FSCs with both ex-traction methods. The training takes about 23 minutes, while FSC extraction takes between 2 and 8 minutes. For a fair comparison, we configured Saynt with a 30-minute timeout on the FSC synthesis. 
+
+Saynt is deterministic and therefore runs only once. For Lexpop ,we repeat every run 10 times with fixed random seeds and report the average results and the corresponding standard deviation. 
+
+Main results for RQ1 . Table 1 shows the FSC values achieved by Saynt , the average empirical value of the learned neural policy, and the average value of the FSC extracted by Lexpop from the neural policies using the two variants of the extraction method. The table also reports the average sizes of the FSCs produced by 
+
+Lexpop , see Section C.2 for more details. 
+
+RQ1a . Table 1 shows that the learned neural policies provide better empirical values than the verified value of the FSCs produced 0 500 1000 1500 
+
+> Time (seconds)
+> 0.0
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> 1.0
+> Reachability
+> Single-POMDP Convergence Curves
+> Model
+> intercept-16
+> drone-2-8-1
+> evade-n17
+
+(a) Large POMDPs 0 2 4 6 8 10  
+
+> Iterations
+> 400
+> 300
+> 200
+> 100
+> 0
+> Reward
+> HM Moving Obstacles
+> Method
+> Worst-Case SIG
+> Worst-Case Alergia
+> Empirical RL SIG
+> Empirical RL Alergia
+
+(b) Robust Moving 0 5 10 15  
+
+> Iterations
+> 450
+> 400
+> 350
+> 300
+> 250
+> 200
+> 150
+> 100
+> 50
+> Reward
+> HM Avoid Large
+> Method
+> Worst-Case SIG
+> Empirical RL SIG
+> Extracted FSC SIG
+> GRU Extracted
+
+(c) Robust Avoid-Large 0 2 4 6 8 
+
+> Iterations
+> 0.5
+> 0.6
+> 0.7
+> 0.8
+> Reachability
+> HM Drone-2-6-1
+> Worst-Case SIG
+> Worst-Case Random
+> Empirical RL SIG
+> Empirical RL Random
+
+(d) Robust Drone 
+
+Figure 3: Selected convergence curves showing average values and IQR (if applicable): (a) Large single-POMDP benchmarks: Empirical probabilities of the neural policies (dashed lines), and the values of the FSC produced by Saynt (crosses) and extracted from the final neural policy (solid lines). (b,c) Performance loss of the FSC extraction: Empirical value of the neural policy on the set of POMDPs used for training (dashed lines) and the robust value of the extracted FSCs in the whole HM-POMDPs (solid lines). Additionally, in (c), the orange line shows the empirical value of the extracted FSCs on the set of POMDPs used for training, and the black line shows the empirical value achieved by the same self-interpretable network without the quantized layers on the same set of POMDPs. (d) Impact of the worst-case POMDP selection in HM-POMDPs: Lines as in (b). The green lines show the results using the worst-case POMDP selection, while the red lines show the results for random selection. Additional convergence curves are in Section E. 
+
+by Saynt when the model gets larger, and comparable ones for small models, e.g., rocks-16 , where Saynt benefits from the full knowledge of the model. Figure 3 (a) provides a more in-depth performance assessment on large models. The plots compare the empirical values of the reachability probability achieved by neural policies (dashed lines) with the FSC values synthesized by Saynt 
+
+(crosses). We observe that for large models, Saynt relies primarily on an initial memory-less policy and cannot improve over time, whereas PPO continuously improves the policy. The main bottle-neck of Saynt is the size of the considered FSCs, combined with the large number of beliefs that must be explored. Summary: For a large majority of models, PPO learns policies with better em-pirical values than verified controllers produced by Saynt .RQ1b . Next, we examine whether Lexpop can extract an FSC from the given neural policy with sufficient fidelity. The results in Table 1 generally show that the extracted FSC policies perform similarly to the original neural policies and thus significantly out-perform FSCs produced by Saynt except for the rocks-16 model. This holds for both extraction approaches, as confirmed by a Sign test, which yields a p-value of approximately 0.001 for all models except for the mentioned rocks-16 and maze-10 , as shown in Sec-tion D. Our results also confirm that we can extract small FSCs that achieve similar performance. Another benefit compared to 
+
+Saynt controllers is the simpler structure of our extracted FSCs. In contrast, Saynt typically uses a more complex structure to rep-resent policies that combine FSC with belief-based randomized policies [ 4]. Summary: Although abstraction of FSCs incurs a slight degradation of the achieved values, Lexpop extracts verified FSCs that outperform the FSCs produced by Saynt .RQ1c . Table 1 shows that the SIG extraction provides an advan-tage over Alergia [47 ] for the rocks and network models. In these cases, it yields FSCs with higher values that are close to the empiri-cal values of the neural policies, whereas for the rest of the models, the results are mostly similar. However, the main advantage of the SIG extraction is its flexibility. The size of the final FSC learned by 
+
+Alergia and the extraction time cannot be easily controlled – they mainly depend on the input data. In contrast, self-interpretation can provide the best FSC with a user-defined number of memory nodes. This significantly affects verification time, which increases with the controller’s size. In the worst case, we observed a six-fold increase in verification time when using Alergia . Summary: The pro-posed SIG extraction produces smaller FSCs than automata learning while preserving the performance. 
+
+## RQ2: Robust POMDP Planning 
+
+Setting. All experiments run with a 1-hour timeout and 10 differ-ent seeds. The number of outer iterations (Line 12 of Algorithm 1) varies between each model and extraction method. Each outer iter-ation of the algorithm might have a different set of POMDPs for a different extraction algorithm, since the extracted FSC affects the selected worst-case. 
+
+Main results . Table 2 summarizes the main results for RQ2. It shows the average and the best robust value achieved by FSCs produced by rfPG and by the two variants of Lexpop . It also reports the average size of the extracted FSCs (see Section C.2). In case of 
+
+rfPG , the size of the FSCs is pre-determined by a heuristic and is variable for each observation, with the upper bound being 4. 
+
+RQ2a . The extraction of FSCs from robustified neural policies is generally more challenging, since the hidden states have to handle the partial observability as well as the uncertainty in the environ-ment dynamics. As a result, the hidden state space can be signifi-cantly more complex. Figure 3 (b) shows a nontrivial performance gap between the neural policy (dashed lines) evaluated on the set of POMDPs used for training and the robust value of the extracted FSC, evaluated on the whole HM-POMDP, in the moving-obstacle 
+
+model. Moreover, we observe instability in the extraction using Alergia , which results in a less robust FSC compared to the FSC extracted using the SIG method. Figure 3 (c) shows the results for avoid-large model where the performance gap increases as the neural policy improves. To investigate this phenomenon, we consider a GRU [ 14 ] modification of self-interpretable networks, see Section C.2, where we do not use the quantized layers and rely on continuous values of the GRU feedback. The performance of the modified network (black line) aligns with that of the original neural policy. This shows that the performance gap of the extracted FSCs is caused by the imposed memory limitation, not by the training process. Summary: For complex HM-POMDPs, the FSC extraction is challenging due to larger memory requirements. The SIG method provides better and more stable extraction. RQ2b . We now compare the performance of Lexpop with rfPG .Table 2 shows similar trends as in RQ1: Lexpop achieves worse results than rfPG on small models, but significantly outperforms 
+
+rfPG on larger models. The statistical significance is confirmed with a non-parametric Brunner Munzel test, as shown in Section D. The poor performance of rfPG on large models is caused by the expensive parameter updates, which rely on gradient computation through the complete state space. This is exacerbated in the case of the drone model and the larger version of the moving_obstacles 
+
+model. For these models, we needed to reduce the size of FSCs synthesized by rfPG to 1, since the gradient computation was extremely expensive and could not finish the first iteration. Sum-mary: Lexpop scales considerably better than rfPG and thus produces significantly better FSCs on large models. RQ2c . Our results confirm the observations from rfPG [22 ]: For HM-POMDPs describing a large set of POMDPs, a random selection of POMDPs for training robust policies is not sufficient. Figure 3 (d) illustrates this phenomenon on the drone-2-6-1 model. Using ran-domly selected POMDPs makes the robust training unstable: the red dashed line shows the empirical value of the neural policy eval-uated on the set of POMDPs used for training. More importantly, there is a very large performance gap between the neural policy and the robust value of the extracted FSC (the red solid line), re-gardless of the extraction method. On the other hand, using the worst-case POMDPs (the green lines) leads to more stable learning, a smaller performance gap, and consequently to an FSC having a considerably better robust value. Summary: The worst-case POMDP selection is crucial for solving HM-POMDPs. 
+
+## 7 RELATED WORK 
+
+POMDP solvers. Prominent methods include (monolithic) mixed integer linear program formulation for FSC optimization [ 3, 39 ]and an approximate analysis of belief space [ 64 ] implemented e.g. in SARSOP [ 41 ] that has been recently extended to unbounded reachability objectives [ 29 ]. Saynt [ 4] combines an approximate exploration of belief states and symbolic search techniques over FSCs. Carr et al . [10] propose extracting FSCs from RNNs that mimic the optimal policy of the fully observable MDP to avoid the costly belief space exploration. While computationally efficient, the approach greatly suffers from a mismatch between policies under full and partial observability. Note that, despite using the RNN policy, this approach does not employ DRL to optimize the RNNs. 
+
+Robust FSCs for POMDPs. Galesloot et al . [22] introduce HM-POMDPs that describe finitely many variations of a POMDP model, and propose the rfPG algorithm that uses model-based subgradi-ent ascent to iteratively optimize FSCs over worst-case POMDPs. Robust POMDPs [ 57 ] represent infinite sets of POMDPs, encapsu-lating HM-POMDPs and FSCs have been optimized through sequen-tial convex programming [ 16 ]. Galesloot et al . [23] introduce pes-simistic iterative planning using RNNs for robust POMDPs. While conceptually similar, they rely on model-based approximations to train the RNNs instead of DRL, hindering scalability and optimality. 
+
+Finite-state model extraction from RNNs. The extraction of FSCs originates from extracting finite-state models from RNNs, which has been explored already in the 1990s [ 56 , 74 ] and has recently gained attention. There are two major approaches: automata learn-ing [ 49 , 52 , 69 ] from the trajectories sampled from the RNN, and quantization of hidden states of RNNs [ 23 , 38 ]. Automata learning from RNNs under partial observability has been proposed by Bork et al . [8] . However, they focus on deterministic policies and the 𝐿 ∗ al-gorithm [ 6], while we use an adaptation of Alergia [ 11 ] to support stochastic policies. In line with Koul et al . [38] and Galesloot et al .[23] , we also experiment with ways to extract an FSC directly from the RNN. Compared to these, our proposed architecture enhances control over memory size and stabilizes learning by eliminating the straight-through gradient estimate by reparametrization us-ing Gumbel softmax distribution [ 34 ]. Though similar in principle to Aichernig et al . [1] , our architecture improves upon the prior work by enabling stochastic action and memory state-updates, and achieving faster convergence. 
+
+Robust DRL. Various DRL methods address model uncertainty. The most similar approaches to ours are task-robust model-agnostic meta-learning [ 15 ], which combines meta-learning with worst-case optimization, and robust adversarial learning [ 24 , 32 , 59 , 75 ], which frames learning as a stochastic game between a protagonist and adversary. Since we aim to extract a universal FSC, meta-learning is of limited applicability. In relation to [ 59 ], our approach can be seen as using Paynt as an adversary, which is possible thanks to explicit knowledge of the model family. Other notable methods include model-free worst-case estimation [ 21 ], training-time perturbations of states, actions, or observations [ 44 ], and reward shaping for worst-case optimization, e.g., via state entropy [48]. 
+
+## 8 CONCLUSION 
+
+We proposed Lexpop , a learning-based approach that constructs FSCs for a given POMDP or HM-POMDP. First, Lexpop trains an RNN-based neural policy using DRL, which allows us to scale to large environments. Second, it extracts FSCs from the neural poli-cies using automata learning as well as a novel extraction technique. The performance of such FSCs can be formally verified on large POMDPs and for HM-POMDPs, worst-case POMDPs can be effec-tively computed to iteratively construct robust FSCs. Our experi-ments demonstrate that Lexpop scales up to large (HM-)POMDPs with state spaces that were previously infeasible. We plan to im-prove the robust planning loop by extracting programmatic po-lices [ 68 ]. Furthermore, we plan to scale the loop even more with extension of SIG towards model learning. ACKNOWLEDGMENTS 
+
+This work has been executed under the project VASSAL: “Verification and Analysis for Safety and Security of Ap-plications in Life” funded by the European Union under Hori-zon Europe WIDERA Coordination and Support Action/Grant Agreement No.101160022. Additionally, this work has been par-tially funded by the Czech Science Foundation grant GA23-06963S (VESCAA), the Vienna Science and Technology Fund (WWTF) project 10.47379/ICT22-023, and the ERC Starting Grant DEUCE (101077178). Martin Kurečka was supported by the Brno Ph.D. Tal-ent program funded by the Brno City Municipality. 
+
+## REFERENCES 
+
+[1] Bernhard K. Aichernig, Sandra König, Cristinel Mateis, Andrea Pferscher, and Martin Tappler. 2024. Learning minimal automata with recurrent neural networks. 
+
+Softw. Syst. Model. 23, 3 (2024), 625–655. [2] Christopher Amato, Daniel S Bernstein, and Shlomo Zilberstein. 2010. Optimizing fixed-size stochastic controllers for POMDPs and decentralized POMDPs. AAMAS 
+
+21, 3 (2010), 293–320. [3] Christopher Amato, Blai Bonet, and Shlomo Zilberstein. 2010. Finite-State Con-trollers Based on Mealy Machines for Centralized and Decentralized POMDPs. In AAAI . AAAI Press, 1052–1058. [4] Roman Andriushchenko, Alexander Bork, Milan Češka, Sebastian Junges, Joost-Pieter Katoen, and Filip Macák. 2023. Search and Explore: Symbiotic Policy Synthesis in POMDPs. In CAV .[5] Roman Andriushchenko, Milan Češka, Sebastian Junges, Joost-Pieter Katoen, and Šimon Stupinský. 2021. PAYNT: a tool for inductive synthesis of probabilistic programs. In CAV (LNCS, Vol. 12759) . Springer, 856–869. [6] Dana Angluin. 1987. Learning Regular Sets from Queries and Counterexamples. 
+
+Inf. Comput. 75, 2 (1987), 87–106. [7] Blai Bonet and Hector Geffner. 2009. Solving POMDPs: RTDP-Bel vs. Point-based Algorithms. In IJCAI . 1641–1646. [8] Alexander Bork, Debraj Chakraborty, Kush Grover, Jan Křetínský, and Stefanie Mohr. 2024. Learning Explainable and Better Performing Representations of POMDP Strategies. In TACAS .[9] James Bradbury, Roy Frostig, Peter Hawkins, Matthew James Johnson, Chris Leary, Dougal Maclaurin, George Necula, Adam Paszke, Jake VanderPlas, Skye Wanderman-Milne, and Qiao Zhang. 2018. JAX: composable transformations of Python+NumPy programs . http://github.com/jax-ml/jax [10] Steven Carr, Nils Jansen, and Ufuk Topcu. 2021. Task-Aware Verifiable RNN-Based Policies for Partially Observable Markov Decision Processes. J. Artif. Intell. Res. 72 (2021), 819–847. [11] Rafael C. Carrasco and José Oncina. 1994. Learning Stochastic Regular Grammars by Means of a State Merging Method. In ICGI (LNCS, Vol. 862) , Rafael C. Carrasco and José Oncina (Eds.). Springer, 139–152. [12] Milan Ceska, Nils Jansen, Sebastian Junges, and Joost-Pieter Katoen. 2019. Shep-herding Hordes of Markov Chains. In TACAS (2) (LNCS, Vol. 11428) . Springer, 172–190. [13] Krishnendu Chatterjee, Martin Chmelík, Raghav Gupta, and Ayush Kanodia. 2016. Optimal cost almost-sure reachability in POMDPs. Artif. Intell. 234 (2016), 26–48. [14] Kyunghyun Cho, Bart van Merriënboer, Dzmitry Bahdanau, and Yoshua Bengio. 2014. On the Properties of Neural Machine Translation: Encoder–Decoder Ap-proaches. In Proceedings of SSST-8, Eighth Workshop on Syntax, Semantics and Structure in Statistical Translation .[15] Liam Collins, Aryan Mokhtari, and Sanjay Shakkottai. 2020. Task-robust model-agnostic meta-learning. In NeurIPS (Vancouver, BC, Canada) (NIPS ’20) . Curran Associates Inc., Red Hook, NY, USA, Article 1583, 12 pages. [16] Murat Cubuktepe, Nils Jansen, Sebastian Junges, Ahmadreza Marandi, Marnix Suilen, and Ufuk Topcu. 2021. Robust Finite-State Controllers for Uncertain POMDPs. In AAAI . AAAI Press, 11792–11800. [17] Shibhansh Dohare, J. Fernando Hernandez-Garcia, Qingfeng Lan, Parash Rahman, A. Rupam Mahmood, and Richard S. Sutton. 2024. Loss of plasticity in deep continual learning. Nature 632, 8026 (Aug. 2024), 768–774. [18] Shibhansh Dohare, Qingfeng Lan, and A. Rupam Mahmood. 2023. Overcoming Policy Collapse in Deep Reinforcement Learning. In Sixteenth European Workshop on Reinforcement Learning .[19] Gabriel Dulac-Arnold, Nir Levine, Daniel J. Mankowitz, Jerry Li, Cosmin Paduraru, Sven Gowal, and Todd Hester. 2021. Challenges of real-world reinforcement learning: definitions, benchmarks and analysis. Mach. Learn. 110, 9 (Sept. 2021), 2419–2468. [20] Xin Fei, Azzedine Boukerche, and Richard Yu. 2010. A POMDP Based K-Coverage Dynamic Scheduling Protocol for Wireless Sensor Networks. In GLOBECOM .1–5. [21] Uri Gadot, Kaixin Wang, Navdeep Kumar, Kfir Yehuda Levy, and Shie Mannor. 2024. Bring Your Own (Non-Robust) Algorithm to Solve Robust MDPs by Esti-mating The Worst Kernel. In ICML .[22] Maris F. L. Galesloot, Roman Andriushchenko, Milan Češka, Sebastian Junges, and Nils Jansen. 2025. Robust Finite-Memory Policy Gradients for Hidden-Model POMDPs. In IJCAI . ijcai.org, 8518–8526. [23] Maris F. L. Galesloot, Marnix Suilen, Thiago D. Simão, Steven Carr, Matthijs T. J. Spaan, Ufuk Topcu, and Nils Jansen. 2025. Pessimistic Iterative Planning with RNNs for Robust POMDPs. In ECAI (Frontiers in Artificial Intelligence and Applications, Vol. 413) . IOS Press, 4823–4831. [24] Adam Gleave, Michael Dennis, Cody Wild, Neel Kant, Sergey Levine, and Stuart Russell. 2021. Adversarial Policies: Attacking Deep Reinforcement Learning. In 
+
+International Conference on Learning Representations .[25] Sergio Guadarrama, Anoop Korattikara, Oscar Ramirez, Pablo Castro, Ethan Holly, Sam Fishman, Ke Wang, Ekaterina Gonina, Neal Wu, Efi Kokiopoulou, Luciano Sbaiz, Jamie Smith, Gábor Bartók, Jesse Berent, Chris Harris, Vincent Vanhoucke, and Eugene Brevdo. 2018. TF-Agents: A library for Reinforcement Learning in TensorFlow. https://github.com/tensorflow/agents. https://github. com/tensorflow/agents [Online; accessed 25-June-2025]. [26] Eric A. Hansen. 1997. An Improved Policy Iteration Algorithm for Partially Observable MDPs. In NIPS . The MIT Press, 1015–1021. [27] Matthew J. Hausknecht and Peter Stone. 2015. Deep Recurrent Q-Learning for Partially Observable MDPs. In Proceedings of the AAAI Conference on Artificial Intelligence (AAAI) . AAAI Press, 29–37. [28] Christian Hensel, Sebastian Junges, Joost-Pieter Katoen, Tim Quatmann, and Matthias Volk. 2022. The probabilistic model checker Storm. Int. J. Softw. Tools Technol. Transf. 24, 4 (2022), 589–610. [29] Qi Heng Ho, Martin Feather, Federico Rossi, Zachary Sunberg, and Morteza Lahijanian. 2024. Sound Heuristic Search Value Iteration for Undiscounted POMDPs with Reachability Objectives. In UAI . PMLR, 1681–1697. [30] Sepp Hochreiter and Jürgen Schmidhuber. 1997. Long Short-Term Memory. 
+
+Neural Computation 9, 8 (Nov. 1997), 1735–1780. [31] Karel Horák, Branislav Bosanský, and Krishnendu Chatterjee. 2018. Goal-HSVI: Heuristic Search Value Iteration for Goal POMDPs. In IJCAI . ijcai.org, 4764–4770. [32] Sandy Huang, Nicolas Papernot, Ian Goodfellow, Yan Duan, and Pieter Abbeel. 2017. Adversarial Attacks on Neural Network Policies. CoRR (2017). [33] David Hudák, Maris F. L. Galesloot, Martin Tappler, Martin Kurečka, Nils Jansen, and Milan Češka. 2026. Lexpop Synthesis Repository (AAMAS Camera-Ready Branch). https://github.com/DaveHudiny/rl_synthesis/tree/AAMAS-Camera-Ready [34] Eric Jang, Shixiang Gu, and Ben Poole. 2017. Categorical Reparameterization with Gumbel-Softmax. In ICLR .[35] Sebastian Junges, Nils Jansen, Ralf Wimmer, Tim Quatmann, Leonore Winterer, Joost-Pieter Katoen, and Bernd Becker. 2018. Finite-state controllers of POMDPs via parameter synthesis. In UAI . AUAI Press, 519–529. [36] Leslie Pack Kaelbling, Michael L. Littman, and Anthony R. Cassandra. 1998. Plan-ning and acting in partially observable stochastic domains. Artificial Intelligence 
+
+101, 1 (1998), 99–134. [37] Mykel J. Kochenderfer, Tim A. Wheeler, and Kyle H. Wray. 2022. Algorithms for Decision Making . MIT Press. https://mitpress.mit.edu/9780262047012/algorithms-for-decision-making/ [38] Anurag Koul, Alan Fern, and Sam Greydanus. 2019. Learning Finite State Repre-sentations of Recurrent Policy Networks. In ICLR (Poster) .[39] Akshat Kumar and Shlomo Zilberstein. 2015. History-based controller design and optimization for partially observable MDPs. In ICAPS , Vol. 25. 156–164. [40] Hanna Kurniawati. 2022. Partially Observable Markov Decision Processes and Robotics. Annual Review of Control, Robotics, and Autonomous Systems 5, Volume 5, 2022 (2022), 253–277. [41] Hanna Kurniawati, David Hsu, and Wee Sun Lee. 2008. SARSOP: Efficient Point-Based POMDP Planning by Approximating Optimally Reachable Belief Spaces. In Robotics: Science and Systems (RSS) . MIT Press. [42] Marta Kwiatkowska, Gethin Norman, and David Parker. 2011. PRISM 4.0: Ver-ification of probabilistic real-time systems. In CAV (LNCS, Vol. 6806) . Springer, 585–591. [43] Gaspard Lambrechts, Adrien Bolland, and Damien Ernst. 2022. Recurrent net-works, hidden states and beliefs in partially observable environments. Trans. Mach. Learn. Res. 2022 (2022). [44] Zuxin Liu and Zijian Guo. 2023. On the Robustness of Safe Reinforcement Learn-ing under Observational Perturbations. International Conference on Learning Representations. [45] Omid Madani, Steve Hanks, and Anne Condon. 1999. On the Undecidability of Probabilistic Planning and Infinite-Horizon Partially Observable Markov Decision Problems. In AAAI/IAAI . AAAI Press / The MIT Press, 541–548. [46] Omid Madani, Steve Hanks, and Anne Condon. 2000. On the Undecidability of Probabilistic Planning and Infinite-Horizon Partially Observable Markov Decision Problems. Proceedings of the National Conference on Artificial Intelligence (02 2000). [47] Hua Mao, Yingke Chen, Manfred Jaeger, Thomas D. Nielsen, Kim G. Larsen, and Brian Nielsen. 2016. Learning deterministic probabilistic automata from a model checking perspective. Mach. Learn. 105, 2 (2016), 255–299. [48] Pierre-François Massiani, Alexander von Rohr, Lukas Haverbeck, and Sebastian Trimpe. 2024. Viability of Future Actions: Robust Reinforcement Learning via Entropy Regularization. In Seventeenth European Workshop on Reinforcement Learning .[49] Franz Mayr and Sergio Yovine. 2018. Regular Inference on Artificial Neural Networks. In CD-MAKE (LNCS, Vol. 11015) , Andreas Holzinger, Peter Kieseberg, A Min Tjoa, and Edgar R. Weippl (Eds.). Springer, 350–369. [50] N. Meuleau, K. Kim, L. P. Kaelbling, and A.R. Cassandra. 1999. Solving POMDPs by searching the space of finite policies. In UAI . Morgan Kaufmann, 417–426. [51] Nicolas Meuleau, Kee-Eung Kim, Leslie Pack Kaelbling, and Anthony R. Cas-sandra. 1999. Solving POMDPs by searching the space of finite policies. In 
+
+UAI .[52] Edi Muskardin, Bernhard K. Aichernig, Ingo Pill, and Martin Tappler. 2022. Learning Finite State Models from Recurrent Neural Networks. In IFM (LNCS, Vol. 13274) , Maurice H. ter Beek and Rosemary Monahan (Eds.). Springer, 229– 248. [53] Edi Muskardin, Martin Tappler, Bernhard K. Aichernig, and Ingo Pill. 2024. Active model learning of stochastic reactive systems (extended version). Softw. Syst. Model. 23, 2 (2024), 503–524. [54] Edi Muškardin, Bernhard K. Aichernig, Ingo Pill, Andrea Pferscher, and Martin Tappler. 2022. AALpy: an active automata learning library. Innovations in Systems and Software Engineering 18, 3 (1 9 2022), 417–426. [55] Tianwei Ni, Benjamin Eysenbach, and Ruslan Salakhutdinov. 2022. Recurrent Model-Free RL Can Be a Strong Baseline for Many POMDPs. In ICML (Proceedings of Machine Learning Research, Vol. 162) . PMLR, 16691–16723. [56] Christian W. Omlin and C. Lee Giles. 1996. Extraction of rules from discrete-time recurrent neural networks. Neural Networks 9, 1 (1996), 41–52. [57] Takayuki Osogami. 2015. Robust partially observable Markov decision process. In 
+
+ICML (JMLR Workshop and Conference Proceedings, Vol. 37) . JMLR.org, 106–115. [58] Long Ouyang, Jeff Wu, Xu Jiang, Diogo Almeida, Carroll L. Wainwright, Pamela Mishkin, Chong Zhang, Sandhini Agarwal, Katarina Slama, Alex Ray, John Schul-man, Jacob Hilton, Fraser Kelton, Luke Miller, Maddie Simens, Amanda Askell, Peter Welinder, Paul Christiano, Jan Leike, and Ryan Lowe. 2022. Training lan-guage models to follow instructions with human feedback. In NeurIPS (New Orleans, LA, USA) (NIPS ’22) . Curran Associates Inc., Red Hook, NY, USA, Article 2011, 15 pages. [59] Lerrel Pinto, James Davidson, Rahul Sukthankar, and Abhinav Gupta. 2017. Robust adversarial reinforcement learning. In ICML (Sydney, NSW, Australia). JMLR.org, 2817–2826. [60] Pascal Poupart and Craig Boutilier. 2003. Bounded Finite State Controllers. In 
+
+Advances in Neural Information Processing Systems (NIPS) . MIT Press, 823–830. [61] Martin L. Puterman. 1994. Markov Decision Processes: Discrete Stochastic Dynamic Programming . Wiley. [62] John Schulman, Filip Wolski, Prafulla Dhariwal, Alec Radford, and Oleg Klimov. 2017. Proximal Policy Optimization Algorithms. CoRR abs/1707.06347 (2017). [63] Richard D Smallwood and Edward J Sondik. 1973. The optimal control of partially observable Markov processes over a finite horizon. Oper. Res. 21, 5 (1973), 1071– 1088. [64] Trey Smith and Reid Simmons. 2004. Heuristic search value iteration for POMDPs. In Proceedings of the 20th conference on Uncertainty in artificial intelligence . 520– 527. [65] Matthijs T J Spaan. 2012. Partially Observable Markov Decision Processes. In 
+
+Reinforcement Learning: State-of-the-Art , Marco Wiering and Martijn van Otterlo (Eds.). Springer Berlin Heidelberg, Berlin, Heidelberg, 387–414. [66] Richard S Sutton and Andrew G Barto. 2018. Reinforcement Learning: An Intro-duction .[67] Petr Tomášek, Karel Horak, and Branislav Bošansk `y. 2024. Iterative algorithms for solving one-sided partially observable stochastic shortest path games. Inter-national Journal of Approximate Reasoning 175 (2024), 109297. [68] Abhinav Verma, Vijayaraghavan Murali, Rishabh Singh, Pushmeet Kohli, and Swarat Chaudhuri. 2018. Programmatically Interpretable Reinforcement Learning. In Proceedings of the 35th International Conference on Machine Learning . PMLR. [69] Gail Weiss, Yoav Goldberg, and Eran Yahav. 2018. Extracting Automata from Recurrent Neural Networks Using Queries and Counterexamples. In ICML (Pro-ceedings of Machine Learning Research, Vol. 80) , Jennifer G. Dy and Andreas Krause (Eds.). PMLR, 5244–5253. [70] Paul J. Werbos. 1990. Backpropagation through time: what it does and how to do it. Proc. IEEE 78, 10 (1990), 1550–1560. [71] Daan Wierstra, Alexander Förster, Jan Peters, and Jürgen Schmidhuber. 2007. Solv-ing deep memory POMDPs with recurrent policy gradients. In ICANN . Springer, 697–706. [72] Peter R. Wurman, Samuel Barrett, Kenta Kawamoto, James MacGlashan, Kaushik Subramanian, Thomas J. Walsh, Roberto Capobianco, Alisa Devlic, Franziska Eckert, Florian Fuchs, Leilani Gilpin, Piyush Khandelwal, Varun Raj Kompella, HaoChih Lin, Patrick MacAlpine, Declan Oller, Takuma Seno, Craig Sherstan, Michael D. Thomure, Houmehr Aghabozorgi, Leon Barrett, Rory Douglas, Dion Whitehead, Peter Dürr, Peter Stone, Michael Spranger, and Hiroaki Kitano. 2022. Outracing champion Gran Turismo drivers with deep reinforcement learning. 
+
+Nat. 602, 7896 (2022), 223–228. [73] Yang You, Vincent Thomas, Alex Schutz, Robert Skilton, Nick Hawes, and Olivier Buffet. 2025. Partially observable Monte-Carlo graph search. In ICAPS , Vol. 35. 279–287. [74] Zheng Zeng, Rodney M. Goodman, and Padhraic Smyth. 1993. Learning Finite State Machines With Self-Clustering Recurrent Networks. Neural Comput. 5, 6 (1993), 976–990. [75] Huan Zhang, Hongge Chen, Duane Boning, and Cho Jui Hsieh. 2021. Robust Reinforcement Learning on State Observations with Learned Optimal Adversary. In 9th International Conference on Learning Representations, ICLR 2021 .[76] Wenqian Zhang and Haiyan Wang. 2022. Diagnostic Policies Optimization for Chronic Diseases Based on POMDP Model. Healthcare 10, 2 (2022). [77] Wei Zheng, Taeho Jung, and Hai Lin. 2022. The Stackelberg equilibrium for one-sided zero-sum partially observable stochastic games. Autom. 140 (2022), 110231. A BENCHMARK MODELS 
+
+As we mention in the experiment Section 6, we took the single-POMDP models from the Saynt repository [ 4, 5 ], and the models for the robust setting from the rfPG paper [22], where most details of those models are discussed. In the single-POMDP setting, we scaled the intercept and evade models by increasing the parameters governing model size, thereby significantly increasing the number of states. The remaining models are identical to those introduced in the Saynt repository [4]. To extend our set of HM-POMDP benchmarks, we scaled the avoid model using the available variables to determine the model size and the possible locations of the oscillating obstacles. The drone model is extended by a) adding a slippery effect to the agent’s behavior and b) adding more potential initial positions of the drones. The case of the moving obstacle model is similar – we enlarged the area by adding new holes where obstacles can spawn and added a small slippery probability to each static obstacle, which significantly increases the state space and makes the model more challenging. For reproducibility, all models used are included in the source code [33]. 
+
+## B DRL DETAILS B.1 Reward Shaping 
+
+Since all the models come with a reachability specification (from the PRISM language) that does not correspond to the RL reward-oriented setting, we had to implement our own reward function to allow the agents to optimize over given models. We perform reward shaping to optimize the DRL models. Importantly, reward shaping is not used in the evaluation ; there, whether evaluated empirically or on the full model, we measure the value defined by the PRISM model. Thus, all reported values come from the same reward model. In the reachability setting, a sparse reward of 40 is given once the agent reaches the target. In contrast, in cases where reaching the goal state is easy and the main objective is reachability reward maximization, we give only a small reward for reaching the goal state ( 2 in case of minimizing, 1 in case of maximizing), and the reward from the environment is multiplied by (−) 10 .0. We do not use negative rewards for failing the task, as it usually leads to too conservative policies.Table 3 summarizes which model belongs to which category in the case of simple reachability and reward models. Model Reward Type maze-10 Reward Maximizing rocks-16 Reward Minimizing network-3-8-20 Reward Minimizing network-5-10-8 Reward Minimizing intercept-16 Reachability Maximizing evade-n17 Reachability Maximizing drone-2-8-1 Reachability Maximizing network Reward Maximizing drone-2-6-1 Reachability Maximizing 
+
+Table 3: Taxonomy of our reachability and rewards models. The top part contains the single-POMDP models, while the bottom part describes the models from the robust setting. Models with more specific reward functions are described in Table 4. 
+
+However, in the case of the HM-POMDP setting, the reward is usually more complicated, as we cannot guarantee reaching the goal state and still want to optimize the reward. In this case, the DRL performance strongly depends on the designed reward: when the reward is too small, the agent may do nothing, and when it is too large, the agent may ignore important aspects of the model. For these models, we use a combination of a multiplier for rewards from the environment, a reward for reaching the goal state, and a negative penalty for truncating the episode. We describe these rewards in Table 4. Furthermore, to motivate the agent to explore more, we use the configurable entropy regularization, which is useful when the reward is sparse and the agent would, by default, converge to some local optima. This approach is useful in terms of simple general implementation without configuring the reward for each model independently. Model Goal Reward Reward Multiplier Truncation Penalty avoid 400 -1.0 -10.0 (moving-)obstacles 360 -1.0 0.0 rover 160 1.0 0.0 
+
+Table 4: Specific reward models for specific HM POMDPs. B.2 Vectorized Simulation 
+
+PPO is an on-policy algorithm and, as such, requires a large number of on-policy samples to ensure stability and fast convergence. In our experiments, the use of Storm as a simulator became a runtime bottleneck, since Storm is primarily designed for model verification. Although it supports sampling from the simulator, running multiple environment instances in parallel was too resource-intensive. To address this, we implemented a lightweight simulator for Storm environments that supports vectorized execution of multiple parallel environments. The simulator uses Storm to parse the environment specification file and generate sparse tensors that describe the environment dynamics. These tensors are sufficient to simulate the environment efficiently. Additionally, we employ the JAX just-in-time (JIT) compilation utility to compile the generic transition function for the specific dynamics tensor of each environment, thereby further improving the simulation speed. 
+
+## B.3 RL Library 
+
+To implement reinforcement learning, we used the TensorFlow Agents library, primarily because it supports recurrent neural network policies (unlike the popular choice Stable Baselines 3 1) and achieved the best performance among the libraries we tested in preliminary experiments. The framework provides multiple recent deep reinforcement learning algorithms, but in our case, we use only the PPO algorithm with an LSTM recurrent neural network because our preliminary results showed the best and most stable overall performance from the set of implemented algorithms (DQN, DDQN, PPO, and discretized SAC). We should note that the main concern of the paper is not the selection of the best learning algorithm; PPO is a relatively standardized and generally available algorithm implemented in most RL libraries. In general, our framework can work with any RL algorithm for POMDPs. 
+
+## B.4 Reinforcement Learning Network Architectures 
+
+For reinforcement learning, we use the standard LSTM actor-critic architecture introduced in the TensorFlow Agents framework. The architecture contains a single dense input; the network consists of an LSTM encoder with always the same architecture, followed by a task-dependent dense categorical projection network in the case of the actor or by a single neuron representing a value layer in the case of the critic. The fixed architecture of the LSTM encoder consists of three layers – one dense input layer with 64 neurons, one LSTM layer with size 32, and one output layer with size 64. We experimented with larger neural networks, but in general, the size of the network was sufficient for all benchmarks. 
+
+## B.5 Self-Interpretation with Deep RL 
+
+In our preliminary experiments, we tried to combine PPO training with the SIG actor. However, it was shown that the discrete structure significantly affects exploration, and the convergence is much slower than with the RNN-based PPO. Thus, we chose the more effective approach, where we allow exploration of POMDPs using RNN-based PPO and then estimate the policy using SIG extraction. 
+
+## B.6 Dynamic Action Space 
+
+One important aspect of the benchmark models in this paper is that they usually have a dynamic action space, which allows only a subset of actions to be played in each state. This is problematic from the perspective of deep reinforcement learning, where we typically have a fixed number of output nodes that determine the categorical distribution over actions for each observation-history tuple. We found that if we use a wrapper over the PPO algorithm that completely removes the possibility of playing illegal actions, the learning sometimes completely breaks down when we sample from a distribution different from the one the agent produces, thereby violating the on-policy setting of the PPO algorithm. We experimented with multiple options, but the best setting we found is to allow all actions to be played and to generate random actions played in the simulator without letting the agent know. This setting partially limits the agent. We also explored the options of stochastic and deterministic policies. Our preliminary experiments show that both stochastic exploration and stochastic evaluation achieve the best results in both single-POMDP and hidden-model POMDP settings, with the random replacement of illegal actions on the simulator side. However, for extraction, we sampled from a masked policy, i.e., we removed illegal actions, which slightly affected performance but also made extraction more stable. However, more research might be beneficial in this area. 
+
+## B.7 Robust Lexpop Details 
+
+The robust training is ensured by our vectorized simulator. As we show in an Algorithm 1, we initialize the training with a first POMDP 2,which we add to the simulator and then perform a standard reinforcement learning loop with our highly vectorized simulator. In the first iteration, all 256 subsimulators simulate the initial POMDP. When we add a new POMDP, we recompute the resources for a new simulator using geometric progression. The number of simulators for the last POMDP is 
+
+𝑎 𝐿 = 𝐿 (1 − 𝑞 )
+
+1 − 𝑞 𝑆 
+
+> 1https://stable-baselines3.readthedocs.io/en/master/
+> 2Technically, we use more POMDPs for the first iterations to make the worst-case selection loop faster.
+
+simulators and each following POMDP has 𝑎 𝑖 = 𝑞𝑎 𝑖 +1 simulators from 𝑆 available simulators, where the geometric coefficient 𝑞 has a constant value 0.4 and i: 1 ≤ 𝑖 ≤ 𝐿 − 1 is an index of simulator added in iteration 𝑖 with the current last iteration 𝐿 . This mechanism resembles a momentum, where we mostly optimize for the most recent POMDP while still remembering parts of the gradient from the past. To start training in the first iteration, we initialize a single agent that we later transfer across all training iterations, including both the actor and the critic components. The extraction in the case of Alergia does not share any information between independent outer iterations of the Robust Lexpop (Line 12 of the Algorithm 1), whereas the extraction using the SIG method shares the original self-interpretable network among multiple iterations to achieve more stable performance with faster extractions, which was clearly beneficial in the moving-obstacles task, as shown in Figure 3. To decrease the impact of loss of plasticity phenomena mentioned in [ 17 , 18 ], we perform inner training with only a limited number of iterations, use the non-stationary version of Adam, and use small weight decay, as we summarize in Table 7. 
+
+## B.8 Parameter Discussion and Summary 
+
+One of the typical issues with reinforcement learning algorithms is the large number of configurable parameters. In our paper, we primarily used the default parameters of the TensorFlow Agents library, along with our empirical observations from preliminary experiments. 
+
+Number of Inner and Outer Training Iterations. In the single-POMDP setting, we use a fixed number of 4000 iterations of the Lexpop 
+
+algorithm, which was sufficient to achieve stable performance across all benchmark models and multiple seeds, with most models achieving close-to-final performance before the first 1000 iterations. In the case of hidden model POMDPs, the number of DRL training iterations has a more significant effect on performance, since more inner iterations usually lead to fewer outer extraction iterations of the Robust 
+
+Lexpop algorithm and to potential over-optimization for specific POMDPs rather than robust behavior. While the rest of the parameters were exactly the same in all of the environments, we used three model-specific parameters: a) number of initial training iterations, which affects how strictly the model learns the initial model(s) and depends on our empirical experience of how long; b) number of inner training iterations, which affects how much the agent optimizes for new POMDPs; and c) number of initial (random) POMDPs for which the agent starts optimizing. We show the setting in Table 5. The number of initial POMDPs was 6 globally, whereas in the avoid-large case, we found an improvement with 11 initial POMDPs. Model # init. iter. # inner iter. rover 400 100 obstacles-8-5 400 70 network 400 150 maze-10 400 150 avoid 200 25 avoid-large 250 35 drone-2-6-1 400 50 moving-obstacles 400 50 
+
+Table 5: Training iterations for each model. 
+
+Discounting. The formal specifications of our models are undiscounted, which is in contrast to how reinforcement learning works, since no discounting leads to unstable learning that breaks after several training iterations. In our preliminary experiments, we tried to set the discounting to the values of the set {0.99 , 0.995 , 0.999 }. Although the first value significantly changed the optimal solution, the latest option was unstable, and the learning did not work correctly. In general, in all our experiments, we use a discount rate of 0.995 .
+
+Summary. In the following two tables Table 6 and Table 7, we summarize all the non-default parameters of our implementation. The rest uses the default parameters. from the TensorFlow Agents framework, mostly taken from the original PPO paper [62]. Parameter Value Batch Size 256 Parallel Training Simulators 256 Parallel Evaluation Simulators 512 Learning Trajectory Length 32 Maximum Number of Steps 601 
+
+Table 6: Sampling parameters of the RL Setting. Parameter Value Importance Ratio Clipping 0.2 Num PPO Epochs 3Advantage Estimator GAE (GAE) Lambda 0.95 Entropy Regularization 0.02 Normalize Rewards True Normalize Observations True Discount 0.995 Optimizer Adam Learning Rate 0.00016 Adam 𝛽 1 0.99 Adam 𝛽 2 0.99 Weight Decay (L2 Reg.) 0.0001 
+
+Table 7: Parameters of PPO. The rest parameters use the default TensorFlow Agents values, which follow the original PPO paper [62]. 
+
+## C EXTRACTION DETAILS USING SELF-INTERPRETATION C.1 Extraction 
+
+For extraction, we use two options as described in section 5: the automata-learning-based AALpy library using the Alergia algorithm, and machine-learning-based self-interpretable Gumbel networks (SIG). Both methods use the same amount of data, and in the single-POMDP setting, we use the same policy and the same sampled data for both extractions. The input for all methods was the same – 4001 steps in 256 parallel environments, i.e., over a million steps in the environment usable for automata learning, Alergia, or cloning-oriented SIG. In the case of Alergia, we did not tune any configurable parameters, whereas in the case of the SIG extraction, we use a variable number of training epochs for cloning and an architectural upper bound that limits the maximum FSC size. The configuration is summarized in Table 8. Parameter Large Robust Small Robust Single Training Epochs 5001 501 6001 Max FSC Size 10.0 3.0 3.0 
+
+Table 8: Self-interpretation SIG setting. We describe the setting for the large robust models (avoid-large, drone-2-6-1, moving-obstacles), small robust models (avoid, network, obstacles-8-5, rover), and for the single-POMDP setting. 
+
+## C.2 Gumbel Softmax Self-Interpretable Networks (SIG) Architecture 
+
+Since we use a custom architecture for SIG interpretation, we show its complete architecture in Figure 4. If we compare it with the architecture described in Section B.4, the network has more layers and larger layer sizes than the reinforcement learning network. We use the larger architecture to ensure the network has greater capacity to encode the policy without using memory and to use recurrent feedback when necessary. The inner GRU network uses (recurrent) dropout with a value 0.2 to not overuse memory, which is limited to only a maximum size 𝑘 . During extraction, the network does not necessarily use all the memory it is provided, so in the case of our main robust experiment, in Table 2, we describe only the size of the reachable memory from an initial memory observation tuple. The upper bounds on memory for a given set of benchmarks are described in Table 8, where we separate the large models from the HM POMDP setting, where more memory is beneficial, and the smaller HM POMDPs and single POMDP models, where we found that agents can be approximated with smaller memory. In the case of the avoid-large experiment with the sole GRU network, as we depict in Figure 3, we removed all bottom layers and used only the top part with the same GRU layer, now giving the hidden state after each step directly to itself. 
+
+## C.3 Gumbel Softmax Layer 
+
+To sample the one-hot vector 𝑦 from a categorical distribution Softmax (𝑝 ) so that 𝑦 is differentiable with respect to 𝑝 , a reparameterization is needed. A classical approach is to sample a vector 𝑔 ∈ R|𝑝 | of i.i.d. samples from the standard Gumbel distribution, and set 𝑦 as the one-hot encoding of arg max 𝑖 (𝑝 𝑖 + 𝑔 𝑖 ). It is known that the distribution of arg max 𝑖 (𝑝 𝑖 + 𝑔 𝑖 ) is indeed Softmax (𝑝 ). However, this approach has a nonzero gradient only with respect to the maximizing 𝑝 𝑖 , which is the reason we opted for the Gumbel Softmax reparameterization [34]: 
+
+𝑦 = Softmax (( 𝑝 + 𝑔 )/ 𝜏 )
+
+where 𝜏 is a temperature, and the values 𝑔 𝑖 are again independent random samples from the standard Gumbel distribution. Dense 
+
+> 128
+> ReLU
+> Dense
+> 64
+> ReLU
+> Dense
+> 64
+> GRU
+> 64
+> Hidden
+> State
+> Observation
+> Dense
+> 64
+> ReLU
+> Dense
+> 32
+> ReLU
+> Dense
+> 64
+> ReLU
+> Dense
+> k
+> Gumbel
+> Softmax
+> Layer
+> Distribution / One-Hot Memory (Sample)
+> Dense
+> acts
+> ReLU
+> Action
+
+Figure 4: The architecture of our Gumbel Softmax self-interpretable network. The upper part of each block describes the architecture of a layer, the second number represents the size of the layer, where 𝑘 is the upper bound of memory, and acts is the number of playable actions for a given model. During the training, we use the output distribution from the Gumbel layer, while in the case of the final controller construction, we use a one-hot vector representing the sampled memory. 
+
+In the limit, as 𝜏 goes to zero, 𝑦 coincides with the one-hot encoding of a random sample drawn from the categorical distribution Softmax (𝑝 ). On the other hand, for a fixed 𝜏 , the function 𝑦 is continuous and differentiable with respect to the whole 𝑝 , which improves the stability of the training. We use cosine scheduling to reduce the temperature 𝜏 during training that yields a distribution close to the original categorical distribution. 
+
+## D EVALUATION METHODOLOGY D.1 Empirical Evaluation 
+
+The neural network policies were evaluated on 600 steps in 512 parallel environments. The truncated trajectories were considered as ending in a fail state. This gives us confident results, as we usually have over two thousand evaluation episodes for evaluation. For instance, we can see that the empirical values of the extracted finite-state controllers are close to their verified values. 
+
+## D.2 Statistical Tests 
+
+To compare the algorithms in Table 1 and Table 2, we used the Sign test and the Brunner Munzel test. The Sign test serves to compare the median of a random variable 𝑋 with a fixed value 𝑚 without assumptions on the distribution of 𝑋 . Its null and alternative hypothesis are as follows: 
+
+𝐻 0: 𝑃 (𝑋 > 𝑚 ) = 0.5
+
+𝐻 1: 𝑃 (𝑋 > 𝑚 ) > 0.5
+
+The test was used to compare Saynt with other methods as the performance of Saynt is deterministic. The Brunner-Munzel test serves to compare two random variables 𝑋 and 𝑌 under the assumptions they are independent. Its null and alternative hypothesis are as follows: 
+
+𝐻 0: 𝑃 (𝑋 > 𝑌 ) = 𝑃 (𝑌 > 𝑋 )
+
+𝐻 1: 𝑃 (𝑋 > 𝑌 ) > 𝑃 (𝑌 > 𝑋 )
+
+The test was used to compare the results of the two extraction methods. The significant test results are summarized in Table 9 and Table 10. 
+
+## E EXTENDED RESULTS 
+
+In this section, we show all the convergence curves for both the single-POMDP and the hidden-model POMDP setting. 
+
+## E.1 Single-POMDP Experiments 
+
+Figure 5 shows the training of our RL algorithm before extraction, the mean verified values of the extracted controllers by both our methods (Alergia and SIG), and the development of the value of the controllers synthesized by Saynt .
+
+## E.2 Hidden Model POMDP Experiments 
+
+Figure 6 shows our convergence curves for all hidden-model POMDP experiments. Those figures depict convergence curves of the empirical value over a subset of POMDPs over time, along with the performance of the extracted controllers in the same subset and their synthesized worst-case values. 0 500 1000 1500 
+
+Time (seconds) 
+
+0.0 
+
+0.1 
+
+0.2 
+
+0.3 
+
+0.4 
+
+0.5 
+
+0.6 
+
+> Reachability
+
+drone-2-8-1 
+
+RL Values 
+
+SAYNT 
+
+Verified SIG 
+
+Verified Alergia (a) Drone-2-8-1 0 500 1000 1500 
+
+Time (seconds) 
+
+0.0 
+
+0.2 
+
+0.4 
+
+0.6 
+
+0.8 
+
+> Reachability
+
+evade-n17 
+
+RL Values 
+
+SAYNT 
+
+Verified SIG 
+
+Verified Alergia (b) Evade-n17 0 500 1000 1500 
+
+Time (seconds) 
+
+0.4 
+
+0.6 
+
+0.8 
+
+1.0 
+
+> Reachability
+
+intercept-16 
+
+RL Values 
+
+SAYNT 
+
+Verified SIG 
+
+Verified Alergia (c) Intercept-16 0 500 1000 1500 
+
+Time (seconds) 
+
+20 
+
+18 
+
+16 
+
+14 
+
+> Reward
+
+network-5-10-8 
+
+RL Values 
+
+SAYNT 
+
+Verified SIG 
+
+Verified Alergia (d) Network-5-10-8 0 500 1000 1500 
+
+Time (seconds) 
+
+18 
+
+16 
+
+14 
+
+12 
+
+10 
+
+8
+
+> Reward
+
+network-3-8-20 
+
+RL Values 
+
+SAYNT 
+
+Verified SIG 
+
+Verified Alergia 
+
+(e) Network-3-8-20 0 500 1000 1500 
+
+Time (seconds) 
+
+600 
+
+500 
+
+400 
+
+300 
+
+200 
+
+100 
+
+> Reward
+
+rocks-16 
+
+RL Values 
+
+SAYNT 
+
+Verified SIG 
+
+Verified Alergia (f) Rocks-16 0 1000 2000 
+
+Time (seconds) 
+
+3
+
+4
+
+5
+
+6
+
+7
+
+8
+
+9
+
+> Reward
+
+maze-10 
+
+RL Values 
+
+SAYNT 
+
+Verified SIG 
+
+Verified Alergia (g) Maze-10 
+
+Figure 5: Figures for single-POMDP models. The yellow line shows the RL performance over time, red crosses the values provided by Saynt over time, the blue line the final verified value extracted by SIG, and the green line the verified value extracted by Alergia. 0 5 10 15 20 
+
+Iterations 
+
+250 
+
+200 
+
+150 
+
+100 
+
+50 
+
+> Reward
+
+HM avoid 
+
+Worst-Case SIG 
+
+Worst-Case Alergia 
+
+Empirical RL SIG 
+
+Empirical RL Alergia 
+
+Extracted FSC SIG 
+
+Extracted FSC Alergia 
+
+(a) Avoid 0 5 10 15 20 
+
+Iterations 
+
+350 
+
+300 
+
+250 
+
+200 
+
+150 
+
+100 
+
+50 
+
+> Reward
+
+HM avoid-large 
+
+Worst-Case SIG 
+
+Worst-Case Alergia 
+
+Empirical RL SIG 
+
+Empirical RL Alergia 
+
+Extracted FSC SIG 
+
+Extracted FSC Alergia (b) Avoid-Large 0 2 4 6 8
+
+Iterations 
+
+0.45 
+
+0.50 
+
+0.55 
+
+0.60 
+
+0.65 
+
+0.70 
+
+0.75 
+
+0.80 
+
+> Reachability
+
+HM drone-2-6-1 
+
+Worst-Case SIG 
+
+Worst-Case Alergia 
+
+Empirical RL SIG 
+
+Empirical RL Alergia 
+
+Extracted FSC SIG 
+
+Extracted FSC Alergia (c) Drone-2-6-1 0 2 4 6 8 10 
+
+Iterations 
+
+800 
+
+600 
+
+400 
+
+200 
+
+0
+
+> Reward
+
+HM moving-obstacles 
+
+Worst-Case SIG 
+
+Worst-Case Alergia 
+
+Empirical RL SIG 
+
+Empirical RL Alergia 
+
+Extracted FSC SIG 
+
+Extracted FSC Alergia (d) Moving-Obstacles 0.0 2.5 5.0 7.5 10.0 12.5 15.0 
+
+Iterations 
+
+4
+
+6
+
+8
+
+10 
+
+12 
+
+> Reward
+
+HM network 
+
+Worst-Case SIG 
+
+Worst-Case Alergia 
+
+Empirical RL SIG 
+
+Empirical RL Alergia 
+
+Extracted FSC SIG 
+
+Extracted FSC Alergia 
+
+(e) Network 0 5 10 15 20 25 
+
+Iterations 
+
+800 
+
+700 
+
+600 
+
+500 
+
+400 
+
+300 
+
+200 
+
+100 
+
+> Reward
+
+HM obstacles-8-5 
+
+Worst-Case SIG 
+
+Worst-Case Alergia 
+
+Empirical RL SIG 
+
+Empirical RL Alergia 
+
+Extracted FSC SIG 
+
+Extracted FSC Alergia (f) Obstacles-8-5 0 5 10 15 20 25 
+
+Iterations 
+
+250 
+
+300 
+
+350 
+
+400 
+
+450 
+
+500 
+
+550 
+
+600 
+
+650 
+
+> Reward
+
+HM rover 
+
+Worst-Case SIG 
+
+Worst-Case Alergia 
+
+Empirical RL SIG 
+
+Empirical RL Alergia 
+
+Extracted FSC SIG 
+
+Extracted FSC Alergia (g) Rover 
+
+Figure 6: Figures for hidden model POMDPs. The green lines show the performance of our SIG method, while the red line shows the performance of Alergia. The solid lines show the verified performance, the dashed lines the empirical performance of the RL, and the dotted lines the empirical performance of the extracted controllers in a subset of POMDPs. benchmark 𝑋 𝑌 𝑝 -value rocks-16 Saynt LP+ SIG 9.8e-04 rocks-16 Saynt LP+ Alergia 9.8e-04 rocks-16 LP+ SIG LP+ Alergia 1.4e-05 network-3-8-20 LP+ SIG Saynt 9.8e-04 network-3-8-20 LP+ Alergia Saynt 9.8e-04 network-3-8-20 LP+ SIG LP+ Alergia 4.5e-06 network-5-10-8 LP+ SIG Saynt 9.8e-04 network-5-10-8 LP+ Alergia Saynt 9.8e-04 network-5-10-8 LP+ SIG LP+ Alergia 1.6e-03 intercept-16 LP+ SIG Saynt 9.8e-04 intercept-16 LP+ Alergia Saynt 9.8e-04 intercept-16 LP+ SIG LP+ Alergia 5.9e-03 evade-n17 LP+ SIG Saynt 9.8e-04 evade-n17 LP+ Alergia Saynt 9.8e-04 drone-2-8-1 LP+ SIG Saynt 9.8e-04 drone-2-8-1 LP+ Alergia Saynt 9.8e-04 
+
+Table 9: The statistically significant comparisons of the methods in Table 1 and their p-values. The methods LP+ SIG and LP+ Alergia represent Lexpop with the respective extraction strategy. The tests reject 𝑃 (𝑋 > 𝑌 ) = 𝑃 (𝑌 > 𝑋 ) in favor of 
+
+𝑃 (𝑋 > 𝑌 ) > 𝑃 (𝑌 > 𝑋 ).
+
+benchmark 𝑋 𝑌 𝑝 -value rover rfPG LP+ SIG 3.6e-06 rover rfPG LP+ Alergia 7.1e-13 rover LP+ SIG LP+ Alergia 4.2e-03 obstacles-8-5 rfPG LP+ SIG 3.4e-12 obstacles-8-5 rfPG LP+ Alergia 7.1e-13 network LP+ SIG rfPG 1.8e-06 network LP+ Alergia rfPG 1.8e-06 avoid LP+ Alergia rfPG 4.1e-02 avoid-large LP+ SIG rfPG 7.8e-04 avoid-large LP+ Alergia rfPG 2.8e-03 drone-2-6-1 LP+ SIG rfPG 7.1e-13 drone-2-6-1 LP+ Alergia rfPG 5.5e-12 moving_obstacles LP+ SIG rfPG 7.1e-13 moving_obstacles LP+ Alergia rfPG 1.6e-03 moving_obstacles LP+ SIG LP+ Alergia 7.1e-13 
+
+Table 10: The statistically significant comparisons of the methods in Table 2 and their p-values. The methods LP+ SIG and LP+ Alergia represent Lexpop with the respective extraction strategy. The tests reject 𝑃 (𝑋 > 𝑌 ) = 𝑃 (𝑌 > 𝑋 ) in favor of 
+
+𝑃 (𝑋 > 𝑌 ) > 𝑃 (𝑌 > 𝑋 ).

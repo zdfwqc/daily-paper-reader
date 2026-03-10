@@ -1,0 +1,889 @@
+Title: Data-Efficient Hierarchical Goal-Conditioned Reinforcement Learning via Normalizing Flows
+
+URL Source: https://arxiv.org/pdf/2602.11142v1
+
+Published Time: Thu, 12 Feb 2026 02:20:34 GMT
+
+Number of Pages: 9
+
+Markdown Content:
+# Data-Efficient Hierarchical Goal-Conditioned Reinforcement Learning via Normalizing Flows 
+
+Shaswat Garg 1, Matin Moezzi 1 and Brandon Da Silva 1
+
+Abstract— Hierarchical goal-conditioned reinforcement learning (H-GCRL) provides a powerful framework for tack-ling complex, long-horizon tasks by decomposing them into structured subgoals. However, its practical adoption is hin-dered by poor data efficiency and limited policy expressivity, especially in offline or data-scarce regimes. In this work, Normalizing flow-based hierarchical implicit Q-learning (NF-HIQL), a novel framework that replaces unimodal gaussian policies with expressive normalizing flow policies at both the high- and low-levels of the hierarchy is introduced. This design enables tractable log-likelihood computation, efficient sampling, and the ability to model rich multimodal behaviors. New theoretical guarantees are derived, including explicit KL-divergence bounds for Real-valued non-volume preserving (RealNVP) policies and PAC-style sample efficiency results, showing that NF-HIQL preserves stability while improving generalization. Empirically, NF-HIQL is evaluted across di-verse long-horizon tasks in locomotion, ball-dribbling, and multi-step manipulation from OGBench. NF-HIQL consis-tently outperforms prior goal-conditioned and hierarchical baselines, demonstrating superior robustness under limited data and highlighting the potential of flow-based architectures for scalable, data-efficient hierarchical reinforcement learning. 
+
+I. INTRODUCTION Generalization is a cornerstone of Reinforcement learn-ing (RL): it empowers agents to tackle new, unseen tasks and adapt to ever-changing environments [1]. Despite remarkable progress—deep RL agents now master con-tinuous control challenges like locomotion [2], dexterous object manipulation [3], and robotic arm coordination [4] — these successes have mostly focused on short-horizon, low-level motor skills executed in isolation. Real-world problems, by contrast, demand hierarchical rea-soning: agents must integrate perception, planning, and decision-making across multiple layers of abstraction and compose primitive behaviors into long-horizon strategies. H-GCRL provides a natural framework for tackling complex, long-horizon tasks by decomposing them into sequences of subgoals, each managed by a corresponding low-level policy. This hierarchical structure allows agents to reason over multiple timescales and compose simpler behaviors into more sophisticated strategies. Recent advances in offline Goal-conditioned RL (GCRL) [5] and hierarchical extensions [6] demonstrate that it is possible to train such agents using large, unlabeled datasets—such as videos or multi-task demonstrations—             
+
+> Shaswat Garg,Matin Moezzi and Brandon Da Silva are with ArenaX Labs. .GitHub repository: https://github.com/Shaswat2001/heirarchical_RL
+
+by conditioning policies on desired goals, even when explicit reward or action information is missing. However, collecting such large and diverse datasets, especially those that cover a wide range of goals and transitions, is often infeasible in practice due to high data acquisition costs, safety concerns, and limitations in real-world deployment. This makes it essential to develop algorithms that can generalize effectively from limited or weakly supervised data, ideally leveraging structure, compositionality, and inductive biases inherent in the task space. To tackle the challenge of sample inefficiency [7], recent approaches have primarily focused on leveraging powerful generative models, which also provide the side benefit of greater policy expressiveness. Diffusion models offer rich expressiveness and have shown promise in capturing complex action distributions, but they are computationally expensive due to the need to solve differential equations during training and inference [8], [9]. Autoregressive models scale more efficiently and allow parallel training, yet they often rely on learning discrete representations of actions, which can introduce quantization artifacts and complicate optimization [10]. In contrast, gaussian policies are lightweight and efficient to train but lack the capacity to represent multimodal or structured behaviors, limiting their effectiveness in hierarchical or goal-conditioned settings [11]. In this work, a novel approach is proposed that lever-ages Normalizing flows (NFs)—specifically the RealNVP architecture—within the Hierarchical implicit Q-learning (HIQL) framework to bridge this gap [12]. NFs strike a favorable balance between expressivity and computa-tional tractability [13]. In particular, they provide exact likelihood evaluation, which yields unbiased and lower-variance gradient estimates during training, leading to more stable optimization and improved sample efficiency compared to methods that rely on approximate likeli-hoods such as MCMC-based or variational approaches (e.g., energy-based models), a property that is especially advantageous in offline and data-constrained regimes [14]. By integrating normalizing flows into both the high-level and low-level policies of a hierarchical framework, a more expressive and data-efficient alternative is intro-duced to traditional policy representations. Furthermore, a theoretical analysis is presented that the learned policies are bounded in KL divergence and enjoy provable guarantees on sample efficiency, pushing the boundaries of scalable and robust long-horizon decision-making. 
+
+> arXiv:2602.11142v1 [cs.RO] 11 Feb 2026
+
+II. RELATED WORK This section provides an overview of recent advance-ments in HGCRL and GCRL, with a particular focus on efforts to improve sample efficiency—especially through the use of generative models. GCRL enables agents to learn a spectrum of tasks by conditioning on a goal input, fostering generaliza-tion across different outcomes [5]. A major challenge, however, is sample inefficiency in sparse-reward settings. Relabeling strategies like Hindsight experience replay (HER) [15] and density-based goal sampling [16] ad-dress this by reusing or prioritizing goals. Generative approaches also improve efficiency, e.g., learning la-tent dynamics models for planning [17], synthesizing goal-directed rollouts with GANs [18], or incorporating planning into offline GCRL [19]. While these methods generate additional data or plans, they rely on accurate learned models or GAN training, which can be brittle and hard to scale. In contrast, the proposed work sidesteps explicit planning by leveraging expressive policy models and hierarchical value-based learning to improve effi-ciency directly. Long-horizon goal-reaching tasks benefit from hierar-chical decomposition, where high-level subgoals improve learning efficiency [20], [21]. HIQL [12] extends this by learning a single goal-conditioned value function offline and deriving both high- and low-level policies, with subgoals proposed in latent space. This provides clearer learning signals and outperforms prior offline GCRL methods. Theory also supports hierarchy as a way to reduce sample complexity [22]. Yet, most HGCRL methods—including HIQL—rely on simple Gaussian policies, limiting their ability to capture complex, multi-modal behaviors, and neglect modern generative models. The proposed method addresses this by using normal-izing flows, enabling richer hierarchical policies while retaining tractable training and efficient sampling. Recent advances in generative modeling for RL have introduced more expressive policy classes to improve sample efficiency. Diffusion models, for instance, have been applied to goal-conditioned settings: [23] proposed a diffusion-based policy that achieves strong offline per-formance via denoising-based inference. Generative Flow Networks (GFlowNets) offer trajectory-level diversity, as in Goal2FlowNets [24], which enhance generalization. However, both diffusion models and GFlowNets involve complex training and sampling, leading to high computa-tional costs. Normalizing flows (NFs) provide a tractable alternative [25]; SAC-NF [26] demonstrated improved convergence and expressivity by replacing Gaussian poli-cies with NFs. However, existing applications of NFs have primarily focused on flat policy architectures. The proposed work bridges this gap by integrating NFs into both the high-level and low-level policies of the HIQL framework. This yields expressive, multimodal policies at each level of hierarchy while preserving the tractable training and efficient sampling that NFs offer. In doing so, the method introduced enhances both the generalization capacity and sample efficiency of HGCRL in complex, long-horizon environments. III. BACKGROUND The problem is framed as a Markov decision process (MDP) [27] and a dataset D, defined by a tuple <S, A, μ, P, R, γ > , where S represents the set of possible states, A represents the set of possible actions, μ ∈ P (S)
+
+denotes an initial state distribution, P : S × A → S is the state transition function that represents the con-ditional probability P (s′|s, a) or deterministic function 
+
+s′ = P (s, a), and R : S × G → R represents the goal-conditioned reward function. The dataset D consists of trajectories τ = ( s0, a 0, s 1, a 1, . . . , s T ). It is assumed that the goal space G is identical to the state space, that is, 
+
+G = S. The aim is to learn a goal-conditioned policy 
+
+π(a | s, g ) using D such that the expected cumulative reward 
+
+J(π) = Eg∼p(g), τ ∼pπ (τ )
+
+[ T∑
+
+> t=0
+
+γtR(st, g )
+
+]
+
+(1) is maximized. The trajectory distribution under policy 
+
+π is given by 
+
+pπ (τ ) = μ(s0) 
+
+> T−1
+
+∏
+
+> t=0
+
+π(at | st, g ) P (st+1 | st, a t), (2) where γ denotes the discount factor and p(g) is the distribution over goals. IV. ALGORITHM We consider a HGCRL setup following HIQL [12], where a single value function V (s, g ) guides two policies: a high-level subgoal policy πh and a low-level action policy πℓ. The high-level policy proposes a future state (latent subgoal) st+k given the current state st and goal g, while the low-level policy selects actions at to reach it. In NF-HIQL, both policies are modeled as conditional normalizing flows, enabling exact density, gradient, and entropy computation while supporting expressive, multimodal behaviors. A. Flow-Based Policy Parameterization Concretely as shown in Algorithm 1, each policy is defined by an invertible function that maps a noise vector to an output (subgoal or action). For example, the high-level policy is given as follows: 
+
+st+k = fH (u; st, g ), u ∼ N (0 , I ), (3) where fH (·; st, g ) is a neural-network flow conditioned on (st, g ). In other words, latent noise u is sampled from a standard Gaussian and passed through fH to produce a candidate subgoal st+k. Similarly, the low-level policy 2uses its own flow fℓ to map v ∼ N (0 , I ) (conditioned on the current state and chosen subgoal) to an action: 
+
+at = fℓ(v; st, s t+k).Because fH and fℓ are bijective with tractable Ja-cobians, the log-density of an output can be computed exactly via the change-of-variables formula. For instance, if u = f −1 
+
+> H
+
+(st+k; st, g ), then 
+
+(4) log πh(st+k | st, g ) = log pH (u) − log 
+
+∣∣∣det( ∂f H (u; st, g )
+
+∂u )
+
+∣∣∣.
+
+Here pH (u) is the Gaussian base density (e.g. N (0 , I )), and det( ∂f H /∂u ) is the Jacobian determinant of the flow. An analogous formula holds for the low-level policy: if 
+
+v = f −1 
+
+> ℓ
+
+(at; , s t, s t+k), then 
+
+(5) 
+
+log πℓ(at | st, s t+k ) = log pℓ(v) −
+
+log 
+
+∣∣∣det( ∂f ℓ(v; st, s t+k )
+
+∂v )
+
+∣∣∣.
+
+In short, flow transforms endow the policy with an analytic log-probability while providing high expressiv-ity. By stacking invertible layers, a simple base density is transformed into a richer, potentially multimodal distribution. In this work, RealNVP [14] serves as a universal approximator for continuous densities, enabling policies that capture complex multimodal action or subgoal distributions while supporting efficient sampling and exact likelihood evaluation. B. Log-Probability, Entropy, and Advantage-Weighted Objectives Because the flow policies admit exact densities, the usual advantage-weighted learning objectives can be written in the closed form. As in HIQL, the high-level advantage is defined as Ah(st, s t+k, g ) =
+
+V (st+k, g ) − V (st, g ) and the low-level advantage as 
+
+Aℓ(st, a t, s t+1 , s t+k) = V (st+1 , s t+k) − V (st, s t+k). Then the weighted maximum-likelihood (AWR-style) objec-tives are:  
+
+> •
+
+High-level objective: 
+
+Jh(θH ) = Edata 
+
+[
+
+eβA h
+
+log πhθH (st+k | st, g )
+
+]
+
+. (6)  
+
+> •
+
+Low-level objective: 
+
+Jℓ(θL) = Edata 
+
+[
+
+eβA ℓ
+
+log πℓθL (at | st, s t+k)
+
+]
+
+. (7) Each expectation is over logged offline transitions (with subgoals st+k and actions at) with weight exp( βA ),so that higher-advantage samples are upweighted. Sub-stituting the flow log-densities above makes both Jh and 
+
+Jℓ fully differentiable functions of the flow parameters 
+
+θH , θ L. In particular, the gradients take the simple form as follows: 
+
+∇θH Jh = E[eβA h
+
+∇θH log πh(st+k | st, g )] ,
+
+∇θL Jℓ = E[eβA ℓ
+
+∇θL log πℓ(at | st, s t+k)] . (8) Since log πh and log πℓ are given in closed form by the flow (the only trainable part of log p(u) is constant), Algorithm 1 Offline HIQL with Normalizing Flow Poli-cies Require: Dataset D, Networks: value function VθV (s, g ),target value function V¯θV (s, g ), high-level policy 
+
+πhθH (st+k|st, g ), low-level policy πℓθL (at|st, s t+k), Hy-per parameters: learning rates αV , αH , αL; temper-ature β 
+
+> 1:
+
+while not converged do  
+
+> 2:
+
+// 1. Update Value Function using action-free IQL  
+
+> 3:
+
+Sample (st, s t+1 , g ) from D 
+
+> 4:
+
+y ← r(st, g ) + γV ¯θV (st+1 , g ) 
+
+> 5:
+
+θV ← θV − αV ∇θV ρτ (y − VθV (st, g ))  
+
+> 6:
+
+// 2. Update High-Level Policy (Normalizing Flow)  
+
+> 7:
+
+Sample (st, s t+k, g ) from D 
+
+> 8:
+
+Ah ← VθV (st+k , g ) − VθV (st, g ) 
+
+> 9:
+
+Compute log πhθH (st+k | st, g ) via flow: 
+
+u = f −1 
+
+> H
+
+(st+k ; st, g )log πh = log pH (u) − log |det ∂f H /∂u | 
+
+> 10:
+
+θH ← θH + αH ∇θH
+
+[
+
+eβA h
+
+log πh
+
+] 
+
+> 11:
+
+// 3. Update Low-Level Policy (Normalizing Flow)  
+
+> 12:
+
+Sample (st, a t, s t+1 , s t+k) from D 
+
+> 13:
+
+Aℓ ← VθV (st+1 , s t+k ) − VθV (st, s t+k ) 
+
+> 14:
+
+Compute log πℓθL (at | st, s t+k) via flow: 
+
+v = f −1 
+
+> ℓ
+
+(at; st, s t+k )log πℓ = log pℓ(v) − log |det ∂f ℓ/∂v | 
+
+> 15:
+
+θL ← θL + αL∇θL
+
+[
+
+eβA ℓ
+
+log πℓ
+
+] 
+
+> 16:
+
+end while then ∇θ log π = −∇ θ [log |det( ∂f /∂u )|]. Thus no policy sampling or likelihood-ratio estimators are needed: the Jacobian log-det gradient can be computed analytically for each data point. Because the flows yield exact densities, the policy entropies can also be computed in closed form if desired. For example, (9) H(πh) = −Es∼πh [log πh(s)] = −Eu∼pH [log pH (u) − log |det( ∂f H /∂u )|],
+
+which can be estimated by sampling u ∼ pH (all terms inside are known). In short, all key quantities — log-likelihoods and entropies — are tractable and exact for the flow policies. C. Theoretical Guarantees To complement the algorithmic design, NF-HIQL is supported by theoretical results on stability and effi-ciency. First, an upper bound on the KL divergence between the hierarchical policy and the behavior policy in D ensures the learned policy stays close to the data distribution, mitigating out-of-distribution actions and extrapolation error. Second, a PAC-style sample efficiency bound shows that the hierarchical policies remain near-optimal under finite data. Together, these 3Fig. 1: Evaluation environments: (a) AntMaze—medium-navigate (long-horizon maze navigation); (b) AntSoccer—medium-navigate (wall-bounded dribbling and navigation); (c) AntSoccer—arena-navigate (open-field dribbling and navigation); (d) Cube—single-play (pick-and-place from play data); (e) Scene—play (multi-object, multi-step sequencing from play) [28]. 
+
+results establish NF-HIQL as both stable and provably sample-efficient, reinforcing its practicality for real-world settings with limited data. Full technical proofs are provided in Appendix VII-A. Lemma 2 (KL Divergence Bound): Let πb(· | s) de-note the behavior policy and πθ (· | s) the learned RealNVP policy given state s. If the action space is bounded and the behavior density is capped by a constant M < ∞, then there exists a constant B < ∞
+
+(determined by the RealNVP architecture) such that 
+
+KL( πb(· | s) ‖ πθ (· | s)) ≤ B + log M. (10) Proof: See Appendix VII-A. Lemma 3 (PAC-Style Sample Efficiency): Let ˆπh, ˆπℓ
+
+be the policies learned by advantage-weighted Maximum Likelihood Estimation (MLE). With probability at least 
+
+1 − δ,                
+
+> (11)
+> J(π⋆)−J(ˆ πh,ℓ )
+> ≤HhAmax ,h
+> 1−γ
+> √
+> Ch
+> 2
+> (
+> 4Rnh(Fh) + 2 Bh
+> √log(2 /δ )2nh
+> )
+> +HℓAmax ,ℓ
+> 1−γ
+> √
+> Cℓ
+> 2
+> (
+> 4Rnℓ(Fℓ) + 2 Bℓ
+> √log(2 /δ )2nℓ
+> )
+> +εV,
+
+Proof: See Appendix VII-B. V. RESULTS NF-HIIQL is evaluated on five OGBench tasks spanning long-horizon locomotion, ball-dribbling, and multi-step manipulation: antmaze-medium-navigate, antsoccer-medium-navigate, antsoccer-arena-navigate, cube-single-play, and scene-play (Figure 1). We follow OGBench’s official environment definitions, dataset splits, and multi-goal success-rate protocol for offline goal-conditioned RL [28]. Each algorithm is trained on the same offline dataset for 1M transitions with five random seeds on NVIDIA T4 GPUs. Unless noted otherwise, we use the state-based benchmark variants, adapted to the benchmark’s evaluation goals (five per manipulation environment) when reporting success rates and confidence intervals. Comparisons include three representative offline GCRL baselines from OGBench—GCIQL, CRL, and HIQL—along with the diffusion-based BESO [29], pro-viding a strong reference set across navigation and manipulation. Two additional flow-based variants are considered: NF-HIQL (hierarchical flow policies at both levels) and NF-GCIQL (a flow policy under the GCIQL objective). Consistent with the motivation for expressive, multimodal policies, NF-HIQL outperforms all baselines. To assess sample efficiency, each experiment is con-ducted in two regimes: (i) training on 100% of the available dataset and (ii) training on exactly 50% of the same dataset (a uniform halving of trajectories). These paired settings let us quantify the sample-efficiency gap between flow-based methods and unimodal counterparts. NF-HIQL’s success rates under both full and reduced dataset regimes clearly demonstrate its superior sample efficiency, as reported in Table I and Table II. With 
+
+100% of the available dataset, NF-HIQL achieves success rates that are competitive with or stronger than the best OGBench baselines. For example, in antmaze-medium-navigate, NF-HIQL achieves a success rate of 95 ±2% ,nearly identical to HIQL’s 96 ±1% from [28], while outperforming GCIQL ( 71 ±4% ), NF-GCIQL ( 82 ±3% ), and the diffusion-based BESO ( 85 ±7% ). Similarly, in antsoccer-medium-navigate, NF-HIQL reaches 14 ±2% 
+
+success rate, which is over 2.3× higher than GCIQL (7±1% ), more than double the NF-GCIQL’s ( 6±4% ), and also outperforms BESO ( 12 ±3% ). The gains are even more substantial in antsoccer-arena-navigate, where NF-HIQL attains 73 ±1% success rate, compared to HIQL’s 
+
+58 ±2% , NF-GCIQL’s 30 ±3% , and BESO’s 56 ±2% ,yielding relative improvements of approximately 26% ,
+
+2.4×, and 30% respectively. For manipulation tasks, NF-HIQL continues to dominate: in cube-single-play, NF-HIQL achieves a success rate of 36 ±4% , maintaining strong performance even with half the dataset. This represents a nearly 9× improvement over HIQL ( 4±2% )and BESO ( 4±1% ), and a 6× gain over CRL ( 6±3% ). NF-HIQL also outperforms GCIQL ( 10 ±6% ) by more than 3.5×, and remains competitive with NF-GCIQL (40 ±9% ), trailing by only 10% while offering substan-tially lower variance. These results highlight NF-HIQL’s robustness and efficiency in complex manipulation tasks under limited data. The crucial distinction emerges when the dataset is reduced by half. With only 50% of the data (Ta-ble II), NF-HIQL still maintains strong success rates while other algorithms degrade sharply. On antmaze-medium-navigate, NF-HIQL achieves 72 ±4% success rate, whereas HIQL drops to 58 ±4% , BESO falls further 4Environment BESO GCIQL CRL HIQL NF-GCIQL NF-HIQL antmaze-medium-navigate 85 ±7 71 ±4 95 ±1 96 ±1 82 ±3 95 ±2                                                
+
+> antsoccer-medium-navigate 12 ±37±13±113 ±16±414 ±2
+> antsoccer-arena-navigate 56 ±250 ±223 ±258 ±230 ±373 ±1
+> cube-single-play 21 ±268 ±619 ±215 ±370 ±137 ±2
+> scene-play 81 ±351 ±419 ±238 ±350 ±240 ±3
+
+TABLE I: Overall success rate (%) across all the tasks — dataset size: 100% of the available offline dataset.                                                                   
+
+> Environment BESO GCIQL CRL HIQL NF-GCIQL NF-HIQL antmaze-medium-navigate 63 ±624 ±250 ±258 ±464 ±372 ±4
+> antsoccer-medium-navigate 1±10±00±00±07±23±2
+> antsoccer-arena-navigate 30 ±22±10±01±141 ±473 ±4
+> cube-single-play 4±110 ±66±34±240 ±936 ±4
+> scene-play 14 ±28±32±26±433 ±436 ±3
+
+TABLE II: Overall success rate (%) across all the tasks — dataset size: 50% of the available offline dataset. 
+
+Fig. 2: Success rate (%) across training steps on OGBench environments. NF-HIQL consistently outperforms baselines, showing faster convergence and higher final success rates, particularly in complex manipulation tasks (cube-single-play, scene-play) and multi-agent soccer settings. 
+
+to 63 ±6% , and NF-GCIQL declines to 64 ±3% . This corresponds to NF-HIQL being 24% stronger than HIQL, 
+
+14% stronger than BESO, and 12 .5% stronger than NF-GCIQL under the reduced setting. The efficiency ad-vantage becomes dramatic in antsoccer-arena-navigate, where NF-HIQL records the success rate of 73 ±4% 
+
+compared to HIQL’s 1±1% , BESO’s 30 ±2% , and NF-GCIQL’s 41 ±4% . In this case, NF-HIQL achieves asuccess rate that is 70 × higher than HIQL, 2.4× higher than BESO, and 1.8× higher than NF-GCIQL, while nearly matching its own 100% -data performance. In scene-play, NF-HIQL achieves 36 ±3% success, out-performing HIQL ( 6±4% ), BESO ( 14 ±2% ), and NF-GCIQL ( 33 ±4% )—over 6× stronger than HIQL, 2.5×
+
+stronger than BESO, and 10% stronger than NF-GCIQL. A similar trend holds in cube-single-play, where NF-HIQL records 35 ±7% , nearly matching its full-data result (37 ±2% ). In contrast, HIQL drops to 6±3% , BESO to 
+
+4±1% , and NF-GCIQL to 27 ±5% . Thus, NF-HIQL is 
+
+6× stronger than HIQL, 9× stronger than BESO, and 
+
+30% stronger than NF-GCIQL with only half the data. Even in the particularly challenging antsoccer-medium-navigate, where absolute success rates are low, NF-HIQL achieves 3±2% with half the data, maintaining a measurable level of success compared to HIQL and CRL (both 0% ), while BESO reaches only 1±1% . Thus, NF-HIQL still outperforms BESO by 3× in relative success rate in this domain. These results confirm that NF-HIQL is not only a top-performing method in absolute terms but also markedly more sample-efficient. Detailed results are provided in the supplementary video. Across tasks, NF-HIQL trained on 50% of the data often matches or exceeds HIQL, BESO, and GCIQL trained on the full dataset. Gains are most pronounced in multimodal tasks such as antsoccer-arena-navigate, antmaze-medium-navigate, and scene-play, where NF-HIQL achieves multiples higher success rates than both diffusion-based (BESO) and unimodal (HIQL, GCIQL) baselines. Overall, NF-HIQL emerges as the most robust and sample-efficient algorithm across the diverse OGBench domains. 5Fig. 3: Experimental setup with the 6 DOF myCobot 280 arm. 
+
+VI. EXPERIMENTS To validate the algorithm in real-world conditions, we conducted experiments using the Elephant Robotics 6-DOF myCobot280 arm equipped with an adaptive gripper across a series of pick-and-place tasks. The control policies were deployed on a Jetson Nano AI board, ensuring that evaluation was performed in aresource-constrained yet practically deployable setting. The goal of each experiment was to pick objects from their initial locations and place them at their designated target positions, as illustrated in Fig. 3. Two experimental scenarios were designed, each pro-gressively increasing in difficulty. In the first scenario, the robot was required to manipulate two objects placed at distinct locations, transporting each to its specified target position. In the second scenario, the task was extended to three objects placed at different locations, in-creasing both planning horizon and multimodal decision complexity. These tasks test the ability of the learned policy to generalize to multi-object, sequential pick-and-place settings. To further examine sample efficiency, the algorithm was trained and tested under two configurations: one using a dataset of 3000 offline samples, and another using exactly half the data ( 1500 samples). In all settings, the robot successfully completed the required pick-and-place tasks, demonstrating that the learned policy transfers reliably to the physical robot even under reduced training data conditions. The main variation across dataset sizes was in object placement accuracy, measured by the Euclidean error between the end-effector (EE) and the target. With the full dataset ( 3000 samples), the average error stayed below 1.5 cm in both scenarios. With the reduced dataset (1500 samples), all tasks were still completed, though errors rose to about 2.3 cm in the two-object case and 2.8 cm in the more challenging three-object case. This modest degradation shows the algorithm remains robust to reduced training data while retaining high task success. These results highlight two key findings: the algorithm reliably scales to real multi-object manipulation, and it remains sample-efficient, achieving 100% task success even with half the dataset, with only a slight increase in EE-to-target error. VII. CONCLUSION This work introduced NF-HIQL, a normalizing flow– based extension of HIQL that employs expressive multi-modal policies at both hierarchical levels. By replacing Gaussian policies with tractable flows, NF-HIQL en-hances expressivity while maintaining stability through KL-divergence bounds and PAC-style sample efficiency guarantees. Experiments on OGBench show NF-HIQL consistently outperforms prior goal-conditioned and hi-erarchical baselines, including diffusion-based methods like BESO, especially in data-limited regimes. Notably, NF-HIQL trained with only 50% of the data matches or surpasses full-dataset baselines across navigation, ball-dribbling, and manipulation tasks, demonstrating strong robustness and efficiency. Beyond simulation, we validated NF-HIQL on a real-world robotic platform using the myCobot280 arm, where the policy reliably executed multi-object pick-and-place tasks. Even with limited offline data, the algorithm achieved 100% task success with only modest increases in placement error, further underscoring its practical applicability in resource-constrained, real-world settings. Overall, these results establish NF-HIQL as a scalable, data-efficient approach to HGCRL. By combining the theoretical guarantees of HIQL with the representa-tional power of normalizing flows, NF-HIQL provides a compelling framework for robust decision-making in both offline and real-world scenarios. Future directions include extending this framework to vision-based inputs, integrating with model-based components for planning, and applying it to more complex multi-agent and long-horizon robotic systems. References                 
+
+> [1] C. M. Wu, B. Meder, and E. Schulz, “Unifying principles of generalization: past, present, and future,” Annual Review of Psychology, vol. 76, 2024. [2] G. B. Margolis, G. Yang, K. Paigwar, T. Chen, and P. Agrawal, “Rapid locomotion via reinforcement learning,” The International Journal of Robotics Research, vol. 43, no. 4, pp. 572–587, 2024. [3] T. Lin, K. Sachdev, L. Fan, J. Malik, and Y. Zhu, “Sim-to-real reinforcement learning for vision-based dexterous manipula-tion on humanoids,” arXiv preprint arXiv:2502.20396, 2025. [4] Z. Hao, G. Chen, Z. Huang, Q. Jia, Y. Liu, and Z. Yao, “Coordinated transportation of dual-arm robot based on deep reinforcement learning,” in 2024 IEEE 19th Conference on Industrial Electronics and Applications (ICIEA). IEEE, 2024, pp. 1–6. [5] X. Gong, F. Dawei, K. Xu, B. Ding, and H. Wang, “Goal-conditioned on-policy reinforcement learning,” Advances in neural information processing systems, vol. 37, pp. 45 975– 46 001, 2024. [6] J. Li, C. Tang, M. Tomizuka, and W. Zhan, “Hierarchical plan-ning through goal-conditioned offline reinforcement learning,” IEEE Robotics and Automation Letters, vol. 7, no. 4, pp. 10 216–10 223, 2022.
+
+6[7] L. Blondé and A. Kalousis, “Sample-efficient imitation learn-ing via generative adversarial nets,” in The 22nd International Conference on Artificial Intelligence and Statistics. PMLR, 2019, pp. 3138–3148. [8] S. Mei and Y. Wu, “Deep networks as denoising algo-rithms: Sample-efficient learning of diffusion models in high-dimensional graphical models,” IEEE Transactions on Infor-mation Theory, 2025. [9] H. Cao, C. Tan, Z. Gao, Y. Xu, G. Chen, P.-A. Heng, and S. Z. Li, “A survey on generative diffusion models,” IEEE transactions on knowledge and data engineering, vol. 36, no. 7, pp. 2814–2830, 2024. [10] J. Xiong, G. Liu, L. Huang, C. Wu, T. Wu, Y. Mu, Y. Yao, H. Shen, Z. Wan, J. Huang et al., “Autoregressive models in vision: A survey,” arXiv preprint arXiv:2411.05902, 2024. [11] J. Choi, S. Byeon, and I. Hwang, “Data-driven closed-loop reachability analysis for nonlinear human-in-the-loop systems using gaussian mixture model,” IEEE Transactions on Control Systems Technology, 2024. [12] S. Park, D. Ghosh, B. Eysenbach, and S. Levine, “Hiql: Offline goal-conditioned rl with latent states as actions,” Advances in Neural Information Processing Systems, vol. 36, pp. 34 866– 34 891, 2023. [13] I. Kobyzev, S. J. Prince, and M. A. Brubaker, “Normalizing flows: An introduction and review of current methods,” IEEE transactions on pattern analysis and machine intelligence, vol. 43, no. 11, pp. 3964–3979, 2020. [14] L. Dinh, J. Sohl-Dickstein, and S. Bengio, “Density estimation using real nvp,” arXiv preprint arXiv:1605.08803, 2016. [15] M. Andrychowicz, F. Wolski, A. Ray, J. Schneider, R. Fong, P. Welinder, B. McGrew, J. Tobin, O. Pieter Abbeel, and W. Zaremba, “Hindsight experience replay,” Advances in neural information processing systems, vol. 30, 2017. [16] D. Yang, H. Zhang, X. Lan, and J. Ding, “Density-based curriculum for multi-goal reinforcement learning with sparse rewards,” arXiv preprint arXiv:2109.08903, 2021. [17] S. Nair, S. Savarese, and C. Finn, “Goal-aware prediction: Learning to model what matters,” in International Conference on Machine Learning. PMLR, 2020, pp. 7207–7219. [18] H. Charlesworth and G. Montana, “Plangan: Model-based planning with sparse rewards and multiple goals,” Advances in Neural Information Processing Systems, vol. 33, pp. 8532– 8542, 2020. [19] M. Zhu, M. Liu, J. Shen, Z. Zhang, S. Chen, W. Zhang, D. Ye, Y. Yu, Q. Fu, and W. Yang, “Mapgo: Model-assisted policy optimization for goal-oriented tasks,” arXiv preprint arXiv:2105.06350, 2021. [20] T. D. Kulkarni, K. Narasimhan, A. Saeedi, and J. Tenenbaum, “Hierarchical deep reinforcement learning: Integrating tempo-ral abstraction and intrinsic motivation,” Advances in neural information processing systems, vol. 29, 2016. [21] O. Nachum, S. Gu, H. Lee, and S. Levine, “Near-optimal rep-resentation learning for hierarchical reinforcement learning,” arXiv preprint arXiv:1810.01257, 2018. [22] A. Robert, C. Pike-Burke, and A. A. Faisal, “Sample complex-ity of goal-conditioned hierarchical reinforcement learning,” Advances in Neural Information Processing Systems, vol. 36, pp. 62 696–62 712, 2023. [23] V. Jain and S. Ravanbakhsh, “Learning to reach goals via diffusion,” arXiv preprint arXiv:2310.02505, 2023. [24] K. Madan, A. Zhan, A. Lamb, E. Bengio, L. Pan, G. Berseth, and Y. Bengio, “Goal2flownet: Learning diverse policy covers using gflownets for goal-conditioned rl.” [25] R. Ghugare and B. Eysenbach, “Normalizing flows are capable models for rl,” arXiv preprint arXiv:2505.23527, 2025. [26] B. Mazoure, T. Doan, A. Durand, J. Pineau, and R. D. Hjelm, “Leveraging exploration in off-policy algorithms via normalizing flows,” in Conference on Robot Learning. PMLR, 2020, pp. 430–444. [27] R. Bellman, “A markovian decision process,” Journal of mathematics and mechanics, pp. 679–684, 1957. [28] S. Park, K. Frans, B. Eysenbach, and S. Levine, “Ogbench: Benchmarking offline goal-conditioned rl,” arXiv preprint arXiv:2410.20092, 2024. [29] M. Reuss, M. Li, X. Jia, and R. Lioutikov, “Goal-conditioned imitation learning using score-based diffusion policies,” arXiv preprint arXiv:2304.02532, 2023. 
+
+APPENDIX A. KL Bound for Advantage-Weighted RealNVP Poli-cies Lemma 1 (RealNVP Lower Bound): Fix s ∈ S and let πθ (a | s) be a RealNVP density on a with L inverse coupling layers. Therefore, u = x(L) = f −1 
+
+> θ
+
+(a; s) and 
+
+log πθ (a | s) = log pz (u) + log 
+
+∣∣∣ det ∂u ∂a 
+
+∣∣∣,pz (u) = N (0 , I ).
+
+(12) 
+
+Assume (i) bounded actions: ‖a‖2≤ Amax ; (ii) per-layer bounds: ‖sℓ(·)‖∞≤ Sℓ, ‖tℓ(·)‖2≤ Tℓ; and (iii) dℓ := 
+
+|Iℓ| scaled coordinates. Then, for all such a,
+
+log πθ (a | s) ≥ − B, (13) 
+
+B := d
+
+2 log(2 π) + 12 U 2max +
+
+> L
+
+∑
+
+> ℓ=1
+
+dℓSℓ, (14) 
+
+Umax := exp 
+
+( L∑
+
+> ℓ=1
+
+Sℓ
+
+)( 
+
+Amax +
+
+> L
+
+∑
+
+> ℓ=1
+
+Tℓ
+
+)
+
+. (15) 
+
+Proof: Let x(0) = a and x(L) = u. For any diagonal matrix D, ‖Dv ‖2≤ ‖ D‖2 ‖v‖2 and for D = Diag( e−sℓ )
+
+we have ‖D‖2= max j e−sℓ,j ≤ eSℓ by ‖sℓ‖∞≤ Sℓ. Thus, using the inverse update and the triangle inequality, 
+
+‖x(ℓ+1) ‖2 ≤ eSℓ ‖x(ℓ)‖2+eSℓ Tℓ. (16) Iterating this inequality for ℓ = 0 , . . . , L − 1 gives 
+
+(17) ∥u∥2 = ∥x(L)∥2 ≤ exp 
+
+( L∑
+
+> ℓ=1
+
+Sℓ
+
+)( 
+
+∥a∥2 +
+
+> L
+
+∑
+
+> ℓ=1
+
+Tℓ
+
+)
+
+≤ Umax .
+
+For the Gaussian base, 
+
+− log pz (u) = d
+
+2 log(2 π) + 12 ∥u∥22≤ d
+
+2 log(2 π) + 12 U 2max . (18) 
+
+The inverse Jacobian of a RealNVP layer is block-triangular with diagonal Diag( e−sℓ ) on the scaled block, hence 
+
+log 
+
+∣∣∣ det ∂x (ℓ+1) 
+
+∂x (ℓ)
+
+∣∣∣ = − ∑
+
+> j∈Iℓ
+
+sℓ,j (x(ℓ) 
+
+> Jℓ
+
+) ≥ − dℓSℓ. (19) 
+
+Summing over layers yields 
+
+log 
+
+∣∣∣ det ∂u ∂a 
+
+∣∣∣ =
+
+> L−1
+
+∑
+
+> ℓ=0
+
+log 
+
+∣∣∣ det ∂x (ℓ+1) 
+
+∂x (ℓ)
+
+∣∣∣ ≥ − 
+
+> L
+
+∑
+
+> ℓ=1
+
+dℓSℓ. (20) 
+
+Combining the base and Jacobian bounds gives 
+
+log πθ (a | s) = log pz (u) + log 
+
+∣∣∣ det ∂u ∂a 
+
+∣∣∣
+
+≥ − 
+
+[ d
+
+2 log(2 π) + 12 U 2max 
+
+]
+
+−
+
+> L
+
+∑
+
+> ℓ=1
+
+dℓSℓ (21) 
+
+= −B. (22) 
+
+7Lemma 2 (KL Bound with Behavior Density Cap): Let πb(· | s) be a behavior policy with 
+
+πb(a | s) ≤ M < ∞ for all a, s . If πθ (· | s) satisfies Lemma 1 with constant B, then for every s,
+
+KL( πb(· | s) ∥ πθ (· | s)) = 
+
+∫
+
+πb(a | s)[ − log πθ (a | s)] da 
+
+︸ ︷︷ ︸ 
+
+> H(πb,π θ)
+
+−
+
+∫
+
+πb(a | s)[ − log πb(a | s)] da 
+
+︸ ︷︷ ︸
+
+> H(πb)
+
+≤ B + log M. (23) 
+
+Proof: By Lemma 1, − log πθ (a | s) ≤ B on the support of πb(· | s), so H(πb, π θ ) ≤ B. Since πb(a | s) ≤
+
+M a.e., log πb(a | s) ≤ log M a.e., hence 
+
+(24) 
+
+H(πb) = −
+
+∫
+
+πb log πb da 
+
+≥ − 
+
+∫
+
+πb log M da 
+
+= − log M. 
+
+Therefore KL( πb‖πθ ) ≤ B − (− log M ) = B + log M .B. Sample Efficiency for HIQL with Flow Policies For each level L ∈ {h, ℓ }, let V be a shared value function used to compute per-level advantages 
+
+AL(a, s ). Define the advantage-weights as wL(a, s ) = 
+
+eβA L(a,s ). Given an offline dataset inducing a distribution 
+
+dμL(s, a ) at each level, the training objective is JL(π) = 
+
+E(s,a )∼dμL[wL(a, s ) log π(a | s)] , under the following as-sumptions. (A1) Bounded rewards: |R(s, g )|≤ Rmax and γ ∈ (0 , 1) .(A2) Concentrability (coverage): For each level L, the reference state occupancy d⋆L is continuous w.r.t. the dataset occupancy dμL, with density ratio bounded by CL ≥ 1:
+
+sup 
+
+> s
+
+d⋆L(s)
+
+dμL(s) ≤ CL. (25) 
+
+(A3) Weight control: Weights are bounded, either because of clipping: 0 ≤ wL(a, s ) ≤ Wmax or AL is bounded. (A4) Policy class capacity & bounded loss: For each L,the log-density class FL = {(s, a ) 7 → log π(a |
+
+s) : π ∈ ΠL} has finite Rademacher complexity 
+
+RnL (FL), and | log π(a | s)| ≤ BL. A bound on per-level environment advantages is also assumed: 
+
+|AπL (s, a )|≤ Amax ,L .
+
+1) KL reduction.: For each s, define 
+
+ZL(s) = 
+
+∫
+
+wL(a, s ) pdata (a | s) da, qL(a | s) = wL(a, s ) pdata (a | s)
+
+ZL(s) .
+
+(26) 
+
+Then 
+
+JL(π | s) = 
+
+∫
+
+wL(a, s ) pdata (a | s) log π(a | s) da 
+
+= ZL(s) EqL [log π].
+
+(27) 
+
+Adding and subtracting EqL log qL gives 
+
+JL(π | s) = ZL(s)
+
+(
+
+EqL log qL − KL( qL∥π)
+
+)
+
+. (28) 
+
+Thus 
+
+sup 
+
+> π′
+
+JL(π′ | s) − J L(π | s) = ZL(s) KL( qL∥π). (29) 
+
+Averaging over s ∼ dμL,
+
+sup 
+
+> π′
+
+JL(π′) − J L(π) = Es∼dμL[ ZL(s) KL( qL∥π) ] . (30) 
+
+2) Weighted ERM Generalization Bounds: Let 
+
+ℓπ (a, s ) = − log π(a | s) ∈ [0 , B L] with 0 ≤ w ≤ Wmax .Define 
+
+L(π) := E[w ℓ π ],̂ Ln(π) := 1
+
+n
+
+> n
+
+∑
+
+> i=1
+
+wi ℓπ (ai, s i). (31) 
+
+By symmetrization and Hoeffding’s inequality, with probability ≥ 1 − δ,
+
+sup 
+
+> π∈ΠL
+
+|L(π) −̂ Ln(π)| ≤ 2 Rn(GL)+ Wmax BL
+
+√ log(1 /δ )2n , (32) 
+
+where GL = {(s, a ) 7 → w(s, a ) ℓπ (s, a ) : π ∈ ΠL} and 
+
+Rn(GL) := Ez,σ
+
+[
+
+sup 
+
+> π∈ΠL
+
+1
+
+n
+
+> n
+
+∑
+
+> i=1
+
+σi wi ℓπ (ai, s i)
+
+]
+
+, (33) 
+
+with σi i.i.d. Rademacher variables. 3) Multiplier contraction (bounded weights).: For 
+
+H = {ℓπ : π ∈ ΠL} and GL = {w ℓ π : ℓπ ∈ H} 
+
+with 0 ≤ w ≤ Wmax , the Ledoux–Talagrand contraction inequality with ϕi(t) = αit, αi = wi/W max ∈ [0 , 1] and for fixed sample (zi) = ( si, a i), write 
+
+Rn(GL | z) = Eσ
+
+[
+
+sup 
+
+> π
+
+1
+
+n
+
+> n
+
+∑
+
+> i=1
+
+σiwi ℓπ (zi)
+
+]
+
+= Wmax Eσ
+
+[
+
+sup 
+
+> π
+
+1
+
+n
+
+> n
+
+∑
+
+> i=1
+
+σiαi ℓπ (zi)
+
+]
+
+,
+
+(34) 
+
+The contraction inequality gives -
+
+Eσ
+
+[
+
+sup 
+
+> π
+
+1
+
+n
+
+> n
+
+∑
+
+> i=1
+
+σiϕi(ℓπ (zi)) 
+
+]
+
+≤ Eσ
+
+[
+
+sup 
+
+> π
+
+1
+
+n
+
+> n
+
+∑
+
+> i=1
+
+σiℓπ (zi)
+
+]
+
+.
+
+(35) 
+
+Taking expectation over z yields Rn(GL) ≤
+
+Wmax Rn(H). Therefore, with probability ≥ 1 − δ,
+
+(36) 
+
+sup  
+
+> π∈ΠL
+
+|L(π) −̂ Ln(π)| ≤ 2Wmax Rn(FL) + 
+
+Wmax BL
+
+√ log(1 /δ )2n .
+
+4) ERM ⇒ KL control.: Let ˆπL =arg max π∈ΠL̂ JL(π). Since ̂
+
+JL(qL) −̂ JL(ˆ πL) ≤ 0, (37) 
+
+we obtain 
+
+JL(qL) − J L(ˆ πL) ≤ 2 sup 
+
+> π
+
+|J L(π) −̂ JL(π)|. (38) 
+
+From the KL reduction step, 
+
+JL(qL) − J L(ˆ πL) = Ex
+
+[
+
+ZL(s) KL( qL∥ˆπL)
+
+]
+
+. (39) 
+
+8Using ZL(s) ≤ Wmax and the ERM bound, 
+
+EsKL( qL(· | s) ∥ ˆπL(· | s)) ≤ 4 Rn(FL) + 2 BL
+
+√ log(1 /δ )2n .
+
+(40) 
+
+5) Return gap from KL.: For any level L with ef-fective timescale HL and per-level policies π⋆L, π L, the performance-difference lemma gives 
+
+J(π⋆L) − J(πL) = 11 − γ Es∼dπ⋆L ,a ∼π⋆L
+
+[AπL (s, a )] . (41) 
+
+Since |AπL |≤ Amax ,L and TV( p, q ) ≤
+
+√ 12 KL( p‖q),
+
+Ea∼π⋆L [AπL (s, a )] ≤ Amax ,L 
+
+√ 12 KL( π⋆L∥πL). (42) 
+
+Applying Jensen to √· and concentrability, 
+
+J(π⋆L) − J(πL) ≤ HLAmax ,L 
+
+1 − γ
+
+√ CL
+
+2 Es∼dμL KL( π⋆L∥πL). (43) 
+
+6) Main Theorem: Lemma 3 (PAC-style sample efficiency with explicit constants): Let ˆπh, ˆπℓ be the learned per-level policies via advantage-weighted MLE with conditional flows. Under Assumptions 1–4, with probability at least 1 − δ,
+
+(44) 
+
+J(π⋆) − J(ˆ πh,ℓ )
+
+≤ HhAmax ,h 
+
+1 − γ
+
+√
+
+Ch
+
+2
+
+(
+
+4 Rnh (Fh) + 2 Bh
+
+√ log(2 /δ )2nh
+
+)
+
++ HℓAmax ,ℓ 
+
+1 − γ
+
+√
+
+Cℓ
+
+2
+
+(
+
+4 Rnℓ (Fℓ) + 2 Bℓ
+
+√ log(2 /δ )2nℓ
+
+)
+
++ εV ,
+
+where εV is the uniform value-estimation error used to compute AL.Proof: Apply Theory in VII-B.4 to bound 
+
+EKL( qL‖ˆπL), then theory in VII-B.5 with π⋆L := qL and 
+
+πL := ˆ πL for each level, and sum the two contributions. Add εV for the value approximation. 9

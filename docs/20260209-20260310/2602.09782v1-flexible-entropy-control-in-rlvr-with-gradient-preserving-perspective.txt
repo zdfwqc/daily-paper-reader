@@ -1,0 +1,1282 @@
+Title: Flexible Entropy Control in RLVR with Gradient-Preserving Perspective
+
+URL Source: https://arxiv.org/pdf/2602.09782v1
+
+Published Time: Wed, 11 Feb 2026 02:00:15 GMT
+
+Number of Pages: 17
+
+Markdown Content:
+# Flexible Entropy Control in RLVR with Gradient-Preserving Perspective 
+
+Kun Chen 1 2 Peng Shi † 3 Fanfan Liu 3 Haibo Qiu 3 Zhixiong Zeng 3 Siqi Yang 3 Wenji Mao † 2 1 
+
+Abstract 
+
+Reinforcement Learning with Verifiable Rewards (RLVR) has emerged as a critical method for en-hancing the reasoning capabilities of Large Lan-guage Models (LLMs). However, continuous training often leads to policy entropy collapse, characterized by a rapid decay in entropy that results in premature overconfidence, reduced out-put diversity, and vanishing gradient norms that inhibit learning. Gradient-Preserving Clipping is a primary factor influencing these dynamics, but existing mitigation strategies are largely static and lack a framework connecting clipping mecha-nisms to precise entropy control. This paper pro-poses reshaping entropy control in RL from the perspective of Gradient-Preserving Clipping. We first theoretically and empirically verify the con-tributions of specific importance sampling ratio regions to entropy growth and reduction. Lever-aging these findings, we introduce a novel regu-lation mechanism using dynamic clipping thresh-old to precisely manage entropy. Furthermore, we design and evaluate dynamic entropy con-trol strategies, including increase-then-decrease, decrease-increase-decrease, and oscillatory de-cay. Experimental results demonstrate that these strategies effectively mitigate entropy collapse, and achieve superior performance across multiple benchmarks. 
+
+1. Introduction 
+
+Reinforcement Learning with Verifiable Rewards (RLVR) (Lambert et al., 2024; Guo et al., 2025) has become an important training paradigm for boosting the reasoning ca-pabilities of Large Language Models (LLMs) across diverse applications. As a representative algorithm of RLVR, the 
+
+> †
+
+Equal correspondence. 1School of Artificial Intelligence, University of Chinese Academy of Sciences 2MAIS, Insti-tute of Automation, Chinese Academy of Sciences 3Meituan. Correspondence to: Kun Chen <chenkun2024@ia.ac.cn >,Pen Shi <shipeng10@meituan.com >, Wenji Mao 
+
+<wenji.mao@ia.ac.cn >.
+
+Preprint. February 11, 2026. 0 50 100 150 200 250 300 350 400     
+
+> Training Step
+> 0.0
+> 0.1
+> 0.2
+> 0.3
+> 0.4
+> 0.5
+> Entropy
+> Entropy Collapse
+> H < 0.02
+> Entropy
+> Gradient Norm
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> 1.0
+> 1.2
+> Gradient Norm
+> V()2H()
+> Training Dynamics: Entropy and Gradient Norm
+
+Figure 1. Training dynamics of entropy and gradient norm during GRPO optimization, illustrating entropy collapse and the empirical evidence of the theoretical bound of gradient norm. 
+
+Group Relative Policy Optimization (GRPO) (Shao et al., 2024) has been widely adopted and proven effective in en-hancing LLM reasoning (Guo et al., 2025; Abdin et al., 2025; Yang et al., 2025; Zeng et al., 2025; Bercovich et al., 2025; Zhang et al., 2025a). Nonetheless, a growing body of research also indicates that uncontrolled continuous training in RLVR may cause LLMs towards policy entropy collapse (Cui et al., 2025; Shen, 2025; Cheng et al., 2025a; Yu et al., 2025), manifested as a rapid decay in entropy to near-zero values in model training process, as shown in Figure 1. Entropy collapse in LLMs poses several challenges to RLVR research. On one hand, a precipitous drop in policy entropy in early stages of RL training causes the model prematurely overconfident in its outputs, at the risk of sacrificing output diversity and thus being trapped in lock optimal solution. On the other hand, Shen (2025) has shown that the norm of the model’s training gradients during the RL optimization is constrained by policy entropy, which inhibits the contin-uous upgrade of the model in later stages of training and ultimately affects model performance. A significant factor influencing policy entropy dynamics during RLVR training is Gradient-Preserving Clipping. Originated from Clipped Proximal Policy Optimization (PPO-Clip) (Schulman et al., 2017), this method establishes upper and lower clipping bounds on the importance sampling ratio to optimize the policy within a trust region. Related studies on RLVR believe that, although harshly clip-ping tokens outside this trust region can stabilize the training 1
+
+> arXiv:2602.09782v1 [cs.LG] 10 Feb 2026 Flexible Entropy Control in RLVR with Gradient-Preserving Perspective
+
+process to a certain extent, it also impairs the diversity of model outputs due to ignoring some low-probability points, leading to a continuous decline in entropy and even entropy collapse (Yu et al., 2025; MiniMax et al., 2025; Wang et al., 2025a). For example, DAPO (Yu et al., 2025) introduces the Clip-Higher strategy, which employs a higher upper clip-ping threshold to raise the probabilities of low-probability ‘exploration’ tokens, thereby increasing policy entropy. However, existing work on policy entropy control is largely confined to understanding the clipping threshold from a static perspective. It lacks a theoretical understanding of the relationship between Gradient-Preserving Clipping and pol-icy entropy control, nor does it tackle entropy control strat-egy design for effective RL training. To address these limita-tions, in this paper, we take Gradient-Preserving Perspective to explore the inherent associations of the upper/lower clip-ping threshold and entropy increase/decrease, and on this basis, aim at flexibly control policy entropy in the training process. Specially, we focus on two core research ques-tions, laying the foundation of mechanism exploration and strategy design in RLVR: 
+
+Research Questions 
+
+RQ1 How can we devise the regulation mecha-nism to precisely control the ebb and flow of entropy? 
+
+RQ2 Grounded on this mechanism, how can we de-sign the entropy control strategy for effective RL training? The main contributions of our work are three-fold: (1) We theoretically explore the precise representation of differ-ent importance sampling ratio regions to entropy increase and decrease in RL training, and provide the empirical sup-port meanwhile; (2) Based on these insights, we devise the regulation mechanism for flexible entropy control, by applying non-linear modulation to these specific ratio re-gions; and (3) We leverage this regulation mechanism to further explore diverse entropy control strategies, such as an increase-then-decrease (ID) phase, a decrease-increase-decrease (DID) sequence, and an oscillatory decay (OD) within upper and lower clipping thresholds. Extensive ex-periments demonstrate the effectiveness of our proposed mechanism and strategy design in mitigating entropy col-lapse, achieving more precise entropy control and markedly enhancing model performance for RLVR. 
+
+2. Preliminary 
+
+2.1. RL Algorithms of LLMs 
+
+The PPO-Clip (Schulman et al., 2017) algorithm addresses the difficulty of determining the appropriate step size in Vanilla Policy Gradient (Williams, 1992) methods by clip-ping the policy update ratio, effectively approximating the trust region constraint of Trust Region Policy Optimiza-tion (TRPO) (Schulman et al., 2015a). Specifically, PPO employs an Actor-Critic architecture (Konda & Tsitsiklis, 1999). Its core mechanism relies on limiting the divergence between the new and old policies via clipping, thereby pre-venting drastic policy drift during single updates. The importance sampling ratio rt(θ) = πθ (at|st) 
+
+> πold (at|st)
+
+is de-fined as the ratio between the new policy πθ and the old policy πold . The objective function of PPO-Clip, denoted as LC , seeks to maximize the advantage function At while imposing a constraint on rt(θ):
+
+LC (θ) = ˆEt
+
+h
+
+min 
+
+
+
+rt(θ) ˆAt, clip (rt(θ), 1 − ϵ, 1 + ϵ) ˆAt
+
+i 
+
+.To more conveniently characterize the clipping threshold in PPO-Clip, we adopt a visualization method similar to that in (Wang et al., 2025a), as shown in Figure 2a. Different colors represent different sizes of the clipping threshold. Generally, we choose ϵlow = ϵhigh = 0 .2 (Schulman et al., 2017). In PPO-Clip, ˆAt is typically computed using Generalized Advantage Estimation (GAE) (Schulman et al., 2015b), which relies on an independent value network (Critic) to estimate state values. To enhance training efficiency and stability, GRPO (Shao et al., 2024) employs a group-based advantage estimation method that dispenses with the sep-arate Critic. For a given question q, a set of outputs 
+
+{o1, o 2, ..., o G} is sampled, yielding corresponding rewards 
+
+{r1, r 2, ..., r G}. GRPO calculates the advantage Ai for the 
+
+i-th output as its standardized score relative to the group mean: 
+
+Ai = ri − mean ({r1, ..., r G})
+
+std ({r1, ..., r G}) + δ .
+
+2.2. The Policy Entropy of LLMs 
+
+The policy entropy of the model characterizes the degree of uncertainty at the current decision point, or equivalently, the ‘flatness’ of the model’s policy. Let V denote the vocabulary space. At time step t, given the context st, the policy entropy 
+
+H(πθ (·| st)) is defined as: 
+
+H(πθ (·| st)) = − X
+
+> a∈V
+
+πθ (a|st) log πθ (a|st) .The work (Cui et al., 2025) reveals a predictable relation-ship between policy entropy and performance. Specifically, there exists a negative exponential correlation between the model’s policy entropy H and model performance R:
+
+R = a × exp (H) + b .This equation indicates that the policy performance is achieved at the expense of the policy entropy, and when 2Flexible Entropy Control in RLVR with Gradient-Preserving Perspective 0.0 0.2 0.4 0.6 0.8 1.0  
+
+> Old Probability ( old )
+> 0.0
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> 1.0
+> New Probability (  )
+> PPO Clipping Threshold Regions
+> r = 1.0
+> r = 0.8
+> r = 1.2
+> 0.0
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> 1.0
+> 1.2
+> 1.4
+> 1.6
+> 1.8
+> 2.0
+> Ratio  r = / old
+
+(a) 0.0 0.2 0.4 0.6 0.8 1.0       
+
+> Old Probability ( old )
+> 0.0
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> 1.0
+> Current Probability (  )
+> Entropy Sensitive Regions (E1-E4)
+> E1: > 0.7 (High Gain)
+> E2: 0.3 (Low Gain)
+> E3: > 0.7 (High Drop)
+> E4: 0.3 (Low Drop)
+
+(b) 0 10 20 30 40 50 60 70 80              
+
+> Training Step
+> 0.0
+> 0.1
+> 0.2
+> 0.3
+> 0.4
+> 0.5
+> 0.6
+> Entropy
+> E1 and E4 Entropy Dynamics
+> E1: > 0.7 (High Gain)
+> E4: 0.3 (Low Drop)
+> 010 20 30 40 50 60 70 80
+> Training Step
+> 0.5
+> 1.0
+> 1.5
+> 2.0
+> 2.5
+> 3.0
+> 3.5
+> Entropy
+> E2 and E3 Entropy Dynamics
+> E2: 0.3 (Low Gain)
+> E3: > 0.7 (High Drop)
+
+(c) Figure 2. (a) Visualization of PPO clipping threshold regions and probability ratios; (b) Visualization of four entropy-sensitive regions (E1–E4), categorized by the relationship between the old probability ( πold ) and the current probability ( πθ ). These regions distinguish between high ( > 0.7) and low ( ≤ 0.3) probability states, as well as probability gains and drops; (c) Entropy dynamics curves showing how regions E1/E4 reduce entropy while E2/E3 increase it. 
+
+the entropy is exhausted, the performance reaches its upper limit. Through theoretical analysis, the work (Shen, 2025) demon-strates that entropy collapse severely impairs the model’s output diversity. Consequently, this restricts the update gra-dients during continual training, leading to a degradation in the model’s final performance. This is also reflected in Figure 1. Specifically, in RL training without entropy control, the norm of the final policy gradient is limited by the policy entropy: 
+
+∥∇ V πθ (D)∥ ≤ 2H(πθ ) .
+
+3. Theoretical and Empirical Investigations 
+
+To address Research Question 1: “How can we devise the 
+
+regulation mechanism to precisely control the ebb and flow of entropy”, we conduct theoretical analyzes regarding the angle between RL training gradients and model entropy gradients. The theoretical analysis identifies the precise representation of four distinct importance sampling ratio regions on entropy dynamics during training. For empirical investigation, similar to those in Su et al. (2025) and Hao et al. (2025), we verify the impacts of these four regions on policy entropy. We first provide the theoretical analysis. For a specific token 
+
+a, we define the surrogate objective function for a single-step update as: 
+
+L(θ) = πθ (a|s)
+
+πold (a|s) ˆA , (1) where πθ (a|s) denotes the probability of the token under the current policy, πold (a|s) represents the probability under the sampling policy, and ˆA is the advantage function. Assuming the policy πθ is parameterized by logits z (where π(x) = 
+
+Softmax (z)x), the gradient of the objective function L for a specific token a with respect to the logits z is: 
+
+∇z L ∝ ˆA · ∇ z ln πθ (a|s) = ˆA(ea − p) , (2) where ea is the one-hot vector for token a, and p is the probability vector over the entire vocabulary. Next, we consider the global entropy: 
+
+H(π) = − X
+
+x∈V
+
+px ln px . (3) The gradient of H with respect to the logits z is derived as: 
+
+∇z H = −p ⊙ (ln p + H · 1) , (4) where ⊙ denotes element-wise multiplication and 1 is a vector of ones. To determine whether the reinforcement learning update increases or decreases entropy, we compute the inner product between the objective gradient ∇z L and the global entropy gradient ∇z H:
+
+⟨∇ z L, ∇z H⟩ ∝ ˆA(ea − p)⊤ [−p ⊙ (ln p + H · 1)] = − ˆA
+
+pa(ln pa + H)
+
+| {z }
+
+Token-specific term 
+
+− X
+
+x∈V
+
+p2
+
+x(ln px + H)
+
+| {z }
+
+Global baseline term 
+
+ .(5) For a more detailed derivation of Equation (5), please refer to Section B.1. The second term represents an expectation over the vocabulary (weighted by squared probabilities). Since we are analyzing the gradient contribution of a specific 3Flexible Entropy Control in RLVR with Gradient-Preserving Perspective 
+
+token update, the sign is primarily determined by the token-specific term relative to the baseline. Focusing on the token-specific component, we obtain the following relationship: 
+
+sgn( ⟨∇ θ L, ∇θ H⟩) ≈ − sgn 
+
+ ˆA · [ln πθ (a|s) + H]
+
+
+
+.(6) This derivation suggests that the change in entropy depends on the Surprisal of token a (− ln π(a|s)) relative to the current Entropy ( H) of the distribution. Assuming positive advantage ( ˆA > 0): • Entropy Decreases (E1) if − ln π(a|s) < H : If the token a is less surprising than average (high probability), encouraging it further sharpens the distribution. • Entropy Increases (E2) if − ln π(a|s) > H : If the token a is more surprising than average (low probability), encouraging it flattens the distribution. Assuming negative advantage ( ˆA < 0): • Entropy Increases (E3) if − ln π(a|s) < H : If the token a is less surprising than average (high probability), discouraging it flattens the distribution. • Entropy Decreases (E4) if − ln π(a|s) > H : If the token a is more surprising than average (low probability), discouraging it further sharpens the distribution. To validate our theoretical findings, we test the four re-gions (E1–E4) within the extended PPO-Clip trust region (0.7 < r < 1.3) characterized by high ( πθ > 0.7) or low (πθ < 0.3) probability (Figure 2b). We applied Gradient-Preserving Clipping exclusively to these regions, while en-suring theoretically unaffected tokens (e.g., πold > π θ given 
+
+A > 0) continued training normally. Results are shown in Figure 2c. 
+
+4. Methodology 
+
+Based on the above understanding of the impact of each region in PPO-Clip on entropy in Section 3. Section 4.1 builds upon these findings to propose a regulation mecha-nism capable of stably controlling entropy fluctuations. To address Research Question 2: “Grounded on this mecha-nism, how can we design the entropy control strategy for effective RL training?”, we present three training strategies in Section 4.2 based on rational entropy evolution. 
+
+4.1. Regulation Mechanism for Entropy Variations 
+
+We will separately design and discuss a dynamic upper clipping threshold to regulate the increase entropy , and a dynamic lower clipping threshold to control the decrease entropy .0.0 0.2 0.4 0.6 0.8 1.0    
+
+> Old Probability ( old )
+> 0.0
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> 1.0
+> Current Probability (  )
+> Standard Clip-higher Dynamic upper
+
+(a) 0.0 0.2 0.4 0.6 0.8 1.0     
+
+> Old Probability ( old )
+> 0.0
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> 1.0
+> Current Probability (  )
+> Standard Clip-lower Dynamic lower
+
+(b) Figure 3. Schematic diagram of (a) dynamic upper clipping thresh-old and (b) dynamic lower clipping threshold 
+
+4.1.1. D YNAMIC UPPER CLIPPING THRESHOLD 
+
+The upper clipping threshold mainly performs gradient clip-ping on tokens where the current policy probability is al-ready somewhat higher than the rollout policy probability when A > 0. DAPO (Yu et al., 2025) believes that the upper clipping threshold in RL limits the probability increase of low-probability tokens in positive samples (E2). However, the fixed adoption of a higher clipping threshold, in addition to introducing low-probability tokens (E2) into training, also introduces high-probability tokens (E1) into the computation. Since the current policy probability of these tokens is already somewhat higher than the rollout policy probability, if they continue to participate in gradient computation, it will inevitably reduce the diversity of the model’s output. When A > 0, we propose adjusting the upper clipping threshold of PPO-Clip: increasing it for low-probability tokens to facilitate their growth, while decreasing it for high-probability tokens to prevent over-optimization and preserve exploration. Specifically, We reformulate the clipping threshold ϵ not as a constant, but as a dynamic function of the current proba-bility, denoted as ϵ(πθ ):
+
+ϵ(πθ ) := f (πθ (at|st)) . (7) Among them, f (πθ (at|st)) should be a function that is neg-atively correlated with πθ (at|st). To ensure the numerical stability of the function and the reliability of the analysis results, we consider the case where this function has a linear negative correlation ϵ(πθ ) = α · πθ (at|st) + β.Therefore, a non-linear dynamic upper clipping threshold can be obtained, and the relationship between πθ (at|st) and 
+
+πθold (at|st) is as follows: 
+
+πθ (at|st) ≤ 1 + β
+
+1 − α · πθold (at|st) · πθold (at|st) . (8) Relative to the DAPO baseline, we calibrated the upper clip-ping threshold to exceed ϵhigh in the low-probability regime 4Flexible Entropy Control in RLVR with Gradient-Preserving Perspective 
+
+while remaining lower in the high-probability regime (Fig-ure 3a). In the context of Section 3, this adjusts thresholds in the E1 and E2 regions to intentionally increase model en-tropy. As expected, Figure 6a show a steady rise in entropy and a corresponding decline in performance. 4.1.2. D YNAMIC LOWER CLIPPING THRESHOLD 
+
+The lower clipping threshold mainly performs gradient clip-ping on tokens where the current policy probability is al-ready somewhat lower than the rollout policy probability when A < 0. Unlike when A > 0, when A < 0, there is an instability caused by negative signals (Gao et al., 2025). Let z denote the logits (defined over vocabulary V ), let x
+
+denote a generic token, and compute output probabilities via a softmax operation. Considering the gradient of the objective for a specific sampled token a with respect to the logit of a generic token x (denoted as zx): 
+
+∂(ln πθ (a | s) · ˆA)
+
+∂z x
+
+= ∂π θ (a | s)
+
+∂z x
+
+· ˆAπθ (a | s)=
+
+(
+
+(1 − πθ (a | s)) · ˆA if x = a
+
+−πθ (x | s) · ˆA otherwise .(9) A more detailed analysis of Equation (10) can be found in Section B.2. Since Softmax normalization forces all other token probabilities to rise when a sampled token is penal-ized, inaccurate tokens may be inadvertently boosted (Gao et al., 2025). A fixed high ϵlow exacerbates this by allow-ing excessive updates to high-probability tokens, causing significant distribution shifts. Therefore, we dynamically re-duce ϵlow for high-probability negative samples to maintain stability. Conversely, regarding low-probability tokens, since their contribution to the overall distribution is minimal, further suppressing their probabilities via negative advantages ex-erts a relatively limited impact on the global policy. We ar-gue for dynamically adjusting ϵlow by moderately extending the ϵlow for low-probability negative samples. Theoretically, this approach yields two beneficial effects: 
+
+Balancing the “Exploration/Exploitation” trade-off in policy updates : Further compression of low-probability tokens with negative advantages reinforces the exclusion of sub-optimal regions and enhances policy concentration, without disrupting established optimal behaviors as penaliz-ing high-probability tokens would. 
+
+Mitigating “ineffective clipping” of gradients : Utilizing a larger ϵlow allows these low-probability, negative-advantage tokens to receive more sufficient negative gradients within a reasonable range. Similarly, we use the linear negative correlation method to adjust the lower clipping threshold, as shown in Fig-ure 3b. This strategy decreases model entropy by extending the threshold in the E4 region and reducing it in E3. As expected, Figure 6b show a steady decrease in entropy. 
+
+4.2. Strategy Design for Entropy Control 
+
+As shown in Section 2.2, RL training should follow a dy-namic entropy strategy: maintaining high entropy in the early stages to promote flexible exploration , while grad-ually reducing it in later stages to achieve optimal perfor-mance and output stability . Excessive entropy causes instability, while premature reduction hinders exploration. Leveraging the adjustment mechanism from Section 4.1, we further design entropy control strategies for LLMs. We generalize the PPO clipped objective function into a time-dependent formulation. At training step k ∈ [0 , T max ],the loss function is defined as: 
+
+LCLIP k (θ) = ˆE
+
+"
+
+1
+
+G
+
+> G
+
+X
+
+> t=1
+
+min 
+
+
+
+rt(θ)At, clip (rt(θ),
+
+1 − E − 
+
+> k
+
+(pt), 1 + E+ 
+
+> k
+
+(pt)) At
+
+#
+
+.Here, the clipping threshold Ek is a function of the current policy probability pt, with parameters that evolve over the global step k. This function regulates the scaling of the upper and lower bounds according to the current training stage. We explore three specific control strategies: (1) an increase-then-decrease (ID) mode; (2) a decrease-increase-decrease (DID) mode; and (3) an oscillatory decay (OD) mode within a limited entropy bound. To balance entropy maintenance with convergence precision, we propose two scheduling strategies, denoted as ID and DID, which utilize T / 2 as the bifurcation point. 
+
+Increase-then-Decrease : We define a baseline threshold 
+
+ϵstd = 0 .2 and a temporal scaling factor λ(k) = 1 − 2kTmax .• Phase I ( k < T / 2): The lower clipping threshold is fixed at ϵstd . Simultaneously, we apply a linear decay to the dynamic upper clipping threshold H(p) (defined in Section 4.1.1), gradually annealing it toward ϵstd .• Phase II ( k ≥ T / 2): The upper clipping threshold remains constant at ϵstd . We then introduce a linear gain to progressively transform the lower clipping threshold from ϵstd to the dynamic lower clipping threshold M(p)
+
+(defined in Section 4.1.2). The schematic illustration of this scheduling process is pre-sented in Figure 4. The resulting training objective function is formulated as follows: 
+
+E+ 
+
+> k−ID
+
+(p), E− 
+
+> k−ID
+
+(p) = 
+
+(
+
+λk · H (p) + (1 − λk) · ϵstd , ϵstd 0 ≤ k ≤ T
+
+> 2
+
+ϵstd , (1 + λk) · M (p) − λk · ϵstd T 
+
+> 2
+
+< k ≤ T .5Flexible Entropy Control in RLVR with Gradient-Preserving Perspective t = 0 t = T/4 t = T/2 t = 3T/4 t = T                
+
+> Figure 4. Increase-then-Decrease Entropy control strategy. t=0t=T/4t=T/2t=3T/4t=T
+> Figure 5. Decrease-Increase-Decrease Entropy control strategy.
+
+Decrease-Increase-Decrease : Unlike the ID, the DID con-trol strategy allows the model entropy to first decrease in the first phase, controls the increase of model entropy through gradient clipping before entropy collapse, and then controls the model convergence in the second phase. • Phase I ( k < T / 2): The lower clipping threshold is fixed at ϵstd . We then introduce a linear gain to progres-sively transition the upper clipping threshold from ϵstd 
+
+to the dynamic upper clipping threshold H(p)
+
+• Phase II ( k ≥ T / 2): The upper clipping threshold re-mains constant at H(p). We then introduce a linear gain to progressively transition the lower clipping threshold from ϵstd to the dynamic lower clipping threshold M(p).The schematic illustration of this scheduling process is pre-sented in Figure 5. The resulting training objective function is formulated as follows: 
+
+E+
+
+> k−DID
+
+(p), E−
+
+> k−DID
+
+(p) = 
+
+(
+
+λk · ϵstd + (1 − λk) · H (p), ϵstd 0 ≤ k ≤ T
+
+> 2
+
+H(p), (1 + λk) · M (p) − λk · ϵstd T 
+
+> 2
+
+< k ≤ T .
+
+Oscillatory Decay: Both ID and DID control strategies partition the training process into two distinct stages. In con-trast, the OD control strategy is designed to enable the model to undergo autonomous oscillatory attenuation throughout the training duration. Specifically, we begin by defining a pair of entropy thresholds that evolve in relation to the training step k:
+
+τlow = Hmin ,
+
+τhigh (t) = Hmin + ( Hinit − Hmin ) · (1 − tT ) ,where H(πt) denotes the entropy of the current policy and 
+
+Hmin represents the target entropy lower bound, which is defined here as 0.2Hinit . We introduce a discrete state variable sk ∈ { 0, 1} to characterize the current control mode (where 1 signifies the entropy-increasing mode and 0
+
+signifies the entropy-decreasing mode). The state transitions are governed by hysteresis logic. 
+
+sk =
+
+(
+
+1 if H(πt) ≤ τlow (Trigger Boost )0 if H(πt) > τ high (k) (Trigger Suppress ) .Based on the current state sk, the dynamic clipping thresh-old E+ 
+
+> k
+
+(p) and E− 
+
+> k
+
+(p) are defined as follows: 
+
+E+ 
+
+> k
+
+(p), E− 
+
+> k
+
+(p) = 
+
+(
+
+H(p), ϵstd if sk = 1 
+
+ϵstd , M(p) if sk = 0 .
+
+5. Experiments 
+
+In this section, we report the experimental results on the effectiveness of entropy control and model performance across benchmarks, and provide the analysis of phase ratios. More experimental setup and results are given in Appendix. 
+
+5.1. Experimental Setup 
+
+To validate our proposed training strategies, we train Qwen2.5-Math-7B (Yang et al., 2024) and Qwen2.5-7B 6Flexible Entropy Control in RLVR with Gradient-Preserving Perspective 0 50 100 150    
+
+> Training Step
+> 0.0
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> 1.0
+> 1.2
+> Entropy
+> Entropy Dynamics
+> Base
+> Clip-higher
+> Dynamic higher
+> 050 100 150
+> Training Step
+> 0.8
+> 0.6
+> 0.4
+> 0.2
+> 0.0
+> 0.2
+> Reward Score
+> Reward Dynamics
+> Base
+> Clip-higher
+> Dynamic higher
+
+(a) Dynamic Upper Clipping Threshold 0 50 100 150     
+
+> Training Step
+> 0.00
+> 0.05
+> 0.10
+> 0.15
+> 0.20
+> 0.25
+> 0.30
+> 0.35
+> Entropy
+> Entropy Dynamics
+> Base
+> Clip-lower
+> Dynamic lower
+> 050 100 150
+> Training Step
+> 0.8
+> 0.6
+> 0.4
+> 0.2
+> 0.0
+> 0.2
+> Reward Score
+> Reward Dynamics
+> Base
+> Clip-lower
+> Dynamic lower
+
+(b) Dynamic Lower Clipping Threshold 
+
+Figure 6. Experimental curves of model entropy regulation. (1) and (2) are training experimental curves with different Clipping Thresholds. 
+
+(Yang et al., 2024) on the DAPO-MATH dataset. We con-ducted a comprehensive evaluation of mathematical per-formance across the AIME24 (Zhang & Math-AI, 2024), AIME25 (Zhang & Math-AI, 2025), , GSM8k (Cobbe et al., 2021), AMC, MATH-500, and Olympiad (Lightman et al., 2023) benchmarks. To ensure reliability, we averaged re-sults across multiple runs: 32 for AIME24, AIME25, and AMC (Including AMC22, AMC23, AMC24); 4 for MATH-500 and Olympiad; and 2 for GSM8k. In addition to the original GRPO, we selected several baselines related to clip-ping threshold mechanisms, including Clip-Higher (Yu et al., 2025), Clip-Lower, Entropy-Regularization, Clip-Cov (Cui et al., 2025), GSPO(Zheng et al., 2025) and SAPO (Gao et al., 2025). Training configurations included a learning rate of 1 × 10 −6, a sampling rate of 8 responses per prompt, and a global batch size of 512. The maximum response length was set to 4096 tokens for Qwen2.5-Math-7B and 8192 tokens for Qwen2.5-7B. Further training details are provided in the Section C. Further evaluation details are provided in the Section D. 
+
+5.2. Experimental Results and Analysis 
+
+The results of the training experiments on the dynamic upper clipping threshold and dynamic lower clipping threshold are shown in Figure 6, which can prove that our control over entropy increase and entropy decrease is effective. The experimental results are shown in Table 1. We can see that our three training strategies all demonstrate the perfor-mance of our method on multiple benchmarks. Building on this, we further analyze the entropy and performance Sec-tion 5.3, and the setting of training phase ratios Section 5.4 in the training process of our method. The remaining results including the analysis of the average clipping threshold, the analysis of the clipping probability and the experiment on replacing dynamic clipping threshold with Clip-Higher and Clip-Lower can be found in the Section E. 
+
+Table 1. Performance on benchmarks. 
+
+Method AIME24 AIME25 AMC M-500 GSM8K Olym. 
+
+Qwen2.5-MATH-7B 
+
+GRPO 24.4 10.2 54.8 81.1 91.6 46.2 Clip-Higher 30.5 12.7 55.8 82.7 93.3 46.4 Clip-Lower 22.9 8.1 53.2 80.8 79.9 44.0 Ent-Reg 21.6 12.7 53.0 79.6 91.2 44.2 Clip-Cov 27.1 17.1 53.9 83.6 92.2 44.3 SAPO* 31.1 10.8 56.6 82.3 91.7 45.1 GSPO 27.9 10.4 57.3 81.9 85.5 40.5 Ours-ID 33.1 18.1 58.9 84.5 93.7 48.3 
+
+Ours-DID 31.5 15.2 55.0 82.3 91.7 47.8 Ours-OD 31.1 18.3 58.3 83.0 92.4 47.5 
+
+Qwen2.5-7B 
+
+GRPO 15.9 9.6 44.9 77.1 90.5 41.9 Clip-Higher 16.5 11.6 46.6 77.6 91.6 42.6 Clip-Lower 16.4 8.5 42.2 77.0 89.9 40.0 Ent-Reg 16.2 11.3 43.4 76.3 91.5 40.5 Clip-Cov 13.9 9.0 44.1 77.3 89.3 42.2 SAPO* 13.1 8.9 42.0 74.9 84.1 42.0 GSPO 16.4 9.1 47.4 77.2 92.4 42.1 Ours-ID 17.0 9.3 45.3 78.0 92.2 42.6 Ours-DID 16.9 12.1 45.3 77.5 93.4 42.4 Ours-OD 16.9 11.7 48.3 77.2 92.0 44.0 
+
+5.3. Analysis of Entropy and Performance 1 8 16 24 32     
+
+> K
+> 0.3
+> 0.4
+> 0.5
+> 0.6
+> 0.7
+> 0.8
+> Pass@K
+> AMC24
+> Vanilla
+> Clip-Higher
+> Clip-Lower
+> Ours-ID
+> Ours-DID
+> Ours-OD
+> 1816 24 32
+> K
+> 0.25
+> 0.30
+> 0.35
+> 0.40
+> 0.45
+> 0.50
+> 0.55
+> 0.60
+> 0.65
+> Pass@K
+> AIME24
+> Vanilla
+> Clip-Higher
+> Clip-Lower
+> Ours-ID
+> Ours-DID
+> Ours-OD
+
+Figure 8. Comparison of Pass@K metrics across various methods 
+
+In Figure 7, we present the entropy change curves and re-ward curves during the training process of our three methods compared with the two baselines, GRPO and Clip-Higher, 7Flexible Entropy Control in RLVR with Gradient-Preserving Perspective 0 100 200 300                  
+
+> Step
+> 0.0
+> 0.2
+> 0.4
+> 0.6
+> Entropy
+> Ours-ID
+> 0100 200 300
+> Step
+> 0.0
+> 0.1
+> 0.2
+> 0.3
+> 0.4
+> 0.5
+> 0.6
+> Ours-DID
+> 0100 200 300
+> Step
+> 0.0
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> Ours-OD
+> 0100 200 300
+> Step
+> 1.00
+> 0.75
+> 0.50
+> 0.25
+> 0.00
+> 0.25
+> Reward
+> 0100 200 300
+> Step
+> 1.00
+> 0.75
+> 0.50
+> 0.25
+> 0.00
+> 0.25
+> 0100 200 300
+> Step
+> 1.00
+> 0.75
+> 0.50
+> 0.25
+> 0.00
+> 0.25
+> Ours Clip Higher Vanilla
+
+Figure 7. Curves showing changes in Entropy and Reward during the training process of Qwen2.5-Math-7B for various training methods 
+
+on Qwen2.5-Math-7B. We can analyze some interesting phenomena: First, our entropy regulation mechanism is effective. By adjusting the clipping threshold during the training process, the change in the model’s entropy is clear. Second, our control strategy is effective. The model training reward is low in the early stages of training but surpasses other methods in the later stages. To evaluate the exploration performance of the model in the early stages of training, we show the Pass@32 performance of various methods at the mid-training stage (120 steps) on AMC24 and AIME24 in Figure 8. It can be seen that the performance of each method on Pass@1 is similar. However, after increasing the number of outputs, our method has better Pass@K performance. 
+
+5.4. Analysis of Phase Ratios 0 25 50 75 100 125 150 175        
+
+> Training Step
+> 0.0
+> 0.1
+> 0.2
+> 0.3
+> 0.4
+> 0.5
+> 0.6
+> 0.7
+> Entropy
+> Entropy
+> Ours-ID-split0.3
+> Ours-ID-split0.4
+> Ours-ID-split0.5
+> Ours-ID-split0.6
+> 025 50 75 100 125 150 175
+> Training Step
+> 0.00
+> 0.05
+> 0.10
+> 0.15
+> 0.20
+> 0.25
+> 0.30
+> 0.35
+> Reward
+> Val-Reward
+> Ours-ID-split0.3
+> Ours-ID-split0.4
+> Ours-ID-split0.5
+> Ours-ID-split0.6
+
+Figure 9. Comparison of entropy and validation set score curves under different phase ratios 
+
+In the control strategies of Ours-ID and Ours-DID, we evenly divided the model’s training process into two parts, where the proportion of the entropy increase control part and the model performance refinement part is equal. We conducted an in-depth analysis on this. During the training process, we specified the proportion of the first phase as 0.3, 0.4, 0.5, and 0.6 respectively. Keeping other settings unchanged, we trained for 200 steps on Qwen2.5-Math-7B, and the final results are shown in Figure 9. Theoretically, the rate of entropy increase (defined here as the acceleration of entropy growth) diminishes during the first stage. If this initial control period is too short, the model’s entropy may begin to decline before reaching a sufficient peak. This explains the entropy trends observed when the stage ratio is set to 0.3 or 0.4. Conversely, while a stage ratio of 0.6 allows the model to attain higher entropy in the first stage, it leads to overly rapid convergence in the second stage. Consequently, as evidenced by the validation accuracy in the right panel of Figure 9, a stage ratio of 0.5
+
+yields the optimal performance. 
+
+6. Conclusions 
+
+In this paper, we conduct an in-depth study on dynamic entropy control in RLVR from the perspective of gradient preservation. To address the issue of entropy collapse en-countered during GRPO training, we focus on two research issues: (1) regulation mechanism for precisely controlling entropy variations, and (2) entropy control strategy in RLVR training process. We introduce three entropy control strate-gies for the training phase including increase-then-decrease, decrease-increase-decrease oscillatory decay. Extensive ex-perimental performance evaluations and analyses of training curves validate the effectiveness of our method. 8Flexible Entropy Control in RLVR with Gradient-Preserving Perspective 
+
+References 
+
+Abdin, M., Agarwal, S., Awadallah, A., Balachandran, V., Behl, H., Chen, L., de Rosa, G., Gunasekar, S., Javaheripi, M., Joshi, N., et al. Phi-4-reasoning technical report. 
+
+arXiv preprint arXiv:2504.21318 , 2025. Bercovich, A., Levy, I., Golan, I., Dabbah, M., El-Yaniv, R., Puny, O., Galil, I., Moshe, Z., Ronen, T., Nabwani, N., et al. Llama-nemotron: Efficient reasoning models. 
+
+arXiv preprint arXiv:2505.00949 , 2025. Chen, K., Shi, P., Qiu, H., Zeng, Z., Yang, S., Mao, W., and Ma, L. Metis-specs: Decoupling multimodal learning via self-distilled preference-based cold start. arXiv preprint arXiv:2510.25801 , 2025. Cheng, D., Huang, S., Zhu, X., Dai, B., Zhao, W. X., Zhang, Z., and Wei, F. Reasoning with exploration: An entropy perspective. arXiv preprint arXiv:2506.14758 , 2025a. Cheng, M., Ouyang, J., Yu, S., Yan, R., Luo, Y., Liu, Z., Wang, D., Liu, Q., and Chen, E. Agent-r1: Training pow-erful llm agents with end-to-end reinforcement learning. 
+
+arXiv preprint arXiv:2511.14460 , 2025b. Cobbe, K., Kosaraju, V., Bavarian, M., Chen, M., Jun, H., Kaiser, L., Plappert, M., Tworek, J., Hilton, J., Nakano, R., Hesse, C., and Schulman, J. Training verifiers to solve math word problems. arXiv preprint arXiv:2110.14168 ,2021. Cui, G., Zhang, Y., Chen, J., Yuan, L., Wang, Z., Zuo, Y., Li, H., Fan, Y., Chen, H., Chen, W., Liu, Z., Peng, H., Bai, L., Ouyang, W., Cheng, Y., Zhou, B., and Ding, N. The entropy mechanism of reinforcement learning for reason-ing language models. arXiv preprint arXiv:2505.22617 ,2025. Gao, C., Zheng, C., Chen, X.-H., Dang, K., Liu, S., Yu, B., Yang, A., Bai, S., Zhou, J., and Lin, J. Soft adaptive policy optimization. arXiv preprint arXiv:2511.20347 ,2025. Guo, D., Yang, D., Zhang, H., Song, J., Zhang, R., Xu, R., Zhu, Q., Ma, S., Wang, P., Bi, X., et al. Deepseek-r1: In-centivizing reasoning capability in llms via reinforcement learning. arXiv preprint arXiv:2501.12948 , 2025. Hao, Z., Wang, H., Liu, H., Luo, J., Yu, J., Dong, H., Lin, Q., Wang, C., and Chen, J. Rethinking entropy interventions in rlvr: An entropy change perspective. arXiv preprint arXiv:2510.10150 , 2025. Huang, W., Jia, B., Zhai, Z., Cao, S., Ye, Z., Zhao, F., Xu, Z., Hu, Y., and Lin, S. Vision-r1: Incentivizing reasoning capability in multimodal large language models. arXiv preprint arXiv:2503.06749 , 2025. Jin, R., Gao, P., Ren, Y., Han, Z., Zhang, T., Huang, W., Liu, W., Luan, J., and Xiong, D. Revisiting entropy in reinforcement learning for large reasoning models. arXiv preprint arXiv:2511.05993 , 2026. Konda, V. and Tsitsiklis, J. Actor-critic algorithms. Ad-vances in neural information processing systems , 12, 1999. Kwon, W., Li, Z., Zhuang, S., Sheng, Y., Zheng, L., Yu, C. H., Gonzalez, J. E., Zhang, H., and Stoica, I. Efficient memory management for large language model serving with pagedattention. In Proceedings of the ACM SIGOPS 29th Symposium on Operating Systems Principles , 2023. Lambert, N., Morrison, J., Pyatkin, V., Huang, S., Ivison, H., Brahman, F., Miranda, L. J. V., Liu, A., Dziri, N., Lyu, S., et al. Tulu 3: Pushing frontiers in open language model post-training. arXiv preprint arXiv:2411.15124 ,2024. Lightman, H., Kosaraju, V., Burda, Y., Edwards, H., Baker, B., Lee, T., Leike, J., Schulman, J., Sutskever, I., and Cobbe, K. Let’s verify step by step. In The Twelfth International Conference on Learning Representations ,2023. MiniMax, :, Chen, A., Li, A., Gong, B., Jiang, B., Fei, B., Yang, B., Shan, B., Yu, C., Wang, C., Zhu, C., and Chengjun. Minimax-m1: Scaling test-time com-pute efficiently with lightning attention. arXiv preprint arXiv:2506.13585 , 2025. Schulman, J., Levine, S., Abbeel, P., Jordan, M., and Moritz, P. Trust region policy optimization. In International conference on machine learning , pp. 1889–1897, 2015a. Schulman, J., Moritz, P., Levine, S., Jordan, M., and Abbeel, P. High-dimensional continuous control using generalized advantage estimation. arXiv preprint arXiv:1506.02438 ,2015b. Schulman, J., Wolski, F., Dhariwal, P., Radford, A., and Klimov, O. Proximal policy optimization algorithms. 
+
+arXiv preprint arXiv:1707.06347 , 2017. Shao, Z., Wang, P., Zhu, Q., Xu, R., Song, J., Bi, X., Zhang, H., Zhang, M., Li, Y., Wu, Y., et al. Deepseekmath: Push-ing the limits of mathematical reasoning in open language models. arXiv preprint arXiv:2402.03300 , 2024. Shen, H. On entropy control in llm-rl algorithms. arXiv preprint arXiv:2509.03493 , 2025. Sheng, G., Zhang, C., Ye, Z., Wu, X., Zhang, W., Zhang, R., Peng, Y., Lin, H., and Wu, C. Hybridflow: A flexi-ble and efficient rlhf framework. arXiv preprint arXiv: 2409.19256 , 2024. 9Flexible Entropy Control in RLVR with Gradient-Preserving Perspective 
+
+Su, Z., Pan, L., Lv, M., Li, Y., Hu, W., Zhang, F., Gai, K., and Zhou, G. Ce-gppo: Coordinating entropy via gradient-preserving clipping policy optimization in rein-forcement learning. arXiv preprint arXiv:2509.20712 ,2025. Team, M. EvalScope: Evaluation framework for large models, 2024. URL https://github.com/ modelscope/evalscope .Wang, J., Liu, R., Zhang, F., Li, X., and Zhou, G. Stabilizing knowledge, promoting reasoning: Dual-token constraints for rlvr. arXiv preprint arXiv:2507.15778 , 2025a. Wang, S., Yu, L., Gao, C., Zheng, C., Liu, S., Lu, R., Dang, K., Chen, X., Yang, J., Zhang, Z., Liu, Y., Yang, A., Zhao, A., Yue, Y., Song, S., Yu, B., Huang, G., and Lin, J. Beyond the 80/20 rule: High-entropy minority tokens drive effective reinforcement learning for llm reasoning. 
+
+arXiv preprint arXiv:2506.01939 , 2025b. Wen, X., Liu, Z., Zheng, S., Ye, S., Wu, Z., Wang, Y., Xu, Z., Liang, X., Li, J., Miao, Z., Bian, J., and Yang, M. Reinforcement learning with verifiable rewards implicitly incentivizes correct reasoning in base llms. arXiv preprint arXiv:2506.14245 , 2025. Williams, R. J. Simple statistical gradient-following algo-rithms for connectionist reinforcement learning. Machine learning , 8(3):229–256, 1992. Yang, A., Zhang, B., Hui, B., Gao, B., Yu, B., Li, C., Liu, D., Tu, J., Zhou, J., Lin, J., Lu, K., Xue, M., Lin, R., Liu, T., Ren, X., and Zhang, Z. Qwen2.5-math technical report: Toward mathematical expert model via self-improvement. 
+
+arXiv preprint arXiv:2409.12122 , 2024. Yang, A., Li, A., Yang, B., Zhang, B., Hui, B., Zheng, B., Yu, B., Gao, C., Huang, C., Lv, C., et al. Qwen3 technical report. arXiv preprint arXiv:2505.09388 , 2025. Yu, Q., Zhang, Z., Zhu, R., Yuan, Y., Zuo, X., Yue, Y., Dai, W., Fan, T., Liu, G., Liu, L., Liu, X., Lin, H., Lin, Z., Ma, B., Sheng, G., Tong, Y., Zhang, C., Zhang, M., Zhang, W., Zhu, H., Zhu, J., Chen, J., Chen, J., Wang, C., Yu, H., Song, Y., Wei, X., Zhou, H., Liu, J., Ma, W.-Y., Zhang, Y.-Q., Yan, L., Qiao, M., Wu, Y., and Wang, M. Dapo: An open-source llm reinforcement learning system at scale. 
+
+arXiv preprint arXiv:2503.14476 , 2025. Zeng, W., Huang, Y., Liu, Q., Liu, W., He, K., Ma, Z., and He, J. Simplerl-zoo: Investigating and taming zero reinforcement learning for open base models in the wild. 
+
+arXiv preprint arXiv:2503.18892 , 2025. Zhang, J., Huang, J., Yao, H., Liu, S., Zhang, X., Lu, S., and Tao, D. R1-vl: Learning to reason with multimodal large language models via step-wise group relative policy optimization. arXiv preprint arXiv:2503.12937 , 2025a. Zhang, L., Jiang, Y., He, G., Chen, X., Lv, H., Yao, Q., Fu, F., and Chen, K. Efficient mixed-precision large language model inference with turbomind. arXiv preprint arXiv:2508.15601 , 2025b. Zhang, Y. and Math-AI, T. American invitational mathemat-ics examination (aime) 2024, 2024. Zhang, Y. and Math-AI, T. American invitational mathemat-ics examination (aime) 2025, 2025. Zheng, C., Liu, S., Li, M., Chen, X.-H., Yu, B., Gao, C., Dang, K., Liu, Y., Men, R., Yang, A., Zhou, J., and Lin, J. Group sequence policy optimization. arXiv preprint arXiv:2507.18071 , 2025. Ziebart, B. D., Maas, A. L., Bagnell, J. A., Dey, A. K., et al. Maximum entropy inverse reinforcement learning. In 
+
+Aaai , volume 8, pp. 1433–1438. Chicago, IL, USA, 2008. 10 Flexible Entropy Control in RLVR with Gradient-Preserving Perspective 
+
+A. Related Work 
+
+A.1. Reinforcement Learning and Entropy in Large Language Models 
+
+Inspired by DeepSeek-R1 (Guo et al., 2025), RLVR has been extensively adopted in the post-training of LLMs, yielding a series of notable contributions (Wen et al., 2025; Huang et al., 2025; Cheng et al., 2025b; Chen et al., 2025). Despite the remarkable success of RLVR, a growing body of literature identifies entropy collapse as a critical challenge within this paradigm (Cui et al., 2025; Shen, 2025). Specifically, (Cui et al., 2025) analyzes policy entropy collapse as a major obstacle in scaling RL for LLM reasoning and proposes mechanisms to overcome it, while further elucidating the relationship between policy entropy and model performance. Meanwhile, (Wang et al., 2025b) demonstrate that performing policy gradient updates exclusively on high-entropy tokens can more efficiently enhance model performance—an effect that is particularly pronounced in larger models. Furthermore, through theoretical analysis, (Shen, 2025) establish that entropy collapse severely compromises output diversity; this restricts the gradients available for continuous training, ultimately leading to a degradation in final performance. Finally, (Jin et al., 2026) delineate the key factors governing entropy dynamics, including the clipping threshold, the number of offline updates, and the diversity of training data. 
+
+A.2. Control of Entropy in Large Language Models 
+
+Entropy is often a critical metric in RL for LLMs. To mitigate the phenomenon of entropy collapse during the RL process, numerous studies have optimized and improved the framework across multiple dimensions. In traditional approaches (Schulman et al., 2017; Ziebart et al., 2008), entropy maximization is employed by introducing an entropy regularization term into the loss function to prevent a continuous decline in entropy during training. Specifically, (Schulman et al., 2017) incorporated entropy regularization into the PPO algorithm to maintain policy exploration. However, literature suggests that this regularization method is not consistently effective in large language models; (Shen, 2025) elucidates the reasons behind this inefficacy. In the context of preventing entropy collapse during model training, DAPO (Yu et al., 2025) was the first to propose the “Clip-Higher” strategy. They argue that the original upper clipping threshold truncation restricts the probability increase of low-probability tokens to some extent, thereby limiting the diversity of model generation. Consequently, they employ a larger upper clipping threshold for the importance ratio to avoid clipping low-probability tokens, resulting in a degree of entropy increase. TDPO (Wang et al., 2025a) differentiates the clipping range at the token dimension; building on the DAPO approach, it restricts the upper clipping threshold for high-probability tokens in positive samples while extending the lower clipping threshold for low-probability tokens. CISPO (MiniMax et al., 2025) does not directly mask tokens during the clipping process but retains their gradients to ensure continued participation in training, uniformly clamping only the out-of-range importance weights to predefined upper and lower bounds. Clip-Cov (Cui et al., 2025) restricts token updates by randomly selecting a small subset of tokens with high covariance and either detaching their gradients or applying a KL penalty during the policy gradient update. SAPO (Gao et al., 2025) replaces hard clipping with a temperature-controlled smooth gating mechanism to construct a continuous trust region. Although these works attempt to control entropy by manipulating the clipping threshold, they lack a systematic understanding of how the clipping threshold regulates entropy and exhibit limited flexibility. 
+
+B. Theoretical Proofs 
+
+Here, we mainly conduct detailed proof and derivation for the two conclusions Equation (5) and Equation (10) in the article. 
+
+B.1. Proof of Equation (5) Equation (5): The inner product between the objective gradient ∇z L and the global entropy gradient ∇z H is: 
+
+⟨∇ z L, ∇z H⟩ ∝ ˆA(ea − p)⊤ [−p ⊙ (ln p + H · 1)] = − ˆA
+
+pa(ln pa + H)
+
+| {z }
+
+> Token-specific term
+
+− X
+
+> x∈V
+
+p2
+
+> x
+
+(ln px + H)
+
+| {z }
+
+> Global baseline term
+
+
+
+11 Flexible Entropy Control in RLVR with Gradient-Preserving Perspective 
+
+Proof. Let V be the vocabulary set. For a given state, let z ∈ R|V | denote the logits output by the network. The policy distribution p = softmax (z) is defined such that for any token x ∈ V :
+
+px = ezx
+
+P 
+
+> k∈V
+
+ezk
+
+The entropy of the policy is defined as: 
+
+H(p) = − X
+
+> x∈V
+
+px ln px
+
+To compute gradients with respect to logits z, we first establish the partial derivative of the probability px with respect to the logit zy :
+
+∂p x
+
+∂z y
+
+= px(δxy − py ) = 
+
+(
+
+px(1 − px) if x = y
+
+−pxpy if x̸ = y
+
+where δxy is the Kronecker delta. We apply the chain rule to find the gradient of entropy H with respect to a specific logit 
+
+zy :
+
+∂H ∂z y
+
+= X
+
+> x∈V
+
+∂H ∂p x
+
+∂p x
+
+∂z y
+
+First, the derivative of entropy with respect to probability px is: 
+
+∂H ∂p x
+
+= − ∂∂p x
+
+(px ln px) = −(1 + ln px)
+
+Substituting this and the softmax Jacobian into the chain rule summation: 
+
+∂H ∂z y
+
+= X
+
+> x∈V
+
+−(1 + ln px) · px(δxy − py )
+
+Distributing the terms: 
+
+∂H ∂z y
+
+= −
+
+"X
+
+> x∈V
+
+(1 + ln px)pxδxy − X
+
+> x∈V
+
+(1 + ln px)pxpy
+
+#
+
+= −
+
+"
+
+py (1 + ln py ) − py
+
+X
+
+> x∈V
+
+px(1 + ln px)
+
+#
+
+Expanding the summation P px(1 + ln px) = P px + P px ln px.
+
+∂H ∂z y
+
+= − [py + py ln py − py (1 − H)] = − [py + py ln py − py + py H]= −py (ln py + H)
+
+Expressing this in vector notation yields the result provided in your text: 
+
+∇z H = −p ⊙ (ln p + H · 1)
+
+The standard Policy Gradient loss for a selected action a is L(θ) ≈ ˆA ln pa. The gradient with respect to logits is a known standard result involving the one-hot vector ea:
+
+∇z L = ˆA(ea − p)
+
+We now compute the dot product between the two gradients derived above. This metric indicates alignment between the learning signal and the direction of entropy growth. 
+
+⟨∇ z L, ∇z H⟩ =
+
+ ˆA(ea − p)
+
+⊤
+
+(−p ⊙ (ln p + H · 1)) = − ˆA(ea − p)⊤ (p ⊙ (ln p + H · 1)) = − ˆA
+
+"
+
+pa(ln pa + H) − X
+
+> x∈V
+
+p2
+
+> x
+
+(ln px + H)
+
+#
+
+12 Flexible Entropy Control in RLVR with Gradient-Preserving Perspective 
+
+B.2. Proof of Equation (10) Equation (10): Considering the gradient of the objective for a specific sampled token a with respect to the logit of a generic token x (denoted as zx): 
+
+∂(ln πθ (a | s) · ˆA)
+
+∂z x
+
+= ∂π θ (a | s)
+
+∂z x
+
+· ˆAπθ (a | s)=
+
+(
+
+(1 − πθ (a | s)) · ˆA if x = a
+
+−πθ (x | s) · ˆA otherwise (10) 
+
+Proof adapted from (Gao et al., 2025). 
+
+∂(ln πθ (a | s) · ˆA)
+
+∂z x
+
+= ∂π θ (a | s)
+
+∂z x
+
+· ˆAπθ (a | s)= 1(x = a) exp( za) P 
+
+> x′
+
+exp( zx′ ) − exp( za) exp( zx)(P 
+
+> x′
+
+exp( zx′ )) 2 · ˆAπθ (a | s)=
+
+(
+
+(1 − πθ (a | s)) · ˆA if x = a sampled token 
+
+−πθ (x | s) · ˆA otherwise unsampled token 
+
+C. Experimental Setup 
+
+C.1. Models and Datasets 
+
+In the preliminary exploration experiments, we used the Qwen2.5-Math-7B model. In the benchmark evaluation ex-periments, we utilized Qwen2.5-Math-7B and Qwen2.5-7B as the base policy model. The model is trained using the 
+
+DAPO-Math-17k dataset. For evaluation and validation, we primarily report performance on the AIME24 (Zhang & Math-AI, 2024), AIME25 (Zhang & Math-AI, 2025), AMC (Lightman et al., 2023), MATH-500 (Lightman et al., 2023), GSM8k (Cobbe et al., 2021), and Olympiad (Lightman et al., 2023) benchmark. To support complex reasoning tasks, we configure the maximum sequence lengths 4096 tokens for Qwen2.5-Math-7B and 8192 tokens for Qwen2.5-7B. 
+
+C.2. Training Configuration 
+
+We employ GRPO as the advantage estimator. The model is trained for a total of 400 steps with a global batch size of 512. During the rollout phase, we sample N = 8 responses per prompt to estimate the baseline and advantages. The optimization uses the AdamW optimizer with the following hyperparameters: • Learning Rate: 1 × 10 −6.• Weight Decay: 0.1. • Gradient Clipping: 1.0. • KL penalty coefficient: The KL penalty coefficient ( βKL ) is set to 0.0. For the dynamic linear parameters of the upper clipping threshold and lower clipping threshold, we calibrated the upper clipping threshold to exceed ϵhigh in the low-probability regime while remaining lower in the high-probability regime (the same applies to the lower clipping threshold). The linear slope and intercept of the dynamic upper clipping threshold are set to −0.25 and 0.5, and the linear slope and intercept of the dynamic lower clipping threshold are set to −0.13 and 0.3.Experiments have shown that this setting has extensive generalization ability. 
+
+C.3. Implementation Details 
+
+Experiments are conducted on a single node equipped with 8 × H100 GPUs. To maximize training throughput and memory efficiency, we implement a hybrid parallelism strategy using the verl (Sheng et al., 2024) framework: 13 Flexible Entropy Control in RLVR with Gradient-Preserving Perspective 
+
+• Inference: We utilize the vLLM (Kwon et al., 2023) engine with a tensor model parallelism size of 4. We employ a sampling temperature of 1.0 and Top-p = 1 .0.• Training: The actor model is trained using Fully Sharded Data Parallel with parameter and optimizer offloading enabled. We additionally utilize Ulysses sequence parallelism with a size of 4. 
+
+C.4. Computational Cost Analysis 
+
+We measure the training time for some methods over 400 training steps as shown in Table 2.  
+
+> Table 2. Training time comparison for 400 steps on 8 ×H100 GPUs. Times are formatted as Hours:Minutes or Days:Hours:Minutes.
+
+Method Qwen2.5-7B-Math Qwen2.5-7B 
+
+GRPO (Baseline) 17h 24m 1d 03h 18m Clip-Higher 18h 01m 1d 05h 47m Clip-Cov 18h 41m 1d 02h 15m 
+
+Ours-ID 18h 36m 1d 03h 55m 
+
+Ours-DID 17h 44m 1d 02h 30m 
+
+Ours-OD 18h 14m 1d 03h 49m 
+
+D. Evaluation Setup 
+
+D.1. Implementation Details 
+
+Our evaluation pipeline utilizes the EvalScope (Team, 2024) framework. Inference is served using lmdeploy (Zhang et al., 2025b) with a PyTorch backend. The serving infrastructure is distributed across 8 GPUs. The maximum output length of the model is consistent with that during training. We utilize a unified sampling configuration across all benchmarks to ensure consistency. The sampling parameters are detailed in Table 3.  
+
+> Table 3. Inference Sampling Hyperparameters
+
+Parameter Value 
+
+Temperature 0.7 Top-p 0.8 Top-k 20 Batch Size 256 
+
+D.2. Benchmarks and Metrics 
+
+We evaluate the models on a suite of mathematical reasoning benchmarks. The evaluation metric is mean and pass at k .The number of samples generated per problem ( N ) varies by dataset scale: • 32 samples: AMC, AIME 2024, AIME 2025. • 4 samples: MATH-500, OlympiadBench (Subset: OE TO maths en COMP ). • 2 samples: GSM8K. 
+
+D.3. Prompt Template 
+
+For all mathematical reasoning tasks, we employ a standard chain-of-thought prompt designed to enforce a specific output format. The template used is: 14 Flexible Entropy Control in RLVR with Gradient-Preserving Perspective 
+
+Prompt 
+
+{question }
+
+Please reason step by step, and put your final answer within \boxed {{}} .
+
+E. Other Experimental Results 
+
+E.1. Analysis of the Curves of Entropy and Avg Clipping Threshold 
+
+We have saved the entropy and the Avg Clipping threshold curves during the training process of the Dynamic Clipping Lower threshold, Dynamic Clipping Upper threshold, Ours-ID, Ours-DID, and Ours-OD methods for Qwen2.5-Math-7B. As shown in Figure 10, the entropy and the Avg Clipping threshold curves during the training process of the Ours-ID, Ours-DID, and Ours-OD methods for Qwen2.5-7B are presented in Figure 11. It can be seen that when the model’s average clipping upper threshold is larger, the entropy of the model tends to be in an increasing state, and when the clipping upper threshold decreases and the clipping lower threshold also decreases, the model’s entropy is in a decreasing state. This also verifies the effectiveness of our adjustment mechanism. 0 25 50 75 100 125 150 175 200 
+
+> 0.16
+> 0.18
+> 0.20
+> 0.22
+> 0.24
+> Dynamic-Upper
+
+Avg Clipping Lower         
+
+> 025 50 75 100 125 150 175 200
+> 0.15
+> 0.20
+> 0.25
+> 0.30
+> 0.35
+
+Avg Clipping Upper         
+
+> 025 50 75 100 125 150 175 200
+> 0.25
+> 0.50
+> 0.75
+> 1.00
+
+Entropy                                                                                        
+
+> 025 50 75 100 125 150 175 200
+> 0.16
+> 0.18
+> 0.20
+> 0.22
+> 0.24
+> Dynamic-Lower
+> 025 50 75 100 125 150 175 200
+> 0.15
+> 0.20
+> 0.25
+> 0.30
+> 0.35
+> 025 50 75 100 125 150 175 200
+> 0.0
+> 0.1
+> 0.2
+> 0.3
+> 050 100 150 200 250 300 350
+> 0.16
+> 0.18
+> 0.20
+> 0.22
+> 0.24
+> Ours-ID
+> 050 100 150 200 250 300 350
+> 0.15
+> 0.20
+> 0.25
+> 0.30
+> 0.35
+> 050 100 150 200 250 300 350
+> 0.0
+> 0.2
+> 0.4
+> 0.6
+> 050 100 150 200 250 300 350
+> 0.16
+> 0.18
+> 0.20
+> 0.22
+> 0.24
+> Ours-DID
+> 050 100 150 200 250 300 350
+> 0.15
+> 0.20
+> 0.25
+> 0.30
+> 0.35
+> 050 100 150 200 250 300 350
+> 0.2
+> 0.4
+> 0.6
+> 050 100 150 200 250 300 350
+> Step
+> 0.16
+> 0.18
+> 0.20
+> 0.22
+> 0.24
+> Ours-OD
+> 050 100 150 200 250 300 350
+> Step
+> 0.15
+> 0.20
+> 0.25
+> 0.30
+> 0.35
+> 050 100 150 200 250 300 350
+> Step
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+
+Figure 10. Comparison of entropy change and avg clipping threshold change for the Qwen2.5-Math-7B model 
+
+15 Flexible Entropy Control in RLVR with Gradient-Preserving Perspective 0 50 100 150 200 250 300 350 400 
+
+> 0.16
+> 0.18
+> 0.20
+> 0.22
+> 0.24
+> Ours-ID
+
+Avg Clipping Lower         
+
+> 050 100 150 200 250 300 350 400
+> 0.15
+> 0.20
+> 0.25
+> 0.30
+> 0.35
+
+Avg Clipping Upper         
+
+> 050 100 150 200 250 300 350 400
+> 0.0
+> 0.5
+> 1.0
+> 1.5
+
+Entropy                                                 
+
+> 050 100 150 200 250 300 350 400
+> 0.16
+> 0.18
+> 0.20
+> 0.22
+> 0.24
+> Ours-DID
+> 050 100 150 200 250 300 350 400
+> 0.15
+> 0.20
+> 0.25
+> 0.30
+> 0.35
+> 050 100 150 200 250 300 350 400
+> 0.25
+> 0.50
+> 0.75
+> 1.00
+> 050 100 150 200 250 300 350 400
+> Step
+> 0.16
+> 0.18
+> 0.20
+> 0.22
+> 0.24
+> Ours-OD
+> 050 100 150 200 250 300 350 400
+> Step
+> 0.15
+> 0.20
+> 0.25
+> 0.30
+> 0.35
+> 050 100 150 200 250 300 350 400
+> Step
+> 0.25
+> 0.50
+> 0.75
+> 1.00
+> 1.25
+
+Figure 11. Comparison of entropy change and avg clipping threshold change for the Qwen2.5-7B model 
+
+E.2. Analysis of Clipping Probability Curve 0 100 200 300 400 
+
+> Step
+> 0.0
+> 0.2
+> 0.4
+> 0.6
+> Entropy
+
+Ours-ID     
+
+> 0100 200 300 400
+> Step
+> 0.0
+> 0.1
+> 0.2
+> 0.3
+> 0.4
+> 0.5
+> 0.6
+
+Ours-DID     
+
+> 0100 200 300 400
+> Step
+> 0.0
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+
+Ours-OD               
+
+> 0100 200 300 400
+> Step
+> 0.0005
+> 0.0010
+> 0.0015
+> 0.0020
+> PG Clip Frac
+> 0100 200 300 400
+> Step
+> 0.0005
+> 0.0010
+> 0.0015
+> 0.0020
+> 0.0025
+> 0100 200 300 400
+> Step
+> 0.001
+> 0.002
+> 0.003
+> 0.004
+> Ours Clip Higher Vanilla
+
+Figure 12. Graph of Model Entropy and Average Token Clipping Probability 
+
+The clipping probability of the model refers to the proportion of tokens that are clipped during the model’s training process. This proportion reflects the number of tokens affected by the clipping mechanism during the model’s training. As can be seen from Figure 12, our entropy control strategy is effectively reflected in the clipping ratio during the model’s training process. For example, in the early stages of training, the token clipping probability of the Ours-ID method is low, and at this time, the entropy is in a period of increase. In the later stages of training, the token clipping probability of the Ours-ID method is high, and at this time, it is in a period of entropy decrease. In the Ours-OD method, this characteristic is reflected in the fact that the entropy also fluctuates throughout the training process. 16 Flexible Entropy Control in RLVR with Gradient-Preserving Perspective 
+
+E.3. Experiment on Replacing Dynamic Clipping Threshold with Clip-Higher and Clip-Lower 
+
+If we do not use Dynamic upper Clipping Threshold and Dynamic lower Clipping Threshold, but instead use Clip-Higher and Clip-Lower as the adjustment mechanism for entropy increase and decrease, and apply them to the entropy control strategy in our Section 4.2, the final results are shown in Figure 13. We can see that although Clip-Higher and Clip-Lower are effective means of controlling entropy increase and decrease, they may affect the performance of the model because they adopt a one-size-fits-all approach to tokens in different regions without dynamic adjustment. On the other hand, the entropy increase and decrease of the model cannot be effectively and precisely controlled by Clip-Higher and Clip-Lower, and we fail to observe the Increase-Decrease or Decrease-Increase-Decrease of Entropy. It still faces the problem of entropy collapse. 0 100 200 300 400                      
+
+> Step
+> 0.0
+> 0.2
+> 0.4
+> 0.6
+> Entropy
+> Ours-ID/Static-ID
+> 0100 200 300 400
+> Step
+> 0.0
+> 0.1
+> 0.2
+> 0.3
+> 0.4
+> 0.5
+> 0.6
+> Ours-DID/Static-DID
+> 0100 200 300 400
+> Step
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> Ours-OD/Static-OD
+> 0100 200 300 400
+> Step
+> 0.0
+> 0.1
+> 0.2
+> 0.3
+> Reward
+> 0100 200 300 400
+> Step
+> 0.0
+> 0.1
+> 0.2
+> 0.3
+> 0100 200 300 400
+> Step
+> 0.0
+> 0.1
+> 0.2
+> 0.3
+> Ours Static
+
+Figure 13. Experiment on Replacing Dynamic Clipping Threshold with Clip-Higher and Clip-Lower 
+
+17

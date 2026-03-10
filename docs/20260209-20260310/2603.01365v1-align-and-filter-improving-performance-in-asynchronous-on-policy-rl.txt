@@ -1,0 +1,1225 @@
+Title: Align and Filter: Improving Performance in Asynchronous On-Policy RL
+
+URL Source: https://arxiv.org/pdf/2603.01365v1
+
+Published Time: Tue, 03 Mar 2026 03:12:14 GMT
+
+Number of Pages: 23
+
+Markdown Content:
+# Align and Filter: Improving Performance in Asynchronous On-Policy RL 
+
+Homayoun Honari 1 Roger Creus Castanyer 1 2 Michael Przystupa 1 2 3 Michael Noukhovitch 1 2 
+
+Pablo Samuel Castro 1 2 Glen Berseth 1 2 
+
+## Abstract 
+
+Distributed training and increasing the gradient update frequency are practical strategies to ac-celerate learning and improve performance, but both exacerbate a central challenge: policy lag ,which is the mismatch between the behavior pol-icy generating data and the learning policy being updated. Policy lag can hinder the scaling of on-policy learning algorithms to larger problems. In this paper, we identify the sources of policy lag caused by distributed learning and high update frequency. We use the findings to propose total Variation-based Advantage aligned Constrained policy Optimization (VACO) as a practical ap-proach to mitigate policy lag. We empirically validate our method and show that it offers better robustness to policy lag in classic RL tasks and a modern RL for LLM math reasoning task. 
+
+## 1. Introduction 
+
+Distributed reinforcement learning (RL) provides highly optimized and fast training pipelines by updating policies and collecting data simultaneously by using decentralized compute systems (Langer et al., 2020). In this setup, there are multiple compute nodes separately generating the data which is then sent to a learner node for processing. For example, multiple robots can run a policy to perform ma-nipulation or locomotion tasks locally and transmit their collected experience to a central compute node to improve the policy (Gu et al., 2017; Rudin et al., 2022). One of the most common difficulties in this setup is the repeated failures and delays in communication which causes the data distribution to differ from the learning policy distribution (Yuan & Mahmood, 2022). This data distribution mismatch violates a key assumption in on-policy deep RL algorithms which assumes the behavioral and the target policy are the same (Sutton et al., 1998).       
+
+> 1Mila – Quebec AI Institute, Canada 2Universit ´e de Montr ´eal, Canada 3University of Alberta, Canada. Correspondence to: Homayoun Honari <homayoun.honari@mila.quebec >.
+> Preprint. March 3, 2026.
+
+On-policy methods operate by generating data using environ-ment rollouts with the current policy, and making conserva-tive updates to keep close to the data distribution (Schulman et al., 2015a). For example, Proximal Policy Optimization (PPO) and its variants quantify the closeness of the distribu-tions using the KL divergence (Schulman et al., 2017; Wang et al., 2020). Hence, the policy is optimized to increase reward, while bounding the divergence from the behavior policy. This allows a policy to make more mini-batch up-dates on the data to improve the policy’s performance, but it widens the gap between the data distribution and the most up-to-date policy. This policy gap can lead to severe per-formance degradation or even full policy collapse (Nikishin et al., 2022). This limitation has previously been defined as policy lag in the literature and has been known to hinder policy improvement (Babaeizadeh et al., 2016; Petrenko et al., 2020). In this paper, we provide a categorization of the sources of policy lag: backward policy lag , which arises from the initial mismatch between the behavior and learning policies, and forward policy lag , which accumulates as gradient updates cause the learning policy to diverge from the data distribution. This forward lag creates a critical trade-off: while more updates per batch of data may improve perfor-mance, they also increase the risk of policy degradation. We demonstrate that Total Variation (TV) divergence provides an effective tool for quantifying both sources of policy lag. We propose Total Variation-based Advantage-aligned Con-strained policy Optimization (VACO) to address the forward and backward policy lag which inherently exists in asyn-chronous RL. VACO is based on two main ideas: advantage realignment and TV divergence-based filtering . We use advantage realignment to estimate the advantage function of the learning policy from off-policy data which allows us to mitigate the problem of backward policy lag. To control the forward policy lag that can arise from the policy optimiza-tion process, we then use TV divergence to filter data points in each minibatch that would amplify the effect of forward policy lag. We find that our filtering strategy is effective in maintaining a certain threshold on the value of the expected TV divergence without the additional complexity for the choice of hyperparameters for constraint satisfaction. 1
+
+> arXiv:2603.01365v1 [cs.LG] 2 Mar 2026 Align and Filter: Improving Performance in Asynchronous On-Policy RL
+
+To study the effect of backward policy lag in various on-policy RL algorithms, we present a simulated asynchronous framework (Howes et al., 2025) for RL. We use this frame-work to simulate highly parallelized environments in various MuJoCo (Todorov et al., 2012) robotic tasks. We find that VACO offers better robustness to backward policy lag com-pared with PPO (Schulman et al., 2017), one of the most commonly used on-policy algorithms. We then investigate the forward policy lag present in finetuning large language models (LLMs) with RL towards math reasoning. We apply VACO to GRPO (Shao et al., 2024), the standard method in RL for LLMs, and find strong improvements in robustness to forward lags that are commonly present in these setups. In summary, we first provide a theoretical analysis of policy lag in asynchronous RL, categorizing its distinct sources. Building on this analysis, we propose VACO, a policy op-timization algorithm designed for improved robustness to both forward and backward lag. We then empirically vali-date our method in two carefully constructed setups: highly parallelized robotics tasks and reasoning for LLMs. In both scenarios, we clearly improve robustness to policy lag com-pared to strong, standard RL baselines. 
+
+## 2. Related Work 
+
+Our work investigates issues in the learning dynamics of on-policy RL algorithms when using data that arrives asyn-chronously to the learner agent. One of the key assumptions of on-policy methods is that data is collected with the cur-rent policy, making it challenging to reuse data or learn from off-policy samples (Sutton et al., 1998). A standard mechanism to alleviate this issue consists of defining a trust region constraint to update policies conservatively, allow-ing multiple updates on a given batch of data (Schulman et al., 2015a). Other approximation approaches have been previously studied to mitigate the need for second-order optimizers when optimizing the policy (Schulman et al., 2015a; 2017; Wang et al., 2020; Xie et al., 2025; Achiam et al., 2017b; Vuong et al., 2019). Off-policy variations have been proposed to introduce an adaptive change in the impor-tance of the trust region regularization terms in the objective function (Meng et al., 2023; Fakoor et al., 2020; Queeney et al., 2021). Our research builds on the the TV divergence metric previously proposed to analyze the changes in data distribution in on-policy learning (Schulman et al., 2015a; Achiam et al., 2017a). Despite recent advances, on-policy methods typically re-quire large data batches for stable optimization (Andrychow-icz et al.; Singla et al., 2024). Distributed learning archi-tectures address this by parallelizing data collection and policy updates (Liu et al., 2024; Czech, 2021; Langer et al., 2020). In these setups, a central policy either sends its weights to parallel actors for data collection (Nair et al., 2015; Babaeizadeh et al., 2016; Mnih et al., 2016) or ac-tors update local policies and send gradients back to the central learner (Kyzy et al., 2025). A trade off with asyn-chronous process approaches is introducing a mismatch, often called policy lag, between the acting policies and the policy being updated (Espeholt et al., 2018; Babaeizadeh et al., 2016). Our method mitigates policy lag by selectively applying only those updates that align with the direction of the advantage function. Furthermore, synchronous policy updates are often imprac-tical in real-world scenarios that require simultaneous in-ference and learning. This challenge is prevalent in diverse domains including real-time robotics, on-device mobile ap-plications, and the training of large-scale language models, where system complexity makes asynchronous learning a necessity (Yuan & Mahmood, 2022; Gu et al., 2017; Radac & Chirla, 2025). Our algorithm addresses this need by effectively leveraging asynchronous samples, making it a practical solution for these demanding, real-world use cases. 
+
+## 3. Background 
+
+Reinforcement learning (RL) problems are typically formal-ized as Markov Decision Processes (MDPs) (Puterman, 2014). An MDP is a tuple (S, A, R, P, μ, γ ) consisting of a state space S, an action space A, a reward function R(·),a state transition probability function P(·), an initial state distribution μ(·), and a discount factor γ ∈ [0 , 1) . The goal in RL problems is to optimize a policy π : S × A → [0 , 1] 
+
+that maximize the expected discounted return of generated trajectories: 
+
+J(π) = Es0∼μ,a t∼π(st),s t+1 ∼P (st,a t)
+
+" ∞X
+
+> t=0
+
+γtr(st, a t)
+
+#
+
+.
+
+Furthermore, the state-action value function is defined as the expected discounted return starting from a specified state-action pair, 
+
+Qπ (s, a ) = E at∼π(st)
+
+> st+1 ∼P (st,a t)
+
+" ∞X
+
+> t=0
+
+γtr(st, a t)|s0 = s, a 0 = a
+
+#
+
+,
+
+and can be used derive the state value function V π (s) = 
+
+Ea∼π [Qπ (s, a )] Finally, the advantage function is defined as Aπ (s, a ) = Qπ (s, a ) − Vπ (s). When generating sam-ples from the policy π, the expected value of the Aπ (s, a )
+
+is zero: Ea∼π(s)[Aπ (s, a )] = Ea∼π(s)[Aπ (s, a )] =
+
+Ea∼π(s)[Qπ (s, a )] − Vπ (s) = 0 .
+
+3.1. Asynchronous On-Policy RL 
+
+In a typical asynchronous RL training setup multiple inde-pendent agents are used to gather trajectories. In this setup, the agents update their policy with the most final version 2Align and Filter: Improving Performance in Asynchronous On-Policy RL 
+
+Figure 1. (left) Simulated Asynchronous RL setup. After the end of each training phase we store the weights of the new policy in the policy buffer. Subsequently, we sample random policies from the buffer and assign them to the actors. We then generated the trajectories in a synchronous fashion. The setup aims to simulate an asynchronous RL training setup to control the backward policy lag. (right) The typical asynchronous RL training setup. The actors generate the trajectories and train the policy simultaneously. The actor would receive the new policy whenever it is ready. Therefore, the new dataset would contain trajectories from older policies. 
+
+whenever it is ready. Each typical iteration of policy train-ing involves two phases: trajectory generation and policy optimization. The trajectory generation phase gathers data until the data buffer is filled. Next, the policy optimization phase updates the policy on the data for multiple epochs. To this end, consider iteration T , the trajectories are generated using a behavior policy βT that, in the asynchronous setup, can be specified as an episodic mixture distribution (Wiering & Van Hasselt, 2008): 
+
+βT (a|s) = Ei∼M (0 ,...,T ) [πi(a|s)] 
+
+Pr (s|τ ∼ βT (μ)) = Es0∼μ,i ∼M (0 ,...,T )[Pr (s|τ ∼ πi)] 
+
+(1) where the mixture distribution M is usually unknown apri-ori and depends on the specific training setup. Due to the nature of the asynchronous setup, it can be observed that even if the policy is parameterized by a probability density function (e.g. a Gaussian distribution), the mixture distri-bution might not have the same parametrization. In the theoretical analysis that follows in this paper, βT will be used to denote the behavior at iteration T . Furthermore, the policy for the next iteration T + 1 is obtained by training the policy at iteration T for multiple epochs: 
+
+θ(n)  
+
+> T+1
+
+← θ(n−1)   
+
+> T+1
+
++ η∇θ L(θ(n−1)   
+
+> T+1
+
+) (2) where θ(n)  
+
+> T+1
+
+denotes the policy parameter at epoch n,
+
+θ(0)   
+
+> T+1
+
+= θT , η the learning rate and L the loss function used to optimize the policy. The asynchronous RL setup is depicted in Figure 1. 
+
+3.2. Trust Region Policy Optimization 
+
+Trust region policy optimization (TRPO) (Schulman et al., 2015a) is one of the first successful attempts at developing on-policy RL methods with monotonic policy improvement guarantees. TRPO’s policy improvement guarantee is based on the performance difference lemma: 
+
+Lemma 3.1. (Kakade & Langford, 2002) For any two poli-cies π and π′ and the initial state distribution μ:
+
+J(π′) − J(π) = Eτ ∼π′|s0∼μ
+
+" ∞X
+
+> t=0
+
+γtAπ (st, a t)
+
+#
+
+(3) 
+
+= 11 − γ Es∼dπ′ ,a ∼π′(s) [Aπ (s, a )] (4) where dπ (s) = (1 − γ) P∞ 
+
+> t=0
+
+γtP(st = s|μ, π ) is the dis-counted future state distribution. We refer the readers for the proof of the performance difference lemma to Section B.1 or (Kakade & Langford, 2002; Schulman et al., 2015a; Agar-wal et al., 2019). The performance difference equation can effectively relate two policies using the advantage function. However, optimizing the policy using this equation can be challenging due to the dependency of dπ′
+
+on π′. To this end, (Kakade & Langford, 2002; Schulman et al., 2015a) propose the approximate version of the performance difference as: 
+
+Lπ (π′) = 11 − γ E s∼dπa∼π(s)
+
+ π′(a|s)
+
+π(a|s) Aπ (s, a )
+
+
+
+. (5) The approximate version allows the optimization of the performance of the policy with a conservative step size since it matches the original version to the first order. The performance difference between two policies can then be characterized using Equation 5 1:
+
+Theorem 3.2. (Achiam et al., 2017a) For any two policies 
+
+π′ and π, and defining ϵπ′
+
+= max s∈S |Ea∼π′ [Aπ (s, a )] |,
+
+> 1
+
+(Schulman et al., 2015a) also provide similar variations of the theorem. However, the version discussed in (Achiam et al., 2017a) uses the expected value of DT V which is more practical to use. 
+
+3Align and Filter: Improving Performance in Asynchronous On-Policy RL 
+
+denoting D± 
+
+> π
+
+(π′) = Lπ (π′)1−γ ± 2γϵ π′ 
+
+> (1 −γ)2
+
+Es∼dπ [DT V (π′∥π)[ s]] 
+
+where DT V (π′∥π)[ s] = (1 /2) P 
+
+> a∈A
+
+|π′(a|s) − π(a|s)|,the performance difference can be bounded as: 
+
+D− 
+
+> π
+
+(π′) ≤ J(π′) − J(π) ≤ D+ 
+
+> π
+
+(π′) (6) The bound in Equation 6 is tight since at π′ = π we get 
+
+D± 
+
+> π
+
+(π′) = 0 . Hence, with iterative optimization of the lower bound D− 
+
+> π
+
+(π′), the policy enjoys monotonic improve-ment on the performance. While the lower bound on the performance difference in Equation 6 is suitable for optimizing the policy, the exact optimization of the lower bound would be challenging since 
+
+ϵπ′
+
+= max s∈S |Ea∼π′ [Aπ (s, a )] | is challenging to evalu-ate. The developers of TRPO derive the lower bound equa-tion as Lπ (π′)1−γ − 4γϵ  
+
+> (1 −γ)2
+
+max s∈S DKL (π, π ′) and proposed constraining the average KL divergence ¯DKL (π, π ′) = 
+
+Es∼dπ [DKL (π(.|s), π ′(.|s)] ≤ δ as a heuristic approxima-tion for the max operator, 
+
+θ∗ = argmax 
+
+> θ∈Θ
+
+E s∼dπθold a∼πθold (s)
+
+ πθ (a|s)
+
+πθold (a|s) Aπθold (s, a )
+
+
+
+s.t. ¯DKL (πθold , π θ ) ≤ δ, 
+
+(7) where πθold is the initial policy used to collect the trajecto-ries. Therefore, with a conservative enough threshold δ, the policy can have non-decreasing returns. 
+
+3.3. Proximal Policy Optimization 
+
+The same idea of trust region policy optimization in Equa-tion 7 can be applied to Equation 6 (Achiam et al., 2017a), replacing the constraint with the total variational difference 
+
+Es∼dπθold [DT V (πθold ∥πθ )[ s]] ≤ δ.The Es∼dπθold [DT V (πθold ∥πθ )[ s]] can further be approx-imated by sampling from the rollout trajectories of πθold 
+
+as: 
+
+Es∼dπθold [DT V (πθold ∥πθ )[ s]] = 12 E s∼dπθold a∼πθold (s)
+
+ πθ (a|s)
+
+πθold (a|s) − 1
+
+ (8) To optimize the policy with the TV divergence, Proximal Policy Optimization (PPO) proposed the clipped surrogate objective loss: 
+
+LCLIP (θ) = 
+
+E s∼dπθold a∼πθold (s)
+
+[clip (rθ (s, a ), 1 − δ, 1 + δ)Aπθold (s, a )] (9) where rθ (s, a ) = πθ (a|s)  
+
+> πθold (a|s)
+
+. The clipping technique re-moves any gradients in the minibatch that have a ratio higher outside the (1 − δ, 1 + δ) range. The clipping mechanism is designed as an effective heuristic to bound DT V with com-putationally efficient operations, and has been previously utilizes in other PPO variants (Queeney et al., 2021). 
+
+Figure 2. Algorithmic Choices in VACO . (Top) VACO vs. PPO Clipping : To maintain a fixed Total Variation (TV) divergence, VACO(shown as ’TV Filtering’) selectively removes gradients that would increase the TV divergence. In contrast, PPO naively clips gradients if their policy ratio exceeds a predefined threshold. (Bot-tom) IMPALA vs. Advantage Realignment : While IMPALA estimates advantage values for the most recent policy using an asynchronously generated dataset, VACO’s ’Advantage Realign-ment’ first aligns the dataset to the initial policy of the optimization process, then iteratively optimizes based on this aligned dataset. This approach significantly reduces the computational load com-pared to IMPALA’s on-the-fly realignment. 
+
+## 4. Methodology 
+
+4.1. PPO performance with off-policy data 
+
+To understand why the approximate version of the perfor-mance difference in Equation 5 causes a performance degra-dation in PPO, we first provide the generalization of the performance difference lemma with respect to an off-policy distribution (in the following, general notation π is used to denote any subsequent policy that might be obtained during the training process): 
+
+Lemma 4.1. Consider the policy at iteration T as πT
+
+and the behavior policy βT . Then, denoting ϵπ =max s∈S |Ea∼π [AβT (s, a )] |, the performance difference be-tween any policy π and πT can be lower bounded using the state distribution of βT as: 
+
+J(π) − J(πT ) ≥
+
+11 − γ E s∼dβTa∼βT (s)
+
+ π(a|s)
+
+βT (a|s) AβT (s, a ) − πT (a|s)
+
+βT (a|s) AβT (s, a )
+
+−
+
+ 2γϵ π
+
+1 − γ DT V (βT ∥π)[ s] + 2γϵ πT
+
+1 − γ DT V (βT ∥πT )[ s]
+
+ 
+
+(10) Using the lower bound in Equation 10, the sources of policy lag can then be identified: 4Align and Filter: Improving Performance in Asynchronous On-Policy RL 
+
+Forward Policy Lag As more gradient updates are made to the policy, the 2γϵ π 
+
+> 1−γ
+
+DT V (βT ∥π)[ s] penalty term on the lower bound becomes larger if it is not controlled. Hence, the risk of the penalty term overcoming the advantage term   
+
+> π(a|s)
+> βT(a|s)
+
+AβT (s, a ) increases. In fact, various on-policy tricks such as the clipping mechanism in PPO or the KL constraint in TRPO aim to address this. 
+
+Backward Policy Lag The mismatch between the ini-tial learning policy πT and the behavior policy βT cre-ates an inevitable penalty on the performance difference  πT (a|s)  
+
+> βT(a|s)
+
+AβT (s, a ) + 2γϵ πT 
+
+> 1−γ
+
+DT V (βT ∥πT )[ s]
+
+
+
+. Therefore, any initial distribution mismatch causes performance degra-dation. To observe point, consider the lower bound when π = πT :
+
+J(πT ) − J(πT ) = 0 
+
+≥ 11 − γ E s∼dβTa∼βT (s)
+
+
+
+− 4γϵ πT
+
+1 − γ DT V (βT ∥πT )[ s]
+
+ (11) Any mismatch in distribution between βT and πT creates a strictly negative lower bound. For that reason, it may be challenging to optimize the policy such that the term   
+
+> π(a|s)
+> βT(a|s)
+
+AβT (s, a ) would outperform the other three penalty terms and create a positive lower bound. 
+
+4.2. Off-Policy Performance Difference 
+
+In Lemma 4.1 we showed that the approximate version of the performance difference poses an unavoidable penalty. However, the lower bound can be improved. 
+
+Lemma 4.2. Consider the policy at iteration T as πT
+
+and the behavior policy βT . Then, denoting ϵπ =max s∈S |Ea∼π [AπT (s, a )] |, the performance difference be-tween any policy π and πT can be lower bounded using the state distribution of βT as: 
+
+J(π) − J(πT ) ≥
+
+11 − γ E s∼dβTa∼βT (s)
+
+[ π(a|s)
+
+βT (a|s) AπT (s, a ) − 2γϵ π
+
+1 − γ DT V (βT ∥π)[ s]] 
+
+(12) The main difference between Equation 6 and Equa-tion 12 can be attributed to the advantage function. This difference provides an important effect. To see this (as mentioned in Section 3), notice that at 
+
+π = πT we get Es∼dβT ,a ∼βT (s)[ πT (a|s)  
+
+> βT(a|s)
+
+AπT (s, a )] =
+
+Es∼dβT ,a ∼πT (s)[AπT (s, a )] = 0 and ϵπT =max s∈S |Ea∼πT [AπT (s, a )] | = 0. Therefore, while the forward policy lag still exists in the lower bound, the off-policy performance difference offers zero backward policy lag. Moreover, we discuss two main modifications to optimize the policy using Equation 12. 4.2.1. A DVANTAGE REALIGNMENT 
+
+As discussed, the key difference between Equation 12 and Equation 6 is the use of the learning policy’s advantage, 
+
+AπT , versus the behavior policy’s advantage, AβT . Since trajectories are generated by the behavior policy βT , we can only directly estimate AβT . This creates an off-policy evaluation challenge: how to estimate the value of one pol-icy using data generated by another (Munos et al., 2016; Espeholt et al., 2018). A prominent solution, particularly in asynchronous settings, is the V-trace method from IMPALA (Espeholt et al., 2018). Given trajectories generated by a behavior policy β, the V-trace target for a policy π at any state s is defined as: 
+
+vπ (s) := Vβ (s)+ 
+
+> ∞
+
+X
+
+> t=0
+
+γt
+
+> t−1
+
+Y
+
+> i=0
+
+ci
+
+!
+
+ρt (rt + γV β (st+1 ) − Vβ (st)) 
+
+(13) where ci = min 
+
+
+
+¯c, π(at|st)
+
+> β(at|st)
+
+
+
+, ρt = min 
+
+
+
+¯ρ, π(at|st)
+
+> β(at|st)
+
+
+
+. Re-lating to the off-policy performance difference, we use Equa-tion 13 to estimate the value function of πT using the tra-jectories sampled from βT . Furthermore, similar to general-ized advantage estimation (GAE) (Schulman et al., 2015b) method used by PPO, the V-trace target can also be effi-ciently computed recursively in a trajectory. The recursive rule and the advantage function are defined as: 
+
+vπ (st) = Vβ (st) + ρt(rt + γV β (st+1 ) − Vβ (st)) + γλc t(vt+1 − V (st+1 )) (14) 
+
+Avtrace (st, a t) = rt + γv π (st+1 ) − Vβ (st) (15) where λ ∈ [0 , 1] is the discounting parameter similar to GAE which controls the bias-variance tradeoff of the esti-mations. We note that the subtraction of Vβ (st) is used for variance reduction. As noted in (Espeholt et al., 2018), ¯ρ controls the fixed point of the policy that the V-trace converges to. Hence, for ¯ρ = ∞ the target results in Vπ . On the other hand, ¯c
+
+controls the rate of convergence of the target through the contraction coefficient η.The key difference between IMPALA and our Advantage Realignment method lies in the frequency of advantage esti-mation. IMPALA continuously re-estimates the advantage function for the current policy at each step, effectively treat-ing the problem as a series of on-policy updates. In contrast, Advantage Realignment calculates the advantage function only once for the initial learning policy, πT , and then iter-atively optimizes Equation 6. This avoidance of repeated calculations makes Advantage Realignment significantly more computationally efficient than IMPALA. Other than architectural differences, Equation 12 allows the optimiza-tion process to be more robust to the off-policy correction errors in estimation compared with IMPALA since the target 5Align and Filter: Improving Performance in Asynchronous On-Policy RL 
+
+advantage function is fixed rather than the variability of the target in IMPALA. 4.2.2. F ILTERING -BASED CONSTRAINED POLICY 
+
+OPTIMIZATION 
+
+Beyond accurately estimating the advantage in Equation 12, it is also crucial to minimize the penalty term. However, as discussed in Section 3, directly controlling the max operator within the error term ϵπ is challenging. Therefore, inspired by prior work in constrained policy optimization (Achiam et al., 2017a), we reframe the problem. We minimize our objective subject to a constraint on the Total Variation (TV) divergence, which in turn mitigates the impact of ϵπ 2:
+
+θ∗ = argmax θ∈Θ E s∼dβTa∼βT (s)
+
+[ π(a|s)
+
+βT (a|s) AπT (s, a )
+
+− 2γϵ π
+
+1 − γ DT V (βT ∥π)[ s]] 
+
+w
+
+θ∗ = argmax θ∈ΘEs∼dβT ,a ∼πθ (s)[AπT (s, a )] 
+
+s.t. Es∼dβT [DT V (βT ∥πθ )[ s]] ≤ δ/ 2
+
+(16) A common approach for constrained optimization is to con-vert the problem into an unconstrained one using the La-grange method, which guarantees constraint satisfaction asymptotically (Altman, 2021). However, in practice, sat-isfying the constraint at each iteration is challenging due to the initial choice of the multiplier and the limited data per update. To better satisfy the constraint at each step, our approach directly analyzes the relationship between the loss gradient and the constraint gradient. Let θ be the policy parameters; we consider the gradient of the loss function and the gradient of DT V with respect to θ:
+
+∇θ E s∼dβTa∼βT (s)
+
+ πθ (a|s)
+
+βT (a|s) AπT (s, a )
+
+
+
+= E s∼dβTa∼βT (s)
+
+ πθ (a|s)
+
+βT (a|s) ∇ log πθ (a|s)AπT (s, a )
+
+ (17) 
+
+∇θ E s∼dβTa∼βT (s)
+
+ πθ (a|s)
+
+βT (a|s) − 1
+
+
+
+= E s∼dβTa∼βT (s)
+
+ πθ (a|s)
+
+βT (a|s) ∇ log πθ (a|s)sgn (πθ (a|s) − βT (a|s)) 
+
+
+
+(18) From the comparison it can be observed that whether or not a specific data point can contribute to the increase or decrease of DT V can be determined from the comparison 
+
+> 2
+
+The threshold is specified as δ/ 2 to match it with 1/2 used in the definition of DT V and have δ reflect the same threshold that the clipping mechanism aims to address. 
+
+between the sign of AπT (s, a ) and sign (πθ (a|s)−βT (a|s)) .Using this property, if E[DT V ] exceeds the threshold on that minibatch, we propose detaching the gradients of the data points from the minibatch that lead to increase of the TV divergence: 
+
+if Es∼dβT [DT V (πθ ∥βT )[ s]] > δ 
+
+⇒ remove i : AπT (si, a i)sgn (πθ (ai|si) − βT (ai|si)) > 0
+
+(19) Our proposed filtering method enables modifying the loss function such that the constraint is satisfied without addi-tional hyperparameters to control. In addition, the modifica-tion is also compatible with the maximum entropy objective by sampling the actions from βT and using the importance sampling ratio: 
+
+H(πθ ) = −E s∼dβTa∼βT (s)
+
+ πθ (a|s)
+
+βT (a|s) log πθ (a|s)
+
+
+
+(20) 
+
+∇θ LβT (θ)= E s∼dβTa∼βT (s)
+
+ πθ (a|s)
+
+βT (a|s) ∇θ log πθ (a|s)( AπT (s, a ) − cH log πθ (a|s)) 
+
+
+
+(21) where cH is the max entropy coefficient. The filtering tech-nique allows to conservatively improve the performance of the policy and maximize the entropy simultaneously without the risk of violating the TV constraint. Intuitively, the TV-filtering method operates as a controller. When the TV divergence value between the main policy and the behavior policy is lower than the threshold, the method allows for the use of all the data points. On the other hand, when the divergence value is above the threshold, it only uses the data points that would lead to the decrease of the divergence value. Overall, we call the combined ideas of Advantage Realign-ment and TV-based Filtering, VACO. The main differences between Realignment and IMPALA and TV-based Filtering and PPO are depicted in Figure 2 and the Pseudocode of the algorithm can be found in Algorithm 1. 
+
+## 5. Experiments 
+
+We validate our method experimentally by examining the effect of policy lag on the performance of standard RL algo-rithms. We then implement VACO to address 1. backward policy lag due to an asynchronous MuJoCo setup and 2. forward policy lag due to an RL for LLM reasoning setup. 
+
+5.1. Backward Policy Lag in MuJoCo 
+
+As mentioned in the previous section, the main source of pol-icy lag can be attributed to the mismatch between the current policy and the behavior policy. The mismatch can initially 6Align and Filter: Improving Performance in Asynchronous On-Policy RL  
+
+> Figure 3. With more backward policy lag (higher degree of asyn-chronicity) VACO achieves better performance on the aggregate metrics across various MuJoCo tasks. Higher Median, IQM, and Mean values and lower Optimality Gap imply better performance. The scores are computed over 100M steps across 10 independent random seeds and the shades represent 95% confidence intervals of the metrics.
+
+be presented in terms of the behavior policy in the state dis-tribution and further amplified through consecutive gradient descent passes on the loss function. The former happens in asynchronous/distributed sampling setups and the latter in each gradient descent pass. While various asynchronous RL setups have been proposed in the past, obtaining repro-ducible results is a challenging task due to the underlying non-determinism on the hardware level (Huang et al., 2023). To this end, in order to study policy lag in a controlled envi-ronment, we propose to use a simulated asynchronous setup (Howes et al., 2025). The difference between the simulated platform and the real-world setup is highlighted in Figure 1. As discussed in Section 3.1, the asynchronous setup can be described as a mixture of policies setup with an unknown mixing rule. Hence, we aim to replicate the process in a controllable setting. In our simulated setup we use a policy buffer of a fixed capacity to save the past policies. After the end of the training phase we save the weights of the policy in the buffer and randomly sample from the buffer and assign them to the actors. Hence, we sample data syn-chronously to generate a dataset of equal sized trajectories. This setup allows the study of the mismatch between the behavior policy and the current policy using a mixture of policies setup. After the training phase, the final policy is rolled out in the environment for multiple episodes and the return of the policy is calculated by taking the average over the return of the trajectories. We implement VACO in the CleanRL codebase (Huang et al., 2022) on top of PPO. From Pinsker’s inequality we have DT V (p∥q)2 ≤ DKL (p∥q). Hence, since it has be-come the standard trick (Schulman et al., 2017; Ziegler et al., 2019; Stiennon et al., 2020) to minimize policy lag for PPO, we use KL divergence penalty with various coefficient values to run PPO and report the runs with the best per-forming return. We indicate ”PPO-KL Penalty=0” as the vanilla version of PPO (known as PPO-Clip) and ”PPO-KL Penalty=1” as the one with KL-regularization with coeffi-cient of one. Furthermore, we use Simple Policy Optimiza-tion (SPO) (Xie et al., 2025) which uses the square of the TV divergence E[( πβ − 1) 2] as a penalty term and removes the clipping mechanism. Additionally, we implement IM-PALA (Espeholt et al., 2018) using the cleanRL baseline to evaluate the method that continuously re-estimates the advantage function of the new policy. Regarding the choice of hyperparameters, we use the standard default hyperpa-rameters offered in the CleanRL codebase and use δ = 0 .2
+
+as the constraint bound for VACO. Finally, in order to assess the effect of policy lag on the performance of the algorithms we use the MuJoCo environments that allow for high paral-lelization. As also noted in (Xie et al., 2025), since human scores are not available in MuJoCo locomotion tasks, we use the maximum and minimum score obtained from all the algorithms and normalize the scores as return-min max-min .Furthermore, as proposed by (Agarwal et al., 2021), we use stratified bootstrap confidence intervals and evaluate the confidence intervals of the algorithms to obtain various metrics. The aggregate metrics are calculated for each algo-rithm and for the runs with the fixed degree of asynchronous behavior (policy buffer capacity in Figure 1). The exper-imentation results are depicted in Figure 3. While higher degrees of asynchronicity affects all of the comparison algo-rithms, better robustness of VACO to off-policy data can be observed. In addition to that, to study the sample efficiency of VACO compared with other algorithms, Figure 4 showcases the IQM values of the algorithms aggregated across the five en-vironments during the training process. VACO shows better robustness to the asynchronous data throughout the training phase, in addition to the final performance demonstrated in Figure 3. Furthermore, the IQM values of the area under the curve of the normalized return plots demonstrates that VACO generally provides better sample efficiency across varying levels of asynchronicity. 
+
+5.2. Forward Policy Lag in RLVR 
+
+Finally, we apply VACO to the modern setup of finetuning LLMs with RL to achieve reasoning using a verifiable re-ward (RLVR) (Lambert et al., 2025). A major challenge is that asynchronous RLVR (Noukhovitch et al., 2025) has been shown to be more efficient at the cost of increased policy lag which can degrade performance. Following state-of-the-art RLVR (Sheng et al., 2025) we generate N mini-batches of data using the same policy β using our LLM in-ference engine, vllm (Kwon et al., 2023), label each answer with reward 1 (correct) or 0 (incorrect) and then training for 
+
+N steps using our training library, transformers (Wolf et al., 2020). Our policy π therefore starts on-policy for the first 7Align and Filter: Improving Performance in Asynchronous On-Policy RL       
+
+> Figure 4. IQM values of the comparison algorithms in the simulated asynchronous setups during the training process. The scores are computed over 100M steps across 10 independent random seeds and the shades represent the 95% confidence interval. (bottom right)
+> IQM values of the Area under the curve of the normalized return plots. Higher values imply better sample efficiency during the training process.
+> Figure 5. VACO improves over PPO-clipping for training LLMs to reason on GSM8k. (Top) Forward policy lag can improve train-ing efficiency at the cost of eval performance. VACO maintains higher performance as lag increases. (Bottom) PPO-clip is al-ways clipping, proportional to the forward lag. VACO filters more rarely, enabling learning from highly policy-lagged samples, but still maintains stability by filtering a larger part of the batch when activated.
+
+minibatch but ends up with forward policy lag: N − 1 steps ahead of our data generating policy β by the final minibatch. We mostly follow the setup of Noukhovitch et al. (2025) and train a Qwen 2.5 0.5B base model (Qwen et al., 2025) on Grade School Math (GSM8k; Cobbe et al., 2021). We demonstrate the flexibility of our method by applying it to the standard algorithm in the field, GRPO (Shao et al., 2024), which can be seen as a modification of PPO that estimates advantages using Monte-Carlo sampling instead of a value function. All experimental details are in Appendix C.2. We run our GRPO baseline using best PPO-clipping setup from current literature (Yu et al., 2025). We run 3 seeds for each minibatch N ∈ 1, 2, 4, 8, 16 , 32 as large scale runs often use N = 16 minibatches or more (Yu et al., 2025). In Figure 5, we confirm previous findings (Noukhovitch et al., 2025) that GSM8k eval performance degrades from fully on-policy N = 1 as forward policy lag increases. Swapping PPO-clipping for VACO, we find greatly improved robust-ness to high amounts of forward lag. To show the difference, we plot the frequency of PPO-clipping and VACO filtering per batch for N ∈ { 4, 8, 16 } in Figure 5 right. PPO-clipping is constant and the frequency increases in proportion to for-ward lag. In contrast, VACO does not do any filtering at low forward lag ( N = 4 , 8). For higher lag, VACO filters more selectively but a larger percentage of the batch. It is well-known that clipping is a key component of RLVR (Yu et al., 2025) but these results suggest that it is too aggressive and many clipped ratios positively contribute to learning. VACO still maintains the stability of training through fil-tering while allowing more batches to fully contribute to learning. 
+
+## 6. Conclusion 
+
+On-policy RL is the dominant paradigm across many mod-ern RL tasks. As compute budgets increase, efficient meth-ods that leverage asynchronous training and off-policy data have become standard. But these give rise to the phe-nomenon of policy lag i.e. the mismatch between the learn-ing policy and the behavior policy. We propose a novel theoretical perspective that divides this phenomenon into backward and forward policy lag. Backward policy lag re-sults from the initial mismatch between the learning and the behavior policy. Forward policy lag is caused by the learning policy taking gradient updates while using the same data. Asynchronous RL is inherently prone to both of these issues and they have been shown to degrade performance, limiting the efficiency gains from asynchronous training. This work provides a novel algorithm, VACO, designed to be more robust to the policy lag based on two main ideas: realigning the advantage function with the initial learning policy and Total Variation Divergence-based data filtering. Our empirical results demonstrate stronger robustness to lag in carefully constructed setups across two important RL modalities: robotics and LLMs. We hope this work enables future endeavors to further push the limits of asynchronous and efficient training while maintaining performance. 8Align and Filter: Improving Performance in Asynchronous On-Policy RL 
+
+## 7. Impact Statement 
+
+This paper presents work whose goal is to advance the field of machine learning. There are many potential societal consequences of our work, none of which we feel must be specifically highlighted here. 
+
+## References 
+
+Achiam, J., Held, D., Tamar, A., and Abbeel, P. Constrained policy optimization. In International conference on ma-chine learning , pp. 22–31. PMLR, 2017a. Achiam, J., Held, D., Tamar, A., and Abbeel, P. Constrained policy optimization. In International conference on ma-chine learning , pp. 22–31. PMLR, 2017b. Agarwal, A., Jiang, N., Kakade, S. M., and Sun, W. Rein-forcement learning: Theory and algorithms. CS Dept., UW Seattle, Seattle, WA, USA, Tech. Rep , 32:96, 2019. Agarwal, R., Schwarzer, M., Castro, P. S., Courville, A. C., and Bellemare, M. Deep reinforcement learning at the edge of the statistical precipice. Advances in Neural Information Processing Systems , 34, 2021. Altman, E. Constrained Markov decision processes . Rout-ledge, 2021. Andrychowicz, M., Raichuk, A., Sta ´nczyk, P., Orsini, M., Girgin, S., Marinier, R., Hussenot, L., Geist, M., Pietquin, O., Michalski, M., et al. What matters for on-policy deep actor-critic methods? a large-scale study. In International conference on learning representations .Babaeizadeh, M., Frosio, I., Tyree, S., Clemons, J., and Kautz, J. Ga3c: Gpu-based a3c for deep reinforcement learning. 2016. Cobbe, K., Kosaraju, V., Bavarian, M., Chen, M., Jun, H., Kaiser, L., Plappert, M., Tworek, J., Hilton, J., Nakano, R., et al. Training verifiers to solve math word problems. 
+
+arXiv preprint arXiv:2110.14168 , 2021. Czech, J. Distributed methods for reinforcement learning survey. In Reinforcement Learning Algorithms: Analysis and Applications , pp. 151–161. Springer, 2021. Espeholt, L., Soyer, H., Munos, R., Simonyan, K., Mnih, V., Ward, T., Doron, Y., Firoiu, V., Harley, T., Dunning, I., et al. Impala: Scalable distributed deep-rl with im-portance weighted actor-learner architectures. In Interna-tional conference on machine learning , pp. 1407–1416. PMLR, 2018. Fakoor, R., Chaudhari, P., and Smola, A. J. P3o: Policy-on policy-off policy optimization. In Uncertainty in artificial intelligence , pp. 1017–1027. PMLR, 2020. Gu, S., Holly, E., Lillicrap, T., and Levine, S. Deep rein-forcement learning for robotic manipulation with asyn-chronous off-policy updates. In 2017 IEEE international conference on robotics and automation (ICRA) , pp. 3389– 3396. IEEE, 2017. Howes, S., Beton, M., Baioumy, M., Cheema, A., and Reed, M. Exo gym: a simulation environment for low-bandwidth training. In Championing Open-source DEvel-opment in ML Workshop@ ICML25 , 2025. Huang, S., Dossa, R. F. J., Ye, C., Braga, J., Chakraborty, D., Mehta, K., and Ara ˜A ˇsjo, J. G. Cleanrl: High-quality single-file implementations of deep reinforcement learn-ing algorithms. Journal of Machine Learning Research ,23(274):1–18, 2022. Huang, S., Weng, J., Charakorn, R., Lin, M., Xu, Z., and Onta ˜n ´on, S. Cleanba: A reproducible and efficient dis-tributed reinforcement learning platform. arXiv preprint arXiv:2310.00036 , 2023. Kakade, S. and Langford, J. Approximately optimal ap-proximate reinforcement learning. In Proceedings of the nineteenth international conference on machine learning ,pp. 267–274, 2002. Kwon, W., Li, Z., Zhuang, S., Sheng, Y., Zheng, L., Yu, C. H., Gonzalez, J., Zhang, H., and Stoica, I. Efficient memory management for large language model serving with pagedattention. In Proceedings of the 29th sym-posium on operating systems principles , pp. 611–626, 2023. Kyzy, A. N., Ji, C.-H., Choi, Y., Seok, Y.-J., Ullah, I., and Han, Y.-H. Accelerating convergence in distributed re-inforcement learning via asynchronous ppo. In 2025 International Conference on Artificial Intelligence in In-formation and Communication (ICAIIC) , pp. 1059–1064. IEEE, 2025. Lambert, N., Morrison, J., Pyatkin, V., Huang, S., Ivison, H., Brahman, F., Miranda, L. J. V., Liu, A., Dziri, N., Lyu, S., Gu, Y., Malik, S., Graf, V., Hwang, J. D., Yang, J., Bras, R. L., Tafjord, O., Wilhelm, C., Soldaini, L., Smith, N. A., Wang, Y., Dasigi, P., and Hajishirzi, H. Tulu 3: Pushing frontiers in open language model post-training, 2025. Langer, M., He, Z., Rahayu, W., and Xue, Y. Distributed training of deep learning models: A taxonomic perspec-tive. IEEE Transactions on Parallel and Distributed Sys-tems , 31(12):2802–2818, 2020. Liu, Z., Xu, X., Qiao, P., and Li, D. Acceleration for deep reinforcement learning using parallel and distributed com-puting: A survey. ACM Computing Surveys , 57(4):1–35, 2024. 9Align and Filter: Improving Performance in Asynchronous On-Policy RL 
+
+Meng, W., Zheng, Q., Pan, G., and Yin, Y. Off-policy proximal policy optimization. In Proceedings of the AAAI Conference on Artificial Intelligence , volume 37, pp. 9162–9170, 2023. Mnih, V., Badia, A. P., Mirza, M., Graves, A., Lillicrap, T., Harley, T., Silver, D., and Kavukcuoglu, K. Asyn-chronous methods for deep reinforcement learning. In 
+
+International conference on machine learning , pp. 1928– 1937. PmLR, 2016. Munos, R., Stepleton, T., Harutyunyan, A., and Bellemare, M. Safe and efficient off-policy reinforcement learning. 
+
+Advances in neural information processing systems , 29, 2016. Nair, A., Srinivasan, P., Blackwell, S., Alcicek, C., Fearon, R., De Maria, A., Panneershelvam, V., Suleyman, M., Beattie, C., Petersen, S., et al. Massively parallel meth-ods for deep reinforcement learning. arXiv preprint arXiv:1507.04296 , 2015. Nikishin, E., Schwarzer, M., D’Oro, P., Bacon, P.-L., and Courville, A. The primacy bias in deep reinforcement learning. In International conference on machine learn-ing , pp. 16828–16847. PMLR, 2022. Noukhovitch, M., Huang, S., Xhonneux, S., Hosseini, A., Agarwal, R., and Courville, A. Asynchronous rlhf: Faster and more efficient off-policy rl for language models. In 
+
+The Thirteenth International Conference on Learning Representations , 2025. Petrenko, A., Huang, Z., Kumar, T., Sukhatme, G., and Koltun, V. Sample factory: Egocentric 3d control from pixels at 100000 fps with asynchronous reinforcement learning. In International Conference on Machine Learn-ing , pp. 7652–7662. PMLR, 2020. Puterman, M. L. Markov decision processes: discrete stochastic dynamic programming . John Wiley & Sons, 2014. Queeney, J., Paschalidis, Y., and Cassandras, C. G. Gener-alized proximal policy optimization with sample reuse. 
+
+Advances in Neural Information Processing Systems , 34: 11909–11919, 2021. Qwen, :, Yang, A., Yang, B., Zhang, B., Hui, B., Zheng, B., Yu, B., Li, C., Liu, D., Huang, F., Wei, H., Lin, H., Yang, J., Tu, J., Zhang, J., Yang, J., Yang, J., Zhou, J., Lin, J., Dang, K., Lu, K., Bao, K., Yang, K., Yu, L., Li, M., Xue, M., Zhang, P., Zhu, Q., Men, R., Lin, R., Li, T., Tang, T., Xia, T., Ren, X., Ren, X., Fan, Y., Su, Y., Zhang, Y., Wan, Y., Liu, Y., Cui, Z., Zhang, Z., and Qiu, Z. Qwen2.5 technical report, 2025. URL https: //arxiv.org/abs/2412.15115 .Radac, M.-B. and Chirla, D.-P. Near real-time online re-inforcement learning with synchronous or asynchronous updates. Scientific Reports , 15(1):17158, 2025. Rudin, N., Hoeller, D., Reist, P., and Hutter, M. Learning to walk in minutes using massively parallel deep rein-forcement learning. In Conference on robot learning , pp. 91–100. PMLR, 2022. Schulman, J., Levine, S., Abbeel, P., Jordan, M., and Moritz, P. Trust region policy optimization. In International conference on machine learning , pp. 1889–1897. PMLR, 2015a. Schulman, J., Moritz, P., Levine, S., Jordan, M., and Abbeel, P. High-dimensional continuous control using generalized advantage estimation. arXiv preprint arXiv:1506.02438 ,2015b. Schulman, J., Wolski, F., Dhariwal, P., Radford, A., and Klimov, O. Proximal policy optimization algorithms. 
+
+arXiv preprint arXiv:1707.06347 , 2017. Shao, Z., Wang, P., Zhu, Q., Xu, R., Song, J., Bi, X., Zhang, H., Zhang, M., Li, Y., Wu, Y., et al. Deepseekmath: Push-ing the limits of mathematical reasoning in open language models. arXiv preprint arXiv:2402.03300 , 2024. Sheng, G., Zhang, C., Ye, Z., Wu, X., Zhang, W., Zhang, R., Peng, Y., Lin, H., and Wu, C. Hybridflow: A flexible and efficient rlhf framework. In Proceedings of the Twentieth European Conference on Computer Systems , pp. 1279– 1297, 2025. Singla, J., Agarwal, A., and Pathak, D. Sapg: split and aggregate policy gradients. In Proceedings of the 41st In-ternational Conference on Machine Learning , pp. 45759– 45772, 2024. Stiennon, N., Ouyang, L., Wu, J., Ziegler, D., Lowe, R., Voss, C., Radford, A., Amodei, D., and Christiano, P. F. Learning to summarize with human feedback. Advances in neural information processing systems , 33:3008–3021, 2020. Sutton, R. S., Barto, A. G., et al. Reinforcement learning: An introduction , volume 1. MIT press Cambridge, 1998. Todorov, E., Erez, T., and Tassa, Y. Mujoco: A physics engine for model-based control. In 2012 IEEE/RSJ inter-national conference on intelligent robots and systems , pp. 5026–5033. IEEE, 2012. Vuong, Q., Zhang, Y., and Ross, K. W. Supervised policy update for deep reinforcement learning. In International Conference on Learning Representations , 2019. 10 Align and Filter: Improving Performance in Asynchronous On-Policy RL 
+
+Wang, Y., He, H., and Tan, X. Truly proximal policy op-timization. In Uncertainty in artificial intelligence , pp. 113–122. PMLR, 2020. Wiering, M. A. and Van Hasselt, H. Ensemble algorithms in reinforcement learning. IEEE Transactions on Systems, Man, and Cybernetics, Part B (Cybernetics) , 38(4):930– 936, 2008. Wolf, T., Debut, L., Sanh, V., Chaumond, J., Delangue, C., Moi, A., Cistac, P., Rault, T., Louf, R., Funtowicz, M., et al. Transformers: State-of-the-art natural language processing. In Proceedings of the 2020 conference on em-pirical methods in natural language processing: system demonstrations , pp. 38–45, 2020. Xie, Z., Zhang, Q., Yang, F., Hutter, M., and Xu, R. Sim-ple policy optimization. In Forty-second International Conference on Machine Learning , 2025. Yao, F., Liu, L., Zhang, D., Dong, C., Shang, J., and Gao, J. Your efficient rl framework secretly brings you off-policy rl training, August 2025. URL https://fengyao. notion.site/off-policy-rl .Yu, Q., Zhang, Z., Zhu, R., Yuan, Y., Zuo, X., Yue, Y., Dai, W., Fan, T., Liu, G., Liu, L., et al. Dapo: An open-source llm reinforcement learning system at scale. arXiv preprint arXiv:2503.14476 , 2025. Yuan, Y. and Mahmood, A. R. Asynchronous reinforcement learning for real-time control of physical robots. In 2022 International Conference on Robotics and Automation (ICRA) , pp. 5546–5552. IEEE, 2022. Ziegler, D. M., Stiennon, N., Wu, J., Brown, T. B., Radford, A., Amodei, D., Christiano, P., and Irving, G. Fine-tuning language models from human preferences. arXiv preprint arXiv:1909.08593 , 2019. 11 Align and Filter: Improving Performance in Asynchronous On-Policy RL 
+
+## A. Pseudocode 
+
+Algorithm 1 VACO 
+
+Initialize Initialize Value and Policy networks, Vϕ, π 1 
+
+> θ
+
+, and TV threshold δ, value loss, policy loss, and entropy coefficients 
+
+cv , c π , c H
+
+for T = 1 , ..., T max do 
+
+# Data Collection Using a Behavior Policy Collect trajectory D = {τ = ( st, a t, r t)τmax  
+
+> t=0
+
+∼ βT }
+
+# Estimate Advantage Using Advantage Realignment Calculate the Ratio πTθ (at|st) 
+
+> βT(at|st)
+
+Calculate V-trace target v(st, a t) and Advantage Avtrace (st, a t) using Equation 14 and 15 
+
+for each training epoch do 
+
+# Compute Expected TV Divergence 
+
+¯DT V (πθ ∥βT ) = 12N
+
+PNt=1 | πθ (at|st)  
+
+> βT(at|st)
+
+− 1|
+
+if ¯DT V > δ/ 2 then for t = 1 , ..., N do if (Avtrace (st, a t) − cH) × sgn (πθ (at|st) − βT (at|st)) > 0 then 
+
+Detach Gradient πθ (at|st)
+
+end if end for end if 
+
+Lπθ ← − 1
+
+> N
+
+PNt=0 [ πθ (at|st) 
+
+> βT(at|st)
+
+ Avtrace (st, a t) − cH log πθ (at|st)
+
+# Compute Value Loss 
+
+Lv ← 12N
+
+PNt=1 [Vϕ(st) − v(st, a t)] 
+
+L ← cπ Lπ + cv Lv
+
+θ ← θ − ηθ ∇θ L, ϕ ← ϕ − ηϕ∇ϕL
+
+end for end for 
+
+## B. Theoretical Details 
+
+B.1. Proof of Lemma 3.1 
+
+We use (Agarwal et al., 2019) to provide the proof: 
+
+J(π′) − J(π) = Eτ ∼π′|s0∼μ[
+
+> ∞
+
+X
+
+> t=0
+
+γtr(st, a t)] − J(π) (22) 
+
+= Eτ ∼π′|s0∼μ[
+
+> ∞
+
+X
+
+> t=0
+
+γt(r(st, a t) + Vπ (st) − Vπ (st)] − J(π) (23) 
+
+= Eτ ∼π′|s0∼μ[
+
+> ∞
+
+X
+
+> t=0
+
+γt(r(st, a t) + γV π (st+1 ) − Vπ (st)] (24) 
+
+= Eτ ∼π′|s0∼μ[
+
+> ∞
+
+X
+
+> t=0
+
+γt(r(st, a t) + γE[Vπ (st+1 )|st, a t] − Vπ (st)] (25) 
+
+= Eτ ∼π′|s0∼μ[
+
+> ∞
+
+X
+
+> t=0
+
+γt(Qπ (st, a t) − Vπ (st)] (26) 
+
+= Eτ ∼π′|s0∼μ[
+
+> ∞
+
+X
+
+> t=0
+
+γtAπ (st, a t)] (27) 
+
+= 11 − γ Es∼dπ′ ,a ∼π′(s)[Aπ (s, a )] (28) 12 Align and Filter: Improving Performance in Asynchronous On-Policy RL 
+
+B.2. Proof of Theorem 3.2 
+
+First, we evaluate the change of state distribution in Equation 3.1: 
+
+J(π′) − J(π) = 11 − γ Es∼dπ′ ,a ∼π′(s)[Aπ (s, a )] (29) 
+
+= 11 − γ (Es∼dπ ,a ∼π(s)[ π′(a|s)
+
+π(a|s) Aπ (s, a )] + 
+
+Z
+
+> s∈S
+
+(dπ′
+
+(s) − dπ (s)) Ea∼π′(s)[Aπ (s, a )]) (30) Furthermore, by applying H¨ older’s inequality to the penalty term, for any p, q ∈ [1 , ∞] : 1 /p + 1 /q = 1 we have: 
+
+−∥ dπ′
+
+− dπ ∥p∥Ea∼π′(s)[Aπ (s, a )] ∥q ≤
+
+Z
+
+> s∈S
+
+(dπ′
+
+(s) − dπ (s)) Ea∼π′(s)[Aπ (s, a )] ≤ ∥ dπ′
+
+− dπ ∥p∥Ea∼π′(s)[Aπ (s, a )] ∥q
+
+(31) Furthermore, the state distribution upper bound provided in (Achiam et al., 2017a) can be used: 
+
+Lemma B.1. (Achiam et al., 2017a) The total variation divergence between two discounted future state distributions is bounded by the expected divergence their respective policies: 
+
+∥dπ′
+
+− dπ ∥1 ≤ 2γ
+
+1 − γ Es∼dπ [DT V (π′∥π)[ s]] (32) We refer readers to (Achiam et al., 2017a) for the detailed proof of the divergence lemma. Choosing p = 1 , q = ∞, applying Lemma B.1 to Equation 31, and by bounding the Equation 29, the result of the lemma can be obtained. 
+
+B.3. Proof of Lemma 4.1 
+
+Use Theorem 3.2 to obtain the performance difference between πT and β and between π and βT :
+
+J(π) − J(βT ) ≥ 11 − γ Es∼dβT ,a ∼βT (s)[ π(a|s)
+
+βT (a|s) AβT (s, a ) − 2γϵ π
+
+1 − γ DT V (βT ∥π)[ s]] (33) 
+
+J(πT ) − J(βT ) ≤ 11 − γ Es∼dβT ,a ∼βT (s)[ πT (a|s)
+
+βT (a|s) AβT (s, a ) + 2γϵ πT
+
+1 − γ DT V (βT ∥πT )[ s]] (34) By inverting the second inequality and adding the two inequalities together, the bound can be achieved. 
+
+B.4. Proof of Lemma 4.2 
+
+The proof mainly follows the same steps as Theorem 3.2. Starting from Equation 4, change the discounted future state distribution from π to βT :
+
+J(π) − J(πT ) = 11 − γ
+
+
+
+Es∼dβT ,a ∼βT (s)[ π(a|s)
+
+βT (a|s) AπT (s, a )] + 
+
+Z
+
+> s∈S
+
+(dβT (s) − dπ (s)) Ea∼π(s)[AπT (s, a )] ds 
+
+
+
+(35) Applying H¨ older’s inequality to the penalty term, for any p, q ∈ [1 , ∞] : 1 /p + 1 /q = 1 we have: 
+
+Z
+
+> s∈S
+
+(dβT (s) − dπ (s)) Ea∼π(s)[AπT (s, a )] ds ≤ ∥ dβT − dπ ∥p∥Ea∼π(s)[AπT (s, a )] ∥q (36) Choosing p = 1 , q = ∞ and applying Lemma B.1 provides the result. 13 Align and Filter: Improving Performance in Asynchronous On-Policy RL 
+
+B.5. Theoretical Analysis of the Advantage Realignment 
+
+To analyze the approximation accuracy of the V-trace operator, (Espeholt et al., 2018) provides the following theorem: 
+
+Theorem B.2. (Espeholt et al., 2018) Define the V-trace operator as: 
+
+RV (s) = Vβ (s) + Eτ ∼β [
+
+> ∞
+
+X
+
+> t=0
+
+γt(c0 . . . c t−1)ρt(rt + γV β (st+1 ) − Vβ (st)) |s0 = s] (37) 
+
+Assume there exists α ∈ (0 , 1] such that Ea∼β(s)[ρ0] ≥ α and let ¯ρ ≥ ¯c and the policy π¯ρ as: 
+
+π¯ρ(a|s) := min(¯ ρβ (a|s), π (a|s)) 
+
+P 
+
+> b∈A
+
+min(¯ ρβ (b|s), π (b|s)) (38) 
+
+Then R has a unique fixed point for Vπ¯ρ and is η-contraction mapping in sup-norm defined as: 
+
+η = γ−1 − (γ−1 − 1) Eτ ∼β [X
+
+> t≥0
+
+γt(
+
+> t−1
+
+Y
+
+> i=0
+
+ci)ρt−1] ≤ 1 − (1 − γ)α < 1 (39) For completeness, we provide the proof of this theorem. Notice that R can be rewritten as: 
+
+RV (s) = (1 − Ea0∼β(s)[ρ0]) Vβ (s) + Eτ ∼β
+
+X
+
+> t≥0
+
+γt t−1Y
+
+> i=0
+
+ci
+
+ 
+
+ρtrt + γ[ρt − ctρt+1 ]Vβ (st+1 )
+
+ . (40) Hence, we have: 
+
+RV1(s) − R V2(s) =(1 − Ea0∼β(s)[ρ0]) V 1 
+
+> β
+
+(s) − V 2 
+
+> β
+
+(s)
+
++ Eτ ∼β
+
+X
+
+> t≥0
+
+γt+1  t−1Y
+
+> i=0
+
+ci
+
+
+
+[ρt − ctρt+1 ]V 1 
+
+> β
+
+(st+1 ) − V 2 
+
+> β
+
+(st+1 ) (41) 
+
+= Eτ ∼β
+
+X
+
+> t≥0
+
+γt t−2Y
+
+> i=0
+
+ci
+
+
+
+[ρt−1 − ct−1ρt]V 1 
+
+> β
+
+(st) − V 2 
+
+> β
+
+(st) (42) The authors define the notation c−1 = ρ−1 = 1 and Qt−2 
+
+> s=0
+
+cs = 1 for t = 0 and 1.Furthermore, since it was assumed that ρ ≥ c and Eτ ∼β [ρt] ≤ Eτ ∼β [ π(at|st) 
+
+> β(at|st)
+
+, denoting αt = ρt−1 − ct−1ρt we have: 
+
+Eτ ∼β αt = Eρt−1 − ct−1ρt
+
+ ≥ Eτ ∼β
+
+ct−1(1 − ρt) ≥ 0 (43) Hence, the difference between the value functions RV1(s) − R V2(s) is weighted linear combination of between the value 14 Align and Filter: Improving Performance in Asynchronous On-Policy RL 
+
+functions in the trajectory V 1 
+
+> β
+
+(st) − V 2 
+
+> β
+
+(st) with non-negative coefficients of the sum: 
+
+X
+
+> t≥0
+
+γtEτ ∼β
+
+X
+
+> t≥0
+
+ t−2Y
+
+> i=0
+
+ci
+
+
+
+[ρt−1 − ct−1ρt]
+
+ (44) 
+
+= X
+
+> t≥0
+
+γtEτ ∼β
+
+" t−2Y
+
+> i=0
+
+ci
+
+
+
+ρt−1
+
+#
+
+− X
+
+> t≥0
+
+γtEτ ∼β
+
+" t−2Y
+
+> i=0
+
+ci
+
+
+
+ρt
+
+#
+
+(45) 
+
+= X
+
+> t≥0
+
+γtEτ ∼β
+
+" t−2Y
+
+> i=0
+
+ci
+
+
+
+ρt−1
+
+#
+
+− 1
+
+γ
+
+ X 
+
+> t≥0
+
+γtEτ ∼β
+
+" t−2Y
+
+> i=0
+
+ci
+
+
+
+ρt−1
+
+#
+
+− 1
+
+
+
+(46) 
+
+= γ−1 − (γ−1 − 1) X
+
+> t≥0
+
+γtEτ ∼β
+
+" t−2Y
+
+> i=0
+
+ci
+
+
+
+ρt−1
+
+#
+
+(47) 
+
+≤ 1 − (1 − γ)Ea∼β(s)ρ0 (48) 
+
+≤ 1 − (1 − γ)α (49) 
+
+< 1 (50) Hence, it can be resulted that ∥R V1(s) − R V1(s)∥ ≤ η∥V 1 
+
+> β
+
+(s) − V 2 
+
+> β
+
+(s)∥∞ with 1 − (1 − γ)α ≤ 1 which makes R acontraction mapping. Finally, to show that R is the fixed point of π¯ρ we have: 
+
+Eτ ∼β [ρt(r(st, a t) + γV π¯ρ (st+1 ) − Vπ¯ρ (st)|st] (51) 
+
+= X
+
+> a∈A
+
+β(a|st) min(¯ ρ, π(a|st)
+
+β(a|st) )[ r(st, a ) + γ X
+
+> s′∈S
+
+P(s′|st, a )Vπ¯ρ (s′) − Vπ¯ρ (st)] (52) 
+
+= X
+
+> a∈A
+
+π¯ρ(a|st)
+
+"
+
+r(st, a ) + γ X
+
+> s′∈S
+
+P(s′|st, a )Vπ¯ρ (s′) − Vπ¯ρ (st)
+
+# X
+
+> b∈A
+
+min(¯ ρβ (b|st), π (b|st)) (53) 
+
+= 0 (54) A zero Bellman error implies that Vπ¯ρ is the unique fixed point of the V-trace operator R.
+
+B.6. On the Use of TV divergence as a measure of policy lag vs KL divergence 
+
+Kullback–Leibler (KL) divergence is one of the most common measures of statistical distance between distribution. In this section, the benefits that the use of TV divergence as a measure of policy lag provides compared to KL divergence will be discussed. As discussed in Section 4.2, at iteration T , the performance difference between the two policies π and πT when the trajectories are generated using a behaviour policy βT can be lower bounded using Equation 12. Furthermore, as noted in (Achiam et al., 2017a), using the Pinsker’s inequality ( DT V (p∥q) ≤ pDKL (p∥q)/2) and Jensen’s inequality, the expected TV divergence can be upper bounded as: 
+
+Es∼dβT [DT V (βT ∥π)[ s]] ≤ pEs∼dβT [DKL (βT ∥π)[ s]] /2 (55) By combining Equation 12 and Equation we have (a similar lower bound can also be derived from Equation 10): 
+
+J(π) − J(πT ) ≥ 11 − γ Es∼dβT ,a ∼βT (s)
+
+ π(a|s)
+
+βT (a|s) AπT (s, a ) − 2γϵ π
+
+1 − γ DT V (βT ∥π)[ s]
+
+
+
+≥ 11 − γ Es∼dβT ,a ∼βT (s)
+
+ π(a|s)
+
+βT (a|s) AπT (s, a )
+
+
+
+− 2γϵ π
+
+(1 − γ)2
+
+r 12 Es∼dβT [DKL (βT ∥π)[ s]] 
+
+(56) 15 Align and Filter: Improving Performance in Asynchronous On-Policy RL  
+
+> Table 1. Important Hyperparameters of PPO, SPO, IMPALA, and VACO
+
+Hyperparameter Value 
+
+Clip Ratio/TV Threshold 0.2 Learning Rate 3e-4 Learning Rate Annealing True Num Envs 500 Num Steps 1000 Discount Factor 0.99 Num Minibatches 32 Num Epochs 10 Max Grad Norm 0.5 
+
+¯ρ 1
+
+¯c 1For that reason, it is now a standard technique to use KL-regularized objective functions to optimize the policy (Schulman et al., 2017; 2015a). However, we first note that the KL regularization is theoretically valid and guarantees policy improvement when pE[DKL (βT ∥π)[ s]] ≥ 1 whereas the thresholds that we often choose to constrain the KL divergence are usually less than one. More importantly, KL divergence can pose more important optimization challenges. Consider Theorem 3 of (Wang et al., 2020): 
+
+Theorem B.3. (Wang et al., 2020) Assume for discrete action space tasks with |A| > 3, the policy parameterized by 
+
+πθ (st) = pt ∈ R+|A| with P|A|  
+
+> i=1
+
+p(i) 
+
+> t
+
+= 1 , and for continuous action space tasks with the policy parameterized as 
+
+πθ (a|st) = N (a|μt, σ t). By defining the viable parameter space Θ = {θ|1 − δ ≤ πθ (s,a )  
+
+> βT(s,a )
+
+≤ 1 + δ ∀s, a ∈ S × A} , then, 
+
+max θ∈Θ DKL (πθ ∥βT )[ st] = + ∞ for both discrete and continuous action space tasks. 
+
+Therefore, it is possible to have policies within the viable parameter space that impose infinite KL divergence. Hence, by framing the constrained policy optimization using DKL ≤ δ, many viable policies would be dismissed. In contrast, it is easy to notice that all of the policies within the same parameter space Θ, have max θ∈Θ DT V (πθ ∥βT )[ st] ≤ δ/ 2. Therefore, TV divergence provides a tighter lower bound for policy optimization and can capture a wider range of policies during the optimization process. 
+
+## C. Experimental Setup Details 
+
+C.1. Simulated Asynchronous Setup Algorithm Hyperparameters 
+
+We use the default hyperparameters proposed by (Huang et al., 2022) to train the RL algorithms in the simulated asynchronous setup. Some of the important hyperparameters are discussed in Table 1. For the hyperparameter values used for the computation of the advantage realignment, we follow the hyperparameter choices of (Espeholt et al., 2018). 
+
+C.2. GSM8k RLVR Setup and Hyperparameters 
+
+We train on GSM8k mostly following the setup of Noukhovitch et al. (2025) but changing the model to the modern Qwen 2.5 0.5B base model (Qwen et al., 2025). We train on the ≈8000 examples of GSM8k (Cobbe et al., 2021) and evaluate on the ≈1300 examples of the eval set. Our hyperparameters mainly follow Yao et al. (2025) and we generally reproduce their 
+
+N = 1 minibatch results, we note all hyperparameters in Table 2. To compare against the strongest possible baseline, we follow Yu et al. (2025) in using their separate low and high clipping values for GRPO. As there is no backwards lag, we set the advantage realignment ratio to be 1. We note that an alternative approach would still use advantage realignment term, even in fully on-policy RLVR. As noted by Yao et al. (2025), the logprobs of the data under the generation engine, vLLM, are different from those under the training library, transformers. For this reason, we could still implement advantage realignment with β = πvllm , where it can be seen as an alternative formulation that solves 16 Align and Filter: Improving Performance in Asynchronous On-Policy RL 
+
+the same issue as Truncated Importance Sampling Yao et al. (TIS; 2025). But for our particular scenario of both training and generation in BF16, Yao et al. (2025) note that the realignment term would be always very close to 1 and makes no empirical difference.  
+
+> Table 2. Hyperparameters of GRPO, PPO-Clip and VACO for GSM8k
+
+Hyperparameter Value 
+
+PPO-Clip Lower Ratio 0.2 PPO-Clip Higher Ratio 0.272 TV Threshold 0.05 Learning Rate 1e-6 Num Prompts Per Minibatch 32 Num Completions Per Prompt 8Total Episodes 65536 Num Steps 256 Num PPO Epochs 1Prompt Length 512 Completion Length 512 Temperature (Train) 1.0 Top-p (Train) 1.0 Temperature (Eval) 0. Top-p (Eval) 0.95 
+
+## D. Experiment Details 
+
+D.1. Algorithm Sample Efficiency Comparison 
+
+In addition to Figure 4 which demonstrates the aggregate performance the algorithms throughout the training phase for each degree of asynchronicity, Figure 6 also showcases the unnormalized return of the algorithms across all the environments and the degrees of asynchronicity. 
+
+D.2. Ablation on the values of δ threshold 
+
+We perform ablation analysis on the effect of the threshold δ on the performance of VACO. To this end, Figure 7 showcases the performance of VACO across a variety of values during the training process. The results indicate that VACO is relatively robust to more aggressive values for δ. This point can be better observed in Figure 8. Hence, the constrained policy optimization approach of VACO is generally robust to the policy collapse in higher degrees of backward policy lag with more aggressive threshold values. 
+
+D.3. Ablation on the values of ¯ρ threshold 
+
+We perform experiments on the effect of ¯ρ on the performance of VACO. As discussed in Section 4.2 and Section B.5, ¯ρ
+
+controls the fixed point of the V-trace target. Hence, the value can have important effects on the proposed algorithms. As shown in Figure 9 and Figure 10, our results confirm the original IMPALA paper (Espeholt et al., 2018) regarding the overall better performance of IMPALA with ¯ρ = 1 compared with higher values. 
+
+D.4. Effect of the TV Divergence-based Filtering 
+
+Figure 11 compares the average TV divergence of the final policy in each training in VACO and PPO with and without the KL penalty. We observe that while the value the TV divergence for PPO is lower, predicting its value from the clipping ratio would be a challenging task. On the other hand, the results for VACO indicates that the proposed algorithm maintains the same level of TV divergence. Hence, this behavior would allow the practitioners to reliably modify the constraint value to maintain a reasonably conservative TV divergence value while striving for optimality. 17 Align and Filter: Improving Performance in Asynchronous On-Policy RL 
+
+D.5. Effect of the Advantage Realignment 
+
+In order to study the effect of Advantage Realignment in VACO we also ran the algorithm with and without the realignment process. The results are depicted Figure 12. An important effect that we observed during the training process was the fact that as more asynchronous data is added during the training process, the algorithm would perform better if the v-trace values are calculated using the most recent version of the value function. In fact, in some cases the algorithm did not perform well if the most recent version was not used. 18 Align and Filter: Improving Performance in Asynchronous On-Policy RL 
+
+Figure 6. Return plot of the comparison algorithms in five environments across five degrees of asynchronicity. The plot represent the average return of the policy over 10 random seeds and the shades showcase the standard deviation of the returns. 
+
+19 Align and Filter: Improving Performance in Asynchronous On-Policy RL 
+
+Figure 7. IQM values of VACO with various values of δ for TV divergence threshold in the simulated asynchronous setups during the training process. The scores are computed over 100M steps across 10 independent random seeds and the shades represent the 95% confidence interval. (bottom right) IQM values of the Area under the curve of the normalized return plots. Higher values imply better sample efficiency during the training process. 
+
+Figure 8. Ablation analysis on the performance of VACO with various value of the TV divergence threshold δ. Higher Median, IQM, and Mean values and lower Optimality Gap imply better performance. The scores are computed over 100M steps across 10 independent random seeds and the shades represent 95% confidence intervals of the metrics. 
+
+20 Align and Filter: Improving Performance in Asynchronous On-Policy RL 
+
+Figure 9. IQM values of VACO with various values of ρ for advantage realignment in the simulated asynchronous setups during the training process. The scores are computed over 100M steps across 10 independent random seeds and the shades represent the 95% confidence interval. (bottom right) IQM values of the Area under the curve of the normalized return plots. Higher values imply better sample efficiency during the training process. 
+
+Figure 10. Ablation analysis on the performance of VACO with various value of ρ for advantage realignment. Higher Median, IQM, and Mean values and lower Optimality Gap imply better performance. The scores are computed over 100M steps across 10 independent random seeds and the shades represent 95% confidence intervals of the metrics. 
+
+21 Align and Filter: Improving Performance in Asynchronous On-Policy RL 
+
+Figure 11. The average Total Variation Divergence between the final policy of the training phase and the behavior policy distribution for VACO and PPO in the simulated asynchronous RL training setup. We can see that VACO with the constraint of 1/2E[|π/β − 1|] ≤ δ/ 2
+
+where δ = 0 .2, consistently maintains the same level of TV divergence across all environments and degrees of asynchronicity. The plot represent the average estimate of the TV value over 10 random seeds and the shades showcase the standard deviation. 
+
+22 Align and Filter: Improving Performance in Asynchronous On-Policy RL 
+
+Figure 12. The performance of VACO with and without the advantage realignment process. We can see that on average, return realignment offers better robustness to off-policy data. The scores are computed over 100M steps across 10 independent random seeds and the shades represent the 95% confidence interval. 
+
+23

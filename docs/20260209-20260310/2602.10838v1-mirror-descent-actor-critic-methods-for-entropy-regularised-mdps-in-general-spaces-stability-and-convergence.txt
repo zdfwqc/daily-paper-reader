@@ -1,0 +1,4801 @@
+Title: Mirror descent actor-critic methods for entropy regularised MDPs in general spaces: stability and convergence
+
+URL Source: https://arxiv.org/pdf/2602.10838v1
+
+Published Time: Thu, 12 Feb 2026 01:57:19 GMT
+
+Number of Pages: 27
+
+Markdown Content:
+MIRROR DESCENT ACTOR-CRITIC METHODS FOR ENTROPY REGULARISED MDPS IN GENERAL SPACES: STABILITY AND CONVERGENCE  
+
+> DENIS ZORBA, DAVID ˇSI ˇSKA, AND LUKASZ SZPRUCH
+> Abstract. We provide theoretical guarantees for convergence of discrete-time policy mirror descent with inexact advantage functions updated using temporal difference (TD) learning for entropy regu-larised MDPs in Polish state and action spaces. We rigorously derive sufficient conditions under which the single-loop actor-critic scheme is stable and convergent. To weaken these conditions, we introduce a variant that performs multiple TD steps per policy update and derive an explicit lower bound on the number of TD steps required to ensure stability. Finally, we establish sub-linear convergence when the number of TD steps grows logarithmically with the number of policy updates, and linear convergence when it grows linearly under a concentrability assumption.
+
+1. Introduction 
+
+In reinforcement learning (RL), an agent seeks to find an optimal policy that minimises their expected cumulative cost by interacting with their environment. Such a framework has had numerous remarkable applications [29], [20], [23]. Theoretical understanding of key RL algorithms and their convergence properties has been growing over the last decades [12, 32, 21, 1]. In practice actor critic algorithms are some of the most widely used. The actor updates the policy using a policy gradient method (which requires the advantage function) and the critic, which provides an estimate of the advantage function, is updated based on costs and new states observed by interacting directly with the environment using e.g. temporal difference (TD)-based loss. Classical policy gradient methods require careful tuning of step-size to achieve stability which led to the development of trust-region approaches such as TRPO [27] and its practical variant PPO [28]. These improve stability by controlling the change between successive policies via KL-divergence constraint or policy ratio clipping respectively. Policy mirror descent [13, 16, 15] provides a closely related first-order viewpoint, replacing the hard trust-region constraint with a KL-based penalty and yielding algorithms for which it is possible to obtain theoretical guarantees (under the assumption of access to the exact advantage function). Adding entropic regularisation to the objective then leads to a number of theoretical and practical advantages [2, 5, 17]. Firstly, entropy regularised MDPs are guaranteed to have a unique optimal policy and can accelerate the convergence of policy gradient methods [21, 13, 16, 15]. Secondly, the entropic regularisation ensures persistent exploration [25, 10] and provides some (albeit minimal) robustness to changes in costs and environment [36, 9]. However, while the theory of discrete time policy mirror descent is well understood for MDPs without entropy regularisation [31] and for tabular MDPs with entropy regularisation [16], its stability and convergence remains open for entropy regularised MDPs in general state and action spaces. This paper fills this gap in the literature by rigorously proving the stability and convergence of policy mirror descent for entropy regularised MDPs in Polish state and action spaces, where the critic is updated using one step or multiple steps of temporal difference learning. 1.1. Related works. While actor-critic methods employing mirror descent for unregularised MDPs are well understood, both with and without function approximation [31], [24], the literature surrounding its extension to entropy regularised MDPs still remains sparse. In this setting, [16], [5] demonstrates convergence through carefully constructed decaying step sizes tabular case. More recently, [37] extend these results to the Polish state and action space case. However, this paper uses the idealised continuous-time dynamics of the policy mirror descent and temporal difference updates. While the continuous-time limit is mathematically convenient, its connection to any given algorithm is unclear as there are many discrete schemes that converge to the same continuous-time limit as step size goes to zero. However, the convergence, or even stability, as the number of discrete steps goes to infinity is not guaranteed. Moreover, the convergence of the dynamics in [37] depends on an exponentially increasing timescale  
+
+> Keywords: Reinforcement Learning, Actor Critic, Temporal Difference learning, Mirror descent, Entropy Regularization, Non-convex optimization, Global convergence, Stability, Function approximation.
+> 1
+> arXiv:2602.10838v1 [math.OC] 11 Feb 2026 2DENIS ZORBA, DAVID ˇSI ˇSKA, AND LUKASZ SZPRUCH
+
+separation. While this is well defined in the continuous time limit, it is unclear what it implies in relation to the discrete time algorithm. 1.2. Contributions. Our main contributions are as follows. 
+
+• For entropy regularised MDPs in general spaces, we consider a classical actor critic algorithm where the policy is updated using mirror descent and the critic is updated using temporal differ-ence learning. As pointed out in [37], ensuring that the relative entropy does not blow up along the gradient flow is difficult in general action spaces. In the finite action space setting, for any measure μ ∈ P (A) such that μ(ai) > 0 and for all s ∈ S it holds that KL( π(·| s)|μ) ≤ log |A|.In general action spaces the KL divergence has no upper bound (can be + ∞) even if μ has full support. Thus we derive sufficient conditions of the discrete actor critic updates, under which we demonstrate uniform boundedness of the KL divergence along the actor-critic stepping scheme. 
+
+• [16, 15] demonstrate that classical policy mirror descent with exact advantage functions for entropy regularised MDPs in general spaces exhibits sublinear convergence and even linear con-vergence under a concentrability assumption. We extend this result and demonstrate that under 
+
+Qπτ -realisability, one can still obtain both rates while using TD learning to update an approxi-mation of the advantage function. To the best of our knowledge, these stability and convergence results are the first to be established in the literature. 1.3. Entropy regularised Markov Decision Processes. See Appendix B for a summary of the notation used in this paper. Consider an infinite horizon Markov Decision Process ( S, A, P, c, γ ), where the state space S and action space A are Polish, P ∈ P (S|S × A) is the state transition probability kernel, c is a bounded cost function and γ ∈ (0 , 1) is a discount factor. Let μ ∈ P (A) denote a reference probability measure and τ > 0 denote a regularisation parameter. To ease notation, for each π ∈ P (A|S), 
+
+s ∈ S and a ∈ A we define 
+
+Pπ (ds ′|s) := 
+
+Z
+
+> A
+
+P (ds ′|s, a )π(da |s),P π (ds ′, da ′|s, a ) := P (ds ′|s, a )π(da ′|s′).
+
+For each stochastic policy π ∈ P (A|S) and s ∈ S, we define the regularised value function by (1) V πτ (s) = Eπs
+
+" ∞X
+
+> n=0
+
+γn
+
+c(sn, a n) + τ KL( π(·| sn)|μ)
+
+#
+
+.
+
+Here KL( π(·| s)|μ) is the Kullback-Leibler (KL) divergence of π(·| s) with respect to μ, defined as KL( π(·| s)|μ) := 
+
+Z
+
+> A
+
+ln dπ dμ (a|s)π(da |s),
+
+if π(·| s) is absolutely continuous with respect to μ, and infinity otherwise. As a result, for any s ∈ S we have that V πτ (s) ∈ R ∪ { +∞} . For a given initial distribution ρ ∈ P (S), the optimal value function is defined as 
+
+V πτ (ρ) := 
+
+Z
+
+> S
+
+V πτ (s)ρ(ds ), V ∗ 
+
+> τ
+
+(ρ) = inf  
+
+> π∈P (A|S)
+
+V πτ (ρ).
+
+We refer to π∗ ∈ P (A|S) as the optimal policy if V ∗ 
+
+> τ
+
+(ρ) = V π∗ 
+
+> τ
+
+(ρ). The Bellman Principle for entropy regularised MDPs, see Theorem B.1, ensures that without loss of generality, it is sufficient to consider policies from the class given by Definition 1.1 below. 
+
+Definition 1.1 (Admissible Policies) . Let Π μ denote the class of policies for which there exists f ∈
+
+Bb(S × A) with 
+
+π(da |s) = exp( f (s, a )) 
+
+R 
+
+> A
+
+exp( f (s, a )) μ(da ) μ(da ).
+
+For each π ∈ Πμ the value function V πτ is the unique bounded solution of the on-policy Bellman equation 
+
+V πτ (s) = 
+
+Z
+
+> A
+
+
+
+Qπτ (s, a ) + τ ln dπ dμ (a, s )
+
+
+
+π(da |s).
+
+See e.g. Lemma B.2 of [15]. Moreover, for each π ∈ Πμ, the state-action value function Qπτ ∈ Bb(S × A)is defined as 
+
+Qπτ (s, a ) = c(s, a ) + γ
+
+Z
+
+> S
+
+V πτ (s′)P (ds ′|s, a ).MIRROR DESCENT ACTOR-CRITIC FOR ENTROPY-REGULARISED MDPS 3
+
+and the soft advantage function Aπτ ∈ Bb(S × A) as 
+
+Aπτ (s, a ) = Qπτ (s, a ) + τ log dπ dμ (s, a ) − V πτ (s).
+
+Finally we define the Bellman operator T πτ : Bb(S × A) → Bb(S × A) as (2) Tπτ f (s, a ) = c(s, a ) + γ
+
+Z
+
+> S×A
+
+f (s′, a ′)P π (ds ′, da ′|s, a ) + τ γ 
+
+Z
+
+> S
+
+KL( π(·| s′)|μ)P (ds ′|s, a ).
+
+A direct calculation shows that for any π ∈ P (A|S), T πτ is a γ-contraction on Bb(S × A) with respect to 
+
+| · | Bb(S×A) and hence by Banach’s fixed point theorem Qπτ : S × A → R is the unique fixed point of T πτ .2. Mirror Descent and Temporal Difference 
+
+In this section we introduce an actor critic scheme to find the optimal policy π∗ ∈ Πμ of the entropy regularised MDP. Firstly, let’s consider the following policy mirror descent updates. For some λ > 0, define G : P(A|S) × P (A|S) → R as 
+
+G(π, π ′) = 
+
+Z
+
+> S
+
+ Z 
+
+> A
+
+Aπ′ 
+
+> τ
+
+(s, a )π(da |s) + 1
+
+λ KL( π|π′)( s)
+
+
+
+dπ′ 
+
+> ρ
+
+(ds ),
+
+and consider the updates 
+
+πn+1 = arg min 
+
+> π∈P (A|S)
+
+G(π, π n).(3) In the setting where the advantage function can be calculated exactly for all s ∈ S and a ∈ A,[16, 15] demonstrates convergence of the policy mirror descent for entropy regularised MDPs in the tabular setting. However having direct access to the true advantage function for all s ∈ S and a ∈ A is unfeasible in general spaces. To that end, we consider the following finite dimensional parametrisation of the advantage function. Given some feature mapping ϕ : S × A → RN , we firstly parametrise the state-action value function as Q(s, a ; θ) := ⟨θ, ϕ (s, a )⟩ and define the approximate soft advantage function as in Definition 2.1. 
+
+Definition 2.1. Let Q(s, a ; θ) := ⟨θ, ϕ (s, a )⟩, for some ϕ : S × A → RN and any τ > 0. For all s ∈ S
+
+and a ∈ A, the approximate advantage function is defined as (4) A(s, a ; θ, π ) = Q(s, a ; θ) + τ ln dπ dμ (s, a ) −
+
+Z
+
+> A
+
+
+
+Q(s, a ; θ) + τ ln dπ dμ (s, a )
+
+
+
+π(da |s).
+
+Definition 2.2. For some β ∈ P (S × A), let dπβ ∈ P (S × A) be the state-action occupancy measure defined in Appendix B. The Mean Squared Bellman Error (MSBE) is defined as MSBE( θ, π ) := 12
+
+Z
+
+> S×A
+
+(Q(s, a ; θ) − Tπτ Q(s, a ; θ)) 2dπβ (da, ds ).
+
+Moreover, the semi-gradient g : RN × P (A|S) → RN of the MSBE with respect to θ is given by 
+
+g(θ, π ) := 
+
+Z
+
+> S×A
+
+(Q(s, a ; θ) − Tπτ Q(s, a ; θ)) ϕ(s, a ) dπβ (da, ds ).
+
+Remark 2.3 . Given that β ∈ P (S × A) has full support, by (2) it holds that MSBE( θ, π ) = 0 if and only if Q(s, a ; θ) = Qπτ (s, a ) for all s ∈ S and a ∈ A.
+
+Assumption 2.4. Let β ∈ P (S × A) be fixed. Then 
+
+λβ := λmin 
+
+Z 
+
+> S×A
+
+ϕ(s, a )ϕ(s, a )⊤ β(ds da )
+
+
+
+> 0.
+
+Note that unlike the analogous assumptions in the literature [11], Assumption 2.4 is independent of the policy and only depends on some β ∈ P (S × A) and ϕ : S × A → RN which are both design choices. 
+
+Assumption 2.5. For all ( s, a ) ∈ S × A it holds that |ϕ(s, a )|2 ≤ 1. Assumption 2.5 is for convention and is without loss of generality in the finite-dimensional case. 
+
+Assumption 2.6 (Qπτ -realisability) . For all π ∈ Πμ there exists θπ ∈ RN such that Qπ (s, a ) = 
+
+⟨θπ , ϕ (s, a )⟩ for all ( s, a ) ∈ S × A.4 DENIS ZORBA, DAVID ˇSI ˇSKA, AND LUKASZ SZPRUCH 
+
+Let us comment on using linear function approximation. While non-linear function approximation (using deep neural networks) are widely used in practice, there are no proofs of convergence even for supervised learning with deep neural networks. This analytical intractability of non-linear function approximations leads us to adopt linear function approximation. The Qπ realisability (Assumption 2.6) is common in the literature [7, 22, 30, 5, 6, 11]. One clas-sical family of MDPs which satisfy Assumption 2.6 are Linear MDPs, see e.g [18, 33, 34]. Moreover, Assumption 2.6 holds in the limit N → ∞ when ϕi are the basis functions of L2(ρ ⊗ μ) for some 
+
+ρ ⊗ μ ∈ P (S × A) [4]. With this perspective in mind, [19, 26] demonstrate empirical success of linear MDPs when the feature mapping ϕ : S × A → RN is careful truncation of the L2(ρ ⊗ μ) basis functions. 3. Single loop actor-critic 
+
+At each iteration of policy mirror descent (3), one would ideally replace the true advantage function with its parametrisation A(s, a ; θ∗, π n) such that θ∗ = min θ∈RN MSBE( θ, π n). Of course computationally this is very demanding, hence it is common in practice to perform a single step of temporal difference learning on the mean-squared Bellman error and use the updated parameters in the policy mirror descent update. That is, let ˜G(π, π ′, θ ) = 
+
+Z
+
+> S
+
+ Z 
+
+> A
+
+A(s, a ; θ, π ′)π(da |s) + 1
+
+λ KL( π|π′)( s)
+
+
+
+dπ′ 
+
+> ρ
+
+(ds ),
+
+then for some critic step size h > 0 and actor step size λ > 0, initial policy and parameters π0 = π0 ∈
+
+Πμ, θ0 = θ0 ∈ RN , consider Algorithm 1. 
+
+Algorithm 1 
+
+Require: Critic step size h > 0, actor step size λ > 0, initial parameters θ0 ∈ RN , initial policy π0 ∈ Πμ 
+
+> 1:
+
+for n = 0 , 1, 2, . . . do  
+
+> 2:
+
+θn+1 ← θn − h g (θn, π n) 
+
+> 3:
+
+πn+1 ← arg min 
+
+> π∈P (A|S)
+
+˜G(π, π n, θ n+1 ) 
+
+> 4:
+
+end for 
+
+As pointed out in Section 1.2, it is still unclear when Algorithm 1 remains stable for entropy regularised MDPs in general spaces. We address this in the following section. 3.1. Stability. To ease notation in the main results, for each s ∈ S and a ∈ A we let 
+
+ln(s, a ) = log dπ n
+
+dμ (s, a ) −
+
+Z
+
+> A
+
+log dπ n
+
+dμ (s, a ′)μ(da ′),
+
+Kn := sup 
+
+> s∈S
+
+KL( πn(·| s)|μ), Γ := (1 − γ)(1 − √γ)λβ .
+
+To establish conditions for stability of Algorithm 1, we firstly prove a coupled recursion for the critic parameters. 
+
+Lemma 3.1. Let Assumption 2.4 and 2.5 hold. Let 0 < h ≤ Γ6(1+ γ)2 and for some θ0 = θ0 ∈ RN and 
+
+π0 = π0 ∈ Πμ, let {θn, π n}n∈N be the iterates for Algorithm 1. Then for all n ∈ N it holds that 
+
+|θn+1 |22 ≤ | θ0|22 + τ 2γ2  3h + 2Γ
+
+
+
+Γ − 3h(1 + γ)2 sup 
+
+> 0≤r≤n
+
+K2 
+
+> r
+
++ |c|2
+
+> Bb(S×A)
+
+ 3h + 2Γ
+
+
+
+Γ − 3h(1 + γ)2 .
+
+See Appendix C.1 for a proof. Lemma 3.1 shows that the behaviour of the norm of the critic parameters |θn+1 |2 depends linearly on Kn, which may explode in general action spaces if the critic is not solved to sufficient accuracy. On this note, a direct corollary of Lemma 3.1 is that we automatically arrive at stability for action spaces with finite cardinality when the reference measure in (1) has full support. 
+
+Corollary 3.2. Let Assumption 2.4 and 2.5 hold and let 0 < h ≤ Γ6(1+ γ)2 . Suppose that |A| < ∞ and let μ ∈ P (A) be such that min a∈A μ(a) > 0. Then for all n ∈ N there exists R1 > 0 such that 
+
+|θn|2 ≤ R1.MIRROR DESCENT ACTOR-CRITIC FOR ENTROPY-REGULARISED MDPS 5
+
+For the more general setting of Polish action spaces, we do not directly arrive at stability from Lemma 3.1. To that end, Lemma 3.3 demonstrates a basic recursion for the normalised log densities which we can connect back to the KL divergence through Lemma B.3. 
+
+Lemma 3.3. Let Assumption 2.5 hold. Then for all n ∈ N it holds that 
+
+|ln+1 |Bb(S×A) ≤ (1 − τ λ )|ln|Bb(S×A) + 2 λ|θn+1 |2.
+
+See Appendix C.3 for a proof. Thus by connecting Lemma 3.1 and Lemma 3.3, we can derive sufficient conditions under which we achieve stability of Algorithm 1 for Polish action spaces. 
+
+Theorem 3.4. Let Assumptions 2.4 and 2.5 hold. Let 
+
+0 < h ≤ 12 min 
+
+(
+
+Γ3(1 + γ)2 , Γ2 − 16 γ2
+
+Γ 24 γ2 + 3(1 + γ)2)
+
+and 0 < τ λ < 1. Moreover, for some θ0 = θ0 ∈ RN and π0 = π0 ∈ Πμ let {θn, π n}n∈N be the iterates of Algorithm 1. Then there exists R2 ≥ 0 such that for 32 γ2 
+
+> Γ2
+
+< 1 and for all n ∈ N and s ∈ S it holds that 
+
+KL( πn(·| s)|μ) + |θn|2 ≤ R2.
+
+See Appendix C.4 for a proof. 
+
+Remark 3.5 . Observe that the results of this section, Lemma 3.1, Lemma 3.3 and Theorem 3.4 do not require Qπτ -realisability and thus holds for general MDPs given that the features ϕ : S × A → RN satisfy Assumptions 2.4 and 2.5. Theorem 3.4 suggests performing a single step of TD learning for each mirror descent update may be insufficient to establish stability of Algorithm 1 for all γ ∈ (0 , 1) in Polish action spaces. In turn, Theorem 3.4 indicates that one must have more control over the temporal difference learning in order to obtain a more accurate parametrisation of the advantage function. With this in mind, in Section 4 we analyse the setting where one performs M (n) ≥ 1 steps of temporal difference instead of a single step, where the number of inner steps depend on the policy iterate n ∈ N, see Algorithm 2. 3.2. Convergence. To establish the convergence of Algorithm 1, we firstly establish the following con-tinuity property for consecutive policies under Algorithm 1. 
+
+Theorem 3.6. Suppose that there exists R ≥ 0 such that KL( πn(·| s)|μ) ≤ R for all s ∈ S and n ∈ N.Then there exists α1, α 2 > 0 such that for all n ∈ N and s ∈ S it holds that 
+
+Qπn+1  
+
+> τ
+
+− Qπn 
+
+> τBb(S×A)
+
+≤ α1 sup 
+
+> s∈S
+
+KL( πn+1 |πn)( s) 12 + α2 sup 
+
+> s∈S
+
+KL( πn+1 |πn)( s).
+
+See Appendix C.5 for a proof. Theorem 3.7 then demonstrates that the convergence of Algorithm 1 is determined purely by the timescale separation η := λh .
+
+Theorem 3.7. For some θ0 = θ0 ∈ RN and π0 = π0 ∈ Πμ let {θn, π n}n∈N be the iterates of Algorithm 1. Suppose that the conditions of Corollary 3.2 or Theorem 3.4 hold. Then there exists a constant C ≥ 0
+
+such that for any ρ ∈ P (S) and all n ∈ N, it holds that 
+
+min 
+
+> 0≤r≤n−1
+
+
+
+V πr 
+
+> τ
+
+(ρ) − V π∗ 
+
+> τ
+
+(ρ)
+
+
+
+≤ C
+
+ 1
+
+√nh + λh
+
+
+
+.
+
+4. Double loop actor-critic 
+
+With the results of Theorem 3.4 in mind, we extend Algorithm 1 to incorporate M (n) ≥ 1 temporal difference steps for each policy πn ∈ P (A|S). Let {θn,k }M (n) 
+
+> k=0
+
+denote the temporal difference steps for each n ∈ N and consider Algorithm 2. 6 DENIS ZORBA, DAVID ˇSI ˇSKA, AND LUKASZ SZPRUCH 
+
+Algorithm 2 
+
+Require: Critic step size h > 0, actor step size λ > 0, number of critic steps M ∈ N, initial parameters θ0 ∈ RN ,initial policy π0 ∈ Πμ 
+
+> 1:
+
+for n = 0 , 1, 2, . . . do  
+
+> 2:
+
+θn, 0 ← θn 
+
+> 3:
+
+for k = 1 , . . . , M (n) do  
+
+> 4:
+
+θn,k ← θn,k −1 − h g (θn,k −1, π n) 
+
+> 5:
+
+end for  
+
+> 6:
+
+θn+1 ← θn,M  
+
+> 7:
+
+πn+1 ← arg min 
+
+> π∈Πμ
+
+˜G(π, π n, θ n+1 ) 
+
+> 8:
+
+end for 
+
+In this setting, we address the following fundamental question. 
+
+For each n ∈ N and for all γ ∈ (0 , 1) , what is the minimal number of temporal-difference steps 
+
+M (n) ≥ 1 required to ensure stability of Algorithm 2 for entropy regularised MDPs in Polish action spaces? 
+
+4.1. Stability. To rigorously address the stability of Algorithm 2, we firstly present some useful technical results on the semi-gradient. 
+
+Lemma 4.1. Let Assumption 2.4, 2.5 and 2.6 hold. Then for all θ ∈ RN and π ∈ Πμ it holds that 
+
+|g(θ, π )|22 ≤ 2(1 + γ) |θ − θπ |22
+
+See Appendix D.1 for a proof. For any fixed n ∈ N, Theorem 4.2 demonstrates linear convergence of the inner temporal difference loop for a sufficiently small critic step size under Assumptions 2.4 and 2.6. 
+
+Theorem 4.2. Let Assumption 2.4, 2.5 and 2.6 hold. Let 0 < h < min 
+
+n Γ2(1+ γ) , 1Γ
+
+o
+
+. Then for all n ∈ N
+
+it holds that 
+
+|θn+1 − θπn |22 ≤ e−M (n)hΓ|θn − θπn |22.
+
+See Appendix D.2 for a proof. Moreover, Lemma 4.3 then demonstrates that Algorithm 2 produces policies that improves the value function up to a critic approximation error. 
+
+Lemma 4.3. Let Assumption 2.4, 2.5 and 2.6 hold. Let 0 < h < min 
+
+n Γ2(1+ γ) , 1Γ
+
+o
+
+. Then for all n ∈ N
+
+it holds that 
+
+V π∗ 
+
+> τ
+
+(s) ≤ V πn+1  
+
+> τ
+
+(s) ≤ V πn 
+
+> τ
+
+(s) + 2e− M (n)hΓ2
+
+1 − γ |θn − θπn |2
+
+See Appendix D.3 for a proof. Theorem 4.4 then gives a sufficient growth condition on the number of inner temporal-difference steps required to guarantee the stability of Algorithm 2 in Polish action spaces. 
+
+Theorem 4.4. Let Assumption 2.4, 2.5, and 2.6 hold. Let 0 < h < min 
+
+n Γ2(1+ γ) , 1Γ
+
+o
+
+and 0 < τ λ < 1.Moreover, for each mirror descent step n ∈ N and for some c ≥ 0 let the number of inner temporal difference steps satisfy 
+
+M (n) ≥ 4
+
+hΓ log ( c(n + 1)) 
+
+Then there exists R ≥ 0 such that for all s ∈ S and n ∈ N it holds that 
+
+|θn|2 + KL( πn(·| s)|μ) ≤ R. 
+
+See Appendix D.4 for a proof. Theorem 4.3 shows that in order to achieve stability of Algorithm 2 for entropy regularised MDPs in general Polish action spaces, one has to increase the number of temporal difference steps logarithmically with the number of mirror descent updates. This in turn implies that to perform n policy updates one takes O(n log n) TD learning steps. The convergence rate reported in Theorems 4.5 and 4.6 has to be read in this context: it is stated in terms of the number of policy updates, not the number of TD learning steps. MIRROR DESCENT ACTOR-CRITIC FOR ENTROPY-REGULARISED MDPS 7
+
+4.2. Convergence. Theorem 4.5 shows that if the number of inner temporal difference steps satisfies the conditions of Theorem 4.4, Algorithm 2 converges sub-linearly to the optimal value function for a sufficiently small critic step size. 
+
+Theorem 4.5. Let Assumption 2.6, 2.4 and 2.5 hold and let 0 < h < Γ2(1+ γ) . Moreover for each 
+
+n ∈ N, let the number of inner critic steps satisfy M (n) ≥ 4 
+
+> hΓ
+
+log ( c(n + 1)) with c > 0 the constant from Theorem 4.4. Then there exists a ≥ 0 such that for all n ∈ N it holds that 
+
+min  
+
+> 0≤r≤n−1
+
+V πr 
+
+> τ
+
+(ρ) − V π∗ 
+
+> τ
+
+(ρ) ≤ an .
+
+See Appendix E.1 for a proof. Finally, Theorem 4.6 demonstrates that under a concentrability as-sumption, if we increase the number of temporal difference steps linearly with n ∈ N, we obtain linear convergence of Algorithm 2. 
+
+Theorem 4.6. Let Assumption 2.6, 2.4 and 2.5 hold and fix ρ ∈ P(S). Moreover suppose that   
+
+> ddπ∗
+> ρ
+> dρBb(S)
+
+≤ ξ < ∞. Let 0 < h < Γ2(1+ γ) and 0 ≤ τ λ ≤ ξ−1 
+
+> ξ
+
+and for each policy update n ∈ N let the number of inner temporal difference steps satisfy M (n) ≥ 4chΓ (n + 1) with c ≥ 0 the constant from Theorem 4.4. Then there exists b ≥ 0 such that for all n ∈ N it holds that 
+
+V πn 
+
+> τ
+
+(ρ) − V π∗ 
+
+> τ
+
+(ρ) ≤ be − min { 1 
+
+> ξ, c
+
+}n.
+
+See Appendix E.2 for a proof. 
+
+5. Conclusion and future directions 
+
+In this work, we study stability and convergence of a fundamental actor-critic algorithm for entropy regularized MDPs on general state-action spaces under Qπ -realisability with linear function approxima-tion. In the algorithm the policy is updated through mirror descent and the critic parameters via TD learning. We provide sufficient, but restrictive, conditions guaranteeing stability and linear convergence for the single-step variant. For the multi-step variant we remove the restrictive assumption and by ap-propriately controlling the number of TD updates per policy update, we establish sublinear and, under an additional concentrability assumption, linear convergence rates. To the best of our knowledge, these results address a significant theoretical gap for actor–critic methods in entropy-regularised MDPs. To focus on the algorithm’s behaviour in general spaces, we analyse the population setting in which all in-tegrals are evaluated exactly. Extending the analysis to the sample-based setting remains an important direction for future work. 
+
+Acknowledgements 
+
+DZ was supported by the EPSRC Centre for Doctoral Training in Mathematical Modelling, Analysis and Computation (MAC-MIGS) funded by the UK Engineering and Physical Sciences Research Coun-cil (grant EP/S023291/1), Heriot-Watt University and the University of Edinburgh. We acknowledge funding from the UKRI Prosperity Partnerships grant APP43592: AI2 – Assurance and Insurance for Artificial Intelligence, which supported this work. The authors would like to thank the Isaac New-ton Institute for Mathematical Sciences, Cambridge, for support and hospitality during the programme Bridging Stochastic Control And Reinforcement Learning, where work on this paper was undertaken. This work was supported by EPSRC grant EP/V521929/1. 
+
+References         
+
+> [1] A. Agarwal, S. M. Kakade, J. D. Lee, and G. Mahajan. On the theory of policy gradient methods: Optimality, approximation, and distribution shift. Journal of Machine Learning Research , 22(98):1–76, 2021. [2] Z. Ahmed, N. Le Roux, M. Norouzi, and D. Schuurmans. Understanding the impact of entropy on policy optimiza-tion. In K. Chaudhuri and R. Salakhutdinov, editors, Proceedings of the 36th International Conference on Machine Learning , volume 97 of Proceedings of Machine Learning Research , pages 151–160. PMLR, 09–15 Jun 2019. [3] P.-C. Aubin-Frankowski, A. Korba, and F. L´ eger. Mirror descent with relative smoothness in measure spaces, with application to sinkhorn and em. In Advances in Neural Information Processing Systems , volume 35, pages 17263– 17275, 2022. [4] H. Brezis. Functional Analysis, Sobolev Spaces and Partial Differential Equations . Universitext. Springer, New York, NY, 1 edition, 2011. Published: 02 November 2010, eBook ISBN: 978-0-387-70914-7, Series ISSN: 0172-5939, Series E-ISSN: 2191-6675. [5] S. Cayci, N. He, and R. Srikant. Convergence of entropy-regularized natural policy gradient with linear function approximation. SIAM Journal on Optimization , 34(3):2729–2755, 2024. [6] S. Cayci, N. He, and R. Srikant. Finite-time analysis of entropy-regularized neural natural actor-critic algorithm.
+> Transactions on Machine Learning Research , 2024. 8DENIS ZORBA, DAVID ˇSI ˇSKA, AND LUKASZ SZPRUCH
+
+[7] A. M. Devraj and S. Meyn. Zap q-learning. In I. Guyon, U. V. Luxburg, S. Bengio, H. Wallach, R. Fergus, S. Vish-wanathan, and R. Garnett, editors, Advances in Neural Information Processing Systems , volume 30. Curran Asso-ciates, Inc., 2017. [8] P. Dupuis and R. S. Ellis. A Weak Convergence Approach to the Theory of Large Deviations . Wiley Series in Probability and Statistics. John Wiley & Sons, Inc., 1997. [9] B. Eysenbach and S. Levine. Maximum entropy rl (provably) solves some robust rl problems. arXiv preprint arXiv:2103.06257 , 2021. [10] T. Haarnoja, H. Tang, P. Abbeel, and S. Levine. Reinforcement learning with deep energy-based policies. In Interna-tional conference on machine learning , pages 1352–1361. PMLR, 2017. [11] M. Hong, H.-T. Wai, Z. Wang, and Z. Yang. A two-timescale stochastic algorithm framework for bilevel optimization: Complexity analysis and application to actor-critic. SIAM Journal on Optimization , 33(1):147–180, 2023. [12] T. Jaakkola, M. Jordan, and S. Singh. Convergence of stochastic iterative dynamic programming algorithms. Advances in neural information processing systems , 6, 1993. [13] C. Ju and G. Lan. Policy optimization over general state and action spaces, 2024. [14] S. M. Kakade and J. Langford. Approximately optimal approximate reinforcement learning. In International Confer-ence on Machine Learning , 2002. [15] B. Kerimkulov, J.-M. Leahy, D. Siska, L. Szpruch, and Y. Zhang. A fisher-rao gradient flow for entropy-regularised markov decision processes in polish spaces, 2024. [16] G. Lan. Policy mirror descent for reinforcement learning: Linear convergence, new sampling complexity, and generalized problem classes. Mathematical programming , 198(1):1059–1106, 2023. [17] J.-M. Leahy, B. Kerimkulov, D. Siska, and L. Szpruch. Convergence of policy gradient for entropy regularized MDPs with neural network approximation in the mean-field regime. In Proceedings of the 39th International Conference on Machine Learning , volume 162, pages 12222–12252. PMLR, 2022. [18] G. Li, Y. Chen, Y. Chi, Y. Gu, and Y. Wei. Sample-efficient reinforcement learning is feasible for linearly realizable MDPs with limited revisiting. In A. Beygelzimer, Y. Dauphin, P. Liang, and J. W. Vaughan, editors, Advances in Neural Information Processing Systems , 2021. [19] H. Ma, Z. Ren, B. Dai, and N. Li. Skill transfer and discovery for sim-to-real learning: A representation-based viewpoint. In Proceedings of the 2024 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS) ,pages 8603–8609, Abu Dhabi, United Arab Emirates, 2024. [20] V. Makoviychuk, L. Wawrzyniak, Y. Guo, M. Lu, K. Storey, M. Macklin, D. Hoeller, N. Rudin, A. Allshire, A. Handa, and G. State. Isaac gym: High performance gpu based physics simulation for robot learning. In Proceedings of the Thirty-Fifth Conference on Neural Information Processing Systems Datasets and Benchmarks Track , 2021. [21] J. Mei, C. Xiao, C. Szepesvari, and D. Schuurmans. On the global convergence rates of softmax policy gradient methods. In International conference on machine learning , pages 6820–6829. PMLR, 2020. [22] S. Meyn. The projected bellman equation in reinforcement learning. IEEE Transactions on Automatic Control ,69(12):8323–8337, Dec. 2024. [23] V. Mnih, K. Kavukcuoglu, D. Silver, A. A. Rusu, J. Veness, M. G. Bellemare, A. Graves, M. Riedmiller, A. K. Fidjeland, G. Ostrovski, S. Petersen, C. Beattie, A. Sadik, I. Antonoglou, H. King, D. Kumaran, D. Wierstra, S. Legg, and D. Hassabis. Human-level control through deep reinforcement learning. Nature , 518(7540):529–533, Feb 2015. [24] S. Qiu, Z. Yang, J. Ye, and Z. Wang. On finite-time convergence of actor-critic algorithm. IEEE Journal on Selected Areas in Information Theory , 2(2):652–664, June 2021. [25] K. Rawlik, M. Toussaint, and S. Vijayakumar. On stochastic optimal control and reinforcement learning by approxi-mate inference. Proceedings of Robotics: Science and Systems VIII , 2012. [26] T. Ren, Z. Ren, N. Li, and B. Dai. Stochastic nonlinear control via finite-dimensional spectral dynamic embedding. In 
+
+Proceedings of the 2023 62nd IEEE Conference on Decision and Control (CDC) , pages 795–800, Singapore, Singapore, 2023. [27] J. Schulman, S. Levine, P. Abbeel, M. Jordan, and P. Moritz. Trust region policy optimization. In International conference on machine learning , pages 1889–1897. PMLR, 2015. [28] J. Schulman, F. Wolski, P. Dhariwal, A. Radford, and O. Klimov. Proximal policy optimization algorithms. arXiv preprint arXiv:1707.06347 , 2017. [29] D. Silver, T. Hubert, J. Schrittwieser, I. Antonoglou, M. Lai, A. Guez, M. Lanctot, L. Sifre, D. Kumaran, T. Graepel, T. Lillicrap, K. Simonyan, and D. Hassabis. A general reinforcement learning algorithm that masters chess, shogi, and go through self-play. Science , 362(6419):1140–1144, 2018. [30] T. Tian, L. F. Yang, and C. Szepesv´ ari. Confident natural policy gradient for local planning in qπ -realizable constrained MDPs. In A. Globerson, L. Mackey, D. Belgrave, A. Fan, U. Paquet, J. Tomczak, and C. Zhang, editors, Advances in Neural Information Processing Systems , volume 37, pages 76139–76176. Curran Associates, Inc., 2024. [31] M. Tomar, L. Shani, Y. Efroni, and M. Ghavamzadeh. Mirror descent policy optimization. In International Conference on Learning Representations , 2022. [32] J. N. Tsitsiklis. Asynchronous stochastic approximation and q-learning. Machine learning , 16(3):185–202, 1994. [33] L. Yang and M. Wang. Sample-optimal parametric Q-learning using linearly additive features. In Proceedings of the 36th International Conference on Machine Learning , Proceedings of Machine Learning Research, pages 6995–7004. PMLR, 2019. [34] A. Zanette, D. Brandfonbrener, E. Brunskill, M. Pirotta, and A. Lazaric. Frequentist regret bounds for random-ized least-squares value iteration. In Proceedings of the 23rd International Conference on Artificial Intelligence and Statistics , Proceedings of Machine Learning Research, pages 1954–1964. PMLR, 2020. [35] Y. Zhang, S. Chen, Z. Yang, M. Jordan, and Z. Wang. Wasserstein flow meets replicator dynamics: A mean-field analysis of representation learning in actor-critic. In A. Beygelzimer, Y. Dauphin, P. Liang, and J. W. Vaughan, editors, Advances in Neural Information Processing Systems , 2021. [36] B. D. Ziebart. Modeling purposeful adaptive behavior with the principle of maximum causal entropy . Carnegie Mellon University, 2010. MIRROR DESCENT ACTOR-CRITIC FOR ENTROPY-REGULARISED MDPS 9
+
+> [37] D. Zorba, D. ˇSiˇ ska, and L. Szpruch. Convergence of actor-critic for entropy regularised mdps in general action spaces, 2025.
+
+Appendix A. Notation 
+
+Let ( E, d ) denote a Polish space (i.e., a complete separable metric space). We always equip a Polish space with its Borel sigma-field B(E). Denote by Bb(E) the space of bounded measurable functions 
+
+f : E → R endowed with the supremum norm |f |Bb(E) = sup x∈E |f (x)|. Denote by M(E) the Banach space of finite signed measures μ on E endowed with the total variation norm |μ|M(E) = |μ|(E), where 
+
+|μ| is the total variation measure. Recall that if μ = f dρ , where ρ ∈ M +(E) is a nonnegative measure and f ∈ L1(E, ρ ), then |μ|M(E) = |f |L1(E,ρ ). Denote by P(E) ⊂ M (E) the set of probability measures on E. Moreover, we denote the Euclidean norm on RN by | · | with inner product ⟨· , ·⟩ . Given some 
+
+A, B ∈ RN ×N , we denote by λmin (A) the minimum eigenvalue of A and denote A ⪰ B if and only if 
+
+A − B is positive semidefinite. 
+
+Appendix B. Technical Details 
+
+The state-occupancy kernel dπ ∈ P (S|S) is defined by 
+
+dπ (ds ′|s) = (1 − γ)
+
+> ∞
+
+X
+
+> n=0
+
+γnP nπ (ds ′|s) ,
+
+where P nπ is the n-times product of the kernel Pπ with P 0 
+
+> π
+
+(ds ′|s) := δs(ds ′). Moreover, for each π ∈P(A|S) and ( s, a ) ∈ S × A, we define the state-action occupancy kernel as 
+
+dπ (ds, da |s, a ) = (1 − γ)
+
+> ∞
+
+X
+
+> n=0
+
+γn(P π )n(ds, da |s, a )where ( P π )n is the n-times product of the kernel P π with ( P π )0(ds ′, da ′|s, a ) := δ(s,a )(ds ′, da ′). Given some initial state-action distribution β ∈ P (S × A) with initial state distribution ρ(ds ) = R 
+
+> A
+
+β(da, ds ), we define the state-occupancy and state-action occupancy measures as 
+
+dπρ (ds ) = 
+
+Z
+
+> S
+
+dπ (ds |s′)ρ(ds ′), dπβ (ds, da ) = 
+
+Z
+
+> S×A
+
+dπ (ds, da |s′, a ′)β(da ′, ds ′).
+
+Note that for all E ∈ B (S × A), by defining the linear operator Jπ : P(S × A) → P (S × A) as (5) Jπ β(E) = 
+
+Z
+
+> S×A
+
+P π (E|s′, a ′)β(ds ′, da ′),
+
+it directly holds that 
+
+dπβ (da, ds ) = (1 − γ)
+
+> ∞
+
+X
+
+> n=0
+
+γnJnπ β(da, ds ),
+
+with Jnπ the n-fold product of the operator Jπ with J0 
+
+> π
+
+= I, the identity operator on P(S × A). A proof for the following dynamic programming principle for entropy regularised MDPs in general spaces can be found in [15]. 
+
+Theorem B.1 (Dynamic Programming Principle) . Let τ > 0. The optimal value function V ∗ 
+
+> τ
+
+is the unique bounded solution of the following Bellman equation: 
+
+V ∗ 
+
+> τ
+
+(s) = −τ ln 
+
+Z
+
+> A
+
+exp 
+
+
+
+− 1
+
+τ Q∗ 
+
+> τ
+
+(s, a )
+
+
+
+μ(da ),
+
+where Q∗ 
+
+> τ
+
+∈ Bb(S × A) is defined by 
+
+Q∗ 
+
+> τ
+
+(s, a ) = c(s, a ) + γ
+
+Z
+
+> S
+
+V ∗ 
+
+> τ
+
+(s′)P (ds ′|s, a ) , ∀(s, a ) ∈ S × A . 
+
+Moreover, there is an optimal policy π∗ ∈ P (A|S) given by 
+
+π∗(da |s) = exp 
+
+
+
+− 1
+
+τ (Q∗ 
+
+> τ
+
+(s, a ) − V ∗ 
+
+> τ
+
+(s)) 
+
+
+
+μ(da ) , ∀s ∈ S. 
+
+Finally, the value function V πτ is the unique bounded solution of the following Bellman equation for all 
+
+s ∈ SV πτ (s) = 
+
+Z
+
+> A
+
+
+
+Qπτ (s, a ) + τ ln dπ dμ (a, s )
+
+
+
+π(da |s) .10 DENIS ZORBA, DAVID ˇSI ˇSKA, AND LUKASZ SZPRUCH 
+
+The performance difference lemma, first introduced for tabular unregularised MDPs, has become fundamental in the analysis of MDPs as it acts a substitute for the strong convexity of the π 7 → V πτ if the state-occupancy measure dπρ is ignored (e.g [14], [35], [13]). By virtue of [15], we have the following performance difference for entropy regularised MDPs in Polish state and action spaces. 
+
+Lemma B.2 (Performance difference) . For all ρ ∈ P (S) and π, π ′ ∈ Πμ,
+
+V πτ (ρ) − V π′ 
+
+> τ
+
+(ρ)= 11 − γ
+
+Z
+
+> S
+
+ Z 
+
+> A
+
+
+
+Qπ′ 
+
+> τ
+
+(s, a ) + τ ln dπ ′
+
+dμ (a, s )
+
+
+
+(π − π′)( da |s) + τ KL( π(·| s)|π′(·| s)) 
+
+
+
+dπρ (ds ) .
+
+The following three lemmas become useful in the stability analysis of both Algorithm 1 and Algorithm 2 aswell as the convergence analysis of Algorithm 2. 
+
+Lemma B.3. For all π ∈ Πμ and s ∈ S it holds that 
+
+KL( π(·| s)|μ) ≤ 2 log dπ dμ (s, ·) −
+
+Z
+
+> A
+
+log dπ dμ (s, a )μ(da )
+
+> Bb(A)
+
+.
+
+Proof. By the definition and non-negativity of KL divergence it holds that KL( π(·| s)|μ) ≤ KL( π(·| s)|μ) + KL( μ|π(·| s)) =
+
+Z
+
+> A
+
+log dπ dμ (s, a )π(da |s) + 
+
+Z
+
+> A
+
+log dμ dπ (s, a )μ(da )=
+
+Z
+
+> A
+
+log dπ dμ (s, a )( π(da |s) − μ(da )) =
+
+Z
+
+> A
+
+
+
+log dπ dμ (s, a ) −
+
+Z
+
+> A
+
+log dπ dμ (s, a )μ(da )
+
+
+
+(π(da |s) − μ(da )) 
+
+≤ log dπ dμ (s, ·) −
+
+Z
+
+> A
+
+log dπ dμ (s, a )μ(da )
+
+> Bb(A)
+
+|π(·| s) − μ|M(A)
+
+≤ 2 log dπ dμ (s, ·) −
+
+Z
+
+> A
+
+log dπ dμ (s, a )μ(da ) Bb(A)
+
+,
+
+where we used that |π(·| s) − μ|M(A) ≤ 2 for all s ∈ S in the final inequality. □
+
+Lemma B.4. For all n ≥ 0, let {an}n≥0 be a sequence of non-negative numbers such that 
+
+an+1 ≤ κA n + c
+
+with c ≥ 0, 0 < κ < 1 and An = sup 0≤r≤n ar . Then for all n ∈ N it holds that 
+
+An ≤ a0 + c
+
+1 − κ .
+
+Proof. By definition, for any n ∈ N it holds that 
+
+An+1 = max {An, a n+1 } ≤ max {An, κA n + c}.
+
+If max {An, a n+1 } = An, then An+1 ≤ A0 + c 
+
+> 1−κ
+
+= a0 + c 
+
+> 1−κ
+
+holds trivially for all n ∈ N. On the other hand, we have 
+
+An+1 ≤ an+1 ≤ κA n + c. 
+
+Iterating this inequality also yields An+1 ≤ A0 + c 
+
+> 1−κ
+
+= a0 + c 
+
+> 1−κ
+
+. □
+
+Lemma B.5. [37] Let Assumption 2.6 hold. Then for all θ ∈ RN and π ∈ Πμ it holds that 
+
+− ⟨ g(θ, π ), θ − θπ ⟩ ≤ − (1 − √γ)(1 − γ) ⟨∇ θ L(θ, π ; β), θ − θπ ⟩
+
+with 
+
+∇θ L(θ, π ; β) = 
+
+Z
+
+> S×A
+
+(⟨θ, ϕ (s, a )⟩ − Qπτ (s, a )) ϕ(s, a )β(da, ds ).
+
+Lemma B.6 demonstrates that if there exists R > 0 such that KL( πn(·| s)|μ) ≤ R for all s ∈ S and 
+
+n ∈ N, then the true state-action value function and critic parameters are also uniformly bounded. MIRROR DESCENT ACTOR-CRITIC FOR ENTROPY-REGULARISED MDPS 11 
+
+Lemma B.6. Suppose that KL( πn(·| s)|μ) ≤ R for all n ∈ N and s ∈ S. Then it holds that 
+
+Qπn
+
+> Bb(S×A)
+
+≤ 11 − γ
+
+ |c|Bb(S×A) + τ γR  ,
+
+|θπn |2 ≤ 1(1 − γ)λβ
+
+ |c|Bb(S×A) + τ γR  ,
+
+for all n ∈ N. Moreover suppose that the critic step size satisfies 0 < h ≤ Γ6(1+ γ)2 , then there exists 
+
+˜R ≥ 0 independent of h, λ > 0 such that for all n ≥ 0 it holds that 
+
+|θn+1 |22 ≤ ˜R. 
+
+Proof. Recall that for any π ∈ Πμ, Qπτ ∈ Bb(S × A) is a fixed point of the Bellman operator defined in (2). Therefore it holds that 
+
+Qπτ (s, a ) = c(s, a ) + γ
+
+Z
+
+> S×A
+
+Qπτ (s′, a ′)P π (ds ′, da ′|s, a ) + τ γ 
+
+Z
+
+> S
+
+KL( π(·| s′)|μ)P (ds ′|s, a ).
+
+Taking the | · | Bb(S×A) on both sides and gives the result. Now let Σ β = R 
+
+> S×A
+
+ϕ(s, a )ϕ(s, a )⊤β(da, ds ). By Assumption 2.6, 2.5 and 2.4 it holds that 
+
+|θπ |2 = Σβ Σ−1 
+
+> β
+
+θπ 2
+
+≤ 1
+
+λβ
+
+|Qπτ |Bb(S×A) .
+
+Then using the first result yields the desired bound. Furthermore, suppose that 0 < h < Γ3(1+ γ)2 Theorem 3.1, it holds that 
+
+|θn+1 |22 ≤ | θ0|22 + 2τ 2γ2  3h + 2Γ
+
+
+
+Γ − 3h(1 + γ)2 R2 + |c|2
+
+> Bb(S×A)
+
+ 3h + 2Γ
+
+
+
+Γ − 3h(1 + γ)2
+
+= |θ0|22 + 2 τ 2γ2R2α(h) + |c|2
+
+> Bb(S×A)
+
+α(h)(6) where α(h) = 3h+ 2Γ 
+
+> Γ−3h(1+ γ)2
+
+and observe that α(h) is non-decreasing and non-positive for all h ∈
+
+
+
+0, Γ3(1+ γ)2
+
+
+
+.Hence we further restrict the critic step size to 0 < h ≤ ¯h := Γ6(1 + γ)2 .
+
+Thus it holds that α(h) ≤ α(¯h) for all h ∈
+
+
+
+0, Γ6(1+ γ)2
+
+i
+
+. Substituting this into (6) we obtain that for all 
+
+n ∈ N we have 
+
+|θn+1 |22 ≤ ¯R
+
+for some ¯R > 0 independent of h, λ > 0. 
+
+□
+
+We now establish the main ingredients for the convergence proofs in Section 3 and 4. One main ingredient of the proofs is the following Bregman proximal inequality. Let 
+
+Mμ =
+
+
+
+m ∈ P (A)| log dm dμ ∈ Bb(A)
+
+
+
+and notice this is a convex subset of P(A). A proof of the following classical three point lemma/ identity can then be found in [3]. 
+
+Lemma B.7 (Three point lemma/ Bregman proximal inequality) . Let G : Mμ → R be convex. For all 
+
+m′ ∈ Mμ let 
+
+m∗ = arg min 
+
+> m∈Mμ
+
+{G(m) + KL( m|m′)} .
+
+Then for all m ∈ Mμ we have 
+
+G(m) + KL( m|m′) ≥ G(m∗) + KL( m|m∗) + KL( m∗|m′)We also need the following crucial observation with a trivial proof. 
+
+Lemma B.8. Let F : S → R be such that F ≤ 0. Then for any π ∈ Πμ and s ∈ S it holds that 
+
+11 − γ
+
+Z
+
+> S
+
+F (s′)dπs (ds ′) ≤ F (s)12 DENIS ZORBA, DAVID ˇSI ˇSKA, AND LUKASZ SZPRUCH 
+
+Proof. By definition of the state occupancy measure dπ (·| s) ∈ P (S) in B for any s ∈ S and the fact that 
+
+P 0 
+
+> π
+
+(ds ′|s) = δs(ds ′), we have for all s ∈ S and π ∈ P (A|S) that 11 − γ
+
+Z
+
+> S
+
+F (s′)dπs (s′) = 
+
+Z
+
+> S
+
+F (s′)P 0 
+
+> π
+
+(ds ′|s) + 
+
+> ∞
+
+X
+
+> k=1
+
+Z
+
+> S
+
+γkF (s′)P kπ (ds ′|s)
+
+≤
+
+Z
+
+> S
+
+F (s′)δs(ds ′) = F (s).
+
+This concludes the proof. □
+
+Theorem B.9 demonstrates sub-linear convergence of Algorithm 1 and 2 up to a cumulative sum of errors arising from approximating the critic. 
+
+Theorem B.9. For some θ0 = θ0 and π0 = π0, let πk, θ k 
+
+> k≥0
+
+be the iterates of Algorithm 1 and Algorithm 2. Suppose that 0 < τ λ < 1, then for all ρ ∈ P (S) and n ∈ N it holds that 
+
+min  
+
+> 0≤r≤n−1
+
+V πr 
+
+> τ
+
+(ρ) − V π∗ 
+
+> τ
+
+(ρ)(7) 
+
+≤ 1
+
+λ(1 − γ)n
+
+Z
+
+> S
+
+KL( π∗|π0)( s)dπ∗ 
+
+> ρ
+
+(ds ) + λ  V 0(ρ) − V ∗(ρ) + λc (γ)
+
+> n−1
+
+X
+
+> k=0
+
+|θk+1 − θπk |2
+
+!
+
+.
+
+Proof. To ease notation let V k := V πk 
+
+> τ
+
+for k ∈ N and let V ∗ := V π∗ 
+
+> τ
+
+. Fix s ∈ S and πk ∈ Πμ. By the Three Point Lemma we have 
+
+λ
+
+Z
+
+> A
+
+A(s, a ; θk+1 )( π − πk)( da |s) + KL( π|πk)( s)
+
+≥ λ
+
+Z
+
+> A
+
+A(s, a ; θk+1 )( πk+1 − πk)( da |s) + KL( π|πk+1 )( s) + KL( πk+1 |πk)( s).
+
+Rearranging, dividing through by λ > 0 and using that 0 < τ λ < 1 we have 1
+
+λ
+
+ KL( π|πk+1 )( s) − KL( π|πk)( s)
+
+≤
+
+Z
+
+> A
+
+A(s, a ; θk+1 )( π − πk)( da |s) −
+
+Z
+
+> A
+
+A(s, a ; θk+1 )( πk+1 − πk)( da |s) − τ KL( πk+1 |πk)( s).(8) Now define 
+
+F (s) = 
+
+Z
+
+> A
+
+A(s, a ; θk+1 )( πk+1 − πk)( da |s) + τ KL( πk+1 |πk)( s).
+
+Recall that by the policy mirror descent updates (as clarified in the calculations in (18)), it holds that 
+
+F (s) ≤ 0 for all s ∈ S. Therefore, by the performance difference lemma and Lemma B.8 it holds that (V k+1 − V k)( s) = 11 − γ
+
+Z
+
+> S
+
+Z 
+
+> A
+
+Aπk 
+
+> τ
+
+(s′, a )( πk+1 − πk)( da |s′) + τ KL( πk+1 |πk)( s′)
+
+
+
+dπk+1  
+
+> s
+
+(ds ′)= 11 − γ
+
+Z
+
+> S
+
+F (s′)dπk+1  
+
+> s
+
+(ds ′) + 11 − γ
+
+Z
+
+> S
+
+
+
+Aπn 
+
+> τ
+
+(s′, a ) − A(s′, a ; θn+1 )
+
+
+
+(πn+1 − πn)( da |s′)dπk+1  
+
+> s
+
+(ds ′)
+
+≤ 11 − γ
+
+Z
+
+> S
+
+F (s′)dπk+1  
+
+> s
+
+(ds ′) + 21 − γ |θk+1 − θπk |2
+
+≤ F (s) + 21 − γ |θk+1 − θπk |2
+
+where we added and subtracted the approximate advantage function in the second equality and used that for all s ∈ S and a ∈ A, by H¨ older’s inequality, Assumption 2.6 and 2.5, it holds that A(s, a ; θn+1 ) −
+
+Aπn 
+
+> τ
+
+(s, a ) = Q(s, a ; θn+1 ) − Qπn 
+
+> τ
+
+(s, a ) ≤ θn+1 − θπn 2 |ϕ(s, a )|2 ≤ θn+1 − θπn 2. Substituting this into (8), for all s ∈ S and n ∈ N it holds that 1
+
+λ
+
+ KL( π|πk+1 )( s) − KL( π|πk)( s)
+
+≤
+
+Z
+
+> A
+
+A(s, a ; θk+1 )( π − πk)( da |s) −
+
+Z
+
+> A
+
+A(s, a ; θk+1 )( πk+1 − πk)( da |s) − τ KL( πk+1 |πk)( s)
+
+≤
+
+Z
+
+> A
+
+A(s, a ; θk+1 )( π − πk)( da |s) − F (s)
+
+≤
+
+Z
+
+> A
+
+A(s, a ; θk+1 )( π − πk)( da |s) −  V k+1 (s) − V k(s) + 21 − γ |θk+1 − θπk |2.MIRROR DESCENT ACTOR-CRITIC FOR ENTROPY-REGULARISED MDPS 13 
+
+Now let π = π∗. Summing both sides over k = 0 , 1, . . . , n − 1 for any n ∈ N we have that KL( π∗|πn)( s) − KL( π∗|π0)( s)
+
+≤ λ
+
+> n−1
+
+X
+
+> k=0
+
+Z
+
+> A
+
+A(s, a ; θk+1 )( π∗ − πk)( da |s) − λ(V n − V 0)( s) + 2λ
+
+1 − γ
+
+> n−1
+
+X
+
+> k=0
+
+|θk+1 − θπk |2.
+
+After multiplying through by λ > 0 and once again adding and subtracting the true advantage function, we have KL( π∗|πn)( s) − KL( π∗|π0)( s)
+
+≤ λ
+
+> n−1
+
+X
+
+> k=0
+
+Z
+
+> A
+
+Aπk 
+
+> τ
+
+(s, a )( π∗ − πk)( da |s) − λ(V n − V 0)( s)+ λ
+
+> n−1
+
+X
+
+> k=0
+
+Z
+
+> A
+
+
+
+A(s, a ; θn+1 ) − Aπk 
+
+> τ
+
+(s, a )
+
+
+
+(π∗ − πk)( da |s) + 2λ
+
+1 − γ
+
+> n−1
+
+X
+
+> k=0
+
+|θk+1 − θπk |2.
+
+Let c(γ) := max 
+
+n
+
+1, 21−γ
+
+o
+
+. Again using that A(s, a ; θn+1 ) − Aπn 
+
+> τ
+
+(s, a ) ≤ θn+1 − θπn 2 for all s ∈ S,
+
+a ∈ A and n ∈ N it holds that KL( π∗|πn)( s) − KL( π∗|π0)( s)
+
+≤ λ
+
+> n−1
+
+X
+
+> k=0
+
+Z
+
+> A
+
+Aπk 
+
+> τ
+
+(s, a )( π∗ − πk)( da |s) − λ(V n − V 0)( s) + λc (γ)
+
+> n−1
+
+X
+
+> k=0
+
+|θk+1 − θπk |2.
+
+Moreover, using that ( V n(s) − V 0(s)) ≥ (V ∗(s) − V 0(s)), which holds for all s ∈ S by the definition of 
+
+V ∗, and integrating over dπ∗ 
+
+> ρ
+
+∈ P (S) we obtain 
+
+Z
+
+> S
+
+KL( π∗|πn)( s)dπ∗ 
+
+> ρ
+
+(ds ) −
+
+Z
+
+> S
+
+KL( π∗|π0)( s)dπ∗ 
+
+> ρ
+
+(ds )
+
+≤ λ
+
+> n−1
+
+X
+
+> k=0
+
+Z
+
+> S
+
+Z
+
+> A
+
+Aπk 
+
+> τ
+
+(s, a )( π∗ − πk)( da |s)dπ∗ 
+
+> ρ
+
+(ds ) − λ(V ∗(ρ) − V 0(ρ)) + λc (γ)
+
+> n−1
+
+X
+
+> k=0
+
+|θk+1 − θπk |2.
+
+Finally, applying the performance difference lemma on the first term on the right hand side, we obtain 
+
+Z
+
+> S
+
+KL( π∗|πn)( s)dπ∗ 
+
+> ρ
+
+(ds ) −
+
+Z
+
+> S
+
+KL( π∗|π0)( s)dπ∗ 
+
+> ρ
+
+(ds )
+
+≤ λ(1 − γ)
+
+> n−1
+
+X
+
+> k=0
+
+
+
+(V ∗ − V k)( ρ) − τ
+
+Z
+
+> S
+
+KL( π∗|πk)( s)dπ∗ 
+
+> ρ
+
+(ds )
+
+
+
+− λ(V ∗(ρ) − V 0(ρ)) + λc (γ)
+
+> n−1
+
+X
+
+> k=0
+
+|θk+1 − θπk |2.
+
+Rearranging, dropping negative terms from the right hand side and using that the minimum of a sequence is less than or equal to the average, for all ρ ∈ P (S) and n ∈ N it holds that min  
+
+> 0≤r≤n−1
+
+V πr 
+
+> τ
+
+(ρ) − V π∗ 
+
+> τ
+
+(ρ)
+
+≤ 1
+
+λ(1 − γ)n
+
+Z
+
+> S
+
+KL( π∗|π0)( s)dπ∗ 
+
+> ρ
+
+(ds ) + λ  V 0(ρ) − V ∗(ρ) + λc (γ)
+
+> n−1
+
+X
+
+> k=0
+
+|θk+1 − θπk |2
+
+!
+
+.
+
+which is exactly (7) and thus concludes the proof. □
+
+Appendix C. Proofs of Section 3 
+
+C.1. Proof of Lemma 3.1. 
+
+Proof. By definition of the critic updates in Algorithm 1, for any n ∈ N it holds that 
+
+|θn+1 |22 = |θn − hg (θn, π n)|22(9) = |θn|22 + h2|g(θn, π n)|22 − 2h ⟨θn, g (θn, π n)⟩
+
+= |θn|22 + h2In 
+
+> 1
+
+− 2hI n 
+
+> 2
+
+.14 DENIS ZORBA, DAVID ˇSI ˇSKA, AND LUKASZ SZPRUCH 
+
+where we let In 
+
+> 1
+
+= |g(θn, π n)|22 and In 
+
+> 2
+
+= ⟨θn, g (θn, π n)⟩. Now let Γ := λβ (1 − γ)(1 − √γ) and K n =sup s∈S KL( πn(·| s)|μ). Lemma 5.2 of [37] shows that for any θ ∈ RN and π ∈ Πμ, it holds that 
+
+− ⟨ g(θ, π ), θ ⟩ ≤ − Γ2 |θ|22 + τ 2γ2
+
+Γ sup 
+
+> s∈S
+
+KL( π(·| s)|μ) + |c|2
+
+> Bb(S×A)
+
+Γ .
+
+Therefore, for all n ∈ N we can upper bound In 
+
+> 2
+
+as 
+
+In 
+
+> 2
+
+= −2h ⟨g(θn, π n), θ n⟩ ≤ 2h − Γ2 |θn|22 + τ 2γ2
+
+Γ K2 
+
+> n
+
++ |c|2
+
+> Bb(S×A)
+
+Γ
+
+!
+
+.
+
+Moreover, using the identity ( a + b + c)2 ≤ 3( a2 + b2 + c2), a direct calculation shows that 
+
+In 
+
+> 1
+
+= |g(θn, π n)|22 ≤ 3(1 + γ)2|θn|22 + 3 |c|2 
+
+> Bb(S×A)
+
++ 3 τ 2γ2K2
+
+> n
+
+.
+
+Substituting these upper bounds into (9) it holds that 
+
+|θn+1 |22 ≤  1 + 3 h2(1 + γ)2 − hΓ |θn|22 +
+
+
+
+3h2τ 2γ2 + 2hτ 2γ2
+
+Γ
+
+
+
+K2 
+
+> n
+
++ |c|2
+
+> Bb(S×A)
+
+
+
+3h2 + 2h
+
+Γ
+
+
+
+.(10) Now we choose h > 0 such that 0 <  1 + 3 h2(1 + γ)2 − hΓ < 1,
+
+which is achieved when 0 < h < Γ3(1+ γ)2 . Now let M n := sup 0≤r≤n Kn, iterating (10) using that 
+
+P∞ 
+
+> n=0
+
+an = 11−a for 0 < a < 1, it holds that 
+
+|θn+1 |22 ≤ | θ0|22 + τ 2γ2  3h + 2Γ
+
+
+
+Γ − 3h(1 + γ)2 M2 
+
+> n
+
++ |c|2
+
+> Bb(S×A)
+
+ 3h + 2Γ
+
+
+
+Γ − 3h(1 + γ)2 ,
+
+which concludes the proof. 
+
+□
+
+C.2. Proof of Corollary 3.2. 
+
+Proof. Since |A| < ∞ by assumption and μ ∈ P (A) has full support on A, for all s ∈ S and n ∈ N it holds that KL( πn(·| s)|μ) ≤ log |A|. Therefore, by Lemma B.6 
+
+|θn+1 |22 ≤ | θ0|22 + τ 2γ2  3h + 2Γ
+
+
+
+Γ − 3h(1 + γ)2 sup 
+
+> 0≤r≤n
+
+K2 
+
+> r
+
++ |c|2
+
+> Bb(S×A)
+
+ 3h + 2Γ
+
+
+
+Γ − 3h(1 + γ)2
+
+≤ | θ0|22 + τ 2γ2  3h + 2Γ
+
+
+
+Γ − 3h(1 + γ)2 (log |A|)2 + |c|2
+
+> Bb(S×A)
+
+ 3h + 2Γ
+
+
+
+Γ − 3h(1 + γ)2 .
+
+Finally, identically to Lemma B.6 we can make the right hand side independent of h, λ > 0 by restricting 0 < h < Γ6(1+ γ)2 . □
+
+C.3. Proof of Lemma 3.3. 
+
+Proof. To ease the notation, through the analysis we drop the dependence on the policy in the approxi-mate advantage function, i.e A(s, a ; θn+1 , π n) := A(s, a ; θn+1 ). Then by the policy updates in Algorithm 1, it holds that 
+
+πn+1 (·| s) = arg min  
+
+> m∈P(A)
+
+Z 
+
+> A
+
+A(s, a ; θn+1 )( m(da ) − πn(da |s)) + 1
+
+λ KL( m|πn(·| s)) 
+
+
+
+for each s ∈ S. Lemma 1.4.3 of [8] shows that for each s ∈ S the minimiser is achieved at log dπ n+1 
+
+dμ (s, a ) = log dπ n
+
+dμ (s, a ) − λ A(s, a ; θn+1 ) − log( Zn(s)) 
+
+such that Zn(s) = log  R  
+
+> A
+
+exp  A(s, a ′; θn+1 ) πn(da ′|s). Thus it holds that 
+
+ln+1 (s, a ) = log dπ n
+
+dμ (s, a ) − λ(A(s, a ; θn+1 ) − log Zn(s)) 
+
+−
+
+Z 
+
+> A
+
+
+
+log dπ n
+
+dμ (s, a ′) − λ(A(s, a ′; θn+1 ) − log Zn(s)) 
+
+
+
+μ(da ′)
+
+
+
+.MIRROR DESCENT ACTOR-CRITIC FOR ENTROPY-REGULARISED MDPS 15 
+
+Cancelling out the normalisation constants Zn(s) for each s ∈ S (as they are independent of a ∈ A) and using the definition of the approximate advantage function (4), we have 
+
+ln+1 (s, a ) = ln(s, a ) − λ Q(s, a ; θn+1 ) −
+
+Z
+
+> A
+
+Q(s, a ′; θn+1 )μ(da ′) + τ l n(s, a )
+
+!
+
+.
+
+After grouping like terms we arrive at 
+
+ln+1 (s, a ) = (1 − τ λ )ln(s, a ) − λ
+
+
+
+Q(s, a ; θn+1 ) −
+
+Z
+
+> A
+
+Q(s, a ′; θn+1 )μ(da ′)
+
+
+
+.
+
+Taking the | · | Bb(S×A) norm on both sides and using the triangle inequality on the right hand side yields 
+
+|ln+1 |Bb(S×A) ≤ (1 − τ λ ) |ln|Bb(S×A) + 2 λ Q(·, ·; θn+1 ) Bb(S×A) .
+
+□
+
+C.4. Proof of Theorem 3.4. 
+
+Proof. By Lemma 3.3, for all n ∈ N it holds that 
+
+|ln+1 |Bb(S×A) ≤ (1 − τ λ )|ln|Bb(S×A) + 2 λ Q(·, ·; θn+1 ) Bb(S×A)
+
+≤ (1 − τ λ )|ln|Bb(S×A) + 2 λ|θn|2
+
+where we used that Q(·, ·; θn+1 ) Bb(S×A) ≤ | ϕ(s, a )|2|θn|2 ≤ | θn|2 which holds by H¨ older’s inequality and Assumption 2.5. Moreover, by assumption we have 0 < τ λ < 1, thus iterating this recursion we have 
+
+|ln+1 |Bb(S×A) ≤ (1 − τ λ )n+1 |l0|Bb(S×A) + 2 λ
+
+> n
+
+X
+
+> k=0
+
+(1 − τ λ )n−k|θk+1 |2.
+
+≤ C1 + 2 λ
+
+> n
+
+X
+
+> k=0
+
+(1 − τ λ ) n−k |θk+1 |2,
+
+where C1 > 0 is such that |l0|Bb(S×A) ≤ C1, which holds without loss of generality since π0 ∈ Πμ. Now squaring both sides, using the identity ( a + b)2 ≤ 2a2 + 2 b2 and H¨ older’s inequality we have 
+
+|ln+1 |2 
+
+> Bb(S×A)
+
+≤ C21 + 4 λ2
+
+> n
+
+X
+
+> k=0
+
+(1 − τ λ )n−k|θk+1 |2
+
+!2
+
+≤ C21 + 4λτ
+
+> n
+
+X
+
+> k=0
+
+(1 − τ λ )n−k|θk+1 |22.(11) Now we turn to Lemma 3.1, where given that 0 < h < Γ3(1+ γ)2 for all n ∈ N it holds that 
+
+|θn+1 |22 ≤ | θ0|22 + τ 2γ2  3h + 2Γ
+
+
+
+Γ − 3h(1 + γ)2 M2 
+
+> n
+
++ |c|2
+
+> Bb(S×A)
+
+ 3h + 2Γ
+
+
+
+Γ − 3h(1 + γ)2 .
+
+with M n := sup 0≤r≤n Kn and K n := sup s∈S KL( πn(·| s)|μ). By Lemma B.3 it holds that for all KL( πn(·| s)|μ) ≤ 2|ln|Bb(S×A) for all s ∈ S and n ∈ N. Thus it also holds that M 2 
+
+> n
+
+≤ 4L 2 
+
+> n
+
+for all 
+
+n ∈ N and hence we have 
+
+|θn+1 |22 ≤ | θ0|22 + 4τ 2γ2  3h + 2Γ
+
+
+
+Γ − 3h(1 + γ)2 L2 
+
+> n
+
++ |c|2
+
+> Bb(S×A)
+
+ 3h + 2Γ
+
+
+
+Γ − 3h(1 + γ)2 .
+
+Substituting this into (11) and using that Pnm=0 (1 − τ λ )m ≤ 1 
+
+> τ λ
+
+for any n ∈ N, a direct calculation shows that 
+
+|ln+1 |2 
+
+> Bb(S×A)
+
+≤ κ(h)L 2 
+
+> n
+
++ C2(h)such that 
+
+κ(h) := 16 γ2(3 h + 2Γ )Γ − 3h(1 + γ)2 , C2(h) := C21 + 4
+
+τ 2 |θ0|22 + 4 |c|2
+
+> Bb(S×A)
+
+ 3h + 2Γ
+
+
+
+τ 2 (Γ − 3h(1 + γ)2) .
+
+A direct calculation shows that given that 0 < h < min 
+
+(
+
+Γ3(1 + γ)2 , Γ2 − 32 γ2
+
+Γ 48 γ2 + 3(1 + γ)2)
+
+,16 DENIS ZORBA, DAVID ˇSI ˇSKA, AND LUKASZ SZPRUCH 
+
+then the conditions of Lemma 3.1 and 0 < κ (h) < 1 both hold, provided that 32 γ2 
+
+> Γ2
+
+< 1. Therefore, by Lemma B.4 for all n ≥ 0 it holds that L2 
+
+> n
+
+≤ L20 + C2(h)1 − κ(h) .
+
+Furthermore, by Lemma B.3 it holds that KL( πn(·| s)|μ) ≤ Kn ≤ 2L n for all s ∈ S, therefore we have KL( πn(·| s)|μ)2 ≤ 4L 20 + 4C2(h)1 − κ(h) .
+
+Finally, we further restrict the critic step size by defining ¯h := 12 min 
+
+(
+
+Γ3(1 + γ)2 , Γ2 − 32 γ2
+
+Γ 48 γ2 + 3(1 + γ)2)
+
+,
+
+and restricting 0 < h ≤ ¯h. Since 0 < κ (h) < 1 on (0 , ¯h], we have 1 − κ(h) ≥ 1 − κ(¯h) > 0. Moreover, both κ(h) and C2(h) are non-decreasing in h on (0 , ¯h], hence 
+
+κ(h) ≤ κ(¯h), C2(h) ≤ C2(¯h), 0 < h ≤ ¯h. 
+
+Therefore, for all n ≥ 0 and all s ∈ S,KL( πn(·| s)|μ)2 ≤ 4L 20 + 4C2(h)1 − κ(h) ≤ 4L 20 + 4C2(¯h)1 − κ(¯h) := R, 
+
+where R depends only on γ, τ, π 0, |θ0|2, |c|Bb(S×A), λ β and is independent of h > 0. 
+
+□
+
+C.5. Proof of Theorem 3.6. 
+
+Proof. Recall that Qπ ∈ Bb(S × A) is a fixed point of the Bellman operator defined in (2) for all π ∈ Πμ.Hence it holds that 
+
+Qπ (s, a ) − Qπ′
+
+(s, a ) = γ
+
+Z
+
+> S×A
+
+Qπ (s′, a ′)π(da ′|s′)P (ds ′|s, a )
+
+− γ
+
+Z
+
+> S×A
+
+Qπ′
+
+(s′, a ′)π′(da ′|s′)P (ds ′|s, a )+ τ γ 
+
+Z 
+
+> S
+
+(KL( π|μ)( s′) − KL( π′|μ)( s′)) P (ds ′|s, a )
+
+
+
+.
+
+Now we plus and minus γ R 
+
+> S×A
+
+Qπ′
+
+(s′, a ′)π(da ′|s′)P (ds ′|s, a ) on the right hand side for each s ∈ S and 
+
+a ∈ A to arrive at 
+
+Qπ (s, a ) − Qπ′
+
+(s, a ) = γ
+
+Z
+
+> S×A
+
+
+
+Qπ (s′, a ′) − Qπ′
+
+(s′, a ′)
+
+
+
+π(da ′|s′)P (ds ′|s, a )+ γ
+
+Z
+
+> S×A
+
+Qπ′
+
+(s′, a ′)( π − π′)( da ′|s′)+ τ γ 
+
+Z 
+
+> S
+
+(KL( π|μ)( s′) − KL( π′|μ)( s′)) P (ds ′|s, a )
+
+
+
+.
+
+Rearranging and taking the | · | Bb(S×A) norm on both sides and using the triangle inequality we have 
+
+Qπ − Qπ′
+
+> Bb(S×A)
+
+≤ γ
+
+1 − γ Qπ′ 
+
+> Bb(S×A)
+
+sup 
+
+> s∈S
+
+|π(·| s) − π′(·| s)|M(A)(12) + τ γ 
+
+1 − γ |KL( π|μ) − KL( π′|μ)|Bb(S×A)MIRROR DESCENT ACTOR-CRITIC FOR ENTROPY-REGULARISED MDPS 17 
+
+We shift our focus to last term on the right hand side. By definition for any π ∈ Πμ it holds that 
+
+|KL( π|μ) − KL( π′|μ)|Bb(S)
+
+=
+
+Z
+
+> A
+
+log dπ dμ (·, a )π(da |· ) −
+
+Z
+
+> A
+
+log dπ ′
+
+dμ (·, a )π′(da |· )
+
+> Bb(S)
+
+=
+
+Z
+
+> A
+
+log 
+
+ dπ dπ ′ (·, a ) dπ ′
+
+dμ (·, a )
+
+
+
+π(da |· ) −
+
+Z
+
+> A
+
+log dπ ′
+
+dμ (·, a )π′(da |· )
+
+> Bb(S)
+
+=
+
+Z
+
+> A
+
+log dπ dπ ′ (·, a )π(da |· ) + 
+
+Z
+
+> A
+
+log dπ ′
+
+dμ (·, a )π(da |· ) −
+
+Z
+
+> A
+
+log dπ ′
+
+dμ (·, a )π′(da |· )
+
+> Bb(S)
+
+≤ sup 
+
+> s∈S
+
+KL( π|π′)( s) + 
+
+Z
+
+> A
+
+log dπ ′
+
+dμ (·, a ) ( π − π′) ( da |· )
+
+> Bb(S)
+
+= sup 
+
+> s∈S
+
+KL( π|π′)( s) + 
+
+Z
+
+> A
+
+
+
+log dπ ′
+
+dμ (·, a ) −
+
+Z
+
+> A
+
+log dπ ′
+
+dμ (·, a )μ(da )
+
+
+
+(π − π′) ( da |· ) Bb(S)
+
+.
+
+Now let π = πn+1 and π′ = πn. By Pinsker’s inequality, for all n ∈ N it holds that 
+
+KL( πn+1 |μ) − KL( πn|μ) Bb(S) ≤ sup 
+
+> s∈S
+
+KL( πn+1 |πn)( s) + |ln|Bb(S×A) sup 
+
+> s∈S
+
+πn+1 (·| s) − πn(·| s) M(A)
+
+≤ sup 
+
+> s∈S
+
+KL( πn+1 |πn)( s) + √2 |ln|Bb(S×A) sup 
+
+> s∈S
+
+KL( πn+1 |πn)( s) 12 .
+
+Substituting into (12) and using Pinsker’s inequality once again we arrive at 
+
+Qπn+1  
+
+> τ
+
+− Qπn 
+
+> τBb(S×A)
+
+≤ γ
+
+1 − γ Qπn 
+
+> τBb(S×A)
+
+sup 
+
+> s∈S
+
+KL( πn+1 |πn)( s) 12
+
++ τ γ 
+
+1 − γ sup 
+
+> s∈S
+
+
+
+KL( πn+1 |πn)( s) + √2 |ln|Bb(S×A) KL( πn+1 |πn)( s) 12
+
+
+
+.
+
+After grouping terms we have 
+
+Qπn+1  
+
+> τ
+
+− Qπn 
+
+> τBb(S×A)
+
+≤
+
+√2τ γ |ln|Bb(S×A)
+
+1 − γ + γ Qπn 
+
+> τBb(S×A)
+
+1 − γ
+
+!
+
+sup 
+
+> s∈S
+
+KL( πn+1 |πn)( s) 12
+
++ τ γ 
+
+1 − γ sup 
+
+> s∈S
+
+KL( πn+1 |πn)( s).
+
+Since by assumption there exists R ≥ 0 such that for any n ∈ N and s ∈ S we have |θn|2 +KL( πn(·| s)|μ) ≤
+
+R, by Lemma B.6 there exists α1 ≥ 0 such that  
+
+> √2τ γ |ln|Bb(S×A)
+> 1−γ
+
++ γ|Qπnτ |Bb(S×A) 
+
+> 1−γ
+
+≤ α1 for all n ∈ N. Hence letting α2 = τ γ  
+
+> 1−γ
+
+we conclude the proof. □
+
+C.6. Proof of Theorem 3.7. Before we address the proof of Theorem 3.7 we must first establish the following regularity property of the policies produced by Algorithm 1. 
+
+Lemma C.1. For some θ0 = θ0 ∈ RN and π0 = π0 ∈ Πμ let {θn, π n}n∈N be the iterates of Algorithm 1. Let 0 < λτ < 1. Then for all n ∈ N and s ∈ S, it holds that 
+
+KL( πn+1 (·| s)|πn(·| s)) ≤ λ
+
+1 − λτ |θn+1 |2
+
+Proof. By definition, for each s ∈ S the mirror descent updates can be applied pointwise through 
+
+πn+1 (·| s) = arg min  
+
+> m∈P(A)
+
+Z 
+
+> A
+
+A(s, a ; θn+1 )( m(da ) − πn(da |s)) + 1
+
+λ KL( m|πn(·| s)) 
+
+
+
+.
+
+Therefore for all s ∈ S it holds that 
+
+Z
+
+> A
+
+A(s, a ; θn+1 )πn+1 (da |s) + 1
+
+λ KL( πn+1 (·| s)|πn(·| s)) ≤ 0.18 DENIS ZORBA, DAVID ˇSI ˇSKA, AND LUKASZ SZPRUCH 
+
+Rearranging and using the definition of the approximate advantage function, for each s ∈ S it holds that 1
+
+λ KL( πn+1 (·| s)|πn(·| s)) ≤ − 
+
+Z
+
+> A
+
+A(s, a ; θn+1 )πn+1 (da |s)= −
+
+Z
+
+> A
+
+
+
+Q(s, a ; θn+1 ) + τ log dπ n
+
+dμ (s, a )
+
+
+
+πn+1 (da |s)
+
+≤ | θn+1 |2 − τ
+
+Z
+
+> A
+
+log 
+
+ dπ n
+
+dπ n+1 (s, a ) dπ n+1 
+
+dμ (s, a )
+
+
+
+πn+1 (da |s)= |θn+1 |2 − τ
+
+Z
+
+> A
+
+
+
+log dπ n
+
+dπ n+1 (s, a ) + log dπ n+1 
+
+dμ (s, a )
+
+
+
+πn+1 (da |s)= |θn+1 |2 + τ KL( πn+1 (·| s)|πn(·| s)) − τ KL( πn+1 (·| s)|μ)
+
+≤ | θn+1 |2 + τ KL( πn+1 (·| s)|πn(·| s)) .
+
+where we used the non-negativity of KL divergence in the final inequality. After rearranging we conclude the proof. □
+
+We are now ready to prove Theorem 3.7. 
+
+Proof. Theorem B.9 states that for all n ∈ N and ρ ∈ P (S), we have min  
+
+> 0≤r≤n−1
+
+V πr 
+
+> τ
+
+(ρ) − V π∗ 
+
+> τ
+
+(ρ)(13) 
+
+≤ 1
+
+λ(1 − γ)n
+
+Z
+
+> S
+
+KL( π∗|π0)( s)dπ∗ 
+
+> ρ
+
+(ds ) + λ  V 0(ρ) − V ∗(ρ) + λc (γ)
+
+> n−1
+
+X
+
+> k=0
+
+|θk+1 − θπk |2
+
+!
+
+.
+
+with c(γ) = max 
+
+n
+
+1, 21−γ
+
+o
+
+. Then by definition of the temporal difference updates in Algorithm 1, for all 
+
+n ∈ N it holds that 
+
+θn+1 − θπn 
+
+> 22
+
+= |θn − hg (θn, π n) − θπn |22
+
+= |θn − θπn |22 + h2|g(θn, π n)|22 − 2h ⟨θn − θπn , g (θn, π n)⟩≤ | θn − θπn |22 + 2 h2(1 + γ)|θn − θπn |22 − 2h ⟨θn − θπn , g (θn, π n)⟩≤ | θn − θπn |22 + 2 h2(1 + γ)|θn − θπn |22
+
+− 2h(1 − γ)(1 − √γ) ⟨∇ θ L(θn, π n), θ n − θπn ⟩≤ | θn − θπn |22 + 2 h2(1 + γ)|θn − θπn |22 − 2hΓ|θn − θπn |22
+
+= (1 − hΓ) |θn − θπn |22 + (2(1 + γ)h2 − hΓ) |θn − θπn |22.
+
+where we used Lemma 4.1 in the first inequality, Lemma B.5 in the second inequality and the strong convexity of θ 7 → L(θ, π ; β) in the final inequality. Now choosing 0 < h < Γ2(1+ γ) it holds that 2(1 + 
+
+γ)2h2 − hΓ ≤ 0 and thus we arrive at 
+
+θn+1 − θπn 
+
+> 22
+
+≤ (1 − hΓ) |θn − θπn |22 .
+
+Now we add and subtract θπn−1 and use Young’s inequality with some ϵ > 0 to arrive at 
+
+θn+1 − θπn 
+
+> 22
+
+≤ (1 + ϵ) (1 − hΓ) |θn − θπn−1 |22 +
+
+
+
+1 + 1
+
+ϵ
+
+
+
+(1 − hΓ) |θπn − θπn−1 |22.
+
+Choosing ϵ > 0 such that (1 + ϵ)(1 − hΓ) = 1 − hΓ2 , we obtain ϵ = hΓ2(1 −hΓ) which also implies that 
+
+ 1 + 1
+
+> ϵ
+
+ = 2 
+
+> hΓ
+
+− 1 > 0. Hence for all n ∈ N it holds that 
+
+θn+1 − θπn 
+
+> 22
+
+≤
+
+
+
+1 − hΓ2
+
+
+
+|θn − θπn−1 |22 +
+
+ 2
+
+hΓ − 1
+
+
+
+(1 − hΓ) |θπn − θπn−1 |22(14) 
+
+≤
+
+
+
+1 − hΓ2
+
+
+
+|θn − θπn−1 |22 + 2
+
+hΓ |θπn − θπn−1 |22.
+
+Now for each n ∈ N, we seek to control the errors coming from the moving target |θπn − θπn−1 |22. To this end, Lemma 3.6 shows that for some α1, α 2 > 0 independent of h, λ > 0, for all n ∈ N it holds that 
+
+Qπn 
+
+> τ
+
+− Qπn−1 
+
+> τBb(S×A)
+
+≤ α1 sup 
+
+> s∈S
+
+KL( πn | πn−1)( s) + α2 sup 
+
+> s∈S
+
+KL( πn | πn−1)( s)2.MIRROR DESCENT ACTOR-CRITIC FOR ENTROPY-REGULARISED MDPS 19 
+
+Then Lemma C.1 states that for each s ∈ S and n ∈ N it holds that KL( πn|πn−1)( s) ≤ λ
+
+1 − τ λ |θn−1|2 ≤ λ
+
+1 − τ λ R, 
+
+where used that the critic parameters are uniformly bounded by assumption. Finally observe that for each n ∈ N it holds that |θπn − θπn−1 |2 ≤ 1 
+
+> λβ
+
+Qπn 
+
+> τ
+
+− Qπn−1 
+
+> τBb(S×A)
+
+where λβ > 0 by Assumption 2.4. Therefore, there exists α3 > 0 independent of h, λ > 0 such that for all n ∈ N we have 
+
+|θπn − θπn−1 |22 ≤ α3
+
+ λ
+
+1 − τ λ + λ2
+
+(1 − τ λ )2
+
+
+
+.(15) Substituting (15) into (14) it holds that 
+
+θn+1 − θπn 
+
+> 22
+
+≤
+
+
+
+1 − hΓ2
+
+n
+
+θ1 − θπ0 
+
+> 22
+
++ 2α3
+
+hΓ
+
+ λ
+
+1 − τ λ + λ2
+
+(1 − τ λ )2
+
+ n−1X
+
+> k=0
+
+
+
+1 − hΓ2
+
+k
+
+=
+
+
+
+1 − hΓ2
+
+n
+
+θ1 − θπ0 
+
+> 22
+
++ 2α3
+
+hΓ
+
+ λ
+
+1 − τ λ + λ2
+
+(1 − τ λ )2
+
+ 1 −  1 − hΓ2
+
+nhΓ2
+
+≤
+
+
+
+1 − hΓ2
+
+n
+
+θ1 − θπ0 
+
+> 22
+
++ 4α3
+
+h2Γ2
+
+ λ
+
+1 − τ λ + λ2
+
+(1 − τ λ )2
+
+
+
+.
+
+Taking the average over 0 ≤ k ≤ n − 1, a direct calculation shows that 1
+
+n
+
+> n−1
+
+X
+
+> k=0
+
+θk+1 − θπk 
+
+> 22
+
+≤ 2
+
+nh Γ θ1 − θπ0 
+
+> 22
+
++ 4α3
+
+h2Γ2
+
+ λ
+
+1 − τ λ + λ2
+
+(1 − τ λ )2
+
+
+
+.
+
+By H¨ older’s inequality and the fact that 0 < λτ < 1, it also holds that 1
+
+n
+
+> n
+
+X
+
+> k=0
+
+|θk+1 − θπk |2 ≤ 1
+
+n
+
+> n
+
+X
+
+> k=0
+
+|θk+1 − θπk |22
+
+! 12
+
+≤
+
+ 2
+
+nh Γ θ1 − θπ0 
+
+> 22
+
++ 4α3
+
+h2Γ2
+
+ λ
+
+1 − τ λ + λ2
+
+(1 − τ λ )2
+
+  12
+
+≤ C
+
+ 1
+
+nh + λ2
+
+h2
+
+ 12
+
+≤ C
+
+ 1
+
+n 12 h 12
+
++ λh
+
+
+
+.
+
+with C2 := max 
+
+n 2Γ θ1 − θπ0 
+
+> 22
+
+, 4α3
+
+> Γ2
+
+ 1 
+
+> λ(1 −τ λ )
+
++ 1(1 −τ λ )2
+
+o 
+
+. Substituting this into (26), we conclude with min  
+
+> 0≤r≤n−1
+
+V πr 
+
+> τ
+
+(ρ) − V π∗ 
+
+> τ
+
+(ρ)(16) 
+
+≤ 1
+
+λ(1 − γ)n
+
+Z
+
+> S
+
+KL( π∗|π0)( s)dπ∗ 
+
+> ρ
+
+(ds ) + λ  V 0(ρ) − V ∗(ρ) + λc (γ)
+
+ Cn 12 h 12
+
++ λh
+
+ !
+
+.
+
+□
+
+Appendix D. Proofs of Section 4 
+
+D.1. Proof of Lemma 4.1. 
+
+Proof. Firstly observe by adding and subtracting Qπτ ∈ Bb(S × A) and using that T πτ Qπτ = Qπτ for all 
+
+π ∈ Πμ where T πτ : Bb(S × A) → Bb(S × A) is the Bellman operator defined in (2), we can express the semi-gradient as 
+
+g(θ, π ) = 
+
+Z
+
+> S×A
+
+(Q(s, a ; θ) − Tπτ Q(s, a ; θ)) ϕ(s, a )dπβ (ds, da )=
+
+Z
+
+> S×A
+
+(Q(s, a ; θ) − Qπτ (s, a ) − (T πτ Q(s, a ; θ) − Tπτ Qπτ (s, a ))) ϕ(s, a )dπβ (ds, da )20 DENIS ZORBA, DAVID ˇSI ˇSKA, AND LUKASZ SZPRUCH 
+
+for all θ ∈ RN and π ∈ Πμ. To ease notation, for each s ∈ S and a ∈ A we define ε(s, a ) = Q(s, a ; θ) −
+
+Qπτ (s, a ). Expanding the Bellman operator, a direction calculations shows that 
+
+g(θ, π ) = 
+
+Z
+
+> S×A
+
+
+
+ε(s, a ) − γ
+
+Z
+
+> S×A
+
+ε(s′, a ′)P π (ds ′, da ′|s, a )
+
+
+
+ϕ(s, a )dπβ (ds, da ).
+
+Moreover, by using Young’s and H¨ older’s inequalities along with Assumption 2.5, it holds that 
+
+|g(θ, π )|22 ≤
+
+Z
+
+> S×A
+
+
+
+ε(s, a ) − γ
+
+Z
+
+> S×A
+
+ε(s′, a ′)P π (ds ′, da ′|s, a )
+
+2
+
+dπβ (ds, da )
+
+≤ 2
+
+Z
+
+> S×A
+
+ε(s, a )2dπβ (da, ds ) + 2 γ2
+
+Z
+
+> S×A×S×A
+
+ε(s′, a ′)2P π (ds ′, da ′|s, a )dπβ (ds, da )= 2 
+
+Z
+
+> S×A
+
+ε(s, a )2dπβ (da, ds ) + 2 γ2
+
+Z
+
+> S×A
+
+ε(s′, a ′)2dπJπ β (ds ′, da ′),
+
+where Jπ : P(S × A) → P (S × A) is the one step transition operator defined in (5). By Lemma 5.1 of [37], it holds that dπJπ β (E) ≤ 1 
+
+> γ
+
+dπβ (E) for all E ∈ B (S × A). Therefore using the non-negativity of the integrand, for all θ ∈ RN and π ∈ Πμ it holds that 
+
+|g(θ, π )|22 ≤ 2
+
+Z
+
+> S×A
+
+ε(s, a )2dπβ (da, ds ) + 2 γ
+
+Z
+
+> S×A
+
+ε(s, a )2dπβ (ds, da )= 2 (1 + γ)
+
+Z
+
+> S×A
+
+ε(s, a )2dπβ (da, ds )
+
+≤ 2(1 + γ)|θ − θπ |22,
+
+where the last inequality follows from the fact that for all s ∈ S and a ∈ A we have ε2(s, a ) = (Q(s, a ; θ) − Qπτ (s, a )) 2 = ( ⟨θ − θπ , ϕ (s, a )⟩)2 ≤ | θ − θπ |22|ϕ(s, a )|22 from H¨ older’s inequality and Assump-tion 2.6 and 2.5. 
+
+□
+
+D.2. Proof of Theorem 4.2. 
+
+Proof. Fix n ∈ N and let M := M (n) to ease notation. By definition of the critic updates in Algorithm 2, for all n ∈ N it holds that 
+
+|θn+1 − θπn |22 = |θn,M − θπn |22
+
+= |θn,M −1 − hg (θn,M −1, π n) − θπn |22
+
+= |θn,M −1 − θπn |22 + h2 g(θn,M −1, π n) 22 − 2h θn,M −1 − θπn , g (θn,M −1, π n) .
+
+By Lemma 4.1, it holds that |g(θ, π )|22 ≤ 2(1 + γ) |θ − θπ |22 for all π ∈ Πμ and θ ∈ RN . Hence it holds that 
+
+|θn+1 − θπn |22 ≤ | θn,M −1 − θπn |22 + 2 h2(1 + γ)|θn,M −1 − θπn |22 − 2h θn,M −1 − θπn , g (θn,M −1, π n) .
+
+Using Lemma B.5 on the final term we arrive at 
+
+|θn,M − θπn |22 ≤ | θn,M −1 − θπn |22 + 2 h2(1 + γ)|θn,M −1 − θπn |22
+
+− 2h(1 − γ)(1 − √γ) ∇θ L(θn,M −1, π n; β), θ n,M −1 − θπn .
+
+We now proceed by using standard tools from convex analysis. That is, using the λβ -strong convexity of L(·, π ; β) and Assumption 2.6, we have 
+
+|θn,M − θπn |22 ≤ | θn,M −1 − θπn |22 + 2 h2(1 + γ)|θn,M −1 − θπn |22
+
+− 2h(1 − γ)(1 − √γ) ∇θ L(θn,M −1, π n; β), θ n,M −1 − θπn
+
+≤ | θn,M −1 − θπn |22 + 2 h2(1 + γ)|θn,M −1 − θπn |22
+
+− 2h(1 − γ)(1 − √γ)λβ |θn,M −1 − θπn |22
+
+=  1 − 2hΓ + 2(1 + γ)h2 |θn,M −1 − θπn |22.
+
+with Γ = λβ (1 − γ)(1 − √γ). Choosing the critic step size h such that 0 < h < min 
+
+ Γ2(1 + γ) , 1Γ
+
+
+
+,MIRROR DESCENT ACTOR-CRITIC FOR ENTROPY-REGULARISED MDPS 21 
+
+it holds that 2(1 + γ)h2 ≤ hΓ and hΓ ∈ (0 , 1), therefore 
+
+|θn,M − θπn |22 ≤ (1 − hΓ) |θn,M −1 − θπn |22.
+
+For each fixed n ∈ N, iterating over the M > 0 critic steps yields 
+
+|θn,M − θπn |22 ≤ (1 − hΓ) M |θn − θπn |22.
+
+We conclude by using the standard identity (1 − x)M ≤ e−xM for x ∈ (0 , 1) and M > 0 to arrive at 
+
+|θn+1 − θπn |22 ≤ e−M h Γ|θn − θπn |22.
+
+□
+
+D.3. Proof of Lemma 4.3. 
+
+Proof. By the performance difference lemma, for all s ∈ S and n ∈ N it holds that 
+
+V πn+1  
+
+> τ
+
+(s) − V πn 
+
+> τ
+
+(s) = 11 − γ
+
+Z
+
+> S
+
+Z
+
+> A
+
+
+
+Aπn 
+
+> τ
+
+(s′, a )( πn+1 − πn)( da |s′) + τ KL( πn+1 |πn)( s′)
+
+
+
+dπn+1  
+
+> s
+
+(ds ′)
+
+≤ 11 − γ
+
+Z
+
+> S
+
+Z
+
+> A
+
+
+
+Aπn 
+
+> τ
+
+(s′, a )( πn+1 − πn)( da |s′) + 1
+
+λ KL( πn+1 |πn)( s′)
+
+
+
+dπn+1  
+
+> s
+
+(ds ′)= 11 − γ
+
+Z
+
+> S
+
+Z
+
+> A
+
+
+
+A(s′, a ; θn+1 )( πn+1 − πn)( da |s′) + 1
+
+λ KL( πn+1 |πn)( s′)
+
+
+
+dπn+1  
+
+> s
+
+(ds ′)+ 11 − γ
+
+Z
+
+> S
+
+Z
+
+> A
+
+
+
+Aπn 
+
+> τ
+
+(s′, a ) − A(s′, a ; θn+1 )
+
+
+
+(πn+1 − πn)( da |s′)dπn+1  
+
+> s
+
+(ds ′)
+
+≤ 11 − γ
+
+Z
+
+> S
+
+Z
+
+> A
+
+
+
+A(s′, a ; θn+1 )( πn+1 − πn)( da |s′) + 1
+
+λ KL( πn+1 |πn)( s′)
+
+
+
+dπn+1  
+
+> s
+
+(ds ′)(17) + 2(1 − γ) |θn+1 − θπn |2.
+
+where we used that τ ≤ 1 
+
+> λ
+
+in the first inequality, added and subtracted the approximate advantage func-tion in the second equality and used the fact for all s ∈ S and a ∈ A, by H¨ older’s inequality, Assumption 2.6 and 2.5, it holds that A(s, a ; θn+1 )−Aπn 
+
+> τ
+
+(s, a ) = Q(s, a ; θn+1 )−Qπn 
+
+> τ
+
+(s, a ) ≤ θn+1 − θπn 2 |ϕ(s, a )|2 ≤
+
+θn+1 − θπn 2. Now recall the policy mirror descent update in Algorithm 2 (18) πn+1 (·| s) = arg min  
+
+> m∈P(A)
+
+Z 
+
+> A
+
+A(s, a ; θn+1 )( m(da ) − πn(da |s)) + 1
+
+λ KL( m|πn(·| s)) 
+
+
+
+.
+
+Since we obtain the minimum at πn+1 , for any s ∈ S and π(·| s) ∈ P (A) it holds that 
+
+Z
+
+> A
+
+A(s, a ; θn+1 )( πn+1 −πn)( da |s)+ 1
+
+λ KL( πn+1 |πn)( s) ≤
+
+Z
+
+> A
+
+A(s, a ; θn+1 )( π −πn)( da |s)+ 1
+
+λ KL( π|πn)( s).
+
+Choosing π = πn+1 yields 
+
+Z
+
+> A
+
+A(s, a ; θn+1 )( πn+1 − πn)( da |s) + 1
+
+λ KL( πn+1 |πn)( s) ≤ 0.
+
+Substituting this into (17) and using the definition of π∗ ∈ Πμ, it hence holds that 
+
+V π∗ 
+
+> τ
+
+(s) ≤ V πn+1  
+
+> τ
+
+(s) ≤ V πn 
+
+> τ
+
+(s) + 21 − γ |θn+1 − θπn |2
+
+for all s ∈ S. Finally, applying Lemma 4.2 we arrive at 
+
+V π∗ 
+
+> τ
+
+(s) ≤ V πn+1  
+
+> τ
+
+(s) ≤ V πn 
+
+> τ
+
+(s) + 2e− M (n)hΓ2
+
+1 − γ |θn − θπn |2,
+
+which concludes the proof. 
+
+□22 DENIS ZORBA, DAVID ˇSI ˇSKA, AND LUKASZ SZPRUCH 
+
+D.4. Proof of Theorem 4.4. 
+
+Proof. Recall that for each n ∈ N and s ∈ S, a ∈ A, the normalised log densities are defined as 
+
+ln(s, a ) = ln dπ n 
+
+> dμ
+
+(s, a ) − R 
+
+> A
+
+ln dπ n 
+
+> dμ
+
+(s, a ′)μ(da ′). Then by Lemma 3.3, for all n ∈ N it holds that 
+
+|ln+1 |Bb(S×A) ≤ (1 − τ λ )|ln|Bb(S×A) + 2 λ Q(·, ·; θn+1 ) Bb(S×A)
+
+≤ (1 − τ λ )|ln|Bb(S×A) + 2 λ
+
+
+
+Qπn 
+
+> τBb(S×A)
+
++ Q(·, ·; θn+1 ) − Qπn 
+
+> τBb(S×A)
+
+
+
+≤ (1 − τ λ )|ln|Bb(S×A) + 2 λ
+
+
+
+Qπn 
+
+> τBb(S×A)
+
++ |θn+1 − θπn |2
+
+
+
+≤ (1 − τ λ )L n + 2 λ
+
+
+
+Qπn 
+
+> τBb(S×A)
+
++ e− M (n)hΓ2 |θn − θπn |2
+
+
+
+.(19) where we added and subtracted Qπn 
+
+> τ
+
+in the second inequality and used H¨ older’s inequality along with Assumption 2.5 in the third inequality. In the final inequality we used Theorem 4.2 and used that by definition |ln|Bb(S×A) ≤ sup 0≤r≤n |lr |Bb(S×A) := L n. Now to upper bound Qπn 
+
+> τ
+
+∈ Bb(S ×A), by definition it holds that 
+
+Qπn 
+
+> τ
+
+(s, a ) = c(s, a ) + γ
+
+Z
+
+> S
+
+V πn 
+
+> τ
+
+(s′)P (ds ′|s, a ),
+
+for all s ∈ S and a ∈ A. Taking the | · | Bb(S×A) and rearranging, it holds that 
+
+Qπn  
+
+> τBb(S×A)
+
+≤ | c|Bb(S×A) + γ V πn  
+
+> τBb(S)
+
+.(20) Now by Lemma 4.3, for all n ∈ N we have (21) V π∗ 
+
+> τ
+
+(s) ≤ V πn+1  
+
+> τ
+
+(s) ≤ V πn 
+
+> τ
+
+(s) + 2e− M (n)hΓ2
+
+1 − γ |θn − θπn |2.
+
+Recursively applying the upper bound (21), for all s ∈ S and n ∈ N it holds that 
+
+V π∗ 
+
+> τ
+
+(s) ≤ V πn 
+
+> τ
+
+(s) ≤ V π0 
+
+> τ
+
+(s) + 21 − γ
+
+> n−1
+
+X
+
+> k=0
+
+e− M (k)hΓ2 |θk − θπk |2.
+
+Taking the | · | Bb(S) norm on both sides it also holds that 
+
+V πn 
+
+> τBb(S)
+
+≤ max 
+
+(
+
+V π0 
+
+> τBb(S)
+
++ 21 − γ
+
+> n−1
+
+X
+
+> k=0
+
+e− M (k)hΓ2 |θk − θπk |2, V π∗ 
+
+> τBb(S)
+
+)
+
+≤ V π0 
+
+> τBb(S)
+
++ V π∗ 
+
+> τBb(S)
+
++ 21 − γ
+
+> n−1
+
+X
+
+> k=0
+
+e− M (k)hΓ2 |θk − θπk |2.
+
+Substituting this into (20), for all n ∈ N it holds that 
+
+Qπn 
+
+> τBb(S×A)
+
+≤ | c|Bb(S×A) + γ V πn 
+
+> τBb(S)
+
+≤ | c|Bb(S×A) + γ V π0 
+
+> τBb(S)
+
++ γ V π∗ 
+
+> τBb(S)
+
++ 2γ
+
+1 − γ
+
+> n−1
+
+X
+
+> k=0
+
+e− M (k)hΓ2 |θk − θπk |2.(22) Let α1 := |c|Bb(S×A) + γ V π0 
+
+> τBb(S)
+
++ γ V π∗  
+
+> τBb(S)
+
+and c(γ) = max 
+
+n
+
+1, 2γ
+
+> 1−γ
+
+o
+
+. Substituting (22) into (19), we have 
+
+|ln+1 |Bb(S×A) ≤ (1 − τ λ )L n + 2 λ c(γ)
+
+> n
+
+X
+
+> k=0
+
+e− M (k)hΓ2 |θk − θπk |2 + α1
+
+!
+
+.(23) MIRROR DESCENT ACTOR-CRITIC FOR ENTROPY-REGULARISED MDPS 23 
+
+By the triangle inequality it holds that |θk − θπk |2 ≤ | θk|2 + |θπk |2 for each k ∈ N. Then by Lemma 3.1 for all k ∈ N it holds that 
+
+|θk|22 ≤ | θ0|22 + τ 2γ2  3h + 2Γ
+
+
+
+Γ − 3h(1 + γ)2 sup 
+
+> 0≤r≤k
+
+K2 
+
+> r
+
++ |c|2
+
+> Bb(S×A)
+
+ 3h + 2Γ
+
+
+
+Γ − 3h(1 + γ)2
+
+≤ | θ0|22 + 4τ 2γ2  3h + 2Γ
+
+
+
+Γ − 3h(1 + γ)2 L2 
+
+> k
+
++ |c|2
+
+> Bb(S×A)
+
+ 3h + 2Γ
+
+
+
+Γ − 3h(1 + γ)2
+
+≤ | θ0|22 + 4τ 2γ2  3h + 2Γ
+
+
+
+Γ − 3h(1 + γ)2 L2 
+
+> n
+
++ |c|2
+
+> Bb(S×A)
+
+ 3h + 2Γ
+
+
+
+Γ − 3h(1 + γ)2 ,
+
+where we used Lemma B.3 in the second inequality and the fact that L k ≤ Ln for all k ≤ n. Similarly by Lemma B.6 it holds that 
+
+|θπk |2 ≤ |c|Bb(S×A)
+
+(1 − γ)λβ
+
++ 2τ γ 
+
+(1 − γ)λβ
+
+Lk
+
+≤ |c|Bb(S×A)
+
+(1 − γ)λβ
+
++ 2τ γ 
+
+(1 − γ)λβ
+
+Ln,
+
+where we again used that L k ≤ Ln for k ≤ n. Therefore for all k ∈ { 0, . . . , n } it holds that 
+
+|θk − θπk |2 ≤ (δ1 + δ2 Ln),(24) with 
+
+δ1 = |θ0|22 + |c|2
+
+> Bb(S×A)
+
+ 3h + 2Γ
+
+
+
+Γ − 3h(1 + γ)2
+
+! 12
+
++ |c|Bb(S×A)
+
+(1 − γ)λβ
+
+, δ2 = 2 τ γ 
+
+ 3h + 2Γ
+
+
+
+Γ − 3h(1 + γ)2
+
+! 12
+
++ 2τ γ 
+
+(1 − γ)λβ
+
+.
+
+Hence substituting (24) into (23), we arrive at 
+
+|ln+1 |Bb(S×A) ≤ (1 − τ λ )L n + 2 λ c(γ)
+
+> n
+
+X
+
+> k=0
+
+e− M (k)hΓ2 |θk − θπk |2 + α1
+
+!
+
+(25) 
+
+≤ β1(n)L n + β2(n),
+
+where 
+
+β1(n) := (1 − τ λ ) + 2 λc (γ)δ2
+
+> n
+
+X
+
+> k=0
+
+e− M (k)hΓ2 ,β2(n) := 2 λc (γ)δ1
+
+> n
+
+X
+
+> k=0
+
+e− M (k)hΓ2 + 2 λα 1.
+
+For all n ∈ N we choose M (n) large enough such that 
+
+β1(n) ≤ 1 − τ λ 
+
+2 .
+
+A direct calculation shows that this is satisfied when 
+
+> n
+
+X
+
+> k=0
+
+e− M (k)hΓ2 ≤ τ
+
+4c(γ)δ2
+
+.
+
+Therefore for all n ∈ N let M (n) ≥ 4 
+
+> hΓ
+
+log( c(n + 1)) for some c > 0. This implies that for all n ∈ N
+
+> n
+
+X
+
+> k=0
+
+e− M (k)hΓ2 ≤ 1
+
+c2
+
+> n
+
+X
+
+> k=0
+
+1(k + 1) 2 ≤ 2
+
+c2 ≤ τ
+
+4c(γ)δ2
+
+,
+
+which yields c2 ≥ 8c(γ)δ2 
+
+> τ
+
+. Therefore with choice of M (n) for all n ∈ N, (25) becomes 
+
+|ln+1 |Bb(S×A) ≤ β1(n)L n + β2(n)
+
+≤
+
+
+
+1 − τ λ 
+
+2
+
+
+
+Ln + α3.24 DENIS ZORBA, DAVID ˇSI ˇSKA, AND LUKASZ SZPRUCH 
+
+A direct application of Lemma B.4 yields that for all n ∈ N
+
+Ln ≤ L0 + α3
+
+1 −  1 − τ λ 
+
+> 2
+
+
+
+= L 0 + 2α3
+
+τ λ .
+
+Finally, after applying Lemma B.3 and Lemma B.6, we conclude the proof. □
+
+Appendix E. Proofs of Section 4.2 
+
+E.1. Proof of Theorem 4.5. 
+
+Proof. Theorem B.9 states that for all n ∈ N and ρ ∈ P (S), we have min  
+
+> 0≤r≤n−1
+
+V πr 
+
+> τ
+
+(ρ) − V π∗ 
+
+> τ
+
+(ρ)(26) 
+
+≤ 1
+
+λ(1 − γ)n
+
+Z
+
+> S
+
+KL( π∗|π0)( s)dπ∗ 
+
+> ρ
+
+(ds ) + λ  V 0(ρ) − V ∗(ρ) + λc (γ)
+
+> n−1
+
+X
+
+> k=0
+
+|θk+1 − θπk |2
+
+!
+
+.
+
+with c(γ) = max 
+
+n
+
+1, 21−γ
+
+o
+
+. We are thus left with controlling the average of the critic errors. To that end, by Theorem 4.2, for any n ∈ N it holds that 
+
+θn+1 − θπn 2 ≤ e− M (n)hΓ2 θn − θπn 2.
+
+Now by assumption we have that for each n ∈ N, M := M (n) ≥ 4 
+
+> hΓ
+
+log  c(n + 1)  with c > 0 the constant from Theorem 4.4. Thus, by Theorem 4.4 and Lemma B.6, there exists R > 0 such that θk − θπk 2 ≤ R
+
+for all k ≥ 0. Therefore for any n ∈ N we have 
+
+θn+1 − θπn 2 ≤ e− M (n)hΓ2 θn − θπn 2 ≤ Re − M (n)hΓ2 .
+
+For any n ∈ N, this implies that 
+
+> n−1
+
+X
+
+> k=0
+
+θk+1 − θπk 2 ≤ R
+
+> n−1
+
+X
+
+> k=0
+
+1
+
+c2(k + 1) 2 = Rc2
+
+> n
+
+X
+
+> j=1
+
+1
+
+j2 .
+
+Now using the classical result P∞  
+
+> j=0 1
+> j2
+
+= π2 
+
+> 6
+
+≤ 2, we obtain 
+
+> n−1
+
+X
+
+> k=0
+
+θk+1 − θπk 2 ≤ 2R2
+
+c2 .
+
+Substituting this into (26), we conclude the proof. □
+
+E.2. Proof of Theorem 4.6. 
+
+Proof. To ease notation let V n := V πn 
+
+> τ
+
+for n ∈ N and let V ∗ := V π∗ 
+
+> τ
+
+. Define ξ = 11−γ 
+
+> ddπ∗
+> ρ
+> dρBb(S)
+
+and note that ddπρ 
+
+> dρ
+
+(s) ≥ (1 − γ) for any s ∈ S and π ∈ Πμ. Hence it holds that ddπ∗
+
+> ρ
+
+dρ (s) = ddπ∗
+
+> ρ
+
+ddπρ
+
+(s) ddπρ
+
+dρ (s) ≥ (1 − γ) ddπ∗
+
+> ρ
+
+ddπρ
+
+(s).
+
+for any π ∈ Πμ and s ∈ S. Thus we have νn := ddπ∗ 
+
+> ρ
+> ddπnρBb(S)
+
+≤ ξ for all n ∈ N. Moreover, recall that by (18) for all s ∈ S it holds that 
+
+Z
+
+> A
+
+A(s, a ; θn+1 )( πn+1 − πn)( da |s) + 1
+
+λ KL( πn+1 (·| s)|πn(·| s)) ≤ 0.MIRROR DESCENT ACTOR-CRITIC FOR ENTROPY-REGULARISED MDPS 25 
+
+Therefore, it holds that 
+
+Z
+
+> S
+
+Z 
+
+> A
+
+A(s, a ; θn+1 )( πn+1 − πn)( da |s) + 1
+
+λ KL( πn+1 |πn)( s)
+
+
+
+dπ∗ 
+
+> ρ
+
+(ds )=
+
+Z
+
+> S
+
+Z 
+
+> A
+
+A(s, a ; θn+1 )( πn+1 − πn)( da |s) + 1
+
+λ KL( πn+1 |πn)( s)
+
+ ddπ∗
+
+> ρ
+
+ddπn+1 
+
+> ρ
+
+(s)dπn+1  
+
+> ρ
+
+(ds )
+
+≥ ddπ∗
+
+> ρ
+
+ddπn+1  
+
+> ρBb(S)
+
+Z
+
+> S
+
+Z 
+
+> A
+
+A(s, a ; θn+1 )( πn+1 − πn)( da |s) + 1
+
+λ KL( πn+1 |πn)( s)
+
+
+
+dπn+1  
+
+> ρ
+
+(ds )
+
+≥ νn+1 
+
+Z
+
+> S
+
+Z 
+
+> A
+
+A(s, a ; θn+1 )( πn+1 − πn)( da |s) + τ KL( πn+1 |πn)( s)
+
+
+
+dπn+1  
+
+> ρ
+
+(ds )= νn+1 
+
+Z
+
+> S
+
+Z 
+
+> A
+
+Aπn 
+
+> τ
+
+(s, a )( πn+1 − πn)( da |s) + τ KL( πn+1 |πn)( s)
+
+
+
+dπn+1  
+
+> ρ
+
+(ds )+ νn+1 
+
+Z
+
+> S
+
+Z
+
+> A
+
+
+
+A(s, a ; θn+1 ) − Aπn 
+
+> τ
+
+(s, a )
+
+
+
+(πn+1 − πn)( da |s)dπn+1  
+
+> ρ
+
+(ds )= νn+1 (1 − γ)  V n+1 (ρ) − V n(ρ)
+
++ νn+1 
+
+Z
+
+> S
+
+Z
+
+> A
+
+
+
+A(s, a ; θn+1 ) − Aπn 
+
+> τ
+
+(s, a )
+
+
+
+(πn+1 − πn)( da |s)dπn+1  
+
+> ρ
+
+(ds ),
+
+where the first inequality is due to the integrand in the s ∈ S variable being non-positive, the second inequality is due to 0 ≤ τ λ ≤ 1 and the final equality is then an application of performance difference. Now identically to (8) from the proof of Theorem B.9, after an application of the Three Point Lemma, for all n ∈ N it holds that 1
+
+λ
+
+
+
+KL( π∗|πn+1 )
+
+
+
+dπ∗
+
+> ρ
+
+
+
+− KL( π∗|πn)
+
+
+
+dπ∗
+
+> ρ
+
+ 
+
+≤
+
+Z
+
+> S
+
+Z
+
+> A
+
+A(s, a ; θn+1 )( π∗ − πn)( da |s)dπ∗ 
+
+> ρ
+
+(ds )
+
+−
+
+Z 
+
+> S
+
+Z
+
+> A
+
+A(s, a ; θn+1 )( πn+1 − πn)( da |s)dπ∗ 
+
+> ρ
+
+(ds ) + τ KL( πn+1 |πn)
+
+
+
+dπ∗
+
+> ρ
+
+
+
+.(27) To upper bound the first term on the right hand side, observe that 
+
+Z
+
+> S×A
+
+A(s, a ; θn+1 )( π∗ − πn)( da |s)dπ∗ 
+
+> ρ
+
+(ds )=
+
+Z
+
+> S×A
+
+Aπn 
+
+> τ
+
+(s, a )( π∗ − πn)( da |s)dπ∗ 
+
+> ρ
+
+(ds ) + 
+
+Z
+
+> S×A
+
+
+
+A(s, a ; θn+1 ) − Aπn 
+
+> τ
+
+(s, a )
+
+
+
+(π∗ − πn)( da |s)dπ∗ 
+
+> ρ
+
+(ds )= (1 − γ)( V ∗(ρ) − V n(ρ)) − τ KL( π∗|πn)
+
+
+
+dπ∗
+
+> ρ
+
+
+
++
+
+Z
+
+> S×A
+
+
+
+A(s, a ; θn+1 ) − Aπn 
+
+> τ
+
+(s, a )
+
+
+
+(π∗ − πn)( da |s)dπ∗ 
+
+> ρ
+
+(ds )where we added and subtract the true advantage function and applied the performance difference lemma on the first term in the second equality. Now observe that 
+
+Z
+
+> S×A
+
+A(s, a ; θn+1 )( π∗ − πn)( da |s)dπ∗ 
+
+> ρ
+
+(ds )= (1 − γ)( V ∗(ρ) − V n(ρ)) − τ KL( π∗|πn)
+
+
+
+dπ∗
+
+> ρ
+
+
+
++
+
+Z
+
+> S×A
+
+
+
+A(s, a ; θn+1 ) − Aπn 
+
+> τ
+
+(s, a )
+
+
+
+(π∗ − πn)( da |s) ddπ∗
+
+> ρ
+
+ddπn+1 
+
+> ρ
+
+(s)dπn+1  
+
+> ρ
+
+(ds )
+
+≤ (1 − γ)( V ∗(ρ) − V n(ρ)) − τ KL( π∗|πn)
+
+
+
+dπ∗
+
+> ρ
+
+
+
++ 2 ddπ∗
+
+> ρ
+
+ddπn+1  
+
+> ρBb(S)
+
+|θn+1 − θπn |2
+
+= (1 − γ)( V ∗(ρ) − V n(ρ)) − τ KL( π∗|πn)
+
+
+
+dπ∗
+
+> ρ
+
+
+
++ 2 νn+1 |θn+1 − θπn |2,
+
+where we performed a change of measure on the second term in the first equality and used H¨ older’s inequality along with Assumption 2.5 in the final inequality. Substituting this into (27), for all n ∈ N it 26 DENIS ZORBA, DAVID ˇSI ˇSKA, AND LUKASZ SZPRUCH 
+
+holds that 1
+
+λ
+
+
+
+KL( π∗|πn+1 )
+
+
+
+dπ∗
+
+> ρ
+
+
+
+− KL( π∗|πn)
+
+
+
+dπ∗
+
+> ρ
+
+ 
+
+≤ (1 − γ)( V ∗(ρ) − V n(ρ)) + (1 − γ)νn+1 (V n+1 (ρ) − V n(ρ)) − τ KL( π∗|πn)
+
+
+
+dπ∗
+
+> ρ
+
+
+
++ 4 νn+1 |θn+1 − θπn |2.
+
+Now let yn = KL( π∗|πn)  dπ∗
+
+> ρ
+
+ and δn = V n(ρ) − V ∗(ρ). Rearranging, a direct calculations show that for any n ∈ N
+
+δn − νn+1 
+
+
+
+δn+1 − δn − 41 − γ |θn+1 − θπn |2
+
+
+
+≤ 1
+
+λ(1 − γ)
+
+ (1 − τ λ )yn − yn+1  .
+
+Now recall that by Lemma 4.3, for all n ∈ N it holds that 
+
+δn+1 − δn = V n+1 (ρ) − V n(ρ) ≤ 21 − γ |θn+1 − θπn |.
+
+Therefore it also holds that δn+1 − δn − 41−γ |θn+1 − θπn |2 ≤ 0. Hence using that νn ≤ ξ for all n ∈ N,we have 
+
+δn + ξ
+
+
+
+δn+1 − δn − 41 − γ |θn+1 − θπn |2
+
+
+
+≤ 1
+
+λ(1 − γ)
+
+ (1 − τ λ )yn − yn+1  .
+
+Thus dividing through by ξ > 0 and rearranging again, for all n ∈ N it holds that 
+
+δn+1 + 1
+
+λ(1 − γ)ξ yn+1 ≤ ξ − 1
+
+ξ
+
+
+
+δn + 1 − τ λ λ(1 − γ)( ξ − 1) yn
+
+
+
++ 41 − γ |θn+1 − θπn |2.(28) Moreover, by assumption we have that ξ > 1 and 1 
+
+> λ
+
+< τ ξ which in turn implies that 1−τ λ λ(1 −γ)( ξ−1) ≤ 1 
+
+> λ(1 −γ)ξ
+
+.Therefore after simplifying (28), for all n ∈ N it holds that 
+
+δn+1 + 1
+
+λ(1 − γ)ξ yn+1 ≤ ξ − 1
+
+ξ
+
+
+
+δn + 1
+
+λ(1 − γ)ξ yn
+
+
+
++ 41 − γ |θn+1 − θπn |2.
+
+Iterating this inequality, we have 
+
+δn+1 + 1
+
+λ(1 − γ)ξ yn+1 ≤
+
+ ξ − 1
+
+ξ
+
+n+1 
+
+δ0 + 1
+
+λ(1 − γ)ξ y0
+
+
+
++ 41 − γ
+
+> n
+
+X
+
+> k=0
+
+ ξ − 1
+
+ξ
+
+n−k
+
+|θk+1 − θπk |2
+
+≤ e− n+1 
+
+> ξ
+
+
+
+δ0 + 1
+
+λ(1 − γ)ξ y0
+
+
+
++ 41 − γ
+
+> n
+
+X
+
+> k=0
+
+ ξ − 1
+
+ξ
+
+n−k
+
+|θk+1 − θπk |2,(29) where we used the identity (1 −x)M ≤ e−xM for any x ∈ (0 , 1) in the final inequality. To ease notation, let κ = ξ−1 
+
+> ξ
+
+∈ (0 , 1). Focusing on the error term on the right hand side, by assumption we have that for each policy update n ∈ N, the number of temporal difference steps satsifies M := M (n) ≥ 4chΓ (n + 1) with 
+
+c > 0 the constant from Theorem 4.4. Therefore by Theorem 4.4 and Lemma B.6, there exists R > 0such that |θk − θπk |2 ≤ R for all k ∈ N. Hence for all n ∈ N we have 
+
+> n
+
+X
+
+> k=0
+
+κn−k|θk+1 − θπk |2 ≤ R
+
+> n
+
+X
+
+> k=0
+
+κn−ke− M (k)hΓ2 ≤ R
+
+> n
+
+X
+
+> k=0
+
+κn−ke−2c(k+1) .(30) Simplifying (30), for all n ∈ N it holds that 
+
+> n
+
+X
+
+> k=0
+
+κn−ke−2c(k+1) = e−2c(n+1) 
+
+> n
+
+X
+
+> k=0
+
+κn−ke2c(n−k) = e−2c(n+1) 
+
+> n
+
+X
+
+> m=0
+
+ κe 2cm = e−2c(n+1) 
+
+ κe 2cn+1 − 1
+
+κe 2c − 1
+
+!
+
+,MIRROR DESCENT ACTOR-CRITIC FOR ENTROPY-REGULARISED MDPS 27 
+
+where used the property of the geometric series Pnm=0 am = an+1 −1 
+
+> a−1
+
+for any positive real number a̸ = 1 and for all n ∈ N. Therefore we have 
+
+> n
+
+X
+
+> k=0
+
+κn−k|θk+1 − θπk |2 ≤ R
+
+> n
+
+X
+
+> k=0
+
+κn−ke−2c(k+1) 
+
+≤ Re −2c(n+1) 
+
+ κe 2cn+1 − 1
+
+κe 2c − 1
+
+!
+
+≤ Re −2c(n+1) 
+
+ κe 2cn+1 + 1 
+
+|κe 2c − 1|
+
+!
+
+≤ R κn+1 + e−2c(n+1) 
+
+|κe 2c − 1|≤ R
+
+|κe 2c − 1|
+
+
+
+e− n+1  
+
+> ξ
+
++ e−2c(n+1) 
+
+≤ R
+
+|κe 2c − 1| e− min { 1 
+
+> ξ,2c
+
+}(n+1) ,
+
+where in the final inequality we used the standard identity (1 − x)M ≤ e−xM for any x ∈ (0 , 1). Substi-tuting this into (29) we obtain 
+
+δn+1 + 1
+
+λ(1 − γ)ξ yn+1 ≤ e− n+1 
+
+> ξ
+
+
+
+δ0 + 1
+
+λ(1 − γ)ξ y0
+
+
+
++ 4R
+
+(1 − γ)|κe cξ − 1| e− min { 1 
+
+> ξ,2c
+
+}(n+1) 
+
+≤ e− min { 1 
+
+> ξ,2c
+
+}(n+1) 
+
+
+
+δ0 + 1
+
+λ(1 − γ)ξ y0 + 4R
+
+(1 − γ)|κe cξ − 1|
+
+
+
+,
+
+which concludes the proof. 
+
+□
+
+School of Mathematics, University of Edinburgh, UK 
+
+Email address : ezorba@ed.ac.uk 
+
+School of Mathematics, University of Edinburgh, UK 
+
+Email address : d.siska@ed.ac.uk 
+
+School of Mathematics, University of Edinburgh, UK, The Alan Turing Institute, UK, and Simtopia, UK 
+
+Email address : l.szpruch@ed.ac.uk
