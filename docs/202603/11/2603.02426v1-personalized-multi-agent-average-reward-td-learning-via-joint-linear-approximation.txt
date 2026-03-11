@@ -1,0 +1,13504 @@
+Title: Personalized Multi-Agent Average Reward TD-Learning via Joint Linear Approximation
+
+URL Source: https://arxiv.org/pdf/2603.02426v1
+
+Published Time: Wed, 04 Mar 2026 01:14:39 GMT
+
+Number of Pages: 67
+
+Markdown Content:
+# Personalized Multi-Agent Average Reward TD-Learning via Joint Linear Approximation 
+
+Leo (Muxing) Wang 1 Pengkun Yang 2 Lili Su 1
+
+## Abstract 
+
+We study personalized multi-agent average reward TD learning, in which a collection of agents inter-acts with different environments and jointly learns their respective value functions. We focus on the setting where there exists a shared linear represen-tation and the agents’ optimal weights collectively lie in an unknown linear subspace. Inspired by the recent success of personalized federated learning (PFL), we study the convergence of cooperative single-timescale TD learning in which agents iter-atively estimate the common subspace and local heads. We showed that this decomposition can filter out conflicting signals, effectively mitigat-ing the negative impacts of “misaligned” signals, and achieve linear speedup. The main technical challenges lie in the heterogeneity, the Markovian sampling, and their intricate interplay in shaping error evolutions. Specifically, not only are the error dynamics of multiple variables are closely interconnected, but there is also no direct contrac-tion for the principal angle distance between the optimal subspace and the estimated subspace. We hope our analytical techniques can be useful to inspire research on deeper exploration into lever-aging common structures. Experiments are pro-vided to show the benefits of learning via a shared structure to the more general control problem. 
+
+## 1. Introduction 
+
+In many real-world applications, ranging from simple assis-tive robotics to autonomous vehicles, autonomous agents op-erate in different local environments. For example, consider the simple robot vacuums. Their interacting environments are mostly shaped by the household conditions, which can vary significantly in floor plans, obstacle types (e.g., moving humans and furniture), and spatial configurations. Similarly, autonomous vehicles deployed across different regions of    
+
+> 1Northeastern University 2Tsinghua University. Correspon-dence to: Leo (Muxing) Wang <wang.muxin@northeastern.edu >.
+> Preprint. March 4, 2026.
+
+a metropolitan area may encounter substantial variability in road conditions and traffic patterns. Such environmen-tal heterogeneity can lead to misaligned learning signals across agents, which may significantly hinder convergence and impair generalization of joint learning. Nevertheless, applying standard single-agent reinforcement learning (RL) solutions may lead to overall intensive, yet possibly redun-dant, computation and sample collection. This is because the cumulative knowledge obtained by one agent may still be partially useful to others when some common structure (though unknown) exists. These two competing intuitions raise a natural question: 
+
+Question: Do the benefits of collaboration outweigh the drawbacks – or is it the other way around? 
+
+Existing studies of multi-agent RL (MARL) with hetero-geneous environments are mostly restricted to training a common policy or value-/Q-function (Jin et al., 2022; Wang et al., 2023; Xie & Song, 2023; Zhang et al., 2023a), and the optimality is often described with respect to some imag-inary environment constructed as a weighted average of the agents’ state-transition kernels (Jin et al., 2022). Though this approach has practical value – particularly when environ-mental heterogeneity is mild – in many applications (such as on-device recommender systems (Maeng et al., 2022) and smart healthcare (Nguyen et al., 2021)), heterogeneity is often moderate to severe, which can significantly degrade the performance of a common policy. In a parallel line of re-search on multi-agent Markov games or competitive MARL, learning personalized (or localized) policies or value-/Q-functions has recently garnered considerable attention (Filar & Vrieze, 2012; Zhang et al., 2018; Qu et al., 2022; Zhang et al., 2023b; Daskalakis et al., 2023). Specifically, in their setting, agents interact with one another within a shared environment, and the rewards received by individual agents are determined by the joint actions of all agents. It is easy to see that in such a setup, the more agents there are, the more complicated an agent’s decision problem becomes. In fact, this line of work often suffers from the so-called curse of multi-agents—the sample complexity increases linearly or even exponentially (Song et al., 2022; Jin et al., 2024; Zhang et al., 2018) with respect to the number of agents. In this paper, we take a step toward addressing the above 1
+
+> arXiv:2603.02426v1 [cs.LG] 2 Mar 2026 Personalized Multi-Agent Average Reward TD-Learning via Joint Linear Approximation
+
+question by studying cooperative temporal-difference (TD) learning, where a collection of agents collaboratively learn their heterogeneous value functions through local TD up-dates. Inspired by the recent success of personalized fed-erated learning (PFL) and multi-task learning, we focus on the specific underlying common structure that the agents’ optimal weights under a shared linear representation collec-tively lie in a low-dimensional linear subspace (Tripuraneni et al., 2021; Collins et al., 2021; Thekumparampil et al., 2021; Duchi et al., 2022; Du et al., 2021; Tian et al., 2025; Niu et al., 2024). Our contributions can be summarized as • We propose and analyze the convergence of a coop-erative average-reward TD method in which agents iteratively estimate the common subspace and agent-specific heads. We show that the overall reward esti-mate errors decay at a rate of eO(1 /T ), where eO hides polylog factors of T, with a faster stepsize. Our dy-namics of common subspace B and local heads ωk are single timescale, i.e., their respective stepsizes are on the same order with respect to T . We show that, when 
+
+T is sufficiently large, under additional conditions, the joint estimation errors of the subspace and the local heads converge to 0 at a rate eO( 1√T LK ), where L is the number of local steps and K is the number of agents. • Our analysis is highly nontrivial, which may be in-sightful for a broader audience dealing with coupled heterogeneous dynamics. Technically, the Markovian sample of TD error makes it difficult to obtain a direct contraction for the principal angle distance between the optimal subspace and the estimated subspace, but only an indirect subtraction in terms of the local weights error. To address this challenge, we show that the local weights error can be lower-bounded by the principal angle distance times a constant that depends on the diversity of the optimal local weights. • We empirically validate that the proposed personalized framework achieves superior performance compared to other frameworks, including single-agent, universal-policy, and two-timescale approaches, with respect to convergence speed, stability, and generalization. During the preparation of this paper, (Xiong et al., 2025) studied discounted TD learning with two timescales and established a linear convergence speedup. Key differences are as follows: We study average-reward TD and we study the single timescale dynamics of the local heads and shared common spaces. However, under their notation, the valid-ity of the error contraction in Eq. (54) appears to rely on the assumptions D1 = o(βt) and D2 = o(αt+1 ). Since both terms involve stepsize ratios such as βt 
+
+> αt
+
+and βt 
+
+> αt+1
+
+,these conditions implicitly require a sufficiently strong sep-aration between the two stepsize sequences. While such assumptions are standard in two-timescale analyses, they are not automatically guaranteed for commonly used poly-nomial stepsizes and may require additional verification. In contrast, our analysis establishes error contraction under a single-timescale setting and directly controls the coupled error terms through a unified Lyapunov argument, without relying on such asymptotic separation conditions. 
+
+## 2. Related Work 
+
+MARL under heterogeneous environments. There is an emerging interest in mathematically understanding the role of environmental heterogeneity in the performance of the federated versions of classic reinforcement learning algo-rithms (Jin et al., 2022; Wang et al., 2023; Xie & Song, 2023; Zhang et al., 2023a), yet most existing studies focus on training a common policy or approximating a common function. (Jin et al., 2022) studied federated Q-learning and policy gradient methods, assuming known transition kernels. (Wang et al., 2025) studied federated Q-learning with un-known transition kernels, and found that, in the presence of environmental heterogeneity, the eventual convergence rate may depend solely on the number of communication rounds – multiple updates within each round cannot accel-erate convergence. (Wang et al., 2023) proposed FedTD(0) with linear function approximation, and linear convergence speedup in a low-heterogeneity regime. (Xie & Song, 2023) used the KL-divergence to penalize the deviation of local up-date from the global policy, and proved that under the setting of heterogeneous environments, the local update is bene-ficial for global convergence using their method. Yet, no convergence rate is provided. (Zhang et al., 2024) proposed FedSARSA and proved that the algorithm can converge to a near-optimal solution. Neither (Xie & Song, 2023) nor (Zhang et al., 2024) characterized sample complexity. 
+
+Personalization in heterogeneous environments. Training personalized policies in cooperative multi-agent systems in the presence of environment heterogeneity remains largely underexplored. (Yang et al., 2024) studied the training of personalized policies in the context where each agent has a private reward function but shares a common transition kernel for the environment. The analysis focused solely on the convergence of the global policy, defined as the av-erage of the local policies. (Jin et al., 2022) proposed a heuristic deep FedRL method, where the policy network can be decomposed into a shared subnetwork and environment embedding layer. (Xiong et al., 2025) studied personalized TD learning with two timescales and established a linear convergence speedup. 2Personalized Multi-Agent Average Reward TD-Learning via Joint Linear Approximation 
+
+## 3. Problem Setup and Preliminaries 
+
+Multi-agent Reinforcement Learning. We consider a multi-agent system that consists of one parameter server and K agents. The agents are modelled as Markov Decision Processes (MDP) {M k | M k =< P k, S, A, R > for k =1, 2, ..., K }, where S is the (possibly infinite) state space, 
+
+A is a finite action space, P k’s are the transition kernels, and R is the reward function: S × A → [−Ur , U r ]. The environments P k with which the agents interact are hetero-geneous. The parameter server can orchestrate the learning at the agents through iteratively aggregating the updates at the agents. We study average-reward reinforcement learning (Tsitsiklis & Van Roy, 1999), which provides a principled framework for maximizing the mean reward. Even in the single-agent setting, unlike discounted and finite-horizon MDPs, the sam-ple complexity of average-reward settings remains largely unexplored (Jiao et al., 2026). In this paper, we consider the more challenging multi-agent setting. In particular, we study personalized multi-agent average-reward TD learning. Fix a policy π. We assume that, for each agent k ∈ [K], the limiting state distribution induced by the transition kernel 
+
+P k under policy π exists; we denote this distribution by μk.The time-average expected reward at agent k is defined as: 
+
+Jk(π) := lim  
+
+> T→∞
+
+1
+
+T E
+
+"T −1X
+
+> t=0
+
+R(skt , a kt )
+
+#
+
+= E 
+
+> (s,a )∼μk⊗π
+
+[R(s, a )] ,
+
+(1) where (skt , a kt ) is the state-action pair of agent k at itera-tion t, for t = 0 , 1, · · · . The first expectation in Eq. (1) is taken over the state-action trajectories generated under the Markov chain, while the second is taken over their limiting distribution. Here, the notation μk ⊗ π denotes sampling 
+
+s ∼ μk and a ∼ π(· | s).The value function is defined as 
+
+V k,π (s) = E
+
+" ∞X
+
+> t=0
+
+R(skt , a kt ) − Jk(π) | s0 = s
+
+#
+
+. (2) For ease of exposition, we drop the index and function argument in π. That is, for each k, Jk(π) is written as Jk,and V k,π (s) as V k(s) for short. 
+
+Single-agent TD Learning. Let V be a function space that 
+
+V k belongs to. Let ϕ : S → L2(N) be a feature map of 
+
+V. Denote the coefficients of the value V k with respect to 
+
+ϕ as zk, ∗, where zk, ∗ ∈ L2(N). For simplicity, we assume 
+
+ϕ is known and has finite dimension d, i.e., ϕ : S → Rd.Consequently, 
+
+V k(s) = ϕ(s), z k, ∗ , ∀ s ∈ S , and k ∈ [K].
+
+We consider the following linear function approximation: 
+
+bV (s; zk) = ϕ(s)⊤zk.
+
+To drive the approximation bV (s; zk) to V k, single-agent TD learning (particularly TD(0)) update is applied at an agent to learn its value function: 
+
+zkt+1 = zkt + β
+
+
+
+R(akt , s kt ) − ηkt
+
++  ϕ(skt+1 ) − ϕ(skt )⊤ zkt
+
+
+
+ϕ(skt ),ηkt+1 = ηkt + γ  R(akt , s kt ) − ηkt
+
+ ,
+
+(3) where β and γ are stepsizes, and ηkt is the reward estimator. In literature, δkt := R(akt , s kt ) − ηkt +
+
+ ϕ(skt+1 ) − ϕ(skt )⊤ zkt is often referred to as TD(0) error. It is well-known that under some standard technical as-sumptions lim t→∞ zkt → zk, ∗ (Tsitsiklis & Van Roy, 1999; Sutton & Barto, 2018). 
+
+Multi-agent TD Learning: Commonality and Hetero-geneity. In multi-agent TD learning, the K agents aim to collaboratively learn their respective value functions under the given π based on their collective state-action trajectories. Learning with shared representation is widely recognized as an effective way to separate commonalities from hetero-geneity across various heterogeneous data (Caruana, 1997; Ando et al., 2005; Bengio et al., 2013; LeCun et al., 2015; Niu et al., 2024). Inspired by the literature of personalized FL and multi-task learning, following (Tripuraneni et al., 2021; Collins et al., 2021; Thekumparampil et al., 2021; Duchi et al., 2022; Du et al., 2021; Tian et al., 2025; Niu et al., 2024), we assume that {zk, ∗ : k = 1 , · · · , K } belongs to and fully span an r-dimensional subspace of Rd. That is, there exists an orthonormal matrix B∗ ∈ Rd×r such that 
+
+zk, ∗ = B∗ωk, ∗, where ωk, ∗ ∈ Rr . (4) To see the generality of this formulation: r = 1 when 
+
+zk, ∗ = zk′,∗ for all k, k ′ (i.e., homogeneous transitional kernels P k); r = K when zk, ∗ ⊥ zk′,∗ for all k′̸ = k –which is possible when K ≤ d.
+
+## 4. Algorithm: PMAAR-TD 
+
+We propose a personalized multi-agent average-reward TD learning algorithm ( PMAAR-TD ) based on joint linear ap-proximation, in which agents iteratively estimate the under-lying truth subspace B∗ and their respective local “heads” 
+
+ωk, ∗. Specifically, {zk = Bωk}k∈[K] are decomposed into the product of the subspace estimate B ∈ Rd×r , which is common over all agents, and an agent-specific head ω ∈ Rr .3Personalized Multi-Agent Average Reward TD-Learning via Joint Linear Approximation 
+
+A formal description can be found in Algorithm 1. At a high level, in each iteration, each agent locally performs the TD( L) update, and uses the obtained TD( L) error δkt,L 
+
+– formally defined in Eq. (6) – and rewards to update esti-mates of its local head ωk, common subspace B, and local reward ηk. The updates of ωk and B can be interpreted as performing a perturbed stochastic gradient on the following joint linear approximation problem: 
+
+min  
+
+> B,ω 1,··· ,ω K
+
+12
+
+> K
+
+X
+
+> k=1
+
+Eμk [( bV k(s; ωk, B) − V k(s)) 2],
+
+where bV k(s; ωk, B) = ϕ(s)⊤Bωk.
+
+(5) A natural stochastic gradient descent of Eq. (5) updates of 
+
+B and ωk for all k are: 
+
+ωkt+1 = ωkt + β V k(skt, 0) − ϕ(skt, 0)⊤Btωkt
+
+ Bt⊤ϕ(skt, 0),
+
+Bkt+1 = Bkt + ζ V k(skt, 0) − ϕ(skt, 0)⊤Btωkt
+
+ ϕ(skt, 0)( ωkt )⊤,
+
+where β and ζ are stepsizes of ωk and B, respectively. However, V k is unknown for each k. Following the semi-gradient method TD( L), we use 
+
+R(skt, 0, a kt, 0) − Jk + R(skt, 1, a kt, 1) − Jk + ... 
+
++ R(skt,L −1, a kt,L −1) − Jk + bV k(skt,L ; ωkt , Bt)=
+
+> L−1
+
+X
+
+> ℓ=0
+
+R(skt,ℓ , a kt,ℓ ) − Jk + ϕ(skt,L )⊤Btωkt
+
+to estimate V k(skt, 0). The L-step TD error at each agent is 
+
+δkt,L =
+
+> L−1
+
+X
+
+> ℓ=0
+
+rkt,ℓ − ηkt + ( ϕ(skt,L ) − ϕ(skt, 0)) ⊤Btωkt , (6) where rkt,ℓ = R(skt,ℓ , a kt,ℓ ). Thus, 
+
+eωkt+1 = ωkt + βδ kt,L Bt⊤ϕ(skt, 0), (7) 
+
+Bkt+1 = Bt + ζBt, ⊥B⊤
+
+> t, ⊥
+
+δkt,L ϕ(skt, 0)( ωkt )⊤. (8) Nevertheless, Eq. (7) and Eq. (8) are not the final updates to obtain ωkt+1 and Bt+1 . Several key algorithmic components are incorporated to provide fine-grained control of the per-turbation and to enforce contraction of the principal-angle distance between Bt and B∗ – addressing major technical challenges. (A) Projection operation on local heads Q 
+
+> Uω
+
+: This opera-tion project ω onto a convex ball with radius Uω . Unlike existing fine-grained analyses, such as in (Khodadadian et al., 2022), the dynamics of B and ωk (one for each agent), together with ηkt , are highly coupled due to the personaliza-tion. Without relying on any absolute bound on ωk, char-acterizing the error dynamics quickly becomes intractable. Despite this technical convenience, it introduces “not so 
+
+Algorithm 1 PMAAR-TD 
+
+1: Input: Initial heads {ωk 
+
+> 0
+
+}Kk=1 ; initial subspace B0 ∈
+
+Rd×r , which is orthonormal; three stepsizes: β for local heads, ζ for subspace, and γ for reward estimator; total iteration T ; projection upper bound Uω such that 
+
+∥ωk, ∗∥ ≤ Uω for k ∈ [K].
+
+2: for k = 1 , 2, . . . , K do 
+
+3: ηk 
+
+> 0
+
+= 0 
+
+4: Draw sk 
+
+> 0,0
+
+arbitrarily from S
+
+5: end for 
+
+6: for t = 0 , 1, 2, . . . , T − 1 do 
+
+7: for k = 1 , 2, . . . , K do 
+
+8: δkt,L = PL−1 
+
+> ℓ=0
+
+(rkt,ℓ − ηkt ) + (ϕ(skt,L ) −
+
+ϕ(skt, 0)) ⊤Btωkt .
+
+9: ωkt+1 = Π Uω
+
+ ωkt + β 1 
+
+> L
+
+δkt,L B⊤ 
+
+> t
+
+ϕ(skt, 0).
+
+10: Bkt+1 = Bt + ζBt, ⊥B⊤  
+
+> t, ⊥1
+> L
+
+δkt,L ϕ(skt, 0)( ωkt )⊤.
+
+11: ηkt+1 = ηkt + γ
+
+ 1
+
+> L
+
+PL−1 
+
+> ℓ=0
+
+rkt,ℓ − ηkt
+
+
+
+.
+
+12: skt+1 ,0 = skt,L .
+
+13: end for 
+
+14: ¯Bt+1 = 1
+
+> K
+
+PKk=1 Bkt+1 .
+
+15: Bt+1 , Rt+1 = QR ( ¯Bt+1 ).
+
+16: Server broadcasts Bt+1 to all agents. 
+
+17: end for 
+
+small” perturbation that interplays with the errors of other dynamics nontrivially that can be harmful to the conver-gence and potential speedup. (B) Subspace projected innovation in Eq. (8): Instead of let 
+
+Bkt+1 towards the local innovation δkt,L ϕ(skt, 0)( ωkt )⊤, we move B in the direction of the “residual” innovation that lies outside of Bt. This projection significantly mitigates some otherwise amplified perturbations arising from mul-tiple cross terms. For example, under this projection, the perturbation in the QR decomposition is only second order; see Lemma C.1. (C) QR: Under this decomposition, Bt is orthonormal for each t, which is a key structural property that contributes to the contraction of the principal-angle distance between Bt
+
+and B∗ (Collins et al., 2021). It is worth noting that (Xiong et al., 2025) does not use the above algorithmic details to control the perturbation. This is because that the challenge of single-timescale (of B and 
+
+ωk) convergence analysis for this problem is that the estima-tion errors of the critic and the subspace misalignment are strongly coupled, whereas in double-loop or two-timescale analysis, these error terms are usually naturally decoupled. 
+
+## 5. Convergence Analysis 
+
+We present some technical assumptions adopted in our con-vergence analysis. Assumptions 1, 2, and 3 are widely 4Personalized Multi-Agent Average Reward TD-Learning via Joint Linear Approximation 
+
+adopted in the RL literature. Assumption 4 quantifies how well spread the underlying truth zk, ∗ is in covering the r-dimensional subspace of B∗.
+
+Assumption 1 (Exploration) . The matrix 
+
+AkL = E[ϕ(s(0) )( ϕ(s(L)) − ϕ(s(0) )) ⊤],
+
+where the expectation is taken with respect to s(0) ∼
+
+μk, (a(ℓ), s (ℓ+1) ) ∼ π ⊗ P k ∀ℓ ∈ [0 , L − 1] , is negative definite and its largest eigenvalue is upper bounded by −Lλ .This assumption is widely adopted in analyzing TD learning with linear function approximation (Chen & Zhao, 2024; Bhandari et al., 2018; Chen et al., 2021a; Olshevsky & Gharesifard, 2023; Qiu et al., 2021; Wu et al., 2020; Zou et al., 2019). Intuitively, AkL captures the exploration of the policy π under the transition kernel P k within L steps. For the tabular setting, Assumption 1 holds when the policy π
+
+explores all state-action pairs with L steps. 
+
+Assumption 2 (Uniform ergodicity) . Let Pk 
+
+> 0: τ
+
+(·| sk 
+
+> 0
+
+= s)
+
+denote the state distribution after τ steps given sk 
+
+> 0
+
+= s for agent k. There exist m > 0 and ρ ∈ (0 , 1) , such that at all 
+
+k ∈ [K],
+
+dT V (Pk 
+
+> 0: τ
+
+(·| sk 
+
+> 0
+
+= s), μ k(·)) ≤ mρ τ , ∀τ ≥ 0, s ∈ S , (9) where dT V is the total variation distance. In our analysis, with a little abuse of notation, we also use Pk 
+
+> 0: τ
+
+(·, ·| sk 
+
+> 0
+
+= s), which denotes the state-action pair at time τ given sk 
+
+> 0
+
+= s. Recall that μk is the limiting distribution induced by policy π and the transition kernel 
+
+P k, ∀k. Uniform ergodicity is often assumed to characterize the noise induced by Markovian sampling (Chen & Zhao, 2024; Olshevsky & Gharesifard, 2023; Zou et al., 2019; Wu et al., 2020). Furthermore, we assume bounded features. 
+
+Assumption 3. ∥ϕ(s)∥ ≤ 1 for each s ∈ S .This assumption is rather standard in RL literature (Sutton et al., 1999; Sutton & Barto, 2018; Chen & Zhao, 2024; Olshevsky & Gharesifard, 2023; Zou et al., 2019; Wu et al., 2020). The existence of a shared common subspace helps to reduce the local learning problem from a d-dimensional problem to an r-dimensional problem. In PFL, when r ≪ d,this benefits are well characgterized and are indeed sub-stantial in derived bounds (Collins et al., 2021; Niu et al., 2024). Under Assumption 3, however, the dependence on 
+
+d is masked, potentially obscuring these gains in the result-ing bounds. Adopting more fine-grained assumptions could therefore lead to significantly sharper results. Developing such refinements, however, would require a fundamental rethinking of the problem and is left for future work. Let 
+
+Z∗ ∈ Rd×K , with zk, ∗ as the k-th column . (10) By Eq. (4), we know that the rank of Z∗Z∗⊤ is r. We require that each of the r dimensions of B∗ is well-covered by {zk, ∗}Kk=1 , formally stated in Assumption 4. 
+
+Assumption 4. 1 
+
+> K
+
+λ+min (Z∗Z∗⊤ ) ≥ α for some α > 0.In our analysis, we also use λ+min = λ+min (Z∗Z∗⊤ ) to denote the smallest nonzero eigenvalue of Z∗Z∗⊤ .
+
+5.1. Main Convergence Results 
+
+In Algorithm 1, three groups of variables are updated: the common subspace estimate Bt, the local heads ωkt , and estimates of local time-averaged rewards (defined in Eq. (1)). In this subsection, we characterize their evolutions over time. For ease of exposition, we introduce a set of notation: 
+
+xkt = Btωkt − zk, ∗, m t = B∗⊤ ⊥ Bt, y kt = ηkt − Jk, (11) 
+
+eωkt = ωkt + βδ kt,L B⊤ 
+
+> t
+
+ϕ(skt, 0), (12) 
+
+exkt = ¯Bt eωkt − zk, ∗, ¯mt = B∗⊤ ⊥ ¯Bt. (13) Fix τ . For any t ≥ τ , define 
+
+Mt = Et−τ ∥mt∥2 
+
+> F
+
+, ¯Xt = 1
+
+K
+
+> K
+
+X
+
+> k=1
+
+Et−τ ∥xkt ∥2,
+
+where Et−τ is the conditional expectation, conditioning on the randomness up to time t − τ .
+
+Lemma 5.1 ((informal) Upper bound of local head errors ) .
+
+Let P∗ = B∗(B∗)⊤, and Pt = BtB⊤ 
+
+> t
+
+for each t. Choose 
+
+τ = ⌈2 log ρ(ζ)⌉, Uδ Uω ζ ≤ 12 , where Uδ = 2 Ur + 2 Uω ,
+
+β = cζ for arbitrary c > 0 that can be tuned. There exist arbitrary positive constants c3, c 4, c 5, c 6 such that 
+
+¯Xt+1 ≤ 1 − 2λcζ +
+
+
+
+c23
+
+cL + c24c + c25
+
+1
+
+L + c26 + 4 U 4
+
+> ω
+
+1
+
+c25L
+
+
+
+ζ
+
++ CX, 1(τ 2)ζ2 + CX, 2(τ 2)ζ3
+
+!
+
+¯Xt
+
++
+
+ 36 U 2
+
+> ω
+
+c23
+
+cζ L + 6 Uω Uδ cζ 
+
+
+
+Mt
+
++
+
+h 1
+
+c24
+
+c + U 4
+
+> ω
+
+c26
+
+i
+
+ζ + CX, 3(τ 2)ζ2 + CX, 4(τ 2)ζ3
+
+!
+
+¯Yt
+
++ CX, 5(τ 2) ζ2
+
+L + CX, 6(τ 2) ζ2
+
+K + O(ζ3) + O(γ2ζ2),
+
+where CX, 1(τ 2), CX, 2(τ 2), CX, 3(τ 2), CX, 4(τ 2), CX, 5(τ 2),
+
+and CX, 6(τ 2) are on the order of τ 2, formally defined in Appendix D.1. 
+
+Intuitively, when Mt ≲ ¯Xt. The above upper bound is similar to the traditional single-agent setting (Chen & Zhao, 2024). 5Personalized Multi-Agent Average Reward TD-Learning via Joint Linear Approximation 
+
+Deriving Lemma 5.1 is highly nontrivial and requires a fun-damental detour from the existing analysis (Chen & Zhao, 2024). Furthermore, existing analysis in PFL (Collins et al., 2021) is not applicable to our problem due to the Marko-vian sampling, the TD updates, and the lack of responses. Roughly speaking, the main drift of the decay in ∥xkt ∥ may arise from ⟨xkt , BtB⊤ 
+
+> t
+
+ϕ(skt, 0)δkt,L ⟩. However, the environ-mental heterogeneity significantly complicates the charac-terization of this term. Specifically, 
+
+⟨xkt , BtB⊤ 
+
+> t
+
+ϕ(skt, 0)δkt ⟩ = ⟨xkt , PtAkLxkt ⟩ + “perturbation” .
+
+Zooming into this expression, the main negative drift arises from the term ⟨xkt , PtAkLxkt ⟩. Intuitively, in tradi-tional single-agent or homogeneous environment settings, 
+
+⟨xkt , PtAkLxkt ⟩ ≈ ⟨ xkt , A Lxkt ⟩, which is mainly controlled by the spectrum of AL, with the desired property directly assumed in Assumption 1. However, in the presence of en-vironmental heterogeneity, Assumption 1 does not directly guarantee a negative drift of the xkt due to the existence of 
+
+Pt and its intricate interplay with the heterogeneous AkL.Specifically, (1) Pt is not of full rank, (2) the local head er-ror will be distorted in a different manner due to the product 
+
+PtAkL, and (3) Pt varies over time. We further show that it is impossible for Mt ≫ ¯Xt. In fact, a slightly stronger result holds. 
+
+Lemma 5.2 (Lower bound of local head errors) . Suppose that d ≥ 2r. It holds that 
+
+1
+
+K
+
+> K
+
+X
+
+> k=1
+
+∥xkt ∥2 ≥ ∥mt∥2
+
+K λ+min (Z∗Z∗⊤ ).
+
+Intuitively, Lemma 5.2 says that when the principal angle distance between Bt and B∗ is large, the well coverage of all the r directions by the underlying truth {z1,∗, · · · , z K, ∗}
+
+ensures that the aggregate errors in the local head estimates remain bounded away from zero. In other words, the lo-cal heads cannot be learned significantly faster than the subspace itself. 
+
+Lemma 5.3 (Principal angle distance analysis) . Choosing 
+
+β = cζ for some c > 0, and ζ so that U 2 
+
+> δ
+
+U 2 
+
+> ω
+
+ζ2 ≤ 16 , when 
+
+d ≥ 2r, there exist arbitrary positive c1, c 2, c 3, c 4 such that 
+
+Mt+1 ≤ (1 − λαζ r + c21ζ + c22ζ)Mt
+
++
+
+ 32 U 2 
+
+> ω
+
+ζ2
+
+L2 + 16 U 2
+
+> ω
+
+c22
+
+ζL2 + 4 c23
+
+ζL2
+
+
+
+¯Xt
+
++
+
+
+
+8U 2 
+
+> ω
+
+ζ2 + 4U 2
+
+> ω
+
+c21
+
+ζ + 4 c24ζ
+
+
+
+¯Yt + CM, 1
+
+ζ2
+
+K + CM, 2ζ6
+
++ CM, 3ζ4 + CM, 4ζ3 + 4 C15 τ C 5c ζ2
+
+√L
+
++ 4 C14 τ C 10 
+
+ζ2
+
+√K + 4 C19 (τ )γζ 2,
+
+where the missing specification of the (nearly) constant terms can be found in the analysis. They either are problem-specific constants or depends only on problem-specific con-sants and τ .
+
+Lemma 5.4 (Reward analysis) . Fixed a τ . For t > τ ,
+
+E(ykt )2 ≤ (yk 
+
+> 0
+
+)2e−2γt + γ
+
+2 − γ 4U 2 
+
+> r
+
++ 8 U 2 
+
+> r
+
+mρ τ (1 − γ)τ
+
++ 8 U 2 
+
+> r
+
+τ γ (1 − γ)τ + 8 U 2
+
+> r
+
+τ (τ − 1) 2 γ2
+
++ 4 |yk 
+
+> 0
+
+|Ur eγτ e−γ2t + 4 Ur (1 − γ)T |yk 
+
+> 0
+
+|mρ τ .
+
+Choosing τ ≤ min { 2T  
+
+> log( T)
+
+, ⌈log ρ(γ)⌉, ⌈2 log ρ(ζ)⌉} and 
+
+γ = log( T )2T , the average reward can be bounded as 
+
+E(ykT )2 ≤ 28 U 2
+
+> r
+
+T + 8U 2 
+
+> r
+
+τ log( T )
+
+T + 8Ur m log( T )
+
+T .
+
+Lemma 5.4 says that reward estimation error decays at the rate of eO( 1 
+
+> T
+
+), where eO hides the polylog factor of T . It is worth noting that in Algorithm 1 the reward learning at different clients are independent of each other, and the dynamics of B and local heads ωk do not affect yk. Though there is no averaging over agents, the reward learning itself can be made faster than the learning of subspace and local heads. With minor changes, the same analysis of Lemma 5.4 can be extended to the conditional expectation, such as 
+
+Et−τ (ykt )2 for sufficiently large t.
+
+Theorem 1 (Convergence (informal)) . Consider Algorithm 1 with β = cζ, ζ = 4r√T λα , γ = log( T )2T , where c > 0 and sat-isfies α 
+
+> 4r
+
+≤ c ≤ α 
+
+> 2r
+
+, K > 0 satisfies max 
+
+n 30  
+
+> λK
+
+, 120 U 4
+
+> ω
+> λK
+
+o
+
+≤ 
+
+> α
+> 2r
+
+, L = K. Let VT = ¯XT + κM T be the Lyapunov function, where κ ≥ 2(1080 U 2    
+
+> ω+6 UωUδλL 2)
+> λ2L2
+
+= Θ(1) . Let 
+
+τ = ⌈2 log ρ(ζ)⌉. We have for T ≥ 2τ , and for sufficiently large K
+
+VT = eO( 1
+
+p(T K )K ) + O( log( T )
+
+T ),
+
+where eO hides the polylog factors. 
+
+When T is sufficiently large, the first term dominates, which is a linear speedup. The threshold of sufficiency of “large” 
+
+L or K (recalling that we choose K = L) can be found in Eq. (95), which is independent of T .
+
+## 6. Experiments 
+
+6.1. Numerical Experiments on Prediction Problems 
+
+In this section, we evaluate the performance of PMAAR-TD 
+
+for approximating value functions under a fixed policy. We compare our proposed approach, PMAAR-TD , against the 6Personalized Multi-Agent Average Reward TD-Learning via Joint Linear Approximation 
+
+baselines introduced in Sections 3: Single TD and FedTD-Uniform . Single TD is the standard single-agent TD learn-ing; FedTD-Uniform periodically averages the parameters of all agents and outputs a universal value function for all agents across different environments. The following is the specifications of how to evaluate the performance of value function approximation: 1. A pre-trained single-agent TD model, trained with stan-dard environment parameters, is employed as the fixed policy under which the value function is evaluated. 2. A fixed initial state is selected and consistently applied across all methods throughout the entire duration of the experiment. 3. Value function convergence is monitored by periodi-cally evaluating the preselected initial state via a for-ward pass, utilizing the resulting value estimate as a proxy for training progress. We adopt this scheme because the state space is continuous, and the design ensures that the preselected state appears in every train-ing episode. The value of the preselected state is recorded during training serves as a metric to quantify the convergence rate toward the optimal value function for each approach. For the exper-iments, we utilize three distinct seeds and a synchronization rate of E = 50 as shared hyperparameters. The specific configuration of the Acrobot environment for each agent is detailed below: Parameters Agent 0 Agent 1 Agent 2 Agent 3 Agent 4 Agent 5 link length 1 2.2 1.5 2 3 2.1 1.5 link length 2 1 1 0.8 1 1 1We analyze the results presented in Figure 1 from two pri-mary perspectives: 1. Convergence Speed: Regarding the convergence speed of the value function (as indicated by the curves), 
+
+PMAAR-TD exhibits a significant acceleration com-pared to Single TD across the majority of agents. 2. Approximation Accuracy: In terms of the reward (y-axis), it is evident that FedTD-Uniform converges to a suboptimal value in most agent configurations. This discrepancy suggests a lack of adaptability to heterogeneous environments, whereas PMAAR-TD 
+
+maintains consistency with the optimal baseline (single agent). Evaluation of value functions is relatively simple when the policy is fixed and the corresponding true values are deter-mined. Consequently, we consider control problems, where policies are learned and updated throughout training, lead-ing to increased uncertainty in learning. 6.1.1. C OMPARISON WITH TWO -TIMESCALE SETTING 
+
+We further evaluate PMAAR-TD against the two-timescale reinforcement learning framework (see Figure 2) within the same fixed-policy Acrobot environment. For this compari-son, a global learning rate of 2 × 10 −4 is employed, while the critic layers are specifically configured with a learning rate of 2 × 10 −5. The results demonstrate that, consistent with theoretical expectations, the two-timescale approach exhibits significantly slower empirical convergence com-pared to our single-timescale setting, further validating the efficiency of our proposed synchronization mechanism. 
+
+6.2. Application to Control Problems 
+
+In this section, we extend PMAAR-TD to the actor-critic framework by utilizing PMAAR-TD as the critic compo-nent and incorporate an additional actor component. The action heads are also distinct across agents in our setting, i.e., agents do not share the parameters of those layers. 6.2.1. M ODEL DESIGN 
+
+The architecture of the model employed in our experiments is defined as follows:      
+
+> stMLP
+> Actor Head π(at|st)
+> Critic Head V(st)
+> State Feature Extraction
+> Action Value
+
+The fundamental distinction between SingleAC and FedAC-Uniform lies in the synchronization mechanism; specif-ically, SingleAC operates independently, whereas both 
+
+FedAC-Uniform and PMAAR-AC incorporate periodic synchronization. Furthermore, the key innovation of 
+
+PMAAR-AC is its selective synchronization strategy. Dur-ing the synchronization phase, PMAAR-AC updates only the shared representation layers, while retaining the actor and critic heads as personalized local parameters to preserve agent-specific policies. 6.2.2. E NVIRONMENT CONFIGURATIONS 
+
+Regarding the environment configurations, we find that the settings used in prior work are not sufficiently heterogeneous (Jin et al., 2022; Xiong et al., 2025), as a single uniform pol-icy can perform well across all environments. We therefore 7Personalized Multi-Agent Average Reward TD-Learning via Joint Linear Approximation 
+
+propose a new design that introduces stronger heterogene-ity. Specifically, we create a mirrored environment where the agent’s action will be mapped to a reversed/unwanted actual action. When agents operate in normal and mirrored environments respectively, a shared policy cannot be effec-tively learned, as the optimal behaviors for one group are adversarial to the other. In our experiments, we employ three distinct random seeds and set the synchronization interval E = 50 as shared hy-perparameters across all configurations. The environment-specific parameters are detailed as follows: 
+
+Table 1. CartPole environment setup for each agent                                      
+
+> Parameters Agent 0 Agent 1 Agent 2 Agent 3 Agent 4 Agent 5 pole length 0.5 10.5 10.5 1gravity 9.8 15 9.8 15 9.8 15 force 10 10 10 10 10 10 start position π
+> 6-π
+> 6
+> π
+> 6-π
+> 6
+> π
+> 6-π
+> 6
+> env normal mirrored normal mirrored normal mirrored
+
+Table 2. Acrobot environment setup for each agent                         
+
+> Parameters Agent 0 Agent 1 Agent 2 Agent 3 Agent 4 Agent 5 link length 1 111111link length 2 111111env normal mirrored normal mirrored normal mirrored
+
+6.2.3. R ESULT 
+
+We discuss the results presented in Figure 4 and 5 from three primary perspectives: 1. Convergence Speed : In terms of convergence veloc-ity, it is evident that PMAAR-AC outperforms both 
+
+FedAC-Uniform and Single AC across the majority of agents in both Acrobot and CartPole environments. Compared with Single AC , although PMAAR-AC ex-hibits a relatively marginal performance lag during the initial exploration phase, it frequently surpasses the baselines in the mid-training stage and maintains its performance advantage until convergence. 2. Reward : Regarding the asymptotic reward obtained post-training, PMAAR-AC demonstrates superior per-formance, outperforming other baselines across the majority of agents. Particularly in the Acrobot envi-ronment, the integration of additional data samples facilitated by shared feature synchronization enables the model to converge closer to the theoretical optimum compared to alternative methods. 3. Training Stability : Regarding the training stabil-ity—represented by the shaded regions reflecting the variance across different seeds—it is evident that for all agents across both environments, PMAAR-AC ex-hibits a consistent narrowing of the confidence inter-vals as training progresses. Ultimately, our approach achieves the smallest shaded area, indicating signif-icantly lower variance between individual runs and a more robust convergence toward the mean reward curve compared to the baselines. 
+
+Figure 1. Value function convergence comparison on Acrobot. 
+
+Figure 2. Value function convergence speed comparison between single-timescale and two-timescale settings on Acrobot. 
+
+## 7. Conclusion and Discussions 
+
+In this work, we studied cooperative TD learning in heterogeneous environments, where agents share a low-dimensional common structure but face diverse local dy-namics. By combining subspace estimation with personal-ized value function updates, we established finite-time con-vergence guarantees with linear speedup under Markovian sampling and clarified the limitations imposed by standard assumptions. We hope that our analysis framework and insights provide a foundation for future work on exploiting common structures in multi-agent reinforcement learning. 8Personalized Multi-Agent Average Reward TD-Learning via Joint Linear Approximation 
+
+## Impact Statement 
+
+This paper presents work whose goal is to advance the field of Machine Learning. There are many potential societal consequences of our work, none of which we feel must be specifically highlighted here. 
+
+## References 
+
+Ando, R. K., Zhang, T., and Bartlett, P. A framework for learning predictive structures from multiple tasks and unlabeled data. Journal of machine learning research , 6 (11), 2005. Bengio, Y., Courville, A., and Vincent, P. Representation learning: A review and new perspectives. IEEE transac-tions on pattern analysis and machine intelligence , 35(8): 1798–1828, 2013. Bhandari, J., Russo, D., and Singal, R. A finite time anal-ysis of temporal difference learning with linear function approximation. In Conference on learning theory , pp. 1691–1692. PMLR, 2018. Caruana, R. Multitask learning. Machine learning , 28: 41–75, 1997. Chen, T., Sun, Y., and Yin, W. Closing the gap: Tighter anal-ysis of alternating stochastic gradient methods for bilevel problems. Advances in Neural Information Processing Systems , 34:25294–25307, 2021a. Chen, X. and Zhao, L. Finite-time analysis of single-timescale actor-critic. Advances in Neural Information Processing Systems , 36, 2024. Chen, Y., Chi, Y., Fan, J., and Ma, C. Spectral methods for data science: A statistical perspective. Foundations and Trends® in Machine Learning , 14(5):566–806, 2021b. ISSN 1935-8245. doi: 10.1561/2200000079. URL 
+
+http://dx.doi.org/10.1561/2200000079 .Collins, L., Hassani, H., Mokhtari, A., and Shakkottai, S. Exploiting shared representations for personalized feder-ated learning. In International conference on machine learning , pp. 2089–2099. PMLR, 2021. Daskalakis, C., Golowich, N., and Zhang, K. The complex-ity of markov equilibrium in stochastic games. In The Thirty Sixth Annual Conference on Learning Theory , pp. 4180–4234. PMLR, 2023. Deng, Y., Kamani, M. M., and Mahdavi, M. Adap-tive personalized federated learning. arXiv preprint arXiv:2003.13461 , 2020. Du, S. S., Hu, W., Kakade, S. M., Lee, J. D., and Lei, Q. Few-shot learning via learning the representation, provably. In International Conference on Learning Rep-resentations , 2021. Duchi, J. C., Feldman, V., Hu, L., and Talwar, K. Subspace recovery from heterogeneous data with non-isotropic noise. Advances in Neural Information Processing Sys-tems , 35:5854–5866, 2022. Fallah, A., Mokhtari, A., and Ozdaglar, A. Personalized federated learning with theoretical guarantees: A model-agnostic meta-learning approach. Advances in Neural Information Processing Systems , 33:3557–3568, 2020. Filar, J. and Vrieze, K. Competitive Markov decision pro-cesses . Springer Science & Business Media, 2012. Jiang, Y., Kone ˇcn `y, J., Rush, K., and Kannan, S. Improving federated learning personalization via model agnostic meta learning. arXiv preprint arXiv:1909.12488 , 2019. Jiao, Y., Woo, J., Li, G., Joshi, G., and Chi, Y. Sample complexity of average-reward q-learning: From single-agent to federated reinforcement learning. arXiv preprint arXiv:2601.13642 , 2026. Jin, C., Liu, Q., Wang, Y., and Yu, T. V-learning—a simple, efficient, decentralized algorithm for multiagent reinforce-ment learning. Mathematics of Operations Research , 49 (4):2295–2322, 2024. Jin, H., Peng, Y., Yang, W., Wang, S., and Zhang, Z. Feder-ated reinforcement learning with environment heterogene-ity. In International Conference on Artificial Intelligence and Statistics , pp. 18–37. PMLR, 2022. Khodadadian, S., Sharma, P., Joshi, G., and Maguluri, S. T. Federated reinforcement learning: Linear speedup under markovian sampling. In International Conference on Machine Learning , pp. 10997–11057. PMLR, 2022. LeCun, Y., Bengio, Y., and Hinton, G. Deep learning. nature ,521(7553):436–444, 2015. Li, T., Hu, S., Beirami, A., and Smith, V. Ditto: Fair and robust federated learning through personalization. In International Conference on Machine Learning , pp. 6357–6368. PMLR, 2021. Maeng, K., Lu, H., Melis, L., Nguyen, J., Rabbat, M., and Wu, C.-J. Towards fair federated recommendation learn-ing: Characterizing the inter-dependence of system and data heterogeneity. In Proceedings of the 16th ACM Con-ference on Recommender Systems , pp. 156–167, 2022. Nguyen, D. C., Ding, M., Pathirana, P. N., Seneviratne, A., Li, J., and Poor, H. V. Federated learning for internet of things: A comprehensive survey. IEEE communications surveys & tutorials , 23(3):1622–1658, 2021. 9Personalized Multi-Agent Average Reward TD-Learning via Joint Linear Approximation 
+
+Niu, X., Su, L., Xu, J., and Yang, P. Collaborative learning with shared linear representations: Statistical rates and optimal algorithms. arXiv preprint arXiv:2409.04919 ,2024. Olshevsky, A. and Gharesifard, B. A small gain analysis of single timescale actor critic. SIAM Journal on Control and Optimization , 61(2):980–1007, 2023. Qiu, S., Yang, Z., Ye, J., and Wang, Z. On finite-time conver-gence of actor-critic algorithm. IEEE Journal on Selected Areas in Information Theory , 2(2):652–664, 2021. Qu, G., Wierman, A., and Li, N. Scalable reinforcement learning for multiagent networked systems. Operations Research , 70(6):3601–3628, 2022. Salgia, S. and Chi, Y. The sample-communication complex-ity trade-off in federated q-learning. Advances in Neural Information Processing Systems , 37:39694–39747, 2025. Song, Z., Mei, S., and Bai, Y. When can we learn general-sum markov games with a large number of players sample-efficiently? In International Confer-ence on Learning Representations , 2022. URL https: //openreview.net/forum?id=6MmiS0HUJHR .Sutton, R. S. and Barto, A. G. Reinforcement learning: An introduction . MIT press, 2018. Sutton, R. S., McAllester, D., Singh, S., and Mansour, Y. Policy gradient methods for reinforcement learning with function approximation. Advances in neural information processing systems , 12, 1999. T Dinh, C., Tran, N., and Nguyen, J. Personalized federated learning with moreau envelopes. Advances in Neural Information Processing Systems , 33:21394–21405, 2020. Thekumparampil, K. K., Jain, P., Netrapalli, P., and Oh, S. Statistically and computationally efficient linear meta-representation learning. Advances in Neural Information Processing Systems , 34:18487–18500, 2021. Tian, Y., Gu, Y., and Feng, Y. Learning from similar linear representations: Adaptivity, minimaxity, and robustness. 
+
+Journal of Machine Learning Research , 26(187):1–125, 2025. Tripuraneni, N., Jin, C., and Jordan, M. Provable meta-learning of linear representations. In International Con-ference on Machine Learning , pp. 10434–10443. PMLR, 2021. Tsitsiklis, J. N. and Van Roy, B. Average cost temporal-difference learning. Automatica , 35(11):1799–1808, 1999. Wang, H., Mitra, A., Hassani, H., Pappas, G. J., and Ander-son, J. Federated temporal difference learning with linear function approximation under environmental heterogene-ity. arXiv preprint arXiv:2302.02212 , 2023. Wang, M., Yang, P., and Su, L. On the convergence rates of federated q-learning across heterogeneous en-vironments. Transactions on Machine Learning Re-search , 2025. ISSN 2835-8856. URL https:// openreview.net/forum?id=EkLAG3gt3g .Woo, J., Joshi, G., and Chi, Y. The blessing of hetero-geneity in federated q-learning: Linear speedup and beyond. In Krause, A., Brunskill, E., Cho, K., En-gelhardt, B., Sabato, S., and Scarlett, J. (eds.), Pro-ceedings of the 40th International Conference on Ma-chine Learning , volume 202 of Proceedings of Machine Learning Research , pp. 37157–37216. PMLR, 23–29 Jul 2023. URL https://proceedings.mlr.press/ v202/woo23a.html .Wu, Y. F., Zhang, W., Xu, P., and Gu, Q. A finite-time analysis of two time-scale actor-critic methods. Advances in Neural Information Processing Systems , 33:17617– 17628, 2020. Xie, Z. and Song, S. FedKL: Tackling Data Hetero-geneity in Federated Reinforcement Learning by Penalizing KL Divergence. IEEE Journal on Se-lected Areas in Communications , 41(4):1227–1242, April 2023. ISSN 1558-0008. doi: 10.1109/JSAC. 2023.3242734. URL https://ieeexplore. ieee.org/abstract/document/10038492? casa_token=yGyMDlnL_FsAAAAA: hqNvzWEb6yVKwTZVdHKLVnorDg07AWx4uujDsLLTTY_ 7unjr1ew8Yv4_UUAWfCx3X1b9wHNySP8 .Xiong, G., Wang, S., Jiang, D., and Li, J. On the linear speedup of personalized federated reinforcement learning with shared representations. In The Thirteenth Interna-tional Conference on Learning Representations , 2025. Xu, J., Tong, X., and Huang, S.-L. Personalized fed-erated learning with feature alignment and classifier collaboration. In The Eleventh International Confer-ence on Learning Representations , 2023. URL https: //openreview.net/forum?id=SXZr8aDKia .Yang, T., Cen, S., Wei, Y., Chen, Y., and Chi, Y. Federated natural policy gradient and actor critic methods for multi-task reinforcement learning. In The Thirty-eighth Annual Conference on Neural Information Processing Systems ,2024. URL https://openreview.net/forum? id=DUFD6vsyF8 .Zhang, C., Wang, H., Mitra, A., and Anderson, J. Finite-time analysis of on-policy heterogeneous federated rein-10 Personalized Multi-Agent Average Reward TD-Learning via Joint Linear Approximation 
+
+forcement learning. arXiv preprint arXiv:2401.15273 ,2024. Zhang, K., Yang, Z., Liu, H., Zhang, T., and Basar, T. Fully decentralized multi-agent reinforcement learning with networked agents. In International conference on ma-chine learning , pp. 5872–5881. PMLR, 2018. Zhang, S., Des Combes, R. T., and Laroche, R. On the convergence of sarsa with linear function approximation. In International Conference on Machine Learning , pp. 41613–41646. PMLR, 2023a. Zhang, Y., Qu, G., Xu, P., Lin, Y., Chen, Z., and Wierman, A. Global convergence of localized policy iteration in net-worked multi-agent reinforcement learning. Proceedings of the ACM on Measurement and Analysis of Computing Systems , 7(1):1–51, 2023b. Zou, S., Xu, T., and Liang, Y. Finite-sample analysis for sarsa with linear function approximation. Advances in neural information processing systems , 32, 2019. 11 Personalized Multi-Agent Average Reward TD-Learning via Joint Linear Approximation 
+
+# Appendices 
+
+## A. Additional Related Work 
+
+MARL under homogeneous environments. When the environments of all agents are homogeneous, it has been shown that the federated version of classic reinforcement learning algorithms can significantly alleviate the data collection burden on individual agents (Woo et al., 2023; Khodadadian et al., 2022). Specifically, the per-agent sample complexity decreases linearly in terms of the number of agents – an effect commonly referred to in existing literature as linear speedup. Recent work has made significant progress in understanding federated RL under homogeneous environments. (Woo et al., 2023) studied federated Q-learning. In addition to a linear speedup, (Woo et al., 2023) uncovered the blessing of heterogeneity in terms of state-action exploration – a completely different notion of heterogeneity from our focus. (Salgia & Chi, 2025) studied the sample-communication complexity trade-off, and developed a new algorithm that achieves order-optimal sample and communication complexities. 
+
+Model/Policy personalization. In FL, model personalization (often referred to as PFL) has garnered significant attention in recent years. The success of personalization techniques depends on balancing the bias introduced by using global knowledge that may not generalize to individual clients, and the variance inherent in learning from limited local datasets. Popular PFL techniques include regularized local objectives (T Dinh et al., 2020; Li et al., 2021), local-global parameter interpolation (Deng et al., 2020), meta-learning (Fallah et al., 2020; Jiang et al., 2019), and representation learning (Collins et al., 2021; Xu et al., 2023). Extending these ideas of PFL to RL introduces an even greater level of difficulty that arises from the inherent sample correlation induced by sequential decision-making, and the non-stationarity of sample quality as the policy evolves. In the RL literature, training personalized (or localized) policies has recently garnered considerable attention in the context of multi-agent Markov games or competitive MARL (Filar & Vrieze, 2012; Zhang et al., 2018; Qu et al., 2022; Zhang et al., 2023b; Daskalakis et al., 2023), which depart fundamentally from our focus. Specifically, in their setting, agents interact with one another within a shared environment, and the rewards received by individual agents are determined by the joint actions of all agents. Each agent aims to learn a localized policy that contributes to a joint policy across all agents, with the goal of maximizing its own welfare. A commonly adopted objective among the participating agents is to learn some form of equilibrium, such as a Nash Equilibrium. Departing from Markov games, we focus on cooperative MARL, where we try to avoid the curse of heterogeneity in the joint learning. 
+
+## B. Notations and Preliminaries 
+
+Let vk 
+
+> 0: t
+
+denote the Markovian trajectory up to time t generated under initial state distribution d0, given policy π, and the local transition kernel P k:
+
+vk 
+
+> 0: t
+
+= ( sk 
+
+> 0
+
+, a k 
+
+> 0
+
+, s k 
+
+> 1
+
+, ..., s kt+1 ),
+
+and v0: t denote the collection of Markovian trajectories generated by all agents: 
+
+v0: t = {vk
+
+> 0: t
+
+}Kk=1 .
+
+Similarly, we define vk 
+
+> 0:( t,ℓ )
+
+and v0:( t,ℓ ) as the Markovian trajectory generated up to the ℓ-th sample in time t.Let Ej [Xt] denote the conditional expectation of any random variable Xt given the collection of Markovian trajectories up to time j:
+
+Ej [Xt] = E [Xt | v0: j ] = E Xt | { vk 
+
+> 0: j
+
+}Kk=1 
+
+ .
+
+Denote 
+
+ebkt,L =
+
+> L−1
+
+X
+
+> ℓ=0
+
+(rkt,ℓ − Jk)ϕ(skt, 0); ¯bkL = Es(0) ∼μk ,(a(ℓ),s (ℓ))∼π⊗P k ∀ℓ∈[0 ,L −1] 
+
+"L−1X
+
+> ℓ=0
+
+(r(s(ℓ), a (ℓ)) − Jk)ϕ(s(0) )
+
+#
+
+. (14) 12 Personalized Multi-Agent Average Reward TD-Learning via Joint Linear Approximation 
+
+In addition, let 
+
+ξkt,L =
+
+> L−1
+
+X
+
+> ℓ=0
+
+(rkt,ℓ − Jk)ϕ(skt, 0)+ ( ϕ(skt,L ) − ϕ(skt, 0)) ⊤Btωkt ϕ(skt, 0)
+
+−
+
+> L−1
+
+X
+
+> ℓ=0
+
+E
+
+h
+
+(r(s(ℓ), a (ℓ)) − Jk)ϕ(s(0) )
+
+i
+
+− E
+
+h
+
+(ϕ(s(L)) − ϕ(s(0) )) ⊤Btωkt ϕ(s(0) )
+
+i
+
+,
+
+(15) where the expectation is taken with respect to s(0) ∼ μk, (a(ℓ), s (ℓ+1) ) ∼ π ⊗ P k ∀ℓ ∈ [0 , L − 1] . This can be viewed as the Markovian noise of the TD error of agent k at time t. Moreover, let 
+
+eAkt,L = ϕ(skt, 0)( ϕ(skt,L ) − ϕ(skt, 0)) ⊤,
+
+and bkt,L =
+
+> L−1
+
+X
+
+> ℓ=0
+
+ (rkt,ℓ − Jk) + ( ϕ(skt,ℓ +1 )
+
+− ϕ(skt,ℓ )) ⊤B∗ωk, ∗ϕ(skt, 0). (16) The following rewrite appears repeatedly in our analysis. 
+
+Proposition 1. For any t and agent k, δkt,L ϕ(skt, 0) can be rewritten as 
+
+δkt,L ϕ(skt ) = ξkt,L + AkLxkt + Ly kt ϕ(skt ), (17) 
+
+and 
+
+δkt,L ϕ(skt ) = eAkt,L xkt + Ly kt ϕ(skt, 0) + bkt,L . (18) The proof of Proposition 1 can be found in Appendix I. 
+
+## C. Bound on QR Decomposition and Perturbation 
+
+Recall from Algorithm 1 the update of ¯B:
+
+¯Bt+1 = Bt + ζKL 
+
+> K
+
+X
+
+> k=1
+
+Bt, ⊥B⊤
+
+> t, ⊥
+
+δkt,L ϕ(skt, 0)( ωkt )⊤
+
+For ease of exposition, let 
+
+Qt := ζKL 
+
+> K
+
+X
+
+> k=1
+
+Bt, ⊥B⊤
+
+> t, ⊥
+
+δkt,L ϕ(skt, 0)( ωkt )⊤. (19) The following couple of lemmas enable us to bound the “distortion” caused by the QR decomposition. Specifically, Lemma C.1 bounds the perturbation in terms of ∥Qt∥, which is further bounded in Lemma C.2. It is worth noting that, in the traditional PFL (Collins et al., 2021), such distortion can be well controlled by the number of i.i.d. local samples that are freshly drawn in each iteration. However, their analysis does not apply to our setting due to the Markov sampling. We fundamentally depart from the analysis in (Collins et al., 2021) in deriving upper bounds on those distortions via constructing a fixed-point iteration. 
+
+Lemma C.1 (Perturbation of QR) . For each t ≥ 1, when Uδ Uω ζ ≤ 1/2, it holds that 
+
+∥Rt+1 − I∥2 ≤ 2∥Qt∥2 
+
+> F
+
+, (20) 
+
+∥R−1
+
+> t+1
+
+∥ ≤ 11 − ∥ Rt+1 − I∥2
+
+≤ 11 − 2∥Qt∥2
+
+> F
+
+, (21) 
+
+∥R−1 
+
+> t+1
+
+− I∥2 ≤ 4∥Qt∥2 
+
+> F
+
+. (22) 13 Personalized Multi-Agent Average Reward TD-Learning via Joint Linear Approximation 
+
+Proof. Recall that ¯Bt+1 = Bt+1 Rt+1 . We rewrite R⊤
+
+> t+1
+
+Rt+1 as 
+
+R⊤
+
+> t+1
+
+Rt+1 = ¯B⊤ 
+
+> t+1
+
+¯Bt+1 = B⊤ 
+
+> t
+
+Bt + B⊤ 
+
+> t
+
+Qt + Q⊤ 
+
+> t
+
+Bt + Q⊤ 
+
+> t
+
+Qt
+
+= I + B⊤ 
+
+> t
+
+Qt + Q⊤ 
+
+> t
+
+Bt + Q⊤ 
+
+> t
+
+Qt
+
+= I + Q⊤ 
+
+> t
+
+Qt.
+
+The last equality holds because Qt lives in span (Bt, ⊥).It can also be rewritten as 
+
+R⊤
+
+> t+1
+
+Rt+1 = ( I + Rt+1 − I)⊤(I + Rt+1 − I)= I + ( Rt+1 − I)⊤ + ( Rt+1 − I) + ( Rt+1 − I)⊤(Rt+1 − I).
+
+Thus, we get 
+
+(Rt+1 − I)⊤ + ( Rt+1 − I) = Q⊤ 
+
+> t
+
+Qt − (Rt+1 − I)⊤(Rt+1 − I). (23) We construct a fixed-point iteration to “solve” Rt+1 − I in terms of Q⊤ 
+
+> t
+
+Qt under Eq. (23). Toward this, we decompose the symmetric matrix Q⊤ 
+
+> t
+
+Qt into 
+
+Q⊤ 
+
+> t
+
+Qt = R0 + R⊤ 
+
+> 0
+
+,
+
+where R0 is upper triangular. It is easy to see that 
+
+∥R0∥F ≤ R0 + R⊤  
+
+> 0F
+
+≤ ∥ Qt∥2 
+
+> F
+
+≤ ζ2U 2 
+
+> δ
+
+U 2 
+
+> ω
+
+.
+
+Let ∆t+1 ≜ Rt+1 − I − R0. Then Eq. (23) is equivalent to 
+
+∆⊤ 
+
+> t+1
+
++ ∆ t+1 = −(∆ ⊤
+
+> t+1
+
+∆t+1 + ∆ ⊤
+
+> t+1
+
+R0 + R⊤ 
+
+> 0
+
+∆t+1 + R⊤ 
+
+> 0
+
+R0). (24) Next, we define a sequence of ∆t+1 ,i for i ≥ 0. Let ∆t+1 ,0 = 0 for i ≥ 1 and let ∆t+1 ,i be an upper triangular matrix satisfying 
+
+∆⊤ 
+
+> t+1 ,i
+
++ ∆ t+1 ,i = −(∆ ⊤
+
+> t+1 ,i −1
+
+∆t+1 ,i −1 + ∆ ⊤
+
+> t+1 ,i −1
+
+R0 + R⊤ 
+
+> 0
+
+∆t+1 ,i −1 + R⊤ 
+
+> 0
+
+R0).
+
+We first show the boundedness of the sequence. Note that 
+
+∥∆t+1 ,i ∥F ≤ ∆⊤ 
+
+> t+1 ,i
+
++ ∆ t+1 ,i F ≤ ∥ ∆t+1 ,i −1∥2 
+
+> F
+
++ 2 ∥R0∥F ∥∆t+1 ,i −1∥F + ∥R0∥2 
+
+> F
+
+, (25) where the second inequality applies the triangle inequality, and the first inequality holds because the absolute value of all entries in ∆⊤ 
+
+> t+1 ,i
+
++ ∆ t+1 ,i is larger than that in ∆t+1 ,i .Provided ζ2U 2 
+
+> δ
+
+U 2 
+
+> ω
+
+< 1/4, we have ∥R0∥F < 1/4, and for any ∥∆t+1 ,i −1∥F ≤ 1/4, we have ∥∆t+1 ,i ∥F ≤ 1/4 by Eq. (25). By induction, the entire sequence satisfies ∥∆t+1 ,i ∥F ≤ 1/4 for all i ≥ 0.Next, we show the convergence of the sequence ∆t+1 ,i . By definition, 
+
+(∆ ⊤ 
+
+> t+1 ,i +1
+
++ ∆ t+1 ,i +1 ) − (∆ ⊤ 
+
+> t+1 ,i
+
++ ∆ t+1 ,i )= − (∆ ⊤
+
+> t+1 ,i
+
+(∆ t+1 ,i − ∆t+1 ,i −1) + (∆ t+1 ,i − ∆t+1 ,i −1)⊤∆t+1 ,i −1
+
++ (∆ t+1 ,i − ∆t+1 ,i −1)⊤R0 + R⊤ 
+
+> 0
+
+(∆ t+1 ,i − ∆t+1 ,i −1)) .
+
+By taking the norm on both sides, we obtain 
+
+∥∆t+1 ,i +1 − ∆t+1 ,i ∥F ≤ (∆ t+1 ,i +1 − ∆t+1 ,i )⊤ + (∆ t+1 ,i +1 − ∆t+1 ,i ) F
+
+≤ 14 ∥∆t+1 ,i − ∆t+1 ,i −1∥F + 14 ∥∆t+1 ,i − ∆t+1 ,i −1∥F
+
++ 2 ∥R0∥F ∥∆t+1 ,i − ∆t+1 ,i −1∥F .
+
+14 Personalized Multi-Agent Average Reward TD-Learning via Joint Linear Approximation 
+
+Therefore, since ∥R0∥F < 14 , the difference ∥∆t+1 ,i +1 − ∆t+1 ,i ∥F geometrically converges to zero, which implies that the sequence ∆t+1 ,i converges. The limit of the sequence satisfies the fixed-point Eq. (24). Taking norm on both sides of Eq. (24) yields 
+
+∥∆t+1 ∥F ≤ ∆⊤ 
+
+> t+1
+
++ ∆ t+1 F ≤ ∥ ∆t+1 ∥2 
+
+> F
+
++ 2 ∥R0∥F ∥∆t+1 ∥F + ∥R0∥2 
+
+> F
+
+.
+
+Since ∥∆t+1 ∥F ≤ 1/4, we obtain that 
+
+∥∆t+1 ∥F ≤ 1 − 2 ∥R0∥F − p1 − 4 ∥R0∥F
+
+2 ≤ 4 ∥R0∥2 
+
+> F
+
+.
+
+We conclude that 
+
+∥Rt+1 − I∥F = ∥R0 + ∆ t+1 ∥F ≤ ∥ R0∥F + 4 ∥R0∥2 
+
+> F
+
+≤ 2 ∥R0∥F ≤ 2 ∥Qt∥2 
+
+> F
+
+.
+
+Moreover, 
+
+σmin (Rt+1 ) ≥ 1 − ∥ Rt+1 − I∥2, by Weyl’s inequality ,σmax (Rt+1 ) ≤ 1 + ∥Rt+1 − I∥2, by triangle inequality ,
+
+and 
+
+∥R−1 
+
+> t+1
+
+− I∥2 = ∥R−1
+
+> t+1
+
+(I − Rt+1 )∥2 ≤ ∥ R−1
+
+> t+1
+
+∥2∥I − Rt+1 ∥2.
+
+Therefore, 
+
+∥Rt+1 − I∥2 ≤ ∥ Rt+1 − I∥F ≤ 2∥Qt∥2 
+
+> F
+
+,
+
+∥R−1
+
+> t+1
+
+∥ ≤ 11 − ∥ Rt+1 − I∥2
+
+≤ 11 − ∥ Rt+1 − I∥F
+
+≤ 11 − 2 ∥Qt∥2
+
+> F
+
+,
+
+∥R−1 
+
+> t+1
+
+− I∥2 ≤ 4∥Qt∥2 
+
+> F
+
+.
+
+For the last inequality, we used 2U 2 
+
+> δ
+
+U 2 
+
+> ω
+
+ζ2 ≤ 1/2 so that ∥R−1
+
+> t+1
+
+∥ ≤ 2.
+
+Lemma C.2. For any t ≥ τ ,
+
+Et−τ ∥Qt∥2 
+
+> F
+
+≤ 16 U 2 
+
+> ω
+
+ζ2
+
+L2
+
+1
+
+K
+
+> K
+
+X
+
+> k=1
+
+Et−τ ∥xkt ∥2 + 4 U 2
+
+> δ,L
+
+L2 U 2
+
+> ω
+
+ζ2
+
+K + 8 U 2
+
+> ω
+
+U 2
+
+> δ,L
+
+L2 ζ2m2ρ2τ
+
++ 4 τ 2 U 4
+
+> δ,L
+
+L4 ζ2β2 + 4U 2 
+
+> ω
+
+ζ2
+
+K
+
+> K
+
+X
+
+> k=1
+
+Et−τ |ykt |2. (26) 
+
+Proof. For any t ≥ τ , we have 
+
+∥Qt∥2 
+
+> F
+
+= ∥ ζKL 
+
+> K
+
+X
+
+> k=1
+
+Pt, ⊥δkt,L ϕ(skt, 0)( ωkt )⊤∥2 
+
+> F
+
+≤ ∥ ζKL 
+
+> K
+
+X
+
+> k=1
+
+δkt,L ϕ(skt, 0)( ωkt )⊤∥2
+
+> F
+
+= ζ2
+
+K2L2 ∥
+
+> K
+
+X
+
+> k=1
+
+ eAkt,L xkt + bkt,L + Ly kt ϕ(skt, 0)
+
+
+
+(ωkt )⊤∥2 
+
+> F
+
+(by Proposition 1 )
+
+≤ 4ζ2L2
+
+K2 ∥
+
+> K
+
+X
+
+> k=1
+
+eAkt,L xkt (ωkt )⊤∥2
+
+> F
+
+| {z }
+
+> I1
+
++ 4ζ2
+
+K2L2 ∥
+
+> K
+
+X
+
+> k=1
+
+bkt,L (ωkt−τ )⊤∥2
+
+> F
+
+| {z }
+
+> I2
+
++ 4ζ2
+
+K2L2 ∥
+
+> K
+
+X
+
+> k=1
+
+bkt,L (ωkt − ωkt−τ )⊤∥2
+
+> F
+
+| {z }
+
+> I3
+
++ 4ζ2L2
+
+K2L2 ∥
+
+> K
+
+X
+
+> k=1
+
+ykt ϕ(skt, 0)( ωkt )⊤∥2
+
+> F
+
+| {z }
+
+> I4
+
+.
+
+15 Personalized Multi-Agent Average Reward TD-Learning via Joint Linear Approximation 
+
+Recall that eAkt,L = PL−1 
+
+> ℓ=0
+
+ϕ(skt, 0)( ϕ(skt,ℓ +1 )−ϕ(skt,ℓ )) ⊤, bkt,L = PL−1
+
+> ℓ=0
+
+
+
+(rkt,ℓ − Jk) + ( ϕ(skt,ℓ +1 ) − ϕ(skt,ℓ )) ⊤B∗ωk, ∗
+
+
+
+ϕ(skt, 0).Then, 
+
+∥ eAkt,L ∥ = ∥ϕ(skt, 0)( ϕ(skt,L ) − ϕ(skt, 0)) ⊤∥ ≤ 2. (27) For I1, we have, 
+
+I1 ≤ 4ζ2
+
+KL 2
+
+> K
+
+X
+
+> k=1
+
+∥ eAkt,L xkt (ωkt )⊤∥2 ≤ 16 U 2 
+
+> ω
+
+ζ2
+
+L2
+
+1
+
+K
+
+> K
+
+X
+
+> k=1
+
+∥xkt ∥2.
+
+For I2, the Markovian noise, we have under expectation that, 
+
+4ζ2
+
+K2L2 Et−τ ∥
+
+> K
+
+X
+
+> k=1
+
+bkt,L (ωkt−τ )⊤∥2
+
+> F
+
+≤ 4ζ2
+
+K2L2 Et−τKX
+
+> k=1
+
+∥bkt,L (ωkt−τ )⊤∥2 + 8ζ2
+
+K2L2
+
+> K
+
+X
+
+> k=1
+> K
+
+X
+
+> k′=k+1
+
+Et−τ
+
+D
+
+bkt,L (ωkt−τ )⊤, bk′
+
+> t,L
+
+(ωk′ 
+
+> t−τ
+
+)⊤E
+
+≤4 U 2
+
+> δ,L
+
+L2 U 2
+
+> ω
+
+ζ2
+
+K + 8 ζ2U 2
+
+> ω
+
+U 2
+
+> δ,L
+
+L2 m2ρ2τ . (by Lemma H.2, independence and the ergodicity assumption )
+
+For I3,
+
+4ζ2
+
+K2L2 ∥
+
+> K
+
+X
+
+> k=1
+
+bkt,L (ωkt − ωkt−τ )⊤∥2
+
+> F
+
+≤ 4ζ2
+
+KL 2
+
+> K
+
+X
+
+> k=1
+
+∥bkt,L (ωkt − ωkt−τ )⊤∥2
+
+≤ 4ζ2
+
+KL 2
+
+> K
+
+X
+
+> k=1
+
+∥bkt,L ∥2∥ωkt − ωkt−τ ∥2
+
+≤4 U 2
+
+> δ,L
+
+L2 ζ2
+
+
+
+τ Uδ,L 
+
+L β
+
+2
+
+(by Lemma I.1 )=4 τ 2 U 4
+
+> δ,L
+
+L4 ζ2β2.
+
+Lastly, for I4, we have 
+
+I4 ≤ 4ζ2
+
+K
+
+> K
+
+X
+
+> k=1
+
+∥ykt ϕ(skt, 0)( ωkt )⊤∥2 ≤ 4U 2 
+
+> ω
+
+ζ2
+
+K
+
+> K
+
+X
+
+> k=1
+
+|ykt |2.
+
+In summary, 
+
+Et−τ ∥Qt∥2 
+
+> F
+
+≤ 16 U 2 
+
+> ω
+
+ζ2
+
+L2
+
+1
+
+K
+
+> K
+
+X
+
+> k=1
+
+Et−τ ∥xkt ∥2 + 4 U 2
+
+> δ,L
+
+L2 U 2
+
+> ω
+
+ζ2
+
+K + 8 U 2
+
+> ω
+
+U 2
+
+> δ,L
+
+L2 ζ2m2ρ2τ
+
++ 4 τ 2 U 4
+
+> δ,L
+
+L4 ζ2β2 + 4U 2 
+
+> ω
+
+ζ2
+
+K
+
+> K
+
+X
+
+> k=1
+
+Et−τ |ykt |2.
+
+16 Personalized Multi-Agent Average Reward TD-Learning via Joint Linear Approximation 
+
+## D. Bounds on Local Head Errors 
+
+D.1. Upper bound: Proof of Lemma 5.1 
+
+We first provide a formal statement of Lemma 5.1, which involves a set of constants whose formal definitions are deferred to the lemma proof. 
+
+Lemma D.1 (Upper bound of local head errors) . Let P∗ = B∗(B∗)⊤, and Pt = BtB⊤ 
+
+> t
+
+for each t. Choose τ = ⌈2 log ρ(ζ)⌉,
+
+Uδ Uω ζ ≤ 12 , where Uδ = 2 Ur + 2 Uω , β = cζ for arbitrary c > 0 that can be tuned. There exist arbitrary positive constants 
+
+c3, c 4, c 5, c 6 such that 
+
+¯Xt+1 ≤ 1 − 2λcζ +
+
+
+
+c23
+
+cL + c24c + c25
+
+1
+
+L + c26 + 4 U 4
+
+> ω
+
+1
+
+c25L
+
+
+
+ζ + CX, 1(τ 2)ζ2 + CX, 2(τ 2)ζ3
+
+!
+
+¯Xt
+
++
+
+ 36 U 2
+
+> ω
+
+c23
+
+cζ L + 6 Uω Uδ cζ 
+
+
+
+Mt
+
++
+
+h 1
+
+c24
+
+c + U 4
+
+> ω
+
+c26
+
+i
+
+ζ + CX, 3(τ 2)ζ2 + CX, 4(τ 2)ζ3
+
+!
+
+¯Yt
+
++ CX, 5(τ 2) ζ2
+
+L + CX, 6(τ 2) ζ2
+
+K + CX, 7ζ3 + CX, 8ζ4 + CX, 9γ2ζ2 + CX, 10 ζ5 + CX, 11 γ2ζ3 + CX, 12 ζ7 + CX, 13 ζ6,
+
+where 
+
+CX, 1(τ 2) = 
+
+
+
+C31 c + (36 + 40 τ 2) c2
+
+L2 + C33 
+
+cL +  36 U 4 
+
+> ω
+
++ (2 .5 + 3 Uω ) C18 
+
+ 1
+
+L2 + 96 c2
+
+L2 + 256 U 4
+
+> ω
+
+L2 + 96 Uδ c U 3
+
+> ω
+
+c22
+
+1
+
+L2
+
+
+
+,
+
+CX, 2(τ 2) = 6 Uω Uδ cCM, 4(τ 2),
+
+CX, 3(τ 2) = 
+
+"
+
+C32 c + (9 + 10 τ 2)c2 + C34 c + 9 U 4 
+
+> ω
+
++ (2 .5 + 3 Uω ) C23 + 24 c2 + 64 U 4 
+
+> ω
+
++ 24 Uδ c U 3
+
+> ω
+
+c21
+
+#
+
+,
+
+CX, 4(τ 2) = 6 Uω Uδ cCM, 5(τ 2), CX, 5(τ 2) = 
+
+
+
+C39 (τ 2) + 24 c2U 2 
+
+> δ
+
+(1 + 2 mρ 
+
+1 − ρ )
+
+
+
+, CX, 6(τ 2) = 
+
+"
+
+C41 (τ 2) + 64 U 2
+
+> δ,L
+
+L2 U 4
+
+> ω
+
+#
+
+,
+
+CX, 7 =
+
+
+
+C42 + C43 (τ ) + 24 Uω Uδ cC 25 (τ 2) 1
+
+L + 6 Uω Uδ cCM, 2(τ 2) 1
+
+K
+
+
+
+,
+
+CX, 8 =
+
+"
+
+C40 (τ 4) + 100 U 6 
+
+> ω
+
+U 4 
+
+> δ
+
++ 144 U 2 
+
+> ω
+
+τ 2 U 4
+
+> δ,L
+
+L4 c2 + 6 Uω Uδ cCM, 6
+
+#
+
+, CX, 9 = C45 (τ 4), CX, 10 = 6 Uω Uδ cCM, 1,
+
+CX, 11 = 24 Uω Uδ cC 28 (τ 4), CX, 12 = 6 Uω Uδ cCM, 3, CX, 13 =
+
+"
+
+128 U 4
+
+> ω
+
+U 2
+
+> δ,L
+
+L2 m2 + C44 (τ 2)
+
+#
+
+,
+
+and the missing definition of constants such as C31 can be found in the analysis. Proof. Recall that ωkt+1 = Π Uω (ωkt + βL δkt,L B⊤ 
+
+> t
+
+ϕ(skt, 0)) , Bt+1 = ¯Bt+1 R−1
+
+> t+1
+
+, and eωkt+1 = ωkt + βL δkt,L B⊤ 
+
+> t
+
+ϕ(skt, 0). We have 
+
+∥xkt+1 ∥ =∥Bt+1 ωkt+1 − zk, ∗∥
+
+=∥Bt+1 ΠUω (eωkt+1 ) − zk, ∗∥
+
+=∥Bt+1 Rt+1 eωkt+1 − zk, ∗ + Bt+1 ΠUω (eωkt+1 ) − Bt+1 Rt+1 eωkt+1 ∥
+
+=∥ ¯Bt+1 eωkt+1 − zk, ∗ + Bt+1 ΠUω (eωkt+1 ) − Bt+1 Rt+1 eωkt+1 ∥
+
+=∥exkt+1 + Bt+1 ΠUω (eωkt+1 ) − Bt+1 Rt+1 eωkt+1 ∥.
+
+Taking the square on both sides, we get 
+
+∥xkt+1 ∥2 =∥exkt+1 ∥2 + ∥Bt+1 ΠUω (eωkt+1 ) − Bt+1 Rt+1 eωkt+1 ∥2
+
++ 2 ⟨Bt+1 ΠUω (eωkt+1 ) − Bt+1 Rt+1 eωkt+1 , exkt+1 ⟩. (28) 17 Personalized Multi-Agent Average Reward TD-Learning via Joint Linear Approximation 
+
+We bound ∥Bt+1 ΠUω (eωkt+1 ) − Bt+1 Rt+1 eωkt+1 ∥2 as follows: We have 
+
+∥Bt+1 ΠUω (eωkt+1 ) − Bt+1 Rt+1 eωkt+1 ∥
+
+=∥ΠUω (eωkt+1 ) − Rt+1 eωkt+1 ∥
+
+=∥ΠUω (eωkt+1 ) − eωkt+1 + eωkt+1 − Rt+1 eωkt+1 ∥≤∥ ΠUω (eωkt+1 ) − eωkt+1 ∥ + ∥(I − Rt+1 )eωkt+1 ∥≤∥ βL δkt,L B⊤ 
+
+> t
+
+ϕ(skt, 0)∥ + ∥(I − Rt+1 )eωkt+1 ∥
+
+where the last inequality follows from Eq. (20) and we use Uδ,L  
+
+> L
+
+β ≤ Uω for large T such that ∥eωkt+1 ∥ ≤ 2Uω . Then, 
+
+∥Bt+1 ΠUω (eωkt+1 ) − Bt+1 Rt+1 eωkt+1 ∥2
+
+≤2 β2
+
+L2 ∥δkt,L B⊤ 
+
+> t
+
+ϕ(skt, 0)∥2 + 32 U 2 
+
+> ω
+
+∥Q∥4 
+
+> F
+
+.
+
+For the first term, we further decompose it as: 
+
+∥δkt,L B⊤ 
+
+> t
+
+ϕ(skt, 0)∥2 ≤ ∥ δkt,L ϕ(skt, 0)∥2
+
+=∥ eAkt,L xkt + bkt,L + Ly kt ϕ(skt, 0)∥2 (by Proposition 1 )
+
+≤3∥ eAkt,L xkt ∥2 + 3 ∥bkt,L ∥2 + 3 ∥Ly kt ϕ(skt, 0)∥2
+
+≤12 ∥xkt ∥2 + 3 ∥bkt,L ∥2 + 3 L2|ykt |2.
+
+Taking conditional expectation over the Markovian trajectory up to t − τ , we get 
+
+Et−τ ∥δkt,L B⊤ 
+
+> t
+
+ϕ(skt, 0)∥2
+
+≤12 Et−τ ∥xkt ∥2 + 3 Et−τ ∥bkt,L ∥2 + 3 L2Et−τ |ykt |2
+
+≤12 Et−τ ∥xkt ∥2 + 3 U 2 
+
+> δ
+
+(1 + 2 mρ 
+
+1 − ρ )L + 3 L2Et−τ |ykt |2. (by Lemma I.5 and tower property ) (29) Finally, the second term in Eq. (28) can be bounded as 
+
+Et−τ ∥Bt+1 ΠUω (eωkt+1 ) − Bt+1 Rt+1 eωkt+1 ∥2
+
+≤24 β2
+
+L2 Et−τ ∥xkt ∥2 + 6 β2
+
+L U 2 
+
+> δ
+
+(1 + 2 mρ 
+
+1 − ρ ) + 6 β2Et−τ |ykt |2 + 32 U 2 
+
+> ω
+
+Et−τ ∥Q∥4 
+
+> F
+
+. (30) As for 2⟨Bt+1 ΠUω (eωkt+1 ) − Bt+1 Rt+1 eωkt+1 , exkt+1 ⟩,we first write exkt+1 as 
+
+exkt+1 = ¯Bt+1 eωkt+1 − B∗ω∗,k = Bt+1 ωkt+1 − B∗ωk, ∗ + ¯Bt+1 eωkt+1 − Bt+1 ωkt+1 .
+
+Thus, 
+
+⟨Bt+1 ΠUω (eωkt+1 ) − Bt+1 Rt+1 eωkt+1 , exkt+1 ⟩
+
+= ⟨Bt+1 ΠUω (eωkt+1 ) − Bt+1 Rt+1 eωkt+1 , Bt+1 ωkt+1 − B∗ωk, ∗⟩
+
+| {z }
+
+> I1
+
++ ⟨Bt+1 ΠUω (eωkt+1 ) − Bt+1 Rt+1 eωkt+1 , ¯Bt+1 eωkt+1 − Bt+1 ωkt+1 ⟩
+
+| {z }
+
+> I2
+
+.
+
+Both I1 and I2 can be well controlled by the projection error of ew and the perturbation error that arises from the QR decomposition of ¯B. We bound I1 and I2 separately. 18 Personalized Multi-Agent Average Reward TD-Learning via Joint Linear Approximation 
+
+On I2, we have 
+
+¯Bt+1 eωkt+1 − Bt+1 ωkt+1 = Bt+1 Rt+1 eωkt+1 − Bt+1 ωkt+1 
+
+= Bt+1 Rt+1 eωkt+1 − Bt+1 Rt+1 ωkt+1 + Bt+1 Rt+1 ωkt+1 − Bt+1 ωkt+1 
+
+= Bt+1 Rt+1 
+
+ eωkt+1 − ωkt+1 
+
+ + Bt+1 (Rt+1 − I) ωkt+1 .
+
+So, I2 can be rewritten as 
+
+⟨Bt+1 ΠUω (eωkt+1 ) − Bt+1 Rt+1 eωkt+1 , ¯Bt+1 eωkt+1 − Bt+1 ωkt+1 ⟩
+
+= ⟨Bt+1 ΠUω (eωkt+1 ) − Bt+1 Rt+1 eωkt+1 , Bt+1 Rt+1 
+
+ eωkt+1 − ωkt+1 
+
+⟩
+
+| {z }
+
+> I21
+
++ ⟨Bt+1 ΠUω (eωkt+1 ) − Bt+1 Rt+1 eωkt+1 , Bt+1 (Rt+1 − I) ωkt+1 ⟩
+
+| {z }
+
+> I22
+
+.
+
+For I21 , by Cauchy Schwartz, we have 
+
+I21 ≤ ∥ Bt+1 ΠUω (eωkt+1 ) − Bt+1 Rt+1 eωkt+1 ∥∥ Bt+1 Rt+1 
+
+ eωkt+1 − ωkt+1 
+
+ ∥≤ 12 ∥Bt+1 ΠUω (eωkt+1 ) − Bt+1 Rt+1 eωkt+1 ∥2 + 12 ∥Bt+1 Rt+1 
+
+ eωkt+1 − ωkt+1 
+
+ ∥2
+
+≤ 12 ∥Bt+1 ΠUω (eωkt+1 ) − Bt+1 Rt+1 eωkt+1 ∥2 + ∥eωkt+1 − ωkt+1 ∥2.
+
+For the last inequality, we use ∥Rt+1 ∥ ≤ 2 for when 2U 2 
+
+> δ
+
+U 2 
+
+> ω
+
+ζ2 ≤ 1/2. As for ∥eωkt+1 − ωkt+1 ∥2, by Eq. (29), we have 
+
+Et−τ ∥ωkt+1 − eωkt+1 ∥2 ≤ Et−τ ∥ βL δkt,L B⊤ 
+
+> t
+
+ϕ(skt, 0)∥2
+
+≤12 β2
+
+L2 Et−τ ∥xkt ∥2 + 3 β2
+
+L U 2 
+
+> δ
+
+(1 + 2 mρ 
+
+1 − ρ ) + 3 β2Et−τ |ykt |2.
+
+For I22 , we have 
+
+I22 ≤ ∥ Bt+1 ΠUω (eωkt+1 ) − Bt+1 Rt+1 eωkt+1 ∥∥ Bt+1 (Rt+1 − I) ωkt+1 ∥≤ 12 ∥Bt+1 ΠUω (eωkt+1 ) − Bt+1 Rt+1 eωkt+1 ∥2 + 12 ∥Bt+1 (Rt+1 − I) ωkt+1 ∥2
+
+≤ 12 ∥Bt+1 ΠUω (eωkt+1 ) − Bt+1 Rt+1 eωkt+1 ∥2 + 12 U 2 
+
+> ω
+
+∥Rt+1 − I∥2
+
+≤ 12 ∥Bt+1 ΠUω (eωkt+1 ) − Bt+1 Rt+1 eωkt+1 ∥2 + 2 U 2 
+
+> ω
+
+∥Qt∥4 
+
+> F
+
+. (by Eq. (20)) Combining I21 and I22 , we get 
+
+Et−τ [I2] ≤ Et−τ ∥Bt+1 ΠUω (eωkt+1 ) − Bt+1 Rt+1 eωkt+1 ∥2
+
++ 12 β2
+
+L2 Et−τ ∥xkt ∥2 + 3 β2
+
+L U 2 
+
+> δ
+
+(1 + 2 mρ 
+
+1 − ρ ) + 3 β2Et−τ |ykt |2 + 2 U 2 
+
+> ω
+
+Et−τ ∥Qt∥4
+
+> F
+
+≤36 β2
+
+L2 Et−τ ∥xkt ∥2 + 9 β2
+
+L U 2 
+
+> δ
+
+(1 + 2 mρ 
+
+1 − ρ ) + 9 β2Et−τ |ykt |2 + 34 U 2 
+
+> ω
+
+Et−τ ∥Qt∥4 
+
+> F
+
+. (by Eq. (30)) Bounding I1 is slightly more involved. We have 
+
+I1 = ⟨Bt+1 ΠUω (eωkt+1 ) − Bt+1 Rt+1 eωkt+1 , Bt+1 ωkt+1 − B∗ωk, ∗⟩
+
+= ⟨Bt+1 ΠUω (eωkt+1 ) − Bt+1 eωkt+1 , Bt+1 ωkt+1 − B∗ωk, ∗⟩
+
+| {z }
+
+> I11
+
++ ⟨Bt+1 eωkt+1 − Bt+1 Rt+1 eωkt+1 , Bt+1 ωkt+1 − B∗ωk, ∗⟩
+
+| {z }
+
+> I12
+
+19 Personalized Multi-Agent Average Reward TD-Learning via Joint Linear Approximation 
+
+For I11 , let R = UV ⊤, where UΣV⊤ = B⊤
+
+> t+1
+
+B∗ is the SVD. Note that R is the optimal rotation matrix that aligns Bt+1 
+
+and B∗ in the sense that R = argmin R⊤R=I∥Bt+1 R − B∗∥F . Then, we have 
+
+I11 = ⟨Bt+1 (ωkt+1 − eωkt+1 ), Bt+1 RR −1ωkt+1 − B∗ωk, ∗⟩ (by rotation )=⟨Bt+1 RR −1(ωkt+1 − eωkt+1 ), (Bt+1 R − B∗)R−1ωkt+1 ⟩
+
++ ⟨Bt+1 (ωkt+1 − eωkt+1 ), B∗(R−1ωkt+1 − ωk, ∗)⟩
+
+=( R−1(ωkt+1 − eωkt+1 )) ⊤(I − (Bt+1 R)⊤B∗)R−1ωkt+1 
+
++ ⟨Bt+1 RR −1(ωkt+1 − eωkt+1 ), (B∗ − Bt+1 R)( R−1ωkt+1 − ωk, ∗)⟩
+
++ ⟨Bt+1 RR −1(ωkt+1 − eωkt+1 ), Bt+1 R(R−1ωkt+1 − ωk, ∗)⟩
+
+=( R−1(ωkt+1 − eωkt+1 )) ⊤(I − (Bt+1 R)⊤B∗)R−1ωkt+1 
+
++ ⟨R −1(ωkt+1 − eωkt+1 ), (( Bt+1 R)⊤B∗ − I)( R−1ωkt+1 − ωk, ∗)⟩
+
++ ⟨ωkt+1 − eωkt+1 , ω kt+1 − R ωk, ∗⟩.
+
+We have the following facts: • Fact 1: Since the ball with radius Uω is convex, and ωk, ∗ belongs to the ball, it holds that 
+
+⟨ωkt+1 − eωkt+1 , ω kt+1 − R ωk, ∗⟩ ≤ 0
+
+.• Fact 2: 
+
+∥I − (Bt+1 R)⊤B∗∥ ≤ ∥ B∗⊤ ⊥ Bt+1 ∥2. (31) The proof of Fact 2 is postponed to Appendix I.1. Therefore, 
+
+I11 ≤ ωkt+1 − eωkt+1 2 I − (Bt+1 R)⊤B∗ 
+
+> 2
+
+ωkt+1 2
+
++ ωkt+1 − eωkt+1 2 I − (Bt+1 R)⊤B∗ 
+
+> 2
+
+R−1ωkt+1 − ωk, ∗
+
+> 2
+
+≤3Uω ωkt+1 − eωkt+1 2 ∥mt+1 ∥2.
+
+Similarly, for I12 , we have 
+
+I12 = ⟨Bt+1 eωkt+1 − Bt+1 Rt+1 eωkt+1 , Bt+1 ωkt+1 − B∗ωk, ∗⟩
+
+= ⟨Bt+1 (I − Rt+1 )eωkt+1 , Bt+1 ωkt+1 − B∗ωk, ∗⟩≤ 4U 2 
+
+> ω
+
+∥I − Rt+1 ∥≤ 8U 2 
+
+> ω
+
+∥Qt∥2 
+
+> F
+
+.
+
+Summing up I1 and I2 and multiplying by 2, we have 
+
+2Et−τ ⟨Bt+1 ΠUω (eωkt+1 ) − Bt+1 Rt+1 eωkt+1 , exkt+1 ⟩≤72 β2
+
+L2 Et−τ ∥xkt ∥2 + 18 β2
+
+L U 2 
+
+> δ
+
+(1 + 2 mρ 
+
+1 − ρ ) + 18 β2Et−τ |ykt |2 + 68 U 2 
+
+> ω
+
+Et−τ ∥Qt∥4
+
+> F
+
++ 6 Uω Et−τ ωkt+1 − eωkt+1 2 ∥mt+1 ∥2 + 16 U 2 
+
+> ω
+
+Et−τ ∥Qt∥2 
+
+> F
+
+. (32) 20 Personalized Multi-Agent Average Reward TD-Learning via Joint Linear Approximation 
+
+We bound ∥exkt+1 ∥ as follows: 
+
+exkt+1 = ¯Bt+1 eωkt+1 − zk, ∗
+
+= Bt + ζKL 
+
+> K
+
+X
+
+> i=1
+
+Pt, ⊥δit,L ϕ(sit, 0)( ωit)⊤
+
+! 
+
+ωkt + βL δkt,L B⊤ 
+
+> t
+
+ϕ(skt, 0)
+
+
+
+− zk, ∗
+
+= Btωkt − zk, ∗ + βL Bt(δkt,L B⊤ 
+
+> t
+
+ϕ(skt, 0)) + ζKL 
+
+> K
+
+X
+
+> i=1
+
+Pt, ⊥δit,L ϕ(sit, 0)( ωit)⊤ωkt
+
++ ζβ ( 1
+
+KL 2
+
+> K
+
+X
+
+> i=1
+
+Pt, ⊥δit,L ϕ(sit, 0)( ωit)⊤)  δkt,L B⊤ 
+
+> t
+
+ϕ(skt, 0) .
+
+Squaring both sides, we have 
+
+∥exkt+1 ∥2 =∥ ¯Bt+1 eωkt+1 − zk, ∗∥2
+
+≤∥ Btωkt − zk, ∗∥2 + 2 βL ⟨Btωkt − zk, ∗, BtB⊤ 
+
+> t
+
+δkt,L ϕ(skt, 0)⟩
+
+| {z }
+
+> I1
+
++ 2 ζ⟨Btωkt − zk, ∗, 1
+
+KL 
+
+> K
+
+X
+
+> i=1
+
+Pt, ⊥ϕ(sit, 0)δit,L (ωit)⊤ωkt ⟩
+
+| {z }
+
+> I2
+
++ 2 ζβ L2
+
+*
+
+Btωkt − zk, ∗, ( 1
+
+K
+
+> K
+
+X
+
+> i=1
+
+Pt, ⊥δit,L ϕ(sit, 0)( ωit)⊤)  δkt,L B⊤ 
+
+> t
+
+ϕ(skt, 0)+| {z }
+
+> I3
+
++ 3 β2
+
+L2 ∥Bt(δkt,L B⊤ 
+
+> t
+
+ϕ(skt, 0)) ∥2
+
+| {z }
+
+> I4
+
++ 3 ζ2
+
+L2 ∥ 1
+
+K
+
+> K
+
+X
+
+> i=1
+
+Pt, ⊥δit,L ϕ(sit, 0)( ωit)⊤ωkt ∥2
+
+| {z }
+
+> I5
+
++ 3 β2ζ2
+
+L4 ∥( 1
+
+K
+
+> K
+
+X
+
+> i=1
+
+Pt, ⊥δit,L ϕ(sit, 0)( ωit)⊤)  δkt,L B⊤ 
+
+> t
+
+ϕ(skt, 0) ∥2
+
+| {z }
+
+> I6
+
+. (33) We bound these terms separately. Bounding I1. Roughly speaking, the main drift of the decay in ∥xkt ∥ may arise from 2β⟨xkt , BtB⊤ 
+
+> t
+
+ϕ(skt )δkt ⟩ (i.e., I1 in Eq. (33)). However, the environmental heterogeneity significantly complicates the characterization of this term. Specifically, by Proposition 1, I1 can be written as: 
+
+2 βL ⟨xkt , BtB⊤ 
+
+> t
+
+ϕ(skt, 0)δkt,L ⟩
+
+=2 βL ⟨xkt , BtB⊤ 
+
+> t
+
+ξkt,L ⟩ + 2 βL ⟨xkt , BtB⊤ 
+
+> t
+
+AkLxkt ⟩ + 2 β⟨xkt , BtB⊤ 
+
+> t
+
+ykt ϕ(skt, 0)⟩
+
+= 2 βL ⟨xkt , PtAkLxkt ⟩
+
+| {z }
+
+> I11
+
++ 2 βL ⟨xkt , Ptξkt,L ⟩
+
+| {z }
+
+> I12
+
++ 2 β⟨xkt , Ptykt ϕ(skt, 0)⟩
+
+| {z }
+
+> I13
+
+, (34) recalling that Pt = BtB⊤ 
+
+> t
+
+. Inside I1, the main negative drift arises from the term ⟨xkt , PtAkLxkt ⟩. Intuitively, in traditional single-agent or homogeneous environment settings, ⟨xkt , PtAkLxkt ⟩ ≈ ⟨ xkt , Ax kt ⟩, which is mainly controlled by the spectrum of A, with the desired property directly assumed in Assumption 1. However, in the presence of environmental heterogeneity, Assumption 1 does not directly guarantee a negative drift of the xkt due to the existence of Pt and its intricate interplay with 21 Personalized Multi-Agent Average Reward TD-Learning via Joint Linear Approximation 
+
+the heterogeneous AkL. Specifically, (1) Pt is not of full rank, (2) the local head error will be distorted in a different manner due to the product PtAkL, and (3) Pt varies over time. To address this, we further decompose I11 as 
+
+2 βL ⟨xkt , PtAkLxkt ⟩
+
+=2 βL ⟨xkt , (Pt − P∗)AkLxkt ⟩ + 2 βL ⟨xkt , P∗AkLxkt ⟩
+
+= 2 βL ⟨xkt , A kLxkt ⟩
+
+| {z }
+
+> I111
+
++ 2 βL ⟨xkt , (Pt − P∗)AkLxkt ⟩
+
+| {z }
+
+> I112
+
+− 2 βL ⟨xkt , P∗⊥AkLxkt ⟩
+
+| {z }
+
+> I113
+
+. (35) The first term of Eq. (35), I111 , is a contraction by Assumption 1. Specifically, 
+
+2 βL ⟨xkt , A kLxkt ⟩ ≤ − 2λβ ∥xkt ∥2.I112 can be controlled via the principal angle distance between the subspace estimate Bt and the underlying truth B∗. Since 
+
+∥AkL∥ ≤ Es0∼μk ,a 0∼π,...,s (L)∼P k ϕ(s(0) )( ϕ(s(L)) − ϕ(s(0) )) ⊤ ≤ 2, (36) it holds that 
+
+2 βL ⟨xkt , (Pt − P∗)AkLxkt ⟩ ≤ 8Uω
+
+βL ∥Pt − P∗∥∥ xkt ∥.
+
+The third term, I113 , can be bounded as 
+
+−2 βL ⟨xkt , P∗⊥AkLxkt ⟩ = −2 βL (P∗⊥xkt )⊤AkLxkt = −2 βL (P∗⊥
+
+ Btωkt − B∗ωk, ∗)⊤AkLxkt
+
+= −2 βL
+
+ B∗⊥B∗⊤ ⊥
+
+ Btωkt − B∗ωk, ∗ ⊤ AkLxkt
+
+= −2 βL (B∗⊥B∗⊤ ⊥ Btωkt )⊤AkLxkt
+
+≤ 4 βL Uω ∥B∗⊤ ⊥ Bt∥∥ xkt ∥. (37) wherein the local head error xkt and the principal angle distance ∥B∗⊤ ⊥ Bt∥ are also coupled. Then, 
+
+I11 ≤ − 2λβ ∥xkt ∥2 + 12 Uω
+
+βL ∥mt∥∥ xkt ∥. (38) It is worth noting that when ∥B∗⊤ ⊥ Bt∥ = 0 , i.e., when Bt and B∗ span the same r-dimensional subspace, the second and the third terms in Eq. (35) become zero, and Eq. (35) reduces to the standard negative drift term. We postpone the characterization of the convergence of ∥B∗⊤ ⊥ Bt∥ to Lemma 5.3. For I13 ,we have 
+
+I13 ≤ 2β∥xkt ∥| ykt |. (39) Recall ebkt,L = PL−1 
+
+> ℓ=0
+
+(rkt,ℓ − Jk)ϕ(skt, 0); ¯bkL = Es(0) ∼μk ,(a(ℓ),s (ℓ))∼π⊗P k ∀ℓ∈[0 ,L −1] 
+
+hPL−1 
+
+> ℓ=0
+
+(r(s(ℓ), a (ℓ)) − Jk)ϕ(s(0) )
+
+i
+
+.
+
+For I12 , recall from Eq. (15) that, 
+
+ξkt,L = ebkt,L − ¯bkL + ( eAkt,L − AkL)Btωkt . (40) 22 Personalized Multi-Agent Average Reward TD-Learning via Joint Linear Approximation 
+
+Then, 
+
+2 βL xkt , Ptξkt,L 
+
+=2 βL
+
+D
+
+xkt , Pt
+
+ebkt,L − ¯bkL + ( eAkt,L − AkL)Btωkt
+
+E
+
+=2 βL
+
+D
+
+xkt , Pt(ebkt,L − ¯bkL)
+
+E
+
++ 2 βL
+
+D
+
+xkt , Pt( eAkt,L − AkL)Btωkt
+
+E
+
+= 2 βL
+
+D
+
+xkt − xkt−τ , Pt(ebkt,L − ¯bkL)
+
+E| {z }
+
+> I121
+
++ 2 βL
+
+D
+
+xkt−τ , (Pt − Pt−τ )( ebkt,L − ¯bkL)
+
+E| {z }
+
+> I122
+
++ 2 βL
+
+D
+
+xkt−τ , Pt−τ (ebkt,L − ¯bkL)
+
+E| {z }
+
+> I123
+
++ 2 βL
+
+D
+
+xkt − xkt−τ , Pt( eAkt,L − AkL)Btωkt
+
+E| {z }
+
+> I124
+
++ 2 βL
+
+D
+
+xkt−τ , (Pt − Pt−τ )( eAkt,L − AkL)Btωkt
+
+E| {z }
+
+> I125
+
++ 2 βL
+
+D
+
+xkt−τ , Pt−τ ( eAkt,L − AkL)( Btωkt − Bt−τ ωkt−τ )
+
+E| {z }
+
+> I126
+
++ 2 βL
+
+D
+
+xkt−τ , Pt−τ ( eAkt,L − AkL)Bt−τ ωkt−τ
+
+E| {z }
+
+> I127
+
+.
+
+For I121 , we have under conditional expectation, 
+
+2 βL Et−τ
+
+D
+
+xkt − xkt−τ , Pt
+
+ ebkt,L − ¯bkL
+
+E
+
+≤2 βL Et−τ ∥xkt − xkt−τ ∥∥ Pt∥∥ ebkt,L − ¯bkL∥≤2 βL Et−τ ∥Btωkt − Bt−τ ωkt−τ ∥∥ ebkt,L − ¯bkL∥≤ 12 Et−τ ∥Btωkt − Bt−τ ωkt−τ ∥2 + 2 β2
+
+L2 Et−τ ∥ebkt,L − ¯bkL∥2
+
+≤Et−τ ∥Btωkt − Btωkt−τ ∥2 + Et−τ ∥Btωkt−τ − Bt−τ ωkt−τ ∥2 + 2 β2
+
+L2 Et−τ ∥ebkt,L − ¯bkL∥2
+
+≤Et−τ ∥ωkt − ωkt−τ ∥2 + Uω Et−τ ∥Bt − Bt−τ ∥2 + 2 β2
+
+L2 Et−τ ∥ebkt,L − ¯bkL∥2. (41) Similarly, for I122 , we have 
+
+2 βL Et−τ
+
+D
+
+xkt−τ , (Pt − Pt−τ )ebkt,L − ¯bkL
+
+E
+
+≤2 βL Et−τ ∥xkt−τ ∥∥ Pt − Pt−τ ∥∥ ebkt,L − ¯bkL∥ (by Cauchy Schwartz )
+
+≤8Uω
+
+βL Et−τ ∥Bt − Bt−τ ∥∥ ebkt,L − ¯bkL∥≤ 12 Et−τ ∥Bt − Bt−τ ∥2 + 32 U 2
+
+> ω
+
+β2
+
+L2 Et−τ ∥ebkt,L − ¯bkL∥2. (42) For I124 ,
+
+2 βL Et−τ
+
+D
+
+xkt − xkt−τ , Pt( eAkt,L − AkL)Btωkt
+
+E
+
+≤2Uω
+
+βL Et−τ ∥Btωkt − Bt−τ ωkt−τ ∥∥ eAkt,L − AkL∥≤ 12 Et−τ ∥Btωkt − Bt−τ ωkt−τ ∥2 + 2 U 2
+
+> ω
+
+β2
+
+L2 Et−τ ∥ eAkt,L − AkL∥2
+
+≤Et−τ ∥ωkt − ωkt−τ ∥2 + Uω Et−τ ∥Bt − Bt−τ ∥2 + 2 U 2
+
+> ω
+
+β2
+
+L2 Et−τ ∥ eAkt,L − AkL∥2. (43) 23 Personalized Multi-Agent Average Reward TD-Learning via Joint Linear Approximation 
+
+For I125 ,
+
+2 βL Et−τ
+
+D
+
+xkt−τ , (Pt − Pt−τ )( eAkt,L − AkL)Btωkt
+
+E
+
+≤8 βL U 2 
+
+> ω
+
+Et−τ ∥Bt − Bt−τ ∥∥ eAkt,L − AkL∥≤ 12 Et−τ ∥Bt − Bt−τ ∥2 + 32 U 4
+
+> ω
+
+β2
+
+L2 Et−τ ∥ eAkt,L − AkL∥2. (44) For I126 , we have, 
+
+2 βL Et−τ
+
+D
+
+xkt−τ , Pt−τ ( eAkt,L − AkL)( Btωkt − Bt−τ ωkt−τ )
+
+E
+
+≤4 βL Uω Et−τ ∥ eAkt,L − AkL∥∥ Btωkt − Bt−τ ωkt−τ ∥≤8 β2
+
+L2 U 2 
+
+> ω
+
+Et−τ ∥ eAkt,L − AkL∥2 + Et−τ ∥ωkt − ωkt−τ ∥2 + Uω Et−τ ∥Bt − Bt−τ ∥2 (45) Summing up the upper bounds of I121 (Eq. (41)) , I 122 (Eq. (42)) , I 124 (Eq. (43)), I125 (Eq. (44)) and I126 (Eq. (45)), condi-tioning on vt−τ , we get, 
+
+Et−τ [I121 + I122 + I124 + I125 + I126 ]
+
+≤3Et−τ ∥ωkt − ωkt−τ ∥2 + (1 + 3 Uω ) Et−τ ∥Bt − Bt−τ ∥2
+
++  10 U 2 
+
+> ω
+
++ 32 U 4
+
+> ω
+
+ β2
+
+L2 Et−τ ∥ eAkt,L − AkL∥2 +  2 + 32 U 2
+
+> ω
+
+ β2
+
+L2 Et−τ ∥ebkt,L − ¯bkL∥2
+
+≤3τ
+
+> t−1
+
+X
+
+> j=t−τ
+
+Et−τ ∥ωkj+1 − ωkj ∥2 + (1 + 3 Uω ) τ
+
+> t−1
+
+X
+
+> j=t−τ
+
+Et−τ ∥Bj+1 − Bj ∥2
+
++  10 U 2 
+
+> ω
+
++ 32 U 4
+
+> ω
+
+ β2
+
+L2 Et−τ ∥ eAkt,L − AkL∥2 +  2 + 32 U 2
+
+> ω
+
+ β2
+
+L2 Et−τ ∥ebkt,L − ¯bkL∥2. (46) For I123 , by Assumption 2 and Lemma I.6, we have 
+
+2 βL Et−τ
+
+D
+
+xkt−τ , Pt−τ
+
+ebkt,L − ¯bkL
+
+E
+
+≤ 2 βL
+
+D
+
+xkt−τ , Pt−τ Et−τ
+
+ebkt,L − ¯bkL
+
+E
+
+≤ 2 βL ∥xkt−τ ∥∥ Pt−τ ∥∥ Et−τ
+
+ebkt,L − ¯bkL
+
+∥≤ 2 βL 2Uω 4LU r mρ τ = 16 Uω Ur βmρ τ .
+
+For I127 , similarly, by Assumption 2 and Lemma I.6, we have 
+
+2 βL Et−τ
+
+D
+
+xkt−τ , Pt−τ ( eAkt,L − AkL)Bt−τ ωkt−τ
+
+E
+
+≤ 16 U 2
+
+> ω
+
+βL mρ τ .
+
+Then, by the tower property, we have 
+
+Et−τ [I123 + I127 ] ≤ 16 Uω (Ur + Uω
+
+L )βmρ τ ≤ 16 Uω (Ur + Uω )βmρ τ . (47) Putting Eq. (47) and Eq. (46) together, we get 
+
+Et−τ [I12 ] ≤ 3τ
+
+> t−1
+
+X
+
+> j=t−τ
+
+Et−τ ∥ωkj+1 − ωkj ∥2 + (1 + 3 Uω ) τ
+
+> t−1
+
+X
+
+> j=t−τ
+
+Et−τ ∥Bj+1 − Bj ∥2
+
++  10 U 2 
+
+> ω
+
++ 32 U 4
+
+> ω
+
+ β2
+
+L2 Et−τ ∥ eAkt,L − AkL∥2 +  2 + 32 U 2
+
+> ω
+
+ β2
+
+L2 Et−τ ∥ebkt,L − ¯bkL∥2 + 16 Uω (Ur + Uω )βmρ τ . (48) 24 Personalized Multi-Agent Average Reward TD-Learning via Joint Linear Approximation 
+
+Invoking Assumption 1, putting Eq. (38), Eq. (48), and Eq. (39), back to Eq. (34), and taking conditional expectation on 
+
+v0: t−τ , we get 
+
+Et−τ [I1] = 2 βL Et−τ ⟨xkt , BtB⊤ 
+
+> t
+
+ϕ(skt, 0)δkt,L ⟩≤ − 2λβ Et−τ ∥xkt ∥2 + 12 Uω
+
+βL Et−τ ∥mt∥∥ xkt ∥ + 2 βEt−τ ∥xkt ∥| ykt |
+
++ 3 τ
+
+> t−1
+
+X
+
+> j=t−τ
+
+Et−τ ∥ωkj+1 − ωkj ∥2 + (1 + 3 Uω ) τ
+
+> t−1
+
+X
+
+> j=t−τ
+
+Et−τ ∥Bj+1 − Bj ∥2
+
++  10 U 2 
+
+> ω
+
++ 32 U 4
+
+> ω
+
+ β2
+
+L2 Et−τ ∥ eAkt,L − AkL∥2 +  2 + 32 U 2
+
+> ω
+
+ β2
+
+L2 Et−τ ∥ebkt,L − ¯bkL∥2 + 16 Uω (Ur + Uω )βmρ τ . (49) Apply Young’s inequality, for arbitrary c3 > 0, c4 > 0, we have 
+
+12 Uω
+
+βL Et−τ ∥mt∥∥ xkt ∥ ≤ c23
+
+βL Et−τ ∥xkt ∥2 + 36 U 2
+
+> ω
+
+c23
+
+βL Et−τ ∥mt∥2,
+
+2βEt−τ ∥xkt ∥| ykt | ≤ c24βEt−τ ∥xkt ∥2 + 1
+
+c24
+
+βEt−τ |ykt |2,
+
+we get 
+
+Et−2τ [I1] ≤ − 2λβ Et−2τ ∥xkt ∥2 + c23
+
+βL Et−2τ ∥xkt ∥2 + 36 U 2
+
+> ω
+
+c23
+
+βL Et−2τ ∥mt∥2 + c24βEt−2τ ∥xkt ∥2 + 1
+
+c24
+
+βEt−2τ |ykt |2
+
++ 3 τ
+
+> t−1
+
+X
+
+> j=t−τ
+
+Et−2τ ∥ωkj+1 − ωkj ∥2 + (1 + 3 Uω ) τ
+
+> t−1
+
+X
+
+> j=t−τ
+
+Et−2τ ∥Bj+1 − Bj ∥2
+
++  10 U 2 
+
+> ω
+
++ 32 U 4
+
+> ω
+
+ β2
+
+L2 Et−2τ ∥ eAkt,L − AkL∥2 +  2 + 32 U 2
+
+> ω
+
+ β2
+
+L2 Et−2τ ∥ebkt,L − ¯bkL∥2 + 16 Uω (Ur + Uω )βmρ τ . (50) Bounding I2. By Proposition 1, I2 can be written as, 
+
+2ζKL ⟨xkt ,
+
+> K
+
+X
+
+> i=1
+
+Pt, ⊥ϕ(sit, 0)δit,L (ωit)⊤ωkt ⟩
+
+= 2ζKL ⟨xkt ,
+
+> K
+
+X
+
+> i=1
+
+Pt, ⊥ eAit,L xit(ωit)⊤ωkt ⟩ + 2ζKL ⟨xkt ,
+
+> K
+
+X
+
+> i=1
+
+Pt, ⊥bit,L (ωit)⊤ωkt ⟩ + 2ζK ⟨xkt ,
+
+> K
+
+X
+
+> i=1
+
+Pt, ⊥yitϕ(sit, 0)( ωit)⊤ωkt ⟩≤ 4U 2 
+
+> ω
+
+ζKL 
+
+> K
+
+X
+
+> i=1
+
+∥xkt ∥∥ xit∥ + 2ζKL ⟨xkt ,
+
+> K
+
+X
+
+> i=1
+
+Pt, ⊥bit,L (ωit)⊤ωkt ⟩
+
+| {z }
+
+> I21
+
++ 2U 2 
+
+> ω
+
+ζK
+
+> K
+
+X
+
+> i=1
+
+∥xkt ∥| yit|. (51) 25 Personalized Multi-Agent Average Reward TD-Learning via Joint Linear Approximation 
+
+For I21 , similar to the derivations of the upper bounds of terms from I121 to I126 , we have 
+
+2ζKL 
+
+> K
+
+X
+
+> i=1
+
+⟨xkt , Pt, ⊥bit,L (ωit)⊤ωkt ⟩
+
+= 2ζKL 
+
+> K
+
+X
+
+> i=1
+
+⟨xkt − xkt−τ , Pt, ⊥bit,L (ωit)⊤ωkt ⟩ + 2ζKL 
+
+> K
+
+X
+
+> i=1
+
+⟨xkt−τ , (Pt, ⊥ − Pt−τ, ⊥)bit,L (ωit)⊤ωkt ⟩
+
++ 2ζKL 
+
+> K
+
+X
+
+> i=1
+
+⟨xkt−τ , Pt−τ, ⊥bit,L (ωit − ωit−τ )⊤ωkt ⟩ + 2ζKL 
+
+> K
+
+X
+
+> i=1
+
+⟨xkt−τ , Pt−τ, ⊥bit,L (ωit−τ )⊤(ωkt − ωkt−τ )⟩
+
++ 2ζKL 
+
+> K
+
+X
+
+> i=1
+
+⟨xkt−τ , Pt−τ, ⊥bit,L (ωit−τ )⊤ωkt−τ ⟩≤ 32 ∥ωkt − ωkt−τ ∥2 + 32 ∥Bt − Bt−τ ∥2 +  18 U 4 
+
+> ω
+
++ 32 U 6
+
+> ω
+
+ ζ2
+
+KL 2
+
+> K
+
+X
+
+> i=1
+
+∥bit,L ∥2 + 121
+
+K
+
+> K
+
+X
+
+> i=1
+
+∥ωit − ωit−τ ∥2
+
++ 2ζKL 
+
+> K
+
+X
+
+> i=1
+
+⟨xkt−τ , Pt−τ, ⊥bit,L (ωit−τ )⊤ωkt−τ ⟩. (52) For the last term in Eq. (52), by Cauchy–Schwarz inequality and Lemma I.6, we have 
+
+2ζKL 
+
+> K
+
+X
+
+> i=1
+
+Et−τ ⟨xkt−τ , Pt−τ, ⊥bit,L (ωit−τ )⊤ωkt−τ ⟩ ≤ 2ζKL 
+
+> K
+
+X
+
+> i=1
+
+2U 3 
+
+> ω
+
+∥Et−τ [bit,L ]∥≤ 8 Uδ,L 
+
+L U 3 
+
+> ω
+
+ζmρ τ . (53) Then, putting Eq. (53) back to Eq. (52) and then putting the result back to Eq. (51) and using tower property, we have 
+
+Et−τ [I2] ≤ 4U 2
+
+> ω
+
+ζKL 
+
+> K
+
+X
+
+> i=1
+
+Et−τ ∥xkt ∥∥ xit∥ + 2 U 2
+
+> ω
+
+ζK
+
+> K
+
+X
+
+> i=1
+
+Et−τ ∥xkt ∥| yit| + 32 Et−τ ∥ωkt − ωkt−τ ∥2
+
++ 32 Et−τ ∥Bt − Bt−τ ∥2 +  18 U 4 
+
+> ω
+
++ 32 U 6
+
+> ω
+
+ ζ2
+
+KL 2
+
+> K
+
+X
+
+> i=1
+
+Et−τ ∥bit,L ∥2 + 121
+
+K
+
+> K
+
+X
+
+> i=1
+
+Et−τ ∥ωit − ωit−τ ∥2
+
++ 8 Uδ,L 
+
+L U 3 
+
+> ω
+
+ζmρ τ . (54) Applying Young’s inequality, for arbitrary c5 > 0 and c6 > 0, we have 
+
+4U 2
+
+> ω
+
+ζKL 
+
+> K
+
+X
+
+> i=1
+
+Et−τ ∥xkt ∥∥ xit∥ ≤ c25
+
+ζL Et−τ ∥xkt ∥2 + 4U 4
+
+> ω
+
+c25
+
+ζKL 
+
+> K
+
+X
+
+> i=1
+
+Et−τ ∥xit∥2,
+
+2U 2
+
+> ω
+
+ζK
+
+> K
+
+X
+
+> i=1
+
+Et−τ ∥xkt ∥| yit| ≤ c26ζEt−τ ∥xkt ∥2 + U 4
+
+> ω
+
+c26
+
+ζK
+
+> K
+
+X
+
+> i=1
+
+Et−τ |yit|2.
+
+We get 
+
+Et−τ [I2] ≤ c25
+
+ζL Et−τ ∥xkt ∥2 + 4U 4
+
+> ω
+
+c25
+
+ζKL 
+
+> K
+
+X
+
+> i=1
+
+Et−τ ∥xit∥2 + c26ζEt−τ ∥xkt ∥2 + U 4
+
+> ω
+
+c26
+
+ζK
+
+> K
+
+X
+
+> i=1
+
+Et−τ |yit|2
+
++ 32 Et−τ ∥ωkt − ωkt−τ ∥2 + 32 Et−τ ∥Bt − Bt−τ ∥2 +  18 U 4 
+
+> ω
+
++ 32 U 6
+
+> ω
+
+ ζ2
+
+KL 2
+
+> K
+
+X
+
+> i=1
+
+Et−τ ∥bit,L ∥2
+
++ 121
+
+K
+
+> K
+
+X
+
+> i=1
+
+Et−τ ∥ωit − ωit−τ ∥2 + 8 Uδ,L 
+
+L U 3 
+
+> ω
+
+ζmρ τ . (55) 26 Personalized Multi-Agent Average Reward TD-Learning via Joint Linear Approximation 
+
+For I3, by Proposition 1, we have 
+
+I3 =
+
+*
+
+xkt , 1
+
+K
+
+> K
+
+X
+
+> i=1
+
+Pt, ⊥δit,L ϕ(sit, 0)( ωit)⊤
+
+! 
+
+B⊤ 
+
+> t
+
+eAkt,L xkt
+
++| {z }
+
+> I31
+
++
+
+*
+
+xkt , 1
+
+K
+
+> K
+
+X
+
+> i=1
+
+Pt, ⊥δit,L ϕ(sit, 0)( ωit)⊤
+
+!  B⊤ 
+
+> t
+
+Ly kt ϕ(skt, 0)+| {z }
+
+> I32
+
++
+
+*
+
+xkt , 1
+
+K
+
+> K
+
+X
+
+> i=1
+
+Pt, ⊥δit,L ϕ(sit, 0)( ωit)⊤
+
+!  B⊤ 
+
+> t
+
+bkt,L 
+
++| {z }
+
+> I33
+
+.
+
+By Lemma H.2, I31 and I32 can be bounded as 
+
+I31 ≤ 2Uδ,L Uω ∥xkt ∥2, (56) 
+
+I32 ≤ LU δ,L Uω ∥xkt ∥| ykt |. (57) For I33 , we have, 
+
+I33 =
+
+*
+
+xkt , 1
+
+K
+
+> K
+
+X
+
+> i=1
+
+Pt, ⊥ eAit,L xit(ωit)⊤
+
+!  B⊤ 
+
+> t
+
+bkt,L 
+
++
+
++
+
+*
+
+xkt , 1
+
+K
+
+> K
+
+X
+
+> i=1
+
+Pt, ⊥Ly itϕ(sit, 0)( ωit)⊤
+
+!  B⊤ 
+
+> t
+
+bkt,L 
+
++
+
++
+
+*
+
+xkt , 1
+
+K
+
+> K
+
+X
+
+> i=1
+
+Pt, ⊥bit,L (ωit)⊤
+
+!  B⊤ 
+
+> t
+
+bkt,L 
+
++
+
+≤2Uδ,L Uω
+
+1
+
+K
+
+> K
+
+X
+
+> i=1
+
+∥xkt ∥∥ xit∥ + LU δ,L Uω
+
+1
+
+K
+
+> K
+
+X
+
+> i=1
+
+∥xkt ∥| yit| +
+
+*
+
+xkt , 1
+
+K
+
+> K
+
+X
+
+> i=1
+
+Pt, ⊥bit,L (ωit)⊤
+
+!  B⊤ 
+
+> t
+
+bkt,L 
+
++
+
+. (58) For the last term, we have, 
+
+Et−τ
+
+*
+
+xkt , 1
+
+K
+
+> K
+
+X
+
+> i=1
+
+Pt, ⊥bit,L (ωit)⊤
+
+!  B⊤ 
+
+> t
+
+bkt,L 
+
++
+
+=Et−τ (xkt − xkt−τ )⊤Pt, ⊥
+
+1
+
+K
+
+> K
+
+X
+
+> i=1
+
+bit,L (ωit)⊤  B⊤ 
+
+> t
+
+bkt,L 
+
+
+
++ Et−τ (xkt−τ )⊤(Pt, ⊥ − Pt−τ, ⊥) 1
+
+K
+
+> K
+
+X
+
+> i=1
+
+bit,L (ωit)⊤  B⊤ 
+
+> t
+
+bkt,L 
+
+
+
++ Et−τ (xkt−τ )⊤Pt−τ, ⊥
+
+1
+
+K
+
+> K
+
+X
+
+> i=1
+
+bit,L (ωit − ωit−τ )⊤  B⊤ 
+
+> t
+
+bkt,L 
+
+
+
++ Et−τ (xkt−τ )⊤Pt−τ, ⊥
+
+1
+
+K
+
+> K
+
+X
+
+> i=1
+
+bit,L (ωit−τ )⊤  (Bt − Bt−τ )⊤bkt,L 
+
+
+
++ Et−τ (xkt−τ )⊤Pt−τ, ⊥
+
+1
+
+K
+
+> K
+
+X
+
+> i=1
+
+bit,L (ωit−τ )⊤  B⊤ 
+
+> t−τ
+
+bkt,L 
+
+ (bridging )
+
+≤Et−τ ∥ωkt − ωkt−τ ∥U 2
+
+> δ,L
+
+Uω + 7 U 2
+
+> δ,L
+
+U 2 
+
+> ω
+
+Et−τ ∥Bt − Bt−τ ∥ + 2 Uω U 2
+
+> δ,L
+
+1
+
+K
+
+> K
+
+X
+
+> i=1
+
+Et−τ ∥ωit − ωit−τ ∥
+
++ 2 U 2 
+
+> ω
+
+U 2
+
+> δ,L
+
+1
+
+K + Et−τ (xkt−τ )⊤Pt−τ, ⊥
+
+1
+
+K
+
+X
+
+> i̸=k
+
+bit,L (ωit−τ )⊤  B⊤ 
+
+> t−τ
+
+bkt,L 
+
+
+
+≤3τ U ω
+
+U 3
+
+> δ,L
+
+L β + 14 U 3
+
+> δ,L
+
+L U 3 
+
+> ω
+
+τ ζ + 28 U 4
+
+> δ,L
+
+L2 U 4 
+
+> ω
+
+τ ζ 2 + 2 U 2 
+
+> ω
+
+U 2
+
+> δ,L
+
+1
+
+K + 8 U 2 
+
+> ω
+
+U 2
+
+> δ,L
+
+m2ρ2τ ,
+
+where the last inequality follows from (a) the independence across agents, (b) Assumption 2, and (c) Lemma I.1. 27 Personalized Multi-Agent Average Reward TD-Learning via Joint Linear Approximation 
+
+Putting this bound back to I33 (Eq. (58)), and taking conditional expectation, we get, 
+
+Et−τ [I33 ] ≤ 2Uδ,L Uω
+
+1
+
+K
+
+> K
+
+X
+
+> i=1
+
+Et−τ ∥xkt ∥∥ xit∥ + LU δ,L Uω
+
+1
+
+K
+
+> K
+
+X
+
+> i=1
+
+Et−τ ∥xkt ∥| yit|
+
++ 3 τ U ω
+
+U 3
+
+> δ,L
+
+L β + 14 U 3
+
+> δ,L
+
+L U 3 
+
+> ω
+
+τ ζ + 28 U 4
+
+> δ,L
+
+L2 U 4 
+
+> ω
+
+τ ζ 2 + 2 U 2 
+
+> ω
+
+U 2
+
+> δ,L
+
+1
+
+K + 8 U 2 
+
+> ω
+
+U 2
+
+> δ,L
+
+m2ρ2τ . (59) Putting I31 (Eq. (56)), I32 (Eq. (57)), and I33 (Eq. (59)) back to I3, and taking expectation, we have 
+
+Et−τ [I3] ≤ 2 ζβ L2
+
+
+
+2Uδ,L Uω Et−τ ∥xkt ∥2 + LU δ,L Uω Et−τ ∥xkt ∥| ykt |
+
++ 2 Uδ,L Uω
+
+1
+
+K
+
+> K
+
+X
+
+> i=1
+
+Et−τ ∥xkt ∥∥ xit∥ + LU δ,L Uω
+
+1
+
+K
+
+> K
+
+X
+
+> i=1
+
+Et−τ ∥xkt ∥| yit|
+
++ 3 τ U ω
+
+U 3
+
+> δ,L
+
+L β + 14 U 3
+
+> δ,L
+
+L U 3 
+
+> ω
+
+τ ζ + 28 U 4
+
+> δ,L
+
+L2 U 4 
+
+> ω
+
+τ ζ 2 + 2 U 2 
+
+> ω
+
+U 2
+
+> δ,L
+
+1
+
+K + 8 U 2 
+
+> ω
+
+U 2
+
+> δ,L
+
+m2ρ2τ
+
+
+
+≤4 Uδ,L 
+
+L Uω
+
+ζβ L Et−τ ∥xkt ∥2 + 2 Uδ,L 
+
+L Uω ζβ Et−τ ∥xkt ∥| ykt |
+
++ 4 Uδ,L 
+
+L Uω
+
+ζβ L
+
+1
+
+K
+
+> K
+
+X
+
+> i=1
+
+Et−τ ∥xkt ∥∥ xit∥ + 2 Uδ,L 
+
+L Uω ζβ 1
+
+K
+
+> K
+
+X
+
+> i=1
+
+Et−τ ∥xkt ∥| yit|
+
++ 6 τ U ω
+
+U 3
+
+> δ,L
+
+L3 ζβ 2 + 28 U 3
+
+> δ,L
+
+L3 U 3 
+
+> ω
+
+τ ζ 2β + 56 U 4
+
+> δ,L
+
+L4 U 4 
+
+> ω
+
+τ ζ 3β + 4 U 2
+
+> δ,L
+
+L2 U 2
+
+> ω
+
+ζβ K + 16 U 2
+
+> δ,L
+
+L2 U 2 
+
+> ω
+
+m2ζβρ 2τ
+
+≤ (6 Uδ,L 
+
+L2 Uω + 2 Uδ,L 
+
+L Uω )
+
+| {z }
+
+> := C31
+
+ζβ Et−τ ∥xkt ∥2 + Uδ,L 
+
+L Uω
+
+| {z }
+
+> := C32
+
+ζβ Et−τ |ykt |2
+
++ 2 Uδ,L 
+
+L Uω
+
+| {z }
+
+> := C33
+
+ζβ L
+
+1
+
+K
+
+> K
+
+X
+
+> i=1
+
+Et−τ ∥xit∥2 + Uδ,L 
+
+L Uω
+
+| {z }
+
+> := C34
+
+ζβ 1
+
+K
+
+> K
+
+X
+
+> i=1
+
+Et−τ |yit|2
+
++ 6 τ U ω
+
+U 3
+
+> δ,L
+
+L3
+
+| {z } 
+
+> := C35 (τ)
+
+ζβ 2 + 28 U 3
+
+> δ,L
+
+L3 U 3 
+
+> ω
+
+τ
+
+| {z } 
+
+> C36 (τ)
+
+ζ2β + 56 U 4
+
+> δ,L
+
+L4 U 4 
+
+> ω
+
+τ
+
+| {z } 
+
+> C37 (τ)
+
+ζ3β + 4 U 2
+
+> δ,L
+
+L2 U 2
+
+> ω
+
+| {z }
+
+> C38
+
+ζβ K + 4 U 2
+
+> δ,L
+
+L2 U 2 
+
+> ω
+
+m2ζβρ 2τ (Young’s inequality )=C31 ζβ Et−τ ∥xkt ∥2 + C32 ζβ Et−τ |ykt |2 + C33 
+
+ζβ L
+
+1
+
+K
+
+> K
+
+X
+
+> i=1
+
+Et−τ ∥xit∥2 + C34 ζβ 1
+
+K
+
+> K
+
+X
+
+> i=1
+
+Et−τ |yit|2
+
++ C35 (τ )ζβ 2 + C36 (τ )ζ2β + C37 (τ )ζ3β + C38 
+
+ζβ K + 4 U 2
+
+> ω
+
+U 2
+
+> δ,L
+
+L2 m2ζβρ 2τ . (60) For I4, we have, 
+
+∥Bt(δkt,L B⊤ 
+
+> t
+
+ϕ(skt, 0)) ∥2 ≤3∥BtB⊤ 
+
+> t
+
+( eAkt,L xkt )∥2 + 3 L2∥BtB⊤ 
+
+> t
+
+ykt ϕ(skt, 0)∥2 + 3 ∥BtB⊤ 
+
+> t
+
+bkt,L ∥2 (by Proposition 1) 
+
+≤12 ∥xkt ∥2 + 3 L2|ykt |2 + 3 ∥bkt,L ∥2. (61) From Lemma I.5, we know 
+
+Et−τ ∥bkt,L ∥2 ≤ U 2 
+
+> δ
+
+(1 + 2 mρ 
+
+1 − ρ )L. (62) Then, taking conditional expectation on Eq. (61), we get 
+
+Et−τ ∥Bt(δkt,L B⊤ 
+
+> t
+
+ϕ(skt, 0)) ∥2 ≤ 12 Et−τ ∥xkt ∥2 + 3 L2Et−τ |ykt |2 + 3 U 2 
+
+> δ
+
+(1 + 2 mρ 
+
+1 − ρ )L. (63) 28 Personalized Multi-Agent Average Reward TD-Learning via Joint Linear Approximation 
+
+Therefore, we have 
+
+Et−τ [I4] ≤ 36 β2
+
+L2 Et−τ ∥xkt ∥2 + 9 β2Et−τ |ykt |2 + 9 U 2 
+
+> δ
+
+(1 + 2 mρ 
+
+1 − ρ ) β2
+
+L . (64) For I5, similarly, under conditional expectation, we have 
+
+Et−τ ∥ 1
+
+K
+
+> K
+
+X
+
+> i=1
+
+Pt, ⊥δit,L ϕ(sit, 0)( ωit)⊤ωkt ∥2
+
+≤3Et−τ ∥ 1
+
+K
+
+> K
+
+X
+
+> i=1
+
+Pt, ⊥ eAit,L xit(ωit)⊤ωkt ∥2 + 3 L2Et−τ ∥ 1
+
+K
+
+> K
+
+X
+
+> i=1
+
+Pt, ⊥yitϕ(sit, 0)( ωit)⊤ωkt ∥2
+
++ 3 Et−τ ∥ 1
+
+K
+
+> K
+
+X
+
+> i=1
+
+Pt, ⊥bit,L (ωit)⊤ωkt ∥2
+
+≤12 U 4
+
+> ω
+
+1
+
+K
+
+> K
+
+X
+
+> i=1
+
+Et−τ ∥xit∥2 + 3 L2U 4
+
+> ω
+
+1
+
+K
+
+> K
+
+X
+
+> i=1
+
+Et−τ |yit|2 + 3 U 4
+
+> ω
+
+1
+
+K
+
+> K
+
+X
+
+> i=1
+
+Et−τ ∥bit,L ∥2
+
+≤12 U 4
+
+> ω
+
+1
+
+K
+
+> K
+
+X
+
+> i=1
+
+Et−τ ∥xit∥2 + 3 L2U 4
+
+> ω
+
+1
+
+K
+
+> K
+
+X
+
+> i=1
+
+Et−τ |yit|2 + 3 U 4 
+
+> ω
+
+U 2 
+
+> δ
+
+(1 + 2 mρ 
+
+1 − ρ )L. (by Eq. (62) )
+
+Then, we have 
+
+Et−τ [I5] ≤ 36 U 4
+
+> ω
+
+ζ2
+
+L2
+
+1
+
+K
+
+> K
+
+X
+
+> i=1
+
+Et−τ ∥xit∥2 + 9 ζ2U 4
+
+> ω
+
+1
+
+K
+
+> K
+
+X
+
+> i=1
+
+Et−τ |yit|2 + 9 U 4 
+
+> ω
+
+U 2 
+
+> δ
+
+(1 + 2 mρ 
+
+1 − ρ ) ζ2
+
+L . (65) For I6, we have, 
+
+I6 ≤ 3 β2ζ2
+
+L4 ∥( 1
+
+K
+
+> K
+
+X
+
+> i=1
+
+Pt, ⊥δit,L ϕ(sit, 0)( ωit)⊤)  δkt,L B⊤ 
+
+> t
+
+ϕ(skt, 0) ∥2 ≤ 3 U 4
+
+> δ,L
+
+L4 U 2 
+
+> ω
+
+β2ζ2. (66) Plugging the upper bounds of I1, I2, I3, I4, I5, and I6(Eq. (50), Eq. (55), Eq. (60), Eq. (64), Eq. (65), and Eq. (66)) back to Eq. (33), and taking expectation, we have 29 Personalized Multi-Agent Average Reward TD-Learning via Joint Linear Approximation 
+
+Et−τ ∥exkt+1 ∥2 ≤ (1 − 2λβ )Et−τ ∥xkt ∥2 + c23
+
+βL Et−τ ∥xkt ∥2 + 36 U 2
+
+> ω
+
+c23
+
+βL Et−τ ∥mt∥2 + c24βEt−τ ∥xkt ∥2 + 1
+
+c24
+
+βEt−τ |ykt |2
+
++ 3 τ
+
+> t−1
+
+X
+
+> j=t−τ
+
+Et−τ ∥ωkj+1 − ωkj ∥2 + (1 + 3 Uω ) τ
+
+> t−1
+
+X
+
+> j=t−τ
+
+Et−τ ∥Bj+1 − Bj ∥2
+
++  10 U 2 
+
+> ω
+
++ 32 U 4
+
+> ω
+
+ β2
+
+L2 Et−τ ∥ eAkt,L − AkL∥2 +  2 + 32 U 2
+
+> ω
+
+ β2
+
+L2 Et−τ ∥ebkt,L − ¯bkL∥2 + 16 Uω (Ur + Uω )mβρ τ
+
++ c25
+
+ζL Et−τ ∥xkt ∥2 + 4U 4
+
+> ω
+
+c25
+
+ζKL 
+
+> K
+
+X
+
+> i=1
+
+Et−τ ∥xit∥2 + c26ζEt−τ ∥xkt ∥2 + U 4
+
+> ω
+
+c26
+
+ζ 1
+
+K
+
+> K
+
+X
+
+> i=1
+
+Et−τ |yit|2
+
++ 32 Et−τ ∥ωkt − ωkt−τ ∥2 + 32 Et−τ ∥Bt − Bt−τ ∥2 +  18 U 4 
+
+> ω
+
++ 32 U 6
+
+> ω
+
+ U 2 
+
+> δ
+
+(1 + 2 mρ 
+
+1 − ρ ) ζ2
+
+L
+
++ 12K
+
+> K
+
+X
+
+> i=1
+
+Et−τ ∥ωit − ωit−τ ∥2 + 4 Uδ,L 
+
+L U 3 
+
+> ω
+
+ζmρ τ + C31 ζβ Et−τ ∥xkt ∥2 + C32 ζβ Et−τ |ykt |2 + C33 
+
+ζβ L
+
+1
+
+K
+
+> K
+
+X
+
+> i=1
+
+Et−τ ∥xit∥2
+
++ C34 ζβ 1
+
+K
+
+> K
+
+X
+
+> i=1
+
+Et−τ |yit|2 + C35 (τ )ζβ 2 + C36 (τ )ζ2β + C37 (τ )ζ3β + C38 
+
+ζβ K + 16 U 2
+
+> ω
+
+U 2
+
+> δ,L
+
+L2 m2ζβρ 2τ
+
++ 36 β2
+
+L2 Et−τ ∥xkt ∥2 + 9 β2Et−τ |ykt |2 + 9 U 2 
+
+> δ
+
+(1 + 2 mρ 
+
+1 − ρ ) β2
+
+L
+
++ 36 U 4
+
+> ω
+
+ζ2
+
+L2
+
+1
+
+K
+
+> K
+
+X
+
+> i=1
+
+Et−τ ∥xit∥2 + 9 ζ2U 4
+
+> ω
+
+1
+
+K
+
+> K
+
+X
+
+> i=1
+
+Et−τ |yit|2 + 9 U 4 
+
+> ω
+
+U 2 
+
+> δ
+
+(1 + 2 mρ 
+
+1 − ρ ) ζ2
+
+L + 3 U 4
+
+> δ,L
+
+L4 U 2 
+
+> ω
+
+β2ζ2.
+
+Combining terms, we get, 
+
+Et−τ ∥exkt+1 ∥2 ≤
+
+
+
+1 − 2λβ +
+
+
+
+c23
+
+βL + c24β + c25
+
+ζL + c26ζ + C31 ζβ + 36 β2
+
+L2
+
+ 
+
+Et−τ ∥xkt ∥2
+
++ 36 U 2
+
+> ω
+
+c23
+
+βL Et−τ ∥mt∥2 +
+
+ 1
+
+c24
+
+β + C32 ζβ + 9 β2
+
+
+
+Et−τ |ykt |2
+
++
+
+ 4U 4
+
+> ω
+
+c25
+
+ζL + C33 
+
+ζβ L + 36 U 4
+
+> ω
+
+ζ2
+
+L2
+
+ 1
+
+K
+
+> K
+
+X
+
+> i=1
+
+Et−τ ∥xit∥2
+
++
+
+ U 4
+
+> ω
+
+c26
+
+ζ + C34 ζβ + 9 ζ2U 4
+
+> ω
+
+ 1
+
+K
+
+> K
+
+X
+
+> i=1
+
+Et−τ |yit|2
+
++ 16 Uω (Ur + Uω )mβρ τ +  18 U 4 
+
+> ω
+
++ 32 U 6
+
+> ω
+
+ U 2 
+
+> δ
+
+(1 + 2 mρ 
+
+1 − ρ ) ζ2
+
+L + 4 Uδ,L 
+
+L U 3 
+
+> ω
+
+ζmρ τ
+
++ C35 (τ )ζβ 2 + C36 (τ )ζ2β + C37 (τ )ζ3β + C38 
+
+ζβ K + 16 U 2
+
+> ω
+
+U 2
+
+> δ,L
+
+L2 m2ζβρ 2τ + 9 U 2 
+
+> δ
+
+(1 + 2 mρ 
+
+1 − ρ ) β2
+
+L
+
++ 9 U 4 
+
+> ω
+
+U 2 
+
+> δ
+
+(1 + 2 mρ 
+
+1 − ρ ) ζ2
+
+L + 3 U 4
+
+> δ,L
+
+L4 U 2 
+
+> ω
+
+β2ζ2
+
++ 92 τ
+
+> t−1
+
+X
+
+> j=t−τ
+
+Et−τ ∥ωkj+1 − ωkj ∥2 +
+
+ 52 + 3 Uω
+
+
+
+τ
+
+> t−1
+
+X
+
+> j=t−τ
+
+Et−τ ∥Bj+1 − Bj ∥2
+
++  10 U 2 
+
+> ω
+
++ 32 U 4
+
+> ω
+
+ β2
+
+L2 Et−τ ∥ eAkt,L − AkL∥2 +  2 + 32 U 2
+
+> ω
+
+ β2
+
+L2 Et−τ ∥ebkt,L − ¯bkL∥2
+
++ 12K τ
+
+> t−1
+
+X
+
+> j=t−τK
+
+X
+
+> i=1
+
+Et−τ ∥ωij+1 − ωij ∥2.
+
+30 Personalized Multi-Agent Average Reward TD-Learning via Joint Linear Approximation 
+
+Applying Lemma I.5, Lemma I.2, Lemma I.3, and using β = cζ we further get, 
+
+Et−τ ∥exkt+1 ∥2 ≤
+
+
+
+1 − 2λcζ +
+
+
+
+c23
+
+cζ L + c24cζ + c25
+
+ζL + c26ζ + C31 cζ 2 + (36 + 40 τ 2) c2ζ2
+
+L2
+
+ 
+
+Et−τ ∥xkt ∥2
+
++ 36 U 2
+
+> ω
+
+c23
+
+cζ L Et−τ ∥mt∥2 +
+
+ 1
+
+c24
+
+cζ + C32 cζ 2 + (9 + 10 τ 2)c2ζ2
+
+
+
+Et−τ |ykt |2
+
++
+
+ 4U 4
+
+> ω
+
+c25
+
+ζL + C33 
+
+cζ 2
+
+L +
+
+
+
+36 U 4 
+
+> ω
+
++
+
+ 52 + 3 Uω
+
+
+
+C18 
+
+ ζ2
+
+L2
+
+ 1
+
+K
+
+> K
+
+X
+
+> i=1
+
+Et−τ ∥xit∥2
+
++
+
+ U 4
+
+> ω
+
+c26
+
+ζ + C34 cζ 2 +
+
+
+
+9U 4 
+
+> ω
+
++
+
+ 52 + 3 Uω
+
+
+
+C23 
+
+
+
+ζ2
+
+ 1
+
+K
+
+> K
+
+X
+
+> i=1
+
+Et−τ |yit|2
+
++ C39 (τ 2) ζ2
+
+L + C41 (τ 2) ζ2
+
+K + C42 ζρ τ + C43 (τ )ζ3 + C44 (τ 2)ζ2ρ2τ + C40 (τ 4)ζ4 + C45 (τ 4)γ2ζ2, (67) where 
+
+C39 (τ 2) = 
+
+  10 U 2 
+
+> ω
+
++ 32 U 4
+
+> ω
+
+ 
+
+16 + 32 mρ 
+
+1 − ρ
+
+
+
+c2 +  2 + 32 U 2
+
+> ω
+
+ U 2 
+
+> δ
+
+(1 + 2 mρ 
+
+1 − ρ )c2
+
++  18 U 4 
+
+> ω
+
++ 32 U 6
+
+> ω
+
+ U 2 
+
+> δ
+
+(1 + 2 mρ 
+
+1 − ρ ) + 9 U 2 
+
+> δ
+
+(1 + 2 mρ 
+
+1 − ρ )c2 + 9 U 4 
+
+> ω
+
+U 2 
+
+> δ
+
+(1 + 2 mρ 
+
+1 − ρ ) + 5 τ 2C7c2
+
+
+
+,C40 (τ 4) = 
+
+
+
+C37 (τ )c + 3 U 4
+
+> δ,L
+
+L4 U 2 
+
+> ω
+
+c2 + 5 τ 2C5(τ 2)c4 1
+
+L2 + 5 τ 2C6(τ 2)c2 1
+
+L2
+
++
+
+ 52 + 3 Uω
+
+
+
+τ 2
+
+
+
+C16 (τ 2)c2 1
+
+L2 + C17 (τ 2) 1
+
+L2 + C19 (τ 2)c2 + C24 
+
+ 
+
+C41 (τ 2) = 
+
+ 52 + 3 Uω
+
+
+
+τ 2C20 + C38 c
+
+
+
+, C 42 =
+
+
+
+16 Uω (Ur + Uω )mc + 4 Uδ,L 
+
+L U 3 
+
+> ω
+
+m
+
+
+
+, C 43 (τ ) = C35 (τ )c2 + C36 (τ )c ,C44 (τ 2) = 
+
+"
+
+16 U 2
+
+> ω
+
+U 2
+
+> δ,L
+
+L2 m2c +
+
+ 52 + 3 Uω
+
+
+
+τ 2C21 m2
+
+#
+
+, C 45 (τ 4) = 
+
+
+
+5τ 2C8(τ 2)c2 +
+
+ 52 + 3 Uω
+
+
+
+τ 2C22 (τ 2)
+
+
+
+.
+
+Putting Eq. (32) and Eq. (30), back to Eq. (28), and by tower property, we get, 
+
+Et−τ ∥xkt+1 ∥2 = Et−τ ∥exkt+1 ∥2 + Et−τ ∥Bt+1 ΠUω (eωkt+1 ) − Bt+1 Rt+1 eωkt+1 ∥2
+
++ 2 Et−τ ⟨Bt+1 ΠUω (eωkt+1 ) − Bt+1 Rt+1 eωkt+1 , exkt+1 ⟩≤Et−τ ∥exkt+1 ∥2 + 96 β2
+
+L2 Et−τ ∥xkt ∥2 + 24 β2
+
+L U 2 
+
+> δ
+
+(1 + 2 mρ 
+
+1 − ρ ) + 24 β2Et−τ |ykt |2 + 100 U 2 
+
+> ω
+
+Et−τ ∥Qt∥4
+
+> F
+
++ 6 Uω Et−τ ωkt+1 − eωkt+1 2 ∥mt+1 ∥2 + 16 U 2 
+
+> ω
+
+Et−τ ∥Qt∥2 
+
+> F
+
+. (68) For ωkt+1 − eωkt+1 2, we have 
+
+ωkt+1 − eωkt+1 2 ≤ ∥ βL δkt,L B⊤ 
+
+> t
+
+ϕ(skt, 0)∥ ≤ βU δ , ( since Uδ,L 
+
+L ≤ Uδ )
+
+for Et−τ ∥Qt∥4 
+
+> F
+
+, we use the crude bound that ∥Qt∥F ≤ Uδ Uω ζ, and for Et−τ ∥Qt∥2 
+
+> F
+
+, we invoke Eq. (26). Then, Eq. (68) 31 Personalized Multi-Agent Average Reward TD-Learning via Joint Linear Approximation 
+
+can be written as 
+
+Et−τ ∥xkt+1 ∥2
+
+≤Et−τ ∥exkt+1 ∥2 + 96 β2
+
+L2 Et−τ ∥xkt ∥2 + 24 β2
+
+L U 2 
+
+> δ
+
+(1 + 2 mρ 
+
+1 − ρ ) + 24 β2Et−τ |ykt |2 + 100 U 6 
+
+> ω
+
+U 4 
+
+> δ
+
+ζ4
+
++ 6 Uω Uδ βEt−τ ∥mt+1 ∥2 + 256 U 4 
+
+> ω
+
+ζ2
+
+L2
+
+1
+
+K
+
+> K
+
+X
+
+> i=1
+
+Et−τ ∥xit∥2 + 64 U 2
+
+> δ,L
+
+L2 U 4
+
+> ω
+
+ζ2
+
+K + 128 U 4
+
+> ω
+
+U 2
+
+> δ,L
+
+L2 ζ2m2ρ2τ
+
++ 144 U 2 
+
+> ω
+
+τ 2 U 4
+
+> δ,L
+
+L4 ζ2β2 + 64 U 4 
+
+> ω
+
+ζ2
+
+K
+
+> K
+
+X
+
+> i=1
+
+Et−τ |yit|2. (69) Recall Mt = Et−τ ∥mt∥2 
+
+> F
+
+; ¯Xt = 1
+
+> K
+
+PKk=1 Et−τ ∥xkt ∥2; ¯Yt = 1
+
+> K
+
+PKk=1 Et−τ |ykt |2. Invoking Eq. (67), and taking average over agents, Eq. (69) can be written as, 
+
+¯Xt+1 
+
+≤ 1 − 2λcζ +
+
+
+
+c23
+
+cL + c24c + c25
+
+1
+
+L + c26 + 4 U 4
+
+> ω
+
+1
+
+c25L
+
+
+
+ζ
+
++
+
+
+
+C31 c + (36 + 40 τ 2) c2
+
+L2 + C33 
+
+cL +  36 U 4 
+
+> ω
+
++ (2 .5 + 3 Uω ) C18 
+
+ 1
+
+L2 + 96 c2
+
+L2 + 256 U 4
+
+> ω
+
+L2
+
+
+
+ζ2
+
+!
+
+¯Xt
+
++ 36 U 2
+
+> ω
+
+c23
+
+cζ L Et−τ ∥mt∥2
+
++
+
+h 1
+
+c24
+
+c + U 4
+
+> ω
+
+c26
+
+i
+
+ζ +
+
+h
+
+C32 c + (9 + 10 τ 2)c2 + C34 c + 9 U 4 
+
+> ω
+
++ (2 .5 + 3 Uω ) C23 + 24 c2 + 64 U 4
+
+> ω
+
+ζ2
+
+!
+
+¯Yt
+
++
+
+
+
+C39 (τ 2) + 24 c2U 2 
+
+> δ
+
+(1 + 2 mρ 
+
+1 − ρ )
+
+ ζ2
+
+L +
+
+"
+
+C41 (τ 2) + 64 U 2
+
+> δ,L
+
+L2 U 4
+
+> ω
+
+#
+
+ζ2
+
+K
+
++ C42 ζρ τ + C43 (τ )ζ3 +
+
+"
+
+C40 (τ 4) + 100 U 6 
+
+> ω
+
+U 4 
+
+> δ
+
++ 144 U 2 
+
+> ω
+
+τ 2 U 4
+
+> δ,L
+
+L4 c2
+
+#
+
+ζ4 + C45 (τ 4)γ2ζ2
+
++ 6 Uω Uδ βEt−τ ∥mt+1 ∥2 +
+
+"
+
+128 U 4
+
+> ω
+
+U 2
+
+> δ,L
+
+L2 m2 + C44 (τ 2)
+
+#
+
+ζ2ρ2τ . (70) 32 Personalized Multi-Agent Average Reward TD-Learning via Joint Linear Approximation 
+
+By Eq. (89), Eq. (70) can be written as, 
+
+¯Xt+1 ≤ 1 − 2λcζ +
+
+
+
+c23
+
+cL + c24c + c25
+
+1
+
+L + c26 + 4 U 4
+
+> ω
+
+1
+
+c25L
+
+
+
+ζ
+
++
+
+
+
+C31 c + (36 + 40 τ 2) c2
+
+L2 + C33 
+
+cL +  36 U 4 
+
+> ω
+
++ (2 .5 + 3 Uω ) C18 
+
+ 1
+
+L2
+
++ 96 c2
+
+L2 + 256 U 4
+
+> ω
+
+L2 + 96 Uδ c U 3
+
+> ω
+
+c22
+
+1
+
+L2
+
+
+
+ζ2 + 6 Uω Uδ cCM, 4(τ 2)ζ3
+
+!
+
+¯Xt
+
++ 36 U 2
+
+> ω
+
+c23
+
+cζ L Mt + 6 Uω Uδ cζM t
+
++
+
+h 1
+
+c24
+
+c + U 4
+
+> ω
+
+c26
+
+i
+
+ζ +
+
+"
+
+C32 c + (9 + 10 τ 2)c2 + C34 c + 9 U 4 
+
+> ω
+
++ (2 .5 + 3 Uω ) C23 
+
++ 24 c2 + 64 U 4 
+
+> ω
+
++ 24 Uδ c U 3
+
+> ω
+
+c21
+
+#
+
+ζ2 + 6 Uω Uδ cCM, 5(τ 2)ζ3
+
+!
+
+¯Yt
+
++
+
+
+
+C39 (τ 2) + 24 c2U 2 
+
+> δ
+
+(1 + 2 mρ 
+
+1 − ρ )
+
+ ζ2
+
+L +
+
+"
+
+C41 (τ 2) + 64 U 2
+
+> δ,L
+
+L2 U 4
+
+> ω
+
+#
+
+ζ2
+
+K
+
++ C42 ζρ τ +
+
+
+
+C43 (τ ) + 24 Uω Uδ cC 25 (τ 2) 1
+
+L + 6 Uω Uδ cCM, 2(τ 2) 1
+
+K
+
+
+
+ζ3
+
++
+
+"
+
+C40 (τ 4) + 100 U 6 
+
+> ω
+
+U 4 
+
+> δ
+
++ 144 U 2 
+
+> ω
+
+τ 2 U 4
+
+> δ,L
+
+L4 c2 + 6 Uω Uδ cCM, 6
+
+#
+
+ζ4 + C45 (τ 4)γ2ζ2
+
++ 6 Uω Uδ cCM, 1ζ5 + 24 Uω Uδ cC 28 (τ 4)γ2ζ3 + 6 Uω Uδ cCM, 3ζ7 +
+
+"
+
+128 U 4
+
+> ω
+
+U 2
+
+> δ,L
+
+L2 m2 + C44 (τ 2)
+
+#
+
+ζ2ρ2τ . (71) Choosing τ = ⌈2 log ρ(ζ)⌉, we have 
+
+¯Xt+1 ≤ 1 − 2λcζ +
+
+
+
+c23
+
+cL + c24c + c25
+
+1
+
+L + c26 + 4 U 4
+
+> ω
+
+1
+
+c25L
+
+
+
+ζ + CX, 1(τ 2)ζ2 + CX, 2(τ 2)ζ3
+
+!
+
+¯Xt
+
++
+
+ 36 U 2
+
+> ω
+
+c23
+
+cζ L + 6 Uω Uδ cζ 
+
+
+
+Mt
+
++
+
+h 1
+
+c24
+
+c + U 4
+
+> ω
+
+c26
+
+i
+
+ζ + CX, 3(τ 2)ζ2 + CX, 4(τ 2)ζ3
+
+!
+
+¯Yt
+
++ CX, 5(τ 2) ζ2
+
+L + CX, 6(τ 2) ζ2
+
+K + CX, 7ζ3 + CX, 8ζ4 + CX, 9γ2ζ2 + CX, 10 ζ5 + CX, 11 γ2ζ3 + CX, 12 ζ7 + CX, 13 ζ6,
+
+(72) where 
+
+CX, 1(τ 2) = 
+
+
+
+C31 c + (36 + 40 τ 2) c2
+
+L2 + C33 
+
+cL +  36 U 4 
+
+> ω
+
++ (2 .5 + 3 Uω ) C18 
+
+ 1
+
+L2 + 96 c2
+
+L2 + 256 U 4
+
+> ω
+
+L2 + 96 Uδ c U 3
+
+> ω
+
+c22
+
+1
+
+L2
+
+
+
+,
+
+CX, 2(τ 2) = 6 Uω Uδ cCM, 4(τ 2),
+
+CX, 3(τ 2) = 
+
+"
+
+C32 c + (9 + 10 τ 2)c2 + C34 c + 9 U 4 
+
+> ω
+
++ (2 .5 + 3 Uω ) C23 + 24 c2 + 64 U 4 
+
+> ω
+
++ 24 Uδ c U 3
+
+> ω
+
+c21
+
+#
+
+,
+
+33 Personalized Multi-Agent Average Reward TD-Learning via Joint Linear Approximation 
+
+CX, 4(τ 2) = 6 Uω Uδ cCM, 5(τ 2), CX, 5(τ 2) = 
+
+
+
+C39 (τ 2) + 24 c2U 2 
+
+> δ
+
+(1 + 2 mρ 
+
+1 − ρ )
+
+
+
+, CX, 6(τ 2) = 
+
+"
+
+C41 (τ 2) + 64 U 2
+
+> δ,L
+
+L2 U 4
+
+> ω
+
+#
+
+,
+
+CX, 7 =
+
+
+
+C42 + C43 (τ ) + 24 Uω Uδ cC 25 (τ 2) 1
+
+L + 6 Uω Uδ cCM, 2(τ 2) 1
+
+K
+
+
+
+,
+
+CX, 8 =
+
+"
+
+C40 (τ 4) + 100 U 6 
+
+> ω
+
+U 4 
+
+> δ
+
++ 144 U 2 
+
+> ω
+
+τ 2 U 4
+
+> δ,L
+
+L4 c2 + 6 Uω Uδ cCM, 6
+
+#
+
+, CX, 9 = C45 (τ 4), CX, 10 = 6 Uω Uδ cCM, 1,
+
+CX, 11 = 24 Uω Uδ cC 28 (τ 4), CX, 12 = 6 Uω Uδ cCM, 3, CX, 13 =
+
+"
+
+128 U 4
+
+> ω
+
+U 2
+
+> δ,L
+
+L2 m2 + C44 (τ 2)
+
+#
+
+.
+
+34 Personalized Multi-Agent Average Reward TD-Learning via Joint Linear Approximation 
+
+D.2. Lower bound: Proof of Lemma 5.2 
+
+Recall that xkt = Btωkt − zk, ∗ = Btωkt − B∗ωk, ∗. By definition, for each k ∈ [K], Btωkt lies in the sub-space spanned by Bt. As illustrated in Fig.3, the distance between Btωkt and zk, ∗ is no smaller than the distance 
+
+Figure 3. Geometry illustration. 
+
+between zk, ∗ and the subspace spanned by Bt. Hence, 
+
+∥xkt ∥ = ∥Btωkt − zk, ∗∥ ≥ ∥ Pt, ⊥zk, ∗∥
+
+= ∥(I − Pt)zk, ∗∥ = ∥(P∗ − Pt)zk, ∗∥
+
+= ∥(Pt − P∗)zk, ∗∥.
+
+Recall that Pt = BtB⊤ 
+
+> t
+
+and P∗ = B∗(B∗)⊤. We first rewrite 
+
+Pt − P∗ to relate it to the cross terms B⊤ 
+
+> t
+
+B∗⊥ and B⊤
+
+> t, ⊥
+
+B∗.Observe that 
+
+ B⊤
+
+> t
+
+B⊤
+
+> t, ⊥
+
+
+
+(BtB⊤ 
+
+> t
+
+− B∗B∗⊤ ) B∗⊥ B∗ =
+
+B⊤ 
+
+> t
+
+B∗⊥ 00 −B⊤
+
+> t, ⊥
+
+B∗
+
+
+
+.
+
+It is easy to check that 
+
+BtB⊤ 
+
+> t
+
+− B∗B∗⊤ = Bt Bt, ⊥
+
+ B⊤ 
+
+> t
+
+B∗⊥ 00 −B⊤
+
+> t, ⊥
+
+B∗
+
+  B∗⊤ ⊥
+
+B∗⊤ .
+
+
+
+We can do singular value decomposition for the diagonal blocks; for ease of exposition, we drop the time index t in the decomposition. That is 
+
+B⊤ 
+
+> t
+
+B∗⊥ = X1Σ1Y⊤ 
+
+> 1
+
+, and − B⊤
+
+> t,⊥
+
+B∗ = X2Σ2Y⊤ 
+
+> 2
+
+.
+
+Then, we have 
+
+BtB⊤ 
+
+> t
+
+− B∗B∗⊤ = Bt Bt, ⊥
+
+ X1 00 X2
+
+  Σ1 00 Σ2
+
+  Y⊤ 
+
+> 1
+
+00 Y⊤
+
+> 2
+
+  B∗⊤ ⊥
+
+B∗⊤ 
+
+
+
+= BtX1 Bt, ⊥X2
+
+ Σ1 00 Σ2
+
+  (B∗⊥Y1)⊤
+
+(B∗Y2)⊤
+
+
+
+.
+
+So, 
+
+∥(Pt − P∗)zk, ∗∥ = BtX1 Bt, ⊥X2
+
+ Σ1 00 Σ2
+
+  (B∗⊥Y1)⊤
+
+(B∗Y2)⊤
+
+
+
+zk, ∗
+
+=
+
+Σ1 00 Σ2
+
+  (B∗⊥Y1)⊤
+
+(B∗Y2)⊤
+
+
+
+zk, ∗
+
+From the proof of (Chen et al., 2021b, Lemma 2.4), we know that when d ≥ 2r, Σ1 and Σ2 are identical up to permutation. Let σ1 denote the largest singular value. From (Chen et al., 2021b, Lemma 2.5), we know that 
+
+σ1 = ∥B⊤ 
+
+> t
+
+B∗⊥∥ = ∥B⊤
+
+> t, ⊥
+
+B∗∥ = ∥BtB⊤ 
+
+> t
+
+− B∗B∗⊤ ∥ = ∥mt∥. (73) Let v1 and v∗ 
+
+> 1
+
+denote the corresponding right singular vectors of B⊤ 
+
+> t
+
+B∗⊥ and B⊤
+
+> t, ⊥
+
+B∗. Let ev1 = B∗v1 ∈ Rd, and 
+
+ev∗ 
+
+> 1
+
+= B∗⊥v∗ 
+
+> 1
+
+∈ Rd. It is easy to see that ev1 ∈ span (B∗) and ev∗ 
+
+> 1
+
+∈ span (B∗⊥). Hence, we get 
+
+∥(Pt − P∗)zk, ∗∥ =
+
+Σ1 00 Σ2
+
+  (B∗⊥Y1)⊤
+
+(B∗Y2)⊤
+
+
+
+zk, ∗
+
+≥
+
+q
+
+(σ1 ev⊤ 
+
+> 1
+
+zk, ∗)2 + ( σ1(ev∗ 
+
+> 1
+
+)⊤zk, ∗)2
+
+=σ1|ev⊤ 
+
+> 1
+
+zk, ∗|,
+
+35 Personalized Multi-Agent Average Reward TD-Learning via Joint Linear Approximation 
+
+where the last line follows from zk, ∗ ∈ span (B∗) and thus (ev∗ 
+
+> 1
+
+)⊤zk, ∗ = 0 , ∀k.Recall from Eq. (10) that Z∗ ∈ Rd×K stacks zk, ∗ as columnes. Averaging the reconstruction error across all agents, we get 
+
+1
+
+K
+
+> K
+
+X
+
+> k=1
+
+∥xkt ∥2 ≥ 1
+
+K
+
+> K
+
+X
+
+> k=1
+
+σ21 (ev⊤ 
+
+> 1
+
+zk, ∗)2 = σ21
+
+1
+
+K
+
+> K
+
+X
+
+> k=1
+
+(ev⊤ 
+
+> 1
+
+zk, ∗)2
+
+=σ21
+
+1
+
+K ev⊤ 
+
+> 1
+
+Z∗ 2
+
+=σ21
+
+1
+
+K ev⊤ 
+
+> 1
+
+Z∗Z∗⊤ ev1.
+
+Recall from Eq. (4) that zk, ∗ = B∗ωk, ∗. Then, 
+
+σ21
+
+K ev⊤ 
+
+> 1
+
+Z∗Z∗⊤ ev1 ≥ σ21
+
+K λ+min (Z∗Z∗⊤ ).
+
+Therefore, we have 
+
+1
+
+K
+
+> K
+
+X
+
+> k=1
+
+∥xkt ∥2 ≥ σ21
+
+K λ+min (Z∗Z∗⊤ ) = ∥mt∥2
+
+K λ+min (Z∗Z∗⊤ ),
+
+where the last equality follows from Eq. (73). 36 Personalized Multi-Agent Average Reward TD-Learning via Joint Linear Approximation 
+
+## E. Proof of Lemma 5.3 (Bounds on Principal Angle Distance) 
+
+Recall from Algorithm 1 of the update of ¯B that ¯Bt+1 = Bt + ζKL 
+
+PKk=1 Bt, ⊥B⊤
+
+> t, ⊥
+
+δkt,L ϕ(skt, 0)( ωkt )⊤. Since Bt+1 =¯Bt+1 R−1
+
+> t+1
+
+, we have 
+
+∥B∗⊤ ⊥ Bt+1 ∥2 
+
+> F
+
+= ∥B∗⊤ ⊥ ¯Bt+1 R−1
+
+> t+1
+
+∥2 
+
+> F
+
+≤ ∥ B∗⊤ ⊥ ¯Bt+1 ∥2 
+
+> F
+
+∥R−1
+
+> t+1
+
+∥2.
+
+That is, 
+
+∥mt+1 ∥2 
+
+> F
+
+≤ ∥ ¯mt+1 ∥2 
+
+> F
+
+∥R−1
+
+> t+1
+
+∥2.
+
+For ∥ ¯mt+1 ∥2 
+
+> F
+
+, we have 
+
+∥ ¯mt+1 ∥2 
+
+> F
+
+= ∥B∗⊤ ⊥ ¯Bt+1 ∥2 
+
+> F
+
+= ∥B∗⊤ ⊥ Bt + ζKL 
+
+> K
+
+X
+
+> k=1
+
+B∗⊤ ⊥ Bt, ⊥B⊤
+
+> t, ⊥
+
+δkt,L ϕ(skt, 0)( ωkt )⊤∥2
+
+> F
+
+=∥B∗⊤ ⊥ Bt∥2 
+
+> F
+
++ 2 ⟨B∗⊤ ⊥ Bt, ζKL 
+
+> K
+
+X
+
+> k=1
+
+B∗⊤ ⊥ Bt, ⊥B⊤
+
+> t, ⊥
+
+δkt,L ϕ(skt, 0)( ωkt )⊤⟩ + ∥ ζKL 
+
+> K
+
+X
+
+> k=1
+
+B∗⊤ ⊥ Bt, ⊥B⊤
+
+> t, ⊥
+
+δkt,L ϕ(skt, 0)( ωkt )⊤∥2
+
+> F
+
+=∥mt∥2 
+
+> F
+
++ ∥ ζKL 
+
+> K
+
+X
+
+> k=1
+
+B∗⊤ ⊥ Bt, ⊥B⊤
+
+> t, ⊥
+
+δkt,L ϕ(skt, 0)( ωkt )⊤∥2
+
+> F
+
+| {z }
+
+> I. 1
+
++2 ⟨B∗⊤ ⊥ Bt, ζKL 
+
+> K
+
+X
+
+> k=1
+
+B∗⊤ ⊥ Pt, ⊥ξkt,L (ωkt )⊤⟩
+
++ 2 ⟨B∗⊤ ⊥ Bt, ζK
+
+> K
+
+X
+
+> k=1
+
+B∗⊤ ⊥ Pt, ⊥ykt ϕ(skt, 0)( ωkt )⊤⟩
+
+| {z }
+
+> I. 2
+
++ 2 ⟨B∗⊤ ⊥ Bt, ζKL 
+
+> K
+
+X
+
+> k=1
+
+B∗⊤ ⊥ Pt, ⊥AkLxkt (ωkt )⊤⟩
+
+| {z }
+
+> I. 3
+
+, (74) where the last equality follows from Proposition 1. For I.1 in Eq. (74), recalling that ∥Qt∥2 
+
+> F
+
+= ∥ ζKL 
+
+PKk=1 Pt, ⊥δkt,L ϕ(skt, 0)( ωkt )⊤∥2 
+
+> F
+
+, we have 
+
+I. 1 = ∥ ζKL 
+
+> K
+
+X
+
+> k=1
+
+B∗⊤ ⊥ Pt, ⊥δkt,L ϕ(skt, 0)( ωkt )⊤∥2
+
+> F
+
+=∥B∗⊤ ⊥
+
+ζK
+
+> K
+
+X
+
+> k=1
+
+Pt, ⊥δkt,L ϕ(skt, 0)( ωkt )⊤∥2
+
+> F
+
+≤∥ B∗⊤ ⊥ ∥2∥Qt∥2
+
+> F
+
+≤∥ Qt∥2 
+
+> F
+
+.
+
+Similar to the derivation in the proof of Lemma 5.1, I.2 in Eq. (74) can be bounded as 
+
+I. 2 = 2 ⟨mt, ζK
+
+> K
+
+X
+
+> k=1
+
+B∗⊤ ⊥ Pt, ⊥ykt ϕ(skt, 0)( ωkt )⊤⟩ ≤ 2∥mt∥ ζK
+
+> K
+
+X
+
+> k=1
+
+∥B∗⊤ ⊥ Pt, ⊥ykt ϕ(skt, 0)( ωkt )⊤∥ ≤ 2Uω
+
+ζK
+
+> K
+
+X
+
+> k=1
+
+∥mt∥| ykt |.I. 3 in Eq. (74) is related to the negative drift of the mt. Specifically, 
+
+12 I. 3 = ⟨B∗⊤ ⊥ Bt, ζKL 
+
+> K
+
+X
+
+> k=1
+
+B∗⊤ ⊥ Pt, ⊥AkLxkt (ωkt )⊤⟩
+
+= ζKL 
+
+> K
+
+X
+
+> k=1
+
+ Pt, ⊥P∗⊥Btωkt
+
+⊤ AkL (Pt + Pt, ⊥) xkt ,
+
+which is true because 
+
+AB, vw ⊤ = trace  A⊤vw ⊤ = w⊤B⊤A⊤v
+
+37 Personalized Multi-Agent Average Reward TD-Learning via Joint Linear Approximation 
+
+for any r × r matrix A and r-dimensional vectors v and w. Additionally, 
+
+ Pt, ⊥P∗⊥Btωkt
+
+⊤ AkL (Pt + Pt, ⊥) xkt ≤  Pt, ⊥P∗⊥xkt
+
+⊤ AkLPt, ⊥xkt + 2 Uω ∥mt∥∥ xkt ∥≤  Pt, ⊥xkt
+
+⊤ AkLPt, ⊥xkt + 6 Uω ∥mt∥∥ xkt ∥≤ − λL ∥Pt, ⊥xkt ∥2 + 6 Uω ∥mt∥∥ xkt ∥.
+
+For each k ∈ [K], it holds that 
+
+∥Pt, ⊥xkt ∥2 = ∥Pt, ⊥(Btωkt − B∗ωk, ∗)∥2 = ∥Pt, ⊥zk, ∗∥ = ∥(Pt − P∗)zk, ∗∥.
+
+From the analysis in the proof of Lemma 5.2, we know that 
+
+1
+
+K
+
+> K
+
+X
+
+> k=1
+
+∥(Pt − P∗)zk, ∗∥2 ≥ ∥ mt∥2
+
+> F
+
+λmin (Z∗Z∗⊤ )
+
+rK .
+
+So, 
+
+1
+
+K
+
+> K
+
+X
+
+> k=1
+
+∥P∗⊥(Btωkt − B∗ωk, ∗)∥2 ≥ ∥ mt∥2
+
+> F
+
+λmin (Z∗Z∗⊤ )
+
+rK .
+
+Thus, 
+
+I. 3 ≤ − 2λζ λmin (Z∗Z∗)⊤
+
+rK ∥mt∥2 
+
+> F
+
++ 12 Uω ζ 1
+
+KL 
+
+> K
+
+X
+
+> k=1
+
+∥mt∥∥ xkt ∥. (75) Combining the bounds of I.1, I.2, and I.3 of Eq. (74), and applying Assumption 4, we have 
+
+∥ ¯mt+1 ∥2 
+
+> F
+
+≤ (1 − 2λαζ r )∥mt∥2 
+
+> F
+
++ ∥Qt∥2 
+
+> F
+
++ 2 ⟨mt, ζKL 
+
+> K
+
+X
+
+> k=1
+
+B∗⊤ ⊥ Pt, ⊥ξkt,L (ωkt )⊤⟩
+
++ 2 Uω
+
+ζK
+
+> K
+
+X
+
+> k=1
+
+∥mt∥| ykt | + 12 Uω ζ 1
+
+KL 
+
+> K
+
+X
+
+> k=1
+
+∥mt∥∥ xkt ∥. (76) Recall that ∥mt+1 ∥2 
+
+> F
+
+≤ ∥ ¯mt+1 ∥2 
+
+> F
+
+∥R−1
+
+> t+1
+
+∥2, we have 
+
+∥mt+1 ∥2 
+
+> F
+
+≤ (1 − 2λαζ r )∥mt∥2 
+
+> F
+
+∥R−1
+
+> t+1
+
+∥2
+
++ ∥Qt∥2 
+
+> F
+
+∥R−1
+
+> t+1
+
+∥2 + 2 ⟨mt, ζKL 
+
+> K
+
+X
+
+> k=1
+
+B∗⊤ ⊥ Pt, ⊥ξkt,L (ωkt )⊤⟩∥ R−1
+
+> t+1
+
+∥2
+
++ 2 Uω
+
+ζK
+
+> K
+
+X
+
+> k=1
+
+∥mt∥| ykt |∥ R−1
+
+> t+1
+
+∥2 + 12 Uω ζ 1
+
+KL 
+
+> K
+
+X
+
+> k=1
+
+∥mt∥∥ xkt ∥∥ R−1
+
+> t+1
+
+∥2.
+
+For the first term, we use Eq. (21) that ∥R−1
+
+> t+1
+
+∥2 ≤ ( 11−U 2    
+
+> δU2
+> ωζ2
+
+)2, and for the remaining terms, we use a crude bound that 
+
+∥R−1
+
+> t+1
+
+∥2 ≤ ( 11−U 2    
+
+> δU2
+> ωζ2
+
+)2 ≤ 2 when U 2 
+
+> δ
+
+U 2 
+
+> ω
+
+ζ2 ≤ 16 , then, 
+
+∥mt+1 ∥2 
+
+> F
+
+≤ (1 − λαζ r )( 11 − U 2 
+
+> δ
+
+U 2 
+
+> ω
+
+ζ2 )2∥mt∥2 
+
+> F
+
++ 2 ∥Qt∥2 
+
+> F
+
++ 4 ⟨mt, ζKL 
+
+> K
+
+X
+
+> k=1
+
+B∗⊤ ⊥ Pt, ⊥ξkt,L (ωkt )⊤⟩
+
++ 4 Uω
+
+ζK
+
+> K
+
+X
+
+> k=1
+
+∥mt∥| ykt | + 24 Uω ζ 1
+
+KL 
+
+> K
+
+X
+
+> k=1
+
+∥mt∥∥ xkt ∥.
+
+38 Personalized Multi-Agent Average Reward TD-Learning via Joint Linear Approximation 
+
+Moreover, since U 2 
+
+> δ
+
+U 2 
+
+> ω
+
+ζ2 ≤ 16 , we have ( 11−U 2    
+
+> δU2
+> ωζ2
+
+)2 ≤ 1 + 3 U 2 
+
+> δ
+
+U 2 
+
+> ω
+
+ζ2. Providing λα r ≥ 3U 2 
+
+> δ
+
+U 2 
+
+> ω
+
+ζ, it holds that 
+
+(1 − 2λαζ r )( 11 − U 2 
+
+> δ
+
+U 2 
+
+> ω
+
+ζ2 )2 ≤ (1 − 2λαζ r )(1 + 3 U 2 
+
+> δ
+
+U 2 
+
+> ω
+
+ζ2) ≤ (1 − λαζ r ).
+
+Then, 
+
+∥mt+1 ∥2 
+
+> F
+
+≤ (1 − λαζ r )∥mt∥2 
+
+> F
+
++ 2 ∥Qt∥2 
+
+> F
+
++ 4 ⟨mt, ζKL 
+
+> K
+
+X
+
+> k=1
+
+B∗⊤ ⊥ Pt, ⊥ξkt,L (ωkt )⊤⟩
+
++ 4 Uω
+
+ζK
+
+> K
+
+X
+
+> k=1
+
+∥mt∥| ykt | + 24 Uω ζ 1
+
+KL 
+
+> K
+
+X
+
+> k=1
+
+∥mt∥∥ xkt ∥. (77) By Young’s inequality, we have for any c1 > 0, c 2 > 0,
+
+4Uω
+
+ζK
+
+> K
+
+X
+
+> k=1
+
+∥mt∥| ykt | ≤ c21ζ∥mt∥2 + 4U 2
+
+> ω
+
+c21
+
+ζ 1
+
+K
+
+> K
+
+X
+
+> k=1
+
+|ykt |2,
+
+16 Uω ζ 1
+
+KL 
+
+> K
+
+X
+
+> k=1
+
+∥mt∥∥ xkt ∥ ≤ c22ζ∥mt∥2 + 144 U 2
+
+> ω
+
+c22
+
+ζL2
+
+1
+
+K
+
+> K
+
+X
+
+> k=1
+
+∥xkt ∥2.
+
+Putting this back to Eq. (77), we get, 
+
+∥mt+1 ∥2 
+
+> F
+
+≤ (1 − λαζ r + c21ζ + c22ζ)∥mt∥2 
+
+> F
+
++ 2 ∥Qt∥2 
+
+> F
+
++ 4 ⟨mt, ζKL 
+
+> K
+
+X
+
+> k=1
+
+B∗⊤ ⊥ Pt, ⊥ξkt,L (ωkt )⊤⟩
+
++ 4U 2
+
+> ω
+
+c21
+
+ζ 1
+
+K
+
+> K
+
+X
+
+> k=1
+
+|ykt |2 + 144 U 2
+
+> ω
+
+c22
+
+ζL2
+
+1
+
+K
+
+> K
+
+X
+
+> k=1
+
+∥xkt ∥2. (78) 39 Personalized Multi-Agent Average Reward TD-Learning via Joint Linear Approximation 
+
+For the third term of Eq. (78), we have 
+
+⟨mt, ζKL 
+
+> K
+
+X
+
+> k=1
+
+B∗⊤ ⊥ Pt, ⊥ξkt,L (ωkt )⊤⟩
+
+=⟨mt, ζKL 
+
+> K
+
+X
+
+> k=1
+
+B∗⊤ ⊥ Pt, ⊥
+
+ebkt,L − ¯bkL + ( eAkt,L − AkL)Btωkt
+
+(ωkt )⊤⟩ (by Eq. (40) )=⟨mt, ζKL 
+
+> K
+
+X
+
+> k=1
+
+B∗⊤ ⊥ Pt, ⊥
+
+ebkt,L − ¯bkL
+
+(ωkt )⊤⟩ + ⟨mt, ζKL 
+
+> K
+
+X
+
+> k=1
+
+B∗⊤ ⊥ Pt, ⊥( eAkt,L − AkL)Btωkt (ωkt )⊤⟩
+
+=⟨mt, B∗⊤ ⊥ Pt, ⊥
+
+ζKL 
+
+> K
+
+X
+
+> k=1
+
+ebkt,L − ¯bkL
+
+(ωkt − ωkt−τ )⊤⟩ + ⟨mt − mt−τ , B∗⊤ ⊥ Pt, ⊥
+
+ζKL 
+
+> K
+
+X
+
+> k=1
+
+ebkt,L − ¯bkL
+
+(ωkt−τ )⊤⟩
+
++ ⟨mt−τ , B∗⊤ ⊥ (Pt, ⊥ − Pt−τ, ⊥) ζKL 
+
+> K
+
+X
+
+> k=1
+
+ebkt,L − ¯bkL
+
+(ωkt−τ )⊤⟩ + ⟨mt−τ , B∗⊤ ⊥ Pt−τ, ⊥
+
+ζKL 
+
+> K
+
+X
+
+> k=1
+
+ebkt,L − ¯bkL
+
+(ωkt−τ )⊤⟩
+
+| {z }
+
+> I1
+
++ ⟨mt, B∗⊤ ⊥ Pt, ⊥
+
+ζKL 
+
+> K
+
+X
+
+> k=1
+
+( eAkt,L − AkL) ( Bt − Bt−τ ) ωkt (ωkt )⊤⟩
+
++ ⟨mt, B∗⊤ ⊥ Pt, ⊥
+
+ζKL 
+
+> K
+
+X
+
+> k=1
+
+( eAkt,L − AkL)Bt−τ (ωkt − ωkt−τ )( ωkt )⊤⟩
+
++ ⟨mt, B∗⊤ ⊥ Pt, ⊥
+
+ζKL 
+
+> K
+
+X
+
+> k=1
+
+( eAkt,L − AkL)Bt−τ ωkt−τ (ωkt − ωkt−τ )⊤⟩
+
++ ⟨mt − mt−τ , B∗⊤ ⊥ Pt, ⊥
+
+ζKL 
+
+> K
+
+X
+
+> k=1
+
+( eAkt,L − AkL)Bt−τ ωkt−τ (ωkt−τ )⊤⟩
+
++ ⟨mt−τ , B∗⊤ ⊥ (Pt, ⊥ − Pt−τ, ⊥) ζKL 
+
+> K
+
+X
+
+> k=1
+
+( eAkt,L − AkL)Bt−τ ωkt−τ (ωkt−τ )⊤⟩
+
++ ⟨mt−τ , B∗⊤ ⊥ Pt−τ, ⊥
+
+ζKL 
+
+> K
+
+X
+
+> k=1
+
+( eAkt,L − AkL)Bt−τ ωkt−τ (ωkt−τ )⊤⟩
+
+| {z }
+
+> I2
+
+. (79) Note that I1 and I2 in the above decomposition can be bounded under expectation conditioned on v0: t−τ , and other terms are in terms of ∥Bt − Bt−τ ∥2, ∥ωkt − ωkt−τ ∥2, ebkt,L − ¯bkL
+
+> 2
+
+, and eAkt,L − AkL
+
+> 2
+
+by applying Cauchy-Schwartz. Specifically, for the first term, we have 
+
+⟨mt, B∗⊤ ⊥ Pt, ⊥
+
+ζKL 
+
+> K
+
+X
+
+> k=1
+
+ebkt,L − ¯bkL
+
+(ωkt − ωkt−τ )⊤⟩≤ ζKL 
+
+> K
+
+X
+
+> k=1
+
+ebkt,L − ¯bkL ωkt − ωkt−τ
+
+≤ ζKL 
+
+> K
+
+X
+
+> k=1
+
+ ζ
+
+2L ebkt,L − ¯bkL
+
+> 2
+
++ L
+
+2ζ ωkt − ωkt−τ
+
+> 2
+
+
+
+≤ 12
+
+ζ2
+
+KL 2
+
+> K
+
+X
+
+> k=1
+
+ebkt,L − ¯bkL
+
+> 2
+
++ 12K
+
+> K
+
+X
+
+> k=1
+
+ωkt − ωkt−τ 
+
+> 2
+
+.
+
+40 Personalized Multi-Agent Average Reward TD-Learning via Joint Linear Approximation 
+
+Applying similar analysis to all other terms in Eq. (79), we obtain 
+
+⟨mt − mt−τ , B∗⊤ ⊥ Pt, ⊥
+
+ζKL 
+
+> K
+
+X
+
+> k=1
+
+ebkt,L − ¯bkL
+
+(ωkt−τ )⊤⟩ ≤ 12 ∥Bt − Bt−τ ∥2 + U 2
+
+> ω
+
+2
+
+ζ2
+
+KL 2
+
+> K
+
+X
+
+> k=1
+
+ebkt,L − ¯bkL
+
+> 2
+
+,
+
+⟨mt−τ , B∗⊤ ⊥ (Pt, ⊥ − Pt−τ, ⊥) ζKL 
+
+> K
+
+X
+
+> k=1
+
+ebkt,L − ¯bkL
+
+(ωkt−τ )⊤⟩ ≤ 2∥Bt − Bt−τ ∥2 + 12 U 2
+
+> ω
+
+ζ2
+
+KL 2
+
+> K
+
+X
+
+> k=1
+
+ebkt,L − ¯bkL
+
+> 2
+
+,
+
+⟨mt, B∗⊤ ⊥ Pt, ⊥
+
+ζKL 
+
+> K
+
+X
+
+> k=1
+
+( eAkt,L − AkL) ( Bt − Bt−τ ) ωkt (ωkt )⊤⟩ ≤ 12 U 4
+
+> ω
+
+ζ2
+
+KL 2
+
+> K
+
+X
+
+> k=1
+
+∥ eAkt,L − AkL∥2 + 12 ∥Bt − Bt−τ ∥2,
+
+⟨mt, B∗⊤ ⊥ Pt, ⊥
+
+ζKL 
+
+> K
+
+X
+
+> k=1
+
+( eAkt,L − AkL)Bt−τ (ωkt − ωkt−τ )( ωkt )⊤⟩≤ Uω
+
+2
+
+ζ2
+
+KL 2
+
+> K
+
+X
+
+> k=1
+
+∥ eAkt,L − AkL∥2 + Uω
+
+21
+
+K
+
+> K
+
+X
+
+> k=1
+
+∥ωkt − ωkt−τ ∥2,
+
+⟨mt, B∗⊤ ⊥ Pt, ⊥
+
+ζKL 
+
+> K
+
+X
+
+> k=1
+
+( eAkt,L − AkL)Bt−τ ωkt−τ (ωkt − ωkt−τ )⊤⟩≤ Uω
+
+2
+
+ζ2
+
+KL 2
+
+> K
+
+X
+
+> k=1
+
+∥ eAkt,L − AkL∥2 + Uω
+
+21
+
+K
+
+> K
+
+X
+
+> k=1
+
+∥ωkt − ωkt−τ ∥2,
+
+⟨mt − mt−τ , B∗⊤ ⊥ Pt, ⊥
+
+ζKL 
+
+> K
+
+X
+
+> k=1
+
+( eAkt,L − AkL)Bt−τ ωkt−τ (ωkt−τ )⊤⟩≤ 12 ∥Bt − Bt−τ ∥2 + 12 U 4
+
+> ω
+
+ζ2
+
+KL 2
+
+> K
+
+X
+
+> k=1
+
+∥ eAkt,L − AkL∥2,
+
+⟨mt−τ , B∗⊤ ⊥ (Pt, ⊥ − Pt, ⊥) ζKL 
+
+> K
+
+X
+
+> k=1
+
+( eAkt,L − AkL)Bt−τ ωkt−τ (ωkt−τ )⊤⟩≤ 2∥Bt − Bt−τ ∥2 + U 4
+
+> ω
+
+2
+
+ζ2
+
+KL 2
+
+> K
+
+X
+
+> k=1
+
+∥ eAkt,L − AkL∥2
+
+Combining the above bounds and pulgging them back to Eq. (79), and taking expectation conditioned on v0: t−τ , we get 
+
+Et−τ ⟨mt, ζKL 
+
+> K
+
+X
+
+> k=1
+
+B∗⊤ ⊥ Pt, ⊥ξkt,L (ωkt )⊤⟩≤
+
+ 12 + U 2
+
+> ω
+
+ ζ2
+
+KL 2
+
+> K
+
+X
+
+> k=1
+
+Et−τ ebkt,L − ¯bkL
+
+> 2
+
++
+
+ 12 + Uω
+
+ 1
+
+K
+
+> K
+
+X
+
+> k=1
+
+Et−τ ωkt − ωkt−τ
+
+> 2
+
++
+
+
+
+Uω + 32 U 4
+
+> ω
+
+ ζ2
+
+KL 2
+
+> K
+
+X
+
+> k=1
+
+Et−τ ∥ eAkt,L − AkL∥2 + 8 Et−τ ∥Bt − Bt−τ ∥2
+
++ ⟨mt−τ , ζKL 
+
+> K
+
+X
+
+> k=1
+
+B∗⊤ ⊥ Pt−τ, ⊥Et−τ
+
+ebkt,L − ¯bkL
+
+(ωkt−τ )⊤⟩
+
+| {z }
+
+> I1
+
++ ⟨mt−τ , ζKL 
+
+> K
+
+X
+
+> k=1
+
+B∗⊤ ⊥ Pt−τ, ⊥Et−τ [ eAkt,L − AkL]Bt−τ ωkt−τ (ωkt−τ )⊤⟩
+
+| {z }
+
+> I2
+
+. (80) 41 Personalized Multi-Agent Average Reward TD-Learning via Joint Linear Approximation 
+
+Note that Lemma I.5 holds for any t ≥ 0 and any state s0
+
+> t,k
+
+. Applying Lemma I.5, we have 
+
+Et−τ ebkt,L − ¯bkL
+
+> 2
+
+≤
+
+
+
+16 U 2 
+
+> r
+
++ 32 U 2
+
+> r
+
+mρ 
+
+1 − ρ
+
+
+
+L. (81) Similarly, we have, 
+
+Et−τ ∥ eAkt,L − AkL∥2 ≤
+
+
+
+16 + 32 mρ 
+
+1 − ρ
+
+
+
+L. ( Lemma I.5, Eq. (119) ) (82) Applying Lemma I.2 and Lemma I.3, we have the following, 
+
+Et−τ ∥ωkt − ωkt−τ ∥2
+
+≤τ
+
+> t−1
+
+X
+
+> j=t−τ
+
+Et−τ ∥ωkj+1 − ωkj ∥2
+
+≤τ 2C5(τ 2) β4
+
+L2 + τ 2C6(τ 2) ζ2β2
+
+L2 + 8 τ 2 β2
+
+L2 Et−τ ∥xkt ∥2 + τ 2C7
+
+β2
+
+L + τ 2C8(τ 2)γ2β2 + 2 τ 2β2Et−τ |ykt |2, (83) and 
+
+Et−τ ∥Bt − Bt−τ ∥2
+
+≤τ 2C16 (τ 2) ζ2β2
+
+L2 + τ 2C17 (τ 2) ζ4
+
+L2 + τ 2C18 
+
+ζ2
+
+L2
+
+1
+
+K
+
+> K
+
+X
+
+> k=1
+
+Et−τ ∥xkt ∥2 + τ 2C19 (τ 2)ζ2β2 + τ 2C20 
+
+ζ2
+
+K
+
++ τ 2C21 ζ2m2ρ2τ + τ 2C22 (τ 2)γ2ζ2 + τ 2C23 
+
+ζ2
+
+K
+
+> K
+
+X
+
+> k=1
+
+Et−τ |ykt |2 + τ 2C24 ζ4. (84) For I1, by Lemma I.6, we have 
+
+Et−τ [I1] = Et−τ ⟨mt−τ , ζKL 
+
+> K
+
+X
+
+> k=1
+
+B∗⊤ ⊥ Pt−τ, ⊥
+
+ebkt,L − ¯bkL
+
+(ωkt−τ )⊤⟩
+
+=⟨mt−τ , ζKL 
+
+> K
+
+X
+
+> k=1
+
+B∗⊤ ⊥ Pt−τ, ⊥Et−τ
+
+ebkt,L − ¯bkL
+
+(ωkt−τ )⊤⟩≤4Ur Uω ζmρ τ . (85) Similarly, for I2, by Lemma I.6, we have 
+
+Et−τ [I2] = Et−τ ⟨mt−τ , ζKL 
+
+> K
+
+X
+
+> k=1
+
+B∗⊤ ⊥ Pt−τ, ⊥( eAkt,L − AkL)Bt−τ ωkt−τ (ωkt−τ )⊤⟩≤⟨ mt−τ , ζKL 
+
+> K
+
+X
+
+> k=1
+
+B∗⊤ ⊥ Pt−τ, ⊥Et−τ
+
+h eAkt,L − AkL
+
+i
+
+Bt−τ ωkt−τ (ωkt−τ )⊤⟩≤4U 2
+
+> ω
+
+ζL mρ τ . (86) Putting Eq. (81), Eq. (82), Eq. (83), Eq. (84), Eq. (85) and Eq. (86) back to Eq. (80), taking conditional expectation, and using 42 Personalized Multi-Agent Average Reward TD-Learning via Joint Linear Approximation 
+
+β = cζ , we get 
+
+Et−τ ⟨mt, ζKL 
+
+> K
+
+X
+
+> k=1
+
+B∗⊤ ⊥ Pt, ⊥ξkt,L (ωkt )⊤⟩≤
+
+ 12 + U 2
+
+> ω
+
+  
+
+16 U 2 
+
+> r
+
++ 32 U 2
+
+> r
+
+mρ 
+
+1 − ρ
+
+ ζ2
+
+L
+
++
+
+ 12 + Uω
+
+  
+
+τ 2C5(τ 2)c4 ζ4
+
+L2 + τ 2C6(τ 2)c2 ζ4
+
+L2 + 8 τ 2c2 ζ2
+
+L2
+
+1
+
+K
+
+> K
+
+X
+
+> k=1
+
+Et−2τ ∥xkt ∥2
+
++ τ 2C7c2 ζ2
+
+L + τ 2C8(τ 2)c2γ2ζ2 + 2 τ 2c2ζ2 1
+
+K
+
+> K
+
+X
+
+> k=1
+
+Et−2τ |ykt |2
+
+
+
++
+
+
+
+Uω + 32 U 4
+
+> ω
+
+  
+
+16 + 32 mρ 
+
+1 − ρ
+
+ ζ2
+
+L
+
++ 8 
+
+
+
+τ 2C16 (τ 2)c2 ζ4
+
+L2 + τ 2C17 (τ 2) ζ4
+
+L2 + τ 2C18 
+
+ζ2
+
+KL 2
+
+> K
+
+X
+
+> k=1
+
+Et−2τ ∥xkt ∥2 + τ 2C19 (τ 2)c2ζ4 + τ 2C20 
+
+ζ2
+
+K
+
++ τ 2C21 ζ2m2ρ2τ + τ 2C22 (τ 2)γ2ζ2 + τ 2C23 
+
+ζ2
+
+K
+
+> K
+
+X
+
+> k=1
+
+Et−2τ |ykt |2 + τ 2C24 ζ4
+
+
+
++ 2 Ur Uω ζmρ τ + 2 U 2
+
+> ω
+
+ζL mρ τ
+
+≤C25 (τ 2) ζ2
+
+L + C26 (τ 4) ζ4
+
+L2 + C27 (τ 4)ζ4 + C28 (τ 4)γ2ζ2
+
++ C29 (τ 2) ζ2
+
+KL 
+
+> K
+
+X
+
+> k=1
+
+Et−2τ ∥xkt ∥2 + C30 (τ 2) ζ2
+
+K
+
+> K
+
+X
+
+> k=1
+
+Et−2τ |ykt |2
+
++ 8 τ 2C20 
+
+ζ2
+
+K + 8 τ 2C21 ζ2m2ρ2τ + 2 Ur Uω ζmρ τ + 2 U 2
+
+> ω
+
+ζL mρ τ . (87) where 
+
+C25 (τ 2) = 
+
+"  12 + U 2
+
+> ω
+
+  
+
+16 U 2 
+
+> r
+
++ 32 U 2
+
+> r
+
+mρ 
+
+1 − ρ
+
+
+
++
+
+
+
+Uω + 32 U 4
+
+> ω
+
+  
+
+16 + 32 mρ 
+
+1 − ρ
+
+
+
++
+
+ 12 + Uω
+
+
+
+τ 2C7c2
+
+#
+
+,C26 (τ 4) = 
+
+"  12 + Uω
+
+  τ 2C5(τ 2)c4 + τ 2C6(τ 2)c2 + 8  τ 2C16 (τ 2)c2 + τ 2C17 (τ 2) #
+
+,C27 (τ 4) = 
+
+"
+
+8τ 2C19 (τ 2)c2 + 8 τ 2C24 
+
+#
+
+, C 28 (τ 4) = 
+
+"  12 + Uω
+
+
+
+τ 2C8(τ 2)c2 + 8 τ 2C22 (τ 2)
+
+#
+
+,C29 (τ 2) = 
+
+"
+
+8τ 2c2
+
+ 12 + Uω
+
+
+
++ 8 τ 2C18 
+
+#
+
+, C 30 (τ 2) = 
+
+"
+
+2τ 2c2
+
+ 12 + Uω
+
+
+
++ 8 τ 2C23 
+
+#
+
+.
+
+43 Personalized Multi-Agent Average Reward TD-Learning via Joint Linear Approximation 
+
+Putting the above Eq. (87) and Eq. (26) back to Eq. (78) and taking expectation, we get 
+
+Et−τ ∥mt+1 ∥2 
+
+> F
+
+≤ (1 − λαζ r + c21ζ + c22ζ)Et−τ ∥mt∥2
+
+> F
+
++
+
+ 32 U 2 
+
+> ω
+
+ζ2
+
+L2 + 4 C29 (τ 2) ζ2
+
+L + 144 U 2
+
+> ω
+
+c22
+
+ζL2
+
+ 1
+
+K
+
+> K
+
+X
+
+> k=1
+
+Et−τ ∥xkt ∥2
+
++
+
+
+
+4C30 (τ 2)ζ2 + 8 U 2 
+
+> ω
+
+ζ2 + 4U 2
+
+> ω
+
+c21
+
+ζ
+
+ 1
+
+K
+
+> K
+
+X
+
+> k=1
+
+Et−τ |ykt |2
+
++ 4 C25 (τ 2) ζ2
+
+L + 4 C26 (τ 4) ζ4
+
+L2 + 4C27 (τ 4) + 8 τ 2 U 4
+
+> δ,L
+
+L4 c2
+
+!
+
+ζ4 + 4 C28 (τ 4)γ2ζ2
+
++ 32 τ 2C20 + 8 U 2
+
+> δ,L
+
+L2 U 2
+
+> ω
+
+!
+
+ζ2
+
+K + 32 τ 2C21 + 16 U 2
+
+> ω
+
+U 2
+
+> δ,L
+
+L2
+
+!
+
+ζ2m2ρ2τ + 8 Ur Uω ζmρ τ + 8 U 2
+
+> ω
+
+ζL mρ τ . (88) Recall Mt = Et−τ ∥mt∥2 
+
+> F
+
+; ¯Xt = 1
+
+> K
+
+PKk=1 Et−τ ∥xkt ∥2; ¯Yt = 1
+
+> K
+
+PKk=1 Et−τ |ykt |2, and choose τ = ⌈2 log ρ(ζ)⌉, we get, 
+
+Mt+1 ≤ (1 − λαζ r + c21ζ + c22ζ)Mt
+
++
+
+
+
+CM, 4(τ 2)ζ2 + 144 U 2
+
+> ω
+
+c22
+
+ζL2 + 4 λζ 
+
+
+
+¯Xt +
+
+
+
+CM, 5(τ 2)ζ2 + 4U 2
+
+> ω
+
+c21
+
+ζ
+
+
+
+¯Yt
+
++ 4 C25 (τ 2) ζ2
+
+L + CM, 1ζ4 + 4 C28 (τ 4)γ2ζ2 + CM, 2(τ 2) ζ2
+
+K + CM, 3ζ6 + CM, 6ζ3, (89) where 
+
+CM, 1 = 4C27 (τ 4) + 8 τ 2 U 4
+
+> δ,L
+
+L4 c2 + 4 C26 (τ 4) 1
+
+L2
+
+!
+
+, CM, 2(τ 2) = 32 τ 2C20 + 8 U 2
+
+> δ,L
+
+L2 U 2
+
+> ω
+
+!
+
+,
+
+CM, 3 = 32 τ 2C21 + 16 U 2
+
+> ω
+
+U 2
+
+> δ,L
+
+L2
+
+!
+
+m2, CM, 4(τ 2) = 
+
+ 32 U 2
+
+> ω
+
+L2 + 4C29 (τ 2)
+
+L
+
+
+
+, CM, 5(τ 2) = 4C30 (τ 2) + 8 U 2
+
+> ω
+
+ ,
+
+CM, 6 =
+
+
+
+8Ur Uω m + 8 U 2 
+
+> ω
+
+m 1
+
+L
+
+
+
+.
+
+44 Personalized Multi-Agent Average Reward TD-Learning via Joint Linear Approximation 
+
+## F. Proof of Lemma 5.4 
+
+By Eq. (11) and the update of ηk in Algorithm 1, we have 
+
+ykt+1 =ηkt+1 − Jk = ηkt + γ 1
+
+L
+
+> L−1
+
+X
+
+> ℓ=0
+
+rkt,ℓ − ηkt
+
+!
+
+− Jk = ykt + γ 1
+
+L
+
+> L−1
+
+X
+
+> ℓ=0
+
+rkt,ℓ − ηkt
+
+!
+
+=ykt + γ 1
+
+L
+
+> L−1
+
+X
+
+> ℓ=0
+
+rkt,ℓ − Jk + Jk − ηkt
+
+!
+
+=ykt + γ 1
+
+L
+
+> L−1
+
+X
+
+> ℓ=0
+
+rkt,ℓ − Jk − ykt
+
+!
+
+=(1 − γ)ykt + γ 1
+
+L
+
+> L−1
+
+X
+
+> ℓ=0
+
+rkt,ℓ − Jk
+
+!
+
+=(1 − γ)t+1 yk 
+
+> 0
+
++ γ
+
+> t
+
+X
+
+> i=0
+
+(1 − γ)t−i 1
+
+L
+
+> L−1
+
+X
+
+> ℓ=0
+
+rki,ℓ − Jk
+
+!
+
+.
+
+Then, 
+
+(ykt )2 =(1 − γ)2t(yk 
+
+> 0
+
+)2 + γ2
+
+> t−1
+
+X
+
+> i=0
+
+(1 − γ)t−1−i 1
+
+L
+
+> L−1
+
+X
+
+> ℓ=0
+
+rki,ℓ − Jk
+
+!! 2
+
++ 2(1 − γ)tyk 
+
+> 0
+
+γ
+
+> t−1
+
+X
+
+> i=0
+
+(1 − γ)t−1−i 1
+
+L
+
+> L−1
+
+X
+
+> ℓ=0
+
+rki,ℓ − Jk
+
+!
+
+.
+
+Taking expectation, we get 
+
+E(ykt )2 = (1 − γ)2t(yk 
+
+> 0
+
+)2
+
+| {z }
+
+> I1
+
++ γ2E
+
+> t−1
+
+X
+
+> i=0
+
+(1 − γ)t−1−i 1
+
+L
+
+> L−1
+
+X
+
+> ℓ=0
+
+rki,ℓ − Jk
+
+!! 2
+
+| {z }
+
+> I2
+
++ 2(1 − γ)tyk 
+
+> 0
+
+γE
+
+> t−1
+
+X
+
+> i=0
+
+(1 − γ)t−1−i 1
+
+L
+
+> L−1
+
+X
+
+> ℓ=0
+
+rki,ℓ − Jk
+
+!| {z }
+
+> I3
+
+. (90) For I1 in Eq. (90), using the fact that ln(1 − γ) ≤ − γ for γ ∈ (0 , 1) , we have 
+
+I1 = (1 − γ)2t(yk 
+
+> 0
+
+)2 ≤ (yk 
+
+> 0
+
+)2e−2γt .
+
+45 Personalized Multi-Agent Average Reward TD-Learning via Joint Linear Approximation 
+
+For I3 in Eq. (90), we have, 
+
+E
+
+> t−1
+
+X
+
+> i=0
+
+(1 − γ)t−1−i 1
+
+L
+
+> L−1
+
+X
+
+> ℓ=0
+
+rki,ℓ − Jk
+
+!
+
+=E 
+
+> τ−1
+
+X
+
+> i=0
+
+(1 − γ)t−1−i 1
+
+L
+
+> L−1
+
+X
+
+> ℓ=0
+
+rki,ℓ − Jk
+
+!
+
++ E
+
+> t−1
+
+X
+
+> i=τ
+
+(1 − γ)t−1−i 1
+
+L
+
+> L−1
+
+X
+
+> ℓ=0
+
+rki,ℓ − Jk
+
+!
+
+≤2Ur
+
+(1 − γ)t−τ (1 − (1 − γ)τ )1 − (1 − γ) +
+
+> t−1
+
+X
+
+> i=τ
+
+(1 − γ)t−1−iE 1
+
+L
+
+> L−1
+
+X
+
+> ℓ=0
+
+rki,ℓ − Jk
+
+!
+
+≤2Ur
+
+(1 − γ)t−τ
+
+γ + 2 Urt−1X
+
+> i=τ
+
+(1 − γ)t−1−i sup 
+
+> s∈S
+
+dT V (P k
+
+> 0: i
+
+(·, ·, ·, ..., · | sk 
+
+> 0
+
+= s), μ k ⊗ (π ⊗ P k)L−1 ⊗ π)
+
+≤2Ur
+
+(1 − γ)t−τ
+
+γ + 2 Urt−1X
+
+> i=τ
+
+(1 − γ)t−1−imρ i
+
+≤2Ur
+
+(1 − γ)t−τ
+
+γ + 2Ur mρ τ
+
+γ .
+
+where the first inequality follows because 1
+
+> L
+
+PL−1 
+
+> ℓ=0
+
+rki,ℓ − Jk ≤ 2Ur , and the third inequality follows from Assumption 2. In the second inequality, we slightly abuse notation to use P k
+
+> 0: i
+
+(·, ·, ·, ..., · | sk 
+
+> 0
+
+= s) to denote the L-block state-action pair at time t. It holds because the mixing of the L-block is no slower than the original. Thus, 
+
+I3 ≤2(1 − γ)t|yk 
+
+> 0
+
+|  2Ur (1 − γ)t−τ + 2 Ur mρ τ 
+
+≤4|yk 
+
+> 0
+
+|Ur (1 − γ)2t−τ + 4 Ur (1 − γ)t|yk 
+
+> 0
+
+|mρ τ .
+
+Lastly, for I2 in Eq. (90), we have 
+
+E
+
+> t−1
+
+X
+
+> i=0
+
+(1 − γ)t−1−i 1
+
+L
+
+> L−1
+
+X
+
+> ℓ=0
+
+rki,ℓ − Jk
+
+!! 2
+
+=E
+
+> t−1
+
+X
+
+> i=0
+
+(1 − γ)2t−2−2i 1
+
+L
+
+> L−1
+
+X
+
+> ℓ=0
+
+rki,ℓ − Jk
+
+!2
+
++ 2 E
+
+> t−1
+
+X
+
+> i=0
+> t−1
+
+X
+
+> j=i+1
+
+(1 − γ)t−1−i(1 − γ)t−1−j 1
+
+L
+
+> L−1
+
+X
+
+> ℓ=0
+
+rki,ℓ − Jk
+
+!
+
+1
+
+L
+
+> L−1
+
+X
+
+> ℓ=0
+
+rkj,ℓ − Jk
+
+!
+
+≤ 1 − (1 − γ)2t
+
+1 − (1 − γ)2 4U 2 
+
+> r
+
++ 2 E 
+
+> t−τ−1
+
+X
+
+> i=0
+> t−1
+
+X
+
+> j=i+τ
+
+(1 − γ)t−1−i(1 − γ)t−1−j 1
+
+L
+
+> L−1
+
+X
+
+> ℓ=0
+
+rki,ℓ − Jk
+
+!
+
+1
+
+L
+
+> L−1
+
+X
+
+> ℓ=0
+
+rkj,ℓ − Jk
+
+!| {z }
+
+> I21
+
++ 2 E 
+
+> t−τ−1
+
+X 
+
+> i=0
+> i+τ−1
+
+X
+
+> j=i+1
+
+(1 − γ)t−1−i(1 − γ)t−1−j 1
+
+L
+
+> L−1
+
+X
+
+> ℓ=0
+
+rki,ℓ − Jk
+
+!
+
+1
+
+L
+
+> L−1
+
+X
+
+> ℓ=0
+
+rkj,ℓ − Jk
+
+!| {z }
+
+> I22
+
++ 2 E
+
+> t−1
+
+X
+
+> i=t−τt−1
+
+X
+
+> j=i+1
+
+(1 − γ)t−1−i(1 − γ)t−1−j 1
+
+L
+
+> L−1
+
+X
+
+> ℓ=0
+
+rki,ℓ − Jk
+
+!
+
+1
+
+L
+
+> L−1
+
+X
+
+> ℓ=0
+
+rkj,ℓ − Jk
+
+!| {z }
+
+> I23
+
+. (91) Recall vk 
+
+> 0: t
+
+is the Markovian trajectory at agent k:
+
+vk 
+
+> 0: t
+
+= ( sk 
+
+> 0
+
+, a k 
+
+> 0
+
+, s k 
+
+> 1
+
+, a k 
+
+> 1
+
+, ..., s kt−τ +1 , a kt−τ +1 , ..., s kt , a kt , s kt+1 ). (92) 46 Personalized Multi-Agent Average Reward TD-Learning via Joint Linear Approximation 
+
+For I21 in Eq. (91), we have 
+
+I21 =2  
+
+> t−τ−1
+
+X
+
+> i=0
+> t−1
+
+X
+
+> j=i+τ
+
+(1 − γ)t−1−i(1 − γ)t−1−j E
+
+"
+
+E
+
+"
+
+1
+
+L
+
+> L−1
+
+X
+
+> ℓ=0
+
+rki,ℓ − Jk
+
+!
+
+1
+
+L
+
+> L−1
+
+X
+
+> ℓ=0
+
+rkj,ℓ − Jk
+
+!
+
+|vk
+
+> 0: i
+
+## 
+
+≤2 
+
+> t−τ−1
+
+X
+
+> i=0
+> t−1
+
+X
+
+> j=i+τ
+
+(1 − γ)t−1−i(1 − γ)t−1−j 2Ur E
+
+"
+
+E
+
+"
+
+1
+
+L
+
+> L−1
+
+X
+
+> ℓ=0
+
+rkj,ℓ − Jk
+
+!
+
+|vk
+
+> 0: i
+
+# # 
+
+≤2 
+
+> t−τ−1
+
+X
+
+> i=0
+> t−1
+
+X
+
+> j=i+τ
+
+(1 − γ)t−1−i(1 − γ)t−1−j 4U 2 
+
+> r
+
+mρ τ
+
+≤8U 2 
+
+> r
+
+mρ τt−τ −1X
+
+> i=0
+> t−1
+
+X
+
+> j=i+τ
+
+(1 − γ)t−1−i(1 − γ)t−1−j
+
+≤8U 2 
+
+> r
+
+mρ τt−τ −1X
+
+> i=0
+
+(1 − γ)t−1−i 1 − (1 − γ)t−i−τ
+
+γ
+
+≤8U 2 
+
+> r
+
+mρ τ (1 − γ)τ
+
+γ2 .
+
+Noting that  
+
+> t−τ−1
+
+X 
+
+> i=0
+> i+τ−1
+
+X
+
+> j=i+1
+
+(1 − γ)t−1−i(1 − γ)t−1−j
+
+= 
+
+> t−τ−1
+
+X
+
+> i=0
+
+(1 − γ)t−1−i
+
+ 
+
+> i+τ−1
+
+X
+
+> j=i+1
+
+(1 − γ)t−1−j
+
+
+
+= 
+
+> t−τ−1
+
+X
+
+> i=0
+
+(1 − γ)t−1−i (1 − γ)t−i−τ (1 − (1 − γ)τ )
+
+γ
+
+= (1 − (1 − γ)τ )
+
+γ 
+
+> t−τ−1
+
+X
+
+> i=0
+
+(1 − γ)2t−1−2i−τ .
+
+Since (1 − γ)τ ≥ 1 − τ γ , we have 
+
+(1 − (1 − γ)τ )
+
+γ ≤ 1 − (1 − τ γ )
+
+γ = τ. 
+
+In addition,  
+
+> t−τ−1
+
+X
+
+> i=0
+
+(1 − γ)2t−1−2i−τ ≤ (1 − γ)τ +1 
+
+1 − (1 − γ)2 ≤ (1 − γ)τ
+
+γ .
+
+Thus, I22 in Eq. (91) can be bounded as 
+
+I22 ≤ 8U 2 
+
+> r
+
+τ (1 − γ)τ
+
+γ .
+
+For I23 in Eq. (91), we have 
+
+I23 ≤ 2
+
+> t−1
+
+X
+
+> i=t−τt−1
+
+X
+
+> j=i+1
+
+4U 2 
+
+> r
+
+≤ 8U 2
+
+> r
+
+τ (τ − 1) 2 .
+
+47 Personalized Multi-Agent Average Reward TD-Learning via Joint Linear Approximation 
+
+Now, we can bound I2 in Eq. (90) as 
+
+I2 ≤ γ2
+
+ 1 − (1 − γ)2t
+
+1 − (1 − γ)2 4U 2 
+
+> r
+
++ 8 U 2 
+
+> r
+
+mρ τ (1 − γ)τ
+
+γ2 + 8 U 2 
+
+> r
+
+τ (1 − γ)τ
+
+γ + 8 U 2
+
+> r
+
+τ (τ − 1) 2
+
+
+
+≤ γ
+
+2 − γ 4U 2 
+
+> r
+
++ 8 Ur mρ τ (1 − γ)τ + 8 U 2 
+
+> r
+
+τ γ (1 − γ)τ + 8 U 2
+
+> r
+
+τ (τ − 1) 2 γ2.
+
+Putting I1, I 2 and I3 together, and choosing γ = log( T )2T , we get 
+
+E(ykT )2 ≤ (yk 
+
+> 0
+
+)2e−2γT + γ
+
+2 − γ 4U 2 
+
+> r
+
++ 8 U 2 
+
+> r
+
+mρ τ (1 − γ)τ + 8 U 2 
+
+> r
+
+τ γ (1 − γ)τ
+
++ 8 U 2
+
+> r
+
+τ (τ − 1) 2 γ2 + 4 |yk 
+
+> 0
+
+|Ur eγτ e−γ2T + 4 Ur (1 − γ)T |yk 
+
+> 0
+
+|mρ τ
+
+≤ 4U 2
+
+> r
+
+1
+
+T + 4U 2 
+
+> r
+
+log( T )2T + 8 Ur mρ τ + 8 U 2 
+
+> r
+
+τ log( T )2T
+
++ 8 U 2
+
+> r
+
+τ (τ − 1) 2log 2(T )4T 2 + 8 U 2 
+
+> r
+
+eγτ 1
+
+T + 8 Ur
+
+1
+
+√T mρ τ .
+
+When τ ≤ min { 2T  
+
+> log( T)
+
+, ⌈log ρ(γ)⌉, ⌈2 log ρ(ζ)⌉} , it holds that eγτ ≤ 3 and that 8U 2     
+
+> rτ(τ−1) 2log 2(T)4T2
+
+≤ 2τ U 2   
+
+> rlog( T)
+> T
+
+, and 
+
+ρτ ≤ γ . Thus, the upper bound of E(ykT )2 can be simplified as 
+
+E(ykT )2 ≤ 28 U 2
+
+> r
+
+T + 8U 2 
+
+> r
+
+τ log( T )
+
+T + 16 Ur mρ τ ≤ 28 U 2
+
+> r
+
+T + 8U 2 
+
+> r
+
+τ log( T )
+
+T + 8Ur m log( T )
+
+T , (93) which trivially implies that 
+
+¯YT = 1
+
+K
+
+> K
+
+X
+
+> k=1
+
+Y kT ≤ 28 U 2
+
+> r
+
+T + 8U 2 
+
+> r
+
+τ log( T )
+
+T + 8Ur m log( T )
+
+T .
+
+48 Personalized Multi-Agent Average Reward TD-Learning via Joint Linear Approximation 
+
+## G. Proof of Theorem 1 
+
+For ease of expostion, let ¯YT = 1
+
+> K
+
+PKk=1 Y kT . From Lemma 5.4 (Eq. (93)), Lemma D.1, Lemma 5.2, and Lemma 5.3 (Eq. (89)), we get, for T ≥ 2τ ,
+
+¯YT ≤ 28 U 2
+
+> r
+
+T + 8U 2 
+
+> r
+
+τ log( T )
+
+T + 8Ur m log( T )
+
+T ,
+
+¯XT +1 ≤ 1 − 2λcζ +
+
+
+
+c23
+
+cL + c24c + c25
+
+1
+
+L + c26 + 4 U 4
+
+> ω
+
+1
+
+c25L
+
+
+
+ζ + CX, 1(τ 2)ζ2 + CX, 2(τ 2)ζ3
+
+!
+
+¯XT
+
++
+
+ 36 U 2
+
+> ω
+
+c23
+
+cζ L + 6 Uω Uδ cζ 
+
+
+
+MT
+
++
+
+h 1
+
+c24
+
+c + U 4
+
+> ω
+
+c26
+
+i
+
+ζ + CX, 3(τ 2)ζ2 + CX, 4(τ 2)ζ3
+
+!
+
+¯YT
+
++ CX, 5(τ 2) ζ2
+
+L + CX, 6(τ 2) ζ2
+
+K + CX, 7ζ3 + CX, 8ζ4 + CX, 9γ2ζ2 + CX, 10 ζ5 + CX, 11 γ2ζ3 + CX, 12 ζ7 + CX, 13 ζ6,MT +1 ≤ (1 − λαζ r + c21ζ + c22ζ)MT
+
++
+
+
+
+CM, 4(τ 2)ζ2 + 16 U 2
+
+> ω
+
+c22
+
+ζL2
+
+
+
+¯XT +
+
+
+
+CM, 5(τ 2)ζ2 + 4U 2
+
+> ω
+
+c21
+
+ζ
+
+
+
+¯YT
+
++ 4 C25 (τ 2) ζ2
+
+L + CM, 1ζ4 + 4 C28 (τ 4)γ2ζ2 + CM, 2(τ 2) ζ2
+
+K + CM, 3ζ6 + CM, 6ζ3.
+
+Note that ¯YT = O( log( T ) 
+
+> T
+
+), and we collect all terms of order ζ3 and higher into O(ζ3), then the system can be simplified to, 
+
+¯XT +1 ≤ 1 − 2λcζ +
+
+
+
+c23
+
+cL + c24c + c25
+
+1
+
+L + c26 + 4 U 4
+
+> ω
+
+1
+
+c25L
+
+
+
+ζ + CX, 1(τ 2)ζ2 + CX, 2(τ 2)ζ3
+
+!
+
+¯XT
+
++
+
+ 36 U 2
+
+> ω
+
+c23
+
+cζ L + 6 Uω Uδ cζ 
+
+
+
+MT + CX, 5(τ 2) ζ2
+
+L + CX, 6(τ 2) ζ2
+
+K + O( ζ log( T )
+
+T ) + O(ζ3),MT +1 ≤ (1 − λαζ r + c21ζ + c22ζ)MT
+
++
+
+
+
+CM, 4(τ 2)ζ2 + 16 U 2
+
+> ω
+
+c22
+
+ζL2
+
+
+
++ 4 C25 (τ 2) ζ2
+
+L + CM, 2(τ 2) ζ2
+
+K + O(ζ3) + O( ζ log( T )
+
+T ).
+
+Choosing c3 =
+
+q λL  
+
+> 30
+
+, c 4 =
+
+q λ 
+
+> 30
+
+, c 5 = 1 , c 6 = min {
+
+q 1 
+
+> L
+
+,
+
+q 4U 4 
+
+> ω
+> L
+
+}, and 
+
+c ≥ max { 30 
+
+λL , 120 U 4
+
+> ω
+
+λL }, (94) and requiring ζ ≤ λc   
+
+> 6CX, 1(τ2)
+
+, ζ 2 ≤ λc   
+
+> 6CX, 2(τ2)
+
+, we get 
+
+¯XT +1 ≤
+
+
+
+1 − 32 λcζ 
+
+
+
+¯XT +
+
+ 36 U 2
+
+> ω
+
+c23
+
+cζ L + 6 Uω Uδ cζ 
+
+
+
+MT + CX, 5(τ 2) ζ2
+
+L + CX, 6(τ 2) ζ2
+
+K + O( ζ log( T )
+
+T ) + O(ζ3).
+
+We choose c1 = c2 =
+
+q λα  
+
+> 4r
+
+, which requires CM, 4(τ 2)ζ ≤ 16 U 2 
+
+> ω
+> c22L2
+
+, we have 
+
+MT +1 ≤
+
+
+
+1 − λαζ 
+
+2r
+
+
+
+MT + 32 U 2
+
+> ω
+
+c22
+
+ζL2 ¯XT + 4 C25 (τ 2) ζ2
+
+L + CM, 2(τ 2) ζ2
+
+K + O(ζ3) + O( ζ log( T )
+
+T ).
+
+Substituting c2 and c3, we get, 
+
+¯XT +1 ≤
+
+
+
+1 − 32 λcζ 
+
+
+
+¯XT +
+
+ 1080 U 2
+
+> ω
+
+λL 2 cζ + 6 Uω Uδ cζ 
+
+
+
+MT + CX, 5(τ 2) ζ2
+
+L + CX, 6(τ 2) ζ2
+
+K + O(ζ log( T )
+
+T ) + O(ζ3).MT +1 ≤
+
+
+
+1 − λαζ 
+
+2r
+
+
+
+MT + 128 rU 2
+
+> ω
+
+λα ζL2 ¯XT + 4 C25 (τ 2) ζ2
+
+L + CM, 2(τ 2) ζ2
+
+K + O(ζ3) + O(ζ log( T )
+
+T ).
+
+49 Personalized Multi-Agent Average Reward TD-Learning via Joint Linear Approximation 
+
+Defining the weighted Lyapunov function as VT +1 = ¯XT +1 + κM T +1 , we have, 
+
+VT +1 ≤
+
+
+
+1 − 32 λcζ + κ 128 rU 2
+
+> ω
+
+λα ζL2
+
+
+
+¯XT + CX, 5(τ 2) ζ2
+
+L + CX, 6(τ 2) ζ2
+
+K + O(ζ log( T )
+
+T ) + O(ζ3)+ κ
+
+ 
+
+1 − λαζ 
+
+2r + 1
+
+κ
+
+ 1080 U 2
+
+> ω
+
+λL 2 cζ + 6 Uω Uδ cζ 
+
+ 
+
+MT + 4 C25 (τ 2) ζ2
+
+L + CM, 2(τ 2) ζ2
+
+K + O(ζ3) + O(ζ log( T )
+
+T )
+
+
+
+For sufficiently large L, c satisfies Eq. (94) and the following condition 
+
+κ 256 rU 2
+
+> ω
+
+λ2αL 2 ≤ c ≤ κ λ2αL 2
+
+4r (1080 U 2 
+
+> ω
+
++ 6 Uω Uδ λL 2) (95) such that 
+
+128 rU 2
+
+> ω
+
+λαL 2 κ ≤ 12 λc, 
+
+1
+
+κ
+
+ 1080 U 2
+
+> ω
+
+λL 2 c + 6 Uω Uδ c
+
+
+
+≤ λα 
+
+4r ,
+
+then, 
+
+VT +1 ≤ (1 − λcζ ) ¯XT + CX, 5(τ 2) ζ2
+
+L + CX, 6(τ 2) ζ2
+
+K + O(ζ log( T )
+
+T ) + O(ζ3)+ κ
+
+ 
+
+1 − λαζ 
+
+4r
+
+
+
+MT + 4 C25 (τ 2) ζ2
+
+L + CM, 2(τ 2) ζ2
+
+K + O(ζ3) + O(ζ log( T )
+
+T )
+
+
+
+(96) Choosing κ ≥ 2(1080 U 2    
+
+> ω+6 UωUδλL 2)
+> λ2L2
+
+= Θ(1) , the upper bound of c in Eq. (95) satisfies, 
+
+κ λ2αL 2
+
+4r (1080 U 2 
+
+> ω
+
++ 6 Uω Uδ λL 2) ≥ α
+
+2r ,
+
+leaving a room to further constrain c to be greater than α 
+
+> 4r
+
+and choose L = K, such that Eq. (96) can be written as, 
+
+VT +1 ≤
+
+
+
+1 − λαζ 
+
+4r
+
+
+
+¯XT + CX, 5(τ 2) ζ2
+
+L + CX, 6(τ 2) ζ2
+
+K + O(ζ log( T )
+
+T ) + O(ζ3)+ κ
+
+
+
+1 − λαζ 
+
+4r
+
+
+
+MT + 4 κC 25 (τ 2) ζ2
+
+L + κCM, 2(τ 2) ζ2
+
+K + κO(ζ3) + κO(ζ log( T )
+
+T )
+
+≤
+
+
+
+1 − λαζ 
+
+4r
+
+
+
+VT + CV (τ 2) ζ2
+
+K + O(ζ log( T )
+
+T ) + O(ζ3), (97) where 
+
+CV (τ 2) =  CX, 5(τ 2) + CX, 6(τ 2) + 4 κC 25 (τ 2) + κCM, 2(τ 2) .
+
+Unrolling Eq. (97), we get 
+
+VT +1 ≤
+
+
+
+1 − λαζ 
+
+4r
+
+
+
+VT + CV (τ 2) ζ2
+
+K + O(ζ log( T )
+
+T ) + O(ζ3)
+
+≤
+
+
+
+1 − λαζ 
+
+4r
+
+T −2τ +1 
+
+V2τ + 
+
+> T−2τ
+
+X
+
+> i=0
+
+
+
+1 − λαζ 
+
+4r
+
+i 
+
+CV (τ 2) ζ2
+
+K + O(ζ log( T )
+
+T ) + O(ζ3)
+
+
+
+≤ exp 
+
+
+
+− λαζ (T − 2τ + 1) 4r
+
+
+
++ 4rλα 
+
+
+
+CV (τ 2) ζK + O( log( T )
+
+T ) + O(ζ2)
+
+
+
+.
+
+Choosing ζ = 4r√T λα , we have, 
+
+VT +1 ≤ exp 
+
+n
+
+−√T / 2
+
+o
+
++ 16 r2
+
+λ2α2 CV (τ 2) 1
+
+√T K + O( log( T )
+
+T ).
+
+50 Personalized Multi-Agent Average Reward TD-Learning via Joint Linear Approximation 
+
+Lastly, collecting the sufficient conditions on c and K, we can always choose 
+
+max 
+
+ 30 
+
+λK , 120 U 4
+
+> ω
+
+λK 
+
+
+
+≤ α
+
+2r ; α
+
+4r ≤ c ≤ α
+
+2r .
+
+51 Personalized Multi-Agent Average Reward TD-Learning via Joint Linear Approximation 
+
+## H. Supporting Propositions and Lemmas 
+
+H.1. Boundedness Lemma H.1. For any t ≥ 0, L ≥ 0, k ∈ [K], it holds that ηkt ∈ [−Ur , U r ].Proof. We prove Lemma H.1 by induction. The algorithm initializes ηk 
+
+> 0
+
+= 0 . Suppose that ηkt′ ∈ [−Ur , U r ] for 0 ≤ t′ ≤ t−1
+
+and for any k ∈ [K]. We have 
+
+ηkt = ηkt−1 + γ 1
+
+L
+
+> L−1
+
+X
+
+> ℓ=0
+
+rkt−1,ℓ − ηkt−1
+
+!
+
+= (1 − γ)ηkt−1 + γL
+
+> L−1
+
+X
+
+> ℓ=0
+
+rkt−1,ℓ ≤ (1 − γ)Ur + γL L · Ur = Ur .
+
+Similarly, it can be shown that ηkt ≥ − Ur .
+
+Lemma H.2. Suppose that Assumption 3 holds. Define Uδ,L := 2 LU r + 2 Uω . For any t ≥ 0, L ≥ 0, k ∈ [K], it holds that 
+
+|δkt,L | ≤ Uδ,L , and ∥bkt,L ∥ ≤ Uδ,L . (98) 
+
+Proof. From Eq. (6), 
+
+|δkt,L | = |
+
+> L−1
+
+X
+
+> ℓ=0
+
+(rkt,ℓ − ηkt ) + ( ϕ(skt,L ) − ϕ(skt, 0)) ⊤Btωkt |≤ | 
+
+> L−1
+
+X
+
+> ℓ=0
+
+(rkt,ℓ − ηkt )| + |(ϕ(skt,L ) − ϕ(skt, 0)) ⊤Btωkt |≤ 2LU r + 2 Uω ,
+
+where the last inequality holds due to Lemma H.1 and ∥ϕ(skt+1 ) − ϕ(skt )∥ ≤ 2.Recall from Eq. (16) that 
+
+bkt,L =
+
+> L−1
+
+X
+
+> ℓ=0
+
+ (rkt,ℓ − Jk) + ( ϕ(skt,ℓ +1 ) − ϕ(skt,ℓ )) ⊤B∗ωk, ∗ ϕ(skt, 0).
+
+So, 
+
+∥bkt,L ∥ = ∥
+
+> L−1
+
+X
+
+> ℓ=0
+
+ (rkt,ℓ − Jk) + ( ϕ(skt,ℓ +1 ) − ϕ(skt,ℓ )) ⊤B∗ωk, ∗ ϕ(skt, 0)∥≤ ∥ 
+
+> L−1
+
+X
+
+> ℓ=0
+
+(rkt,ℓ − Jk)∥ + ∥(ϕ(skt,L ) − ϕ(skt, 0)) ⊤B∗ωk, ∗∥≤ 2LU r + 2 Uω = Uδ,L .
+
+52 Personalized Multi-Agent Average Reward TD-Learning via Joint Linear Approximation 
+
+## I. Other Supporting Results 
+
+Proof of Proposition 1. It follows from Eq. (6) that for any t and L:
+
+δkt,L ϕ(skt, 0) = 
+
+> L−1
+
+X
+
+> ℓ=0
+
+(rkt,ℓ − ηkt ) + ( ϕ(skt,L ) − ϕ(skt, 0)) ⊤Btωkt
+
+!
+
+ϕ(skt, 0)=
+
+> L−1
+
+X
+
+> ℓ=0
+
+ (rkt,ℓ − Jk) + ( ϕ(skt,ℓ +1 ) − ϕ(skt,ℓ )) ⊤Btωkt
+
+ ϕ(skt, 0) + 
+
+> L−1
+
+X
+
+> ℓ=0
+
+(Jk − ηkt )
+
+!
+
+ϕ(skt, 0)=
+
+> L−1
+
+X
+
+> ℓ=0
+
+ϕ(skt, 0)( ϕ(skt,ℓ +1 ) − ϕ(skt,ℓ )) ⊤
+
+| {z }
+
+> eAkt,L
+
+xkt (recall that xkt = Btωkt − B∗ωk, ∗)
+
++
+
+> L−1
+
+X
+
+> ℓ=0
+
+ (rkt,ℓ − Jk) + ( ϕ(skt,ℓ +1 ) − ϕ(skt,ℓ )) ⊤B∗ωk, ∗ ϕ(skt, 0)
+
+| {z }
+
+> bkt,L
+
++Ly kt ϕ(skt, 0)= eAkt,L xkt + bkt,L + Ly kt ϕ(skt, 0),
+
+proving Eq. (17). In the remaining proof, we focus on proving the second decomposition in Eq. (18). We have, 
+
+δkt,L ϕ(skt, 0) = 
+
+> L−1
+
+X
+
+> ℓ=0
+
+(rkt,ℓ − ηkt ) + ( ϕ(skt,L ) − ϕ(skt, 0)) ⊤Btωkt
+
+!
+
+ϕ(skt, 0)=
+
+> L−1
+
+X
+
+> ℓ=0
+
+ (rkt,ℓ − Jk) + ( ϕ(skt,ℓ +1 ) − ϕ(skt,ℓ )) ⊤Btωkt
+
+ ϕ(skt, 0) + 
+
+> L−1
+
+X
+
+> ℓ=0
+
+(Jk − ηkt )
+
+!
+
+ϕ(skt, 0)=
+
+> L−1
+
+X
+
+> ℓ=0
+
+ (rkt,ℓ − Jk) + ( ϕ(skt,ℓ +1 ) − ϕ(skt,ℓ )) ⊤Btωkt
+
+ ϕ(skt, 0)
+
+−
+
+> L−1
+
+X
+
+> ℓ=0
+
+Es(0) ∼μk ,(a(ℓ),s (ℓ))∼π⊗P k ∀ℓ∈[0 ,L −1] 
+
+
+
+(R(s(ℓ), a (ℓ)) − Jk) + ( ϕ(s(ℓ+1) ) − ϕ(s(ℓ))) ⊤Btωkt
+
+
+
+ϕ(s(0) )+
+
+> L−1
+
+X
+
+> ℓ=0
+
+Es(0) ∼μk ,(a(ℓ),s (ℓ))∼π⊗P k ∀ℓ∈[0 ,L −1] 
+
+
+
+(R(s(ℓ), a (ℓ)) − Jk) + ( ϕ(s(ℓ+1) ) − ϕ(s(ℓ))) ⊤Btωkt
+
+
+
+ϕ(s(0) )+ L(Jk − ηkt )ϕ(skt, 0).
+
+Under steady-state distribution, by the Bellman equation, we have 
+
+Es(0) ∼μk ,(a(ℓ),s (ℓ))∼π⊗P k ∀ℓ∈[0 ,L −1] 
+
+
+
+(R(s(ℓ), a (ℓ)) − Jk) + ( ϕ(s(ℓ+1) ) − ϕ(s(ℓ))) ⊤zk, ∗
+
+ϕ(s(0) ) = 0 . (99) 53 Personalized Multi-Agent Average Reward TD-Learning via Joint Linear Approximation 
+
+Then, 
+
+L−1X
+
+ℓ=0 
+
+Es(0) ∼μk ,(a(ℓ),s (ℓ))∼π⊗P k ∀ℓ∈[0 ,L −1] 
+
+
+
+(R(s(ℓ), a (ℓ)) − Jk) + ( ϕ(s(ℓ+1) ) − ϕ(s(ℓ))) ⊤Btωkt
+
+
+
+ϕ(s(0) )=
+
+L−1X
+
+ℓ=0 
+
+Es(0) ∼μk ,(a(ℓ),s (ℓ))∼π⊗P k ∀ℓ∈[0 ,L −1] 
+
+
+
+(R(s(ℓ), a (ℓ)) − Jk) + ( ϕ(s(ℓ+1) ) − ϕ(s(ℓ))) ⊤Btωkt
+
+
+
+ϕ(s(0) )
+
+−
+
+L−1X
+
+ℓ=0 
+
+Es(0) ∼μk ,(a(ℓ),s (ℓ))∼π⊗P k ∀ℓ∈[0 ,L −1] 
+
+
+
+(R(s(ℓ), a (ℓ)) − Jk) + ( ϕ(s(ℓ+1) ) − ϕ(s(ℓ))) ⊤zk, ∗
+
+ϕ(s(0) )=
+
+L−1X
+
+ℓ=0 
+
+Es(0) ∼μk ,(a(ℓ),s (ℓ))∼π⊗P k ∀ℓ∈[0 ,L −1] (ϕ(s(ℓ+1) ) − ϕ(s(ℓ))) ⊤xkt ϕ(s(0) )=Es(0) ∼μk ,(a(ℓ),s (ℓ))∼π⊗P k ∀ℓ∈[0 ,L −1] 
+
+h
+
+(ϕ(s(L)) − ϕ(s(0) )) ⊤xkt ϕ(s(0) )
+
+i
+
+= Es(0) ∼μk ,(a(ℓ),s (ℓ))∼π⊗P k ∀ℓ∈[0 ,L −1] 
+
+h
+
+ϕ(s(0) )( ϕ(s(L)) − ϕ(s(0) )) ⊤i| {z }
+
+AkL
+
+xkt
+
+=AkLxkt .
+
+Then, 
+
+δkt,L ϕ(skt, 0) = ξkt,L + Ly kt ϕ(skt, 0) + AkLxkt ,
+
+where 
+
+ξkt,L =
+
+L−1X
+
+ℓ=0 
+
+ (rkt,ℓ − Jk) + ( ϕ(skt,ℓ +1 ) − ϕ(skt,ℓ )) ⊤Btωkt
+
+ ϕ(skt, 0)
+
+− Es(0) ∼μk ,(a(ℓ),s (ℓ))∼π⊗P k ∀ℓ∈[0 ,L −1] 
+
+
+
+(r(s(ℓ), a (ℓ)) − Jk) + ( ϕ(s(ℓ+1) ) − ϕ(s(ℓ))) ⊤Btωkt
+
+
+
+ϕ(s(0) ).
+
+Lemma I.1. Fix τ ∈ N. When ζU δ,L Uω
+
+L ≤ 1/2, for any t ≥ τ > 0 and k ∈ [K], it holds that 
+
+∥ωkt − ωkt−τ ∥ ≤ τ Uδ,L 
+
+L β, and ∥Bt − Bt−τ ∥ ≤ 2τ Uδ,L 
+
+L Uω ζ + 4 τ U 2
+
+δ,L 
+
+L2 U 2
+
+ω ζ2.
+
+Proof. For any t ≥ τ > 0 and k ∈ [K], we have 
+
+∥ωkt − ωkt−τ ∥ ≤ 
+
+t−1X
+
+i=t−τ
+
+∥ωki+1 − ωki ∥
+
+=
+
+t−1X
+
+i=t−τ
+
+∥ΠUω
+
+
+
+ωki + β 1
+
+L δki,L B⊤
+
+i ϕ(ski, 0)
+
+
+
+− ΠUω (ωki )∥≤
+
+t−1X
+
+i=t−τ
+
+∥β 1
+
+L δki,L B⊤
+
+i ϕ(ski, 0)∥≤τ Uδ,L 
+
+L β, 
+
+54 Personalized Multi-Agent Average Reward TD-Learning via Joint Linear Approximation 
+
+where the last inequality follows from Lemma H.2. In addition, 
+
+∥Bt − Bt−τ ∥ ≤ 
+
+> t−1
+
+X
+
+> i=t−τ
+
+∥Bi+1 − Bi∥
+
+=
+
+> t−1
+
+X
+
+> i=t−τ
+
+∥(Bi + ζKL 
+
+> K
+
+X
+
+> k=1
+
+Bi, ⊥B⊤
+
+> i, ⊥
+
+δki,L ϕ(ski, 0)( ωki )⊤)R−1 
+
+> i+1
+
+− Bi∥
+
+=
+
+> t−1
+
+X
+
+> i=t−τ
+
+∥(Bi + ζKL 
+
+> K
+
+X
+
+> k=1
+
+Bi, ⊥B⊤
+
+> i, ⊥
+
+δki,L ϕ(ski, 0)( ωki )⊤)R−1 
+
+> i+1
+
+− BiR−1 
+
+> i+1
+
++ BiR−1 
+
+> i+1
+
+− Bi∥≤
+
+> t−1
+
+X
+
+> i=t−τ
+
+∥ ζKL 
+
+> K
+
+X
+
+> k=1
+
+Bi, ⊥B⊤
+
+> i, ⊥
+
+δki,L ϕ(ski, 0)( ωki )⊤∥∥ R−1
+
+> i+1
+
+∥ +
+
+> t−1
+
+X
+
+> i=t−τ
+
+∥R−1 
+
+> i+1
+
+− I∥∥ Bi∥≤ζ Uδ,L 
+
+L Uωt−1X
+
+> i=t−τ
+
+∥R−1
+
+> i+1
+
+∥ +
+
+> t−1
+
+X
+
+> i=t−τ
+
+∥R−1 
+
+> i+1
+
+− I∥≤ζ Uδ,L 
+
+L Uωt−1X
+
+> i=t−τ
+
+11 − 2∥Qi∥2
+
+> F
+
++
+
+> t−1
+
+X
+
+> i=t−τ
+
+4∥Qi∥2 
+
+> F
+
+,
+
+where the last inequality follows from Lemma C.1, and Qi is defined in Eq. (19) as 
+
+Qi = ζKL 
+
+> K
+
+X
+
+> k=1
+
+Bi, ⊥B⊤
+
+> i, ⊥
+
+δki,L ϕ(ski, 0)( ωki )⊤.
+
+We have 
+
+∥Qi∥F ≤ ζKL 
+
+> K
+
+X
+
+> k=1
+
+∥Pi, ⊥δki,L ϕ(ski )( ωki )⊤∥F
+
+≤ ζKL 
+
+> K
+
+X
+
+> k=1
+
+|δki,L |∥ Pi, ⊥∥∥ ϕ(ski )∥∥ ωki ∥≤ ζ Uδ,L 
+
+L Uω . (100) When ζ Uδ,L  
+
+> L
+
+Uω ≤ 1/2, 1 − 2∥Qi∥2 
+
+> F
+
+≥ 1/2. Therefore, we have 
+
+∥Bt − Bt−τ ∥ ≤ 2τ ζ Uδ,L 
+
+L Uω + 4 τ ζ 2 U 2
+
+> δ,L
+
+L2 U 2 
+
+> ω
+
+.
+
+Lemma I.2. Fix τ ∈ N. For any k ∈ [K] and any j ≥ t − τ > τ , where t ≥ 2τ , it holds that 
+
+Et−2τ ∥ωkj+1 − ωkj ∥ ≤ C1(τ ) β2
+
+L + C2(τ ) ζβ L + C3(τ )γβ + C4
+
+β
+
+√L + 2 βL Et−2τ ∥xkt ∥ + βEt−2τ |ykt |,
+
+Et−2τ ∥ωkj+1 − ωkj ∥2 ≤ C5(τ 2) β4
+
+L2 + C6(τ 2) ζ2β2
+
+L2 + 8 β2
+
+L2 Et−2τ ∥xkt ∥2 + C7
+
+β2
+
+L + C8(τ 2)γ2β2 + 2 β2Et−2τ |ykt |2,
+
+where 
+
+C1(τ ) = 2 τ Uδ,L 
+
+L , C 2(τ ) = 8 τ Uδ,L 
+
+L U 2 
+
+> ω
+
+, C 3(τ ) = 2 τ U r , C 4 =
+
+
+
+Uδ + Uδ
+
+r 2mρ 
+
+1 − ρ
+
+
+
+,C5(τ 2) = 48 τ 2 U 2
+
+> δ,L
+
+L2 , C 6(τ 2) = 768 τ 2U 3
+
+> ω
+
+U 2
+
+> δ,L
+
+L2 , C 7 = 3 U 2 
+
+> δ
+
+(1 + 2 mρ 
+
+1 − ρ ), C 8(τ 2) = 24 τ 2U 2 
+
+> r
+
+. (101) 55 Personalized Multi-Agent Average Reward TD-Learning via Joint Linear Approximation 
+
+Proof. For any j, one has 
+
+∥ωkj+1 − ωkj ∥ = ∥ΠUω (ωkj + βL δkj,L B⊤ 
+
+> j
+
+ϕ(skj, 0)) − ΠUω (ωkj )∥≤∥ βL B⊤ 
+
+> j
+
+δkj,L ϕ(skj, 0)∥ (by non-expansive property of projection) 
+
+= βL ∥B⊤
+
+> j
+
+ eAkj,L xkj + bkj,L + Ly kj ϕ(skj, 0)
+
+
+
+∥ (by Proposition 1) 
+
+≤ βL ∥B⊤ 
+
+> j
+
+eAkj,L xkj ∥ + βL ∥B⊤ 
+
+> j
+
+bkj,L ∥ + βL ∥B⊤ 
+
+> j
+
+Ly kj ϕ(skj, 0)∥≤ 2βL ∥xkj ∥ + βL ∥bkj,L ∥ + β|ykj |. (102) By Lemma I.5, and by the tower property and the notation defined in Section B, 
+
+Et−2τ ∥bkj,L ∥ ≤ 
+
+
+
+Uδ + Uδ
+
+r 2mρ 
+
+1 − ρ
+
+ √L, 
+
+where Uδ = 2 Ur + 2 Uω as defined in Lemma I.5. Then, taking expectation up to t − 2τ , Eq. (102) can be written as, 
+
+Et−2τ ∥ωkj+1 − ωkj ∥ ≤ 2βL Et−2τ ∥xkj ∥ + β
+
+√L
+
+
+
+Uδ + Uδ
+
+r 2mρ 
+
+1 − ρ
+
+
+
++ βEt−2τ |ykj |. (103) By Lemma I.4, Eq. (103) can be written as, 
+
+Et−2τ ∥ωkj+1 − ωkj ∥ ≤ 2 βL Et−2τ ∥xkj ∥ + β
+
+√L
+
+
+
+Uδ + Uδ
+
+r 2mρ 
+
+1 − ρ
+
+
+
++ βEt−2τ |ykj |≤2 βL
+
+
+
+τ Uδ,L 
+
+L β + 4 τ Uδ,L 
+
+L U 2 
+
+> ω
+
+ζ + Et−2τ ∥xkt ∥
+
+
+
++ β
+
+√L
+
+
+
+Uδ + Uδ
+
+r 2mρ 
+
+1 − ρ
+
+
+
++ β  2τ U r γ + Et−2τ |ykt |
+
+= 2 τ Uδ,L 
+
+L| {z } 
+
+> := C1(τ)
+
+β2
+
+L + 8 τ Uδ,L 
+
+L U 2
+
+> ω
+
+| {z } 
+
+> := C2(τ)
+
+ζβ L + 2 τ U r
+
+| {z }  
+
+> := C3(τ)
+
+γβ + β
+
+√L
+
+
+
+Uδ + Uδ
+
+r 2mρ 
+
+1 − ρ
+
+| {z }
+
+> := C4
+
++2 βL Et−2τ ∥xkt ∥ + βEt−2τ |ykt |≤C1(τ ) β2
+
+L + C2(τ ) ζβ L + C3(τ )γβ + C4
+
+β
+
+√L + 2 βL Et−2τ ∥xkt ∥ + βEt−2τ |ykt |.
+
+Similarly, 
+
+Et−2τ ∥ωkj+1 − ωkj ∥2 = Et−2τ ∥ΠUω (ωkj + βL δkj,L B⊤ 
+
+> j
+
+ϕ(skj, 0)) − ΠUω (ωkj )∥2
+
+≤Et−2τ ∥ βL B⊤ 
+
+> j
+
+δkj,L ϕ(skj, 0)∥2
+
+= β2
+
+L2 Et−2τ ∥B⊤
+
+> j
+
+ eAkj,L xkj + bkj,L + Ly kj ϕ(skj, 0)
+
+
+
+∥2 (by Proposition 1) 
+
+≤3 β2
+
+L2 Et−2τ ∥B⊤ 
+
+> j
+
+eAkj,L xkj ∥2 + 3 β2
+
+L2 Et−2τ ∥B⊤ 
+
+> j
+
+bkj,L ∥2 + 3 β2
+
+L2 Et−2τ ∥B⊤ 
+
+> j
+
+Ly kj ϕ(skj, 0)∥2
+
+≤ 12 β2
+
+L2 Et−2τ ∥xkj ∥2 + 3 β2
+
+L2 Et−2τ ∥bkj,L ∥2 + 3 β2Et−2τ |ykj |2. (104) By Lemma I.5 and the tower property, we get, 
+
+Et−2τ ∥bkt,L ∥2 ≤ U 2 
+
+> δ
+
+(1 + 2 mρ 
+
+1 − ρ )L. 
+
+56 Personalized Multi-Agent Average Reward TD-Learning via Joint Linear Approximation 
+
+By Lemma I.4, Eq. (104) can be written as, 
+
+Et−2τ ∥ωkj+1 − ωkj ∥2 ≤ 3
+
+ 4β2
+
+L2 Et−2τ ∥xkj ∥2 + U 2 
+
+> δ
+
+(1 + 2 mρ 
+
+1 − ρ ) β2
+
+L + β2Et−2τ |ykj |2
+
+
+
+≤48 τ 2 U 2
+
+> δ,L
+
+L4 β4 + 768 τ 2U 3
+
+> ω
+
+U 2
+
+> δ,L
+
+L4 ζ2β2 + 24 β2
+
+L2 Et−2τ ∥xkt ∥2
+
++ 3 U 2 
+
+> δ
+
+(1 + 2 mρ 
+
+1 − ρ ) β2
+
+L + 24 τ 2U 2 
+
+> r
+
+γ2β2 + 6 β2Et−2τ |ykt |2.
+
+Lemma I.3. Fix τ > 0. Choosing ζ so that ζ Uδ,L  
+
+> L
+
+Uω ≤ 1/2 and Uω ζ ≤ 1/2, for any j ≥ t − τ ≥ τ , we have 
+
+Et−2τ [∥Bj+1 − Bj ∥] ≤C9(τ ) βζ L + C10 (τ ) ζ2
+
+L + 4 Uω
+
+ζKL 
+
+> K
+
+X
+
+> k=1
+
+Et−2τ ∥xkt ∥ + C11 (τ )ζβ + C12 
+
+ζ
+
+√K
+
++ C13 ζmρ τ + C14 (τ )γζ + 2 Uω
+
+ζK
+
+> K
+
+X
+
+> k=1
+
+Et−2τ |ykt | + C15 ζ2,
+
+Et−2τ ∥Bj+1 − Bj ∥2 ≤C16 (τ 2) ζ2β2
+
+L2 + C17 (τ 2) ζ4
+
+L2 + C18 
+
+ζ2
+
+KL 2
+
+> K
+
+X
+
+> k=1
+
+Et−2τ ∥xkt ∥2 + C19 (τ 2)ζ2β2 + C20 
+
+ζ2
+
+K
+
++ C21 ζ2m2ρ2τ + C22 (τ 2)γ2ζ2 + C23 
+
+ζ2
+
+K
+
+> K
+
+X
+
+> k=1
+
+Et−2τ |ykt |2 + C24 ζ4,
+
+where 
+
+C9(τ ) = 4 Uω τ Uδ,L 
+
+L , C 10 (τ ) = 16 τ Uδ,L 
+
+L U 3 
+
+> ω
+
+, C 11 (τ ) = 2 U 2
+
+> δ,L
+
+L2 τ, C 12 = 2 Uω
+
+Uδ,L 
+
+L ,C13 = 4 Uδ,L 
+
+L Uω , C 14 (τ ) = 4 Uω τ U r , C 15 = 4 U 2
+
+> δ,L
+
+L U 2 
+
+> ω
+
+,C16 (τ 2) = 384 τ 2U 2
+
+> ω
+
+U 2
+
+> δ,L
+
+L2 , C 17 (τ 2) = 6144 τ 2U 5
+
+> ω
+
+U 2
+
+> δ,L
+
+L2 , C 18 = 192 U 2 
+
+> ω
+
+, C 19 = 48 U 4
+
+> δ,L
+
+L4 τ 2, C 20 = 48 U 2 
+
+> ω
+
+U 2
+
+> δ,L
+
+L2 ,C21 = 48 U 2 
+
+> ω
+
+U 2
+
+> δ,L
+
+L2 , C 22 (τ 2) = 192 U 2 
+
+> ω
+
+τ 2U 2 
+
+> r
+
+, C 23 = 48 U 2 
+
+> ω
+
+, C 24 = 32 U 4
+
+> δ,L
+
+L4 U 4 
+
+> ω
+
+.
+
+Proof. Fix τ > 0. For any j ≥ t − τ , the one-step perturbation of Bj can be bounded as 
+
+∥Bj+1 − Bj ∥
+
+=∥(Bj + ζKL 
+
+> K
+
+X
+
+> k=1
+
+Pj, ⊥δkj,L ϕ(skj, 0)( ωkj )⊤)R−1 
+
+> j+1
+
+− Bj ∥
+
+=∥(Bj + ζKL 
+
+> K
+
+X
+
+> k=1
+
+Pj, ⊥δkj,L ϕ(skj, 0)( ωkj )⊤)R−1 
+
+> j+1
+
+− Bj R−1 
+
+> j+1
+
++ Bj R−1 
+
+> j+1
+
+− Bj ∥≤ ζKL 
+
+> K
+
+X
+
+> k=1
+
+Pj, ⊥δkj,L ϕ(skj, 0)( ωkj )⊤ R−1 
+
+> j+1
+
++ ∥R−1 
+
+> j+1
+
+− I∥∥ Bj ∥≤ ζKL 
+
+> K
+
+X
+
+> k=1
+
+Pj, ⊥δkj,L ϕ(skj, 0)( ωkj )⊤ 11 − 2∥Qj ∥2
+
+> F
+
++ 4 ∥Qj ∥2 
+
+> F
+
+, (105) where the last inequality follows from Lemma C.1 and the fact that ∥Bj ∥ ≤ 1. From Eq. (19), we know ∥Qj ∥F ≤ Uδ,L  
+
+> L
+
+Uω ζ. 
+
+When Uδ,L  
+
+> L
+
+Uω ζ ≤ 1/2, it holds that 11−2∥Qj ∥2
+
+> F
+
+≤ 2. Thus, it remains to bound ζKL 
+
+PKk=1 Pj, ⊥δkj,L ϕ(skj, 0)( ωkj )⊤ , for 57 Personalized Multi-Agent Average Reward TD-Learning via Joint Linear Approximation 
+
+which we have 
+
+ζKL 
+
+> K
+
+X
+
+> k=1
+
+Pj, ⊥δkj,L ϕ(skj, 0)( ωkj )⊤
+
+= ζKL 
+
+> K
+
+X
+
+> k=1
+
+Pj, ⊥δkj,L ϕ(skj, 0)( ωkj )⊤
+
+≤ ζKL 
+
+> K
+
+X
+
+> k=1
+
+δkj,L ϕ(skj, 0)( ωkj )⊤
+
+≤ ζKL 
+
+> K
+
+X
+
+> k=1
+
+ eAkj,L xkj + bkj,L + Ly kj ϕ(skj, 0)
+
+
+
+(ωkj )⊤
+
+≤ ζKL 
+
+> K
+
+X
+
+> k=1
+
+eAkj,L xkj (ωkj )⊤ + ζKL 
+
+> K
+
+X
+
+> k=1
+
+bkj,L (ωkj )⊤ + ζKL 
+
+> K
+
+X
+
+> k=1
+
+Ly kj ϕ(skj, 0)( ωkj )⊤
+
+≤2Uω
+
+ζKL 
+
+> K
+
+X
+
+> k=1
+
+∥xkj ∥ + ζKL 
+
+> K
+
+X
+
+> k=1
+
+bkj,L (ωkj − ωkj−τ )⊤
+
+| {z }
+
+> I1
+
++ ζKL 
+
+> K
+
+X
+
+> k=1
+
+bkj,L (ωkj−τ )⊤
+
+| {z }
+
+> I2
+
++Uω
+
+ζK
+
+> K
+
+X
+
+> k=1
+
+|ykj |. (106) For I1 in Eq. (106), 
+
+ζKL 
+
+> K
+
+X
+
+> k=1
+
+bkj,L (ωkj − ωkj−τ )⊤ ≤ U 2
+
+> δ,L
+
+L2 τ ζβ. ( by Lemma I.1 ) (107) For I2 in Eq. (106), taking conditional expectation with respect to the Markovian trajectories up to time j − τ , we have 
+
+ζKL Ej−τ
+
+> K
+
+X
+
+> k=1
+
+bkj,L (ωkj−τ )⊤
+
+≤ ζKL 
+
+Ej−τ
+
+> K
+
+X
+
+> k=1
+
+bkj,L (ωkj−τ )⊤
+
+> 2
+
+
+
+> 12
+
+(by Jensen’s inequality for expectation )= ζKL Ej−τKX
+
+> k=1
+
+bkj,L (ωkj−τ )⊤ 2 + 2 
+
+> K
+
+X
+
+> k=1
+> K
+
+X
+
+> k′=k+1
+
+Ej−τ
+
+D
+
+bkj,L (ωkj−τ )⊤, bk′
+
+> j,L
+
+(ωk′ 
+
+> j−τ
+
+)⊤E! 12
+
+> (a)
+
+≤ ζKL KU 2 
+
+> ω
+
+U 2 
+
+> δ,L
+
++ 2 
+
+> K
+
+X
+
+> k=1
+> K
+
+X
+
+> k′=k+1
+
+Ej−τ
+
+bkj,L (ωkj−τ )⊤ Ej−τ
+
+h
+
+bk′
+
+> j,L
+
+(ωk′ 
+
+> j−τ
+
+)⊤i! 12
+
+≤ ζKL 
+
+ KU 2 
+
+> ω
+
+U 2 
+
+> δ,L
+
++ K2U 2
+
+> δ,L
+
+U 2 
+
+> ω
+
+m2ρ2τ  12
+
+≤Uω
+
+Uδ,L 
+
+Lζ
+
+√K + Uδ,L 
+
+L Uω ζmρ τ . (108) where inequality (a) follows from Lemma H.2 and conditional independence. Plugging Eq. (107) and Eq. (108) back to Eq. (106) and Eq. (105), we get, under expectation, 
+
+Ej−τ [∥Bj+1 − Bj ∥] = E[∥Bj+1 − Bj ∥ | v0: j−τ ]
+
+≤ 4Uω
+
+ζKL 
+
+> K
+
+X
+
+> k=1
+
+Ej−τ ∥xkj ∥ + 2 U 2
+
+> δ,L
+
+L2 τ ζβ + 2 Uω
+
+Uδ,L 
+
+Lζ
+
+√K
+
++ 4 Uδ,L 
+
+L Uω ζmρ τ + 2 Uω
+
+ζK
+
+> K
+
+X
+
+> k=1
+
+Ej−τ |ykj | + 4 U 2
+
+> δ,L
+
+L U 2 
+
+> ω
+
+ζ2. (109) 58 Personalized Multi-Agent Average Reward TD-Learning via Joint Linear Approximation 
+
+Finally, 
+
+Et−2τ [∥Bj+1 − Bj ∥] = E[∥Bj+1 − Bj ∥ | v0: t−2τ ]=E[ E[∥Bj+1 − Bj ∥ | v0: j−τ ] | v0: t−2τ ] (by the tower property of conditional expecation) 
+
+≤4Uω
+
+ζKL 
+
+> K
+
+X
+
+> k=1
+
+Et−2τ [Ej−τ ∥xkj ∥] + 2 U 2
+
+> δ,L
+
+L2 τ ζβ + 2 Uω
+
+Uδ,L 
+
+Lζ
+
+√K (by applying Eq. (109)) 
+
++ 4 Uδ,L 
+
+L Uω ζmρ τ + 2 Uω
+
+ζK
+
+> K
+
+X
+
+> k=1
+
+Et−2τ [Ej−τ |ykj |] + 4 U 2
+
+> δ,L
+
+L U 2 
+
+> ω
+
+ζ2
+
+=4 Uω
+
+ζKL 
+
+> K
+
+X
+
+> k=1
+
+Et−2τ [∥xkj ∥] + 2 U 2
+
+> δ,L
+
+L2 τ ζβ + 2 Uω
+
+Uδ,L 
+
+Lζ
+
+√K
+
++ 4 Uδ,L 
+
+L Uω ζmρ τ + 2 Uω
+
+ζK
+
+> K
+
+X
+
+> k=1
+
+Et−2τ [|ykj |] + 4 U 2
+
+> δ,L
+
+L U 2 
+
+> ω
+
+ζ2
+
+≤4Uω
+
+ζL τ Uδ,L 
+
+L β + 4 τ Uδ,L 
+
+L U 2 
+
+> ω
+
+ζ + 1
+
+K
+
+> K
+
+X
+
+> k=1
+
+Et−2τ ∥xkt ∥
+
+!
+
++ 2 U 2
+
+> δ,L
+
+L2 τ ζβ + 2 Uω
+
+Uδ,L 
+
+Lζ
+
+√K
+
++ 4 Uδ,L 
+
+L Uω ζmρ τ + 2 Uω
+
+ζK
+
+> K
+
+X
+
+> k=1
+
+ 2τ U r γ + Et−2τ |ykt | + 4 U 2
+
+> δ,L
+
+L U 2 
+
+> ω
+
+ζ2 (applying Lemma I.4) 
+
+= 4 Uω τ Uδ,L 
+
+L| {z } 
+
+> := C9(τ)
+
+βζ L + 16 τ Uδ,L 
+
+L U 3
+
+> ω
+
+| {z } 
+
+> := C10 (τ)
+
+ζ2
+
+L + 4 Uω
+
+ζKL 
+
+> K
+
+X
+
+> k=1
+
+Et−2τ ∥xkt ∥ + 2 U 2
+
+> δ,L
+
+L2 τ
+
+| {z } 
+
+> := C11 (τ)
+
+ζβ + 2 Uω
+
+Uδ,L 
+
+L| {z }
+
+> := C12
+
+ζ
+
+√K
+
++ 4 Uδ,L 
+
+L Uω
+
+| {z }
+
+> := C13
+
+ζmρ τ + 4 Uω τ U r
+
+| {z } 
+
+> := C14 (τ)
+
+γζ + 2 Uω
+
+ζK
+
+> K
+
+X
+
+> k=1
+
+Et−2τ |ykt | + 4 U 2
+
+> δ,L
+
+L U 2
+
+> ω
+
+| {z }
+
+> := C15
+
+ζ2
+
+=C9(τ ) βζ L + C10 (τ ) ζ2
+
+L + 4 Uω
+
+ζKL 
+
+> K
+
+X
+
+> k=1
+
+Et−2τ ∥xkt ∥ + C11 (τ )ζβ + C12 
+
+ζ
+
+√K
+
++ C13 ζmρ τ + C14 (τ )γζ + 2 Uω
+
+ζK
+
+> K
+
+X
+
+> k=1
+
+Et−2τ |ykt | + C15 ζ2.
+
+Analogously, 
+
+∥Bj+1 − Bj ∥2
+
+≤2 ζKL 
+
+> K
+
+X
+
+> k=1
+
+Pj, ⊥δkj,L ϕ(skj, 0)( ωkj )⊤ 
+
+> 2
+
+ 11 − 2∥Qj ∥2
+
+> F
+
+2
+
++ 32 ∥Qj ∥4
+
+> F
+
+≤8 ζKL 
+
+> K
+
+X
+
+> k=1
+
+Pj, ⊥δkj,L ϕ(skj, 0)( ωkj )⊤
+
+> 2
+
++ 32 ∥Qj ∥4 
+
+> F
+
+. (110) 59 Personalized Multi-Agent Average Reward TD-Learning via Joint Linear Approximation 
+
+Similar to Eq. (106), the first term can be decomposed and bounded as, 
+
+8 ζKL 
+
+> K
+
+X
+
+> k=1
+
+Pj, ⊥δkj,L ϕ(skj, 0)( ωkj )⊤
+
+> 2
+
+≤ 24 ζ2
+
+K2L2
+
+> K
+
+X
+
+> k=1
+
+eAkj,L xkj (ωkj )⊤
+
+> 2
+
++ 24 ζ2
+
+K2L2
+
+> K
+
+X
+
+> k=1
+
+bkj,L (ωkj )⊤
+
+> 2
+
++ 24 ζ2
+
+K2L2
+
+> K
+
+X
+
+> k=1
+
+Ly kj ϕ(skj, 0)( ωkj )⊤
+
+> 2
+
+≤96 U 2
+
+> ω
+
+ζ2
+
+KL 2
+
+> K
+
+X
+
+> k=1
+
+∥xkj ∥2 + 48 ζ2
+
+K2L2
+
+> K
+
+X
+
+> k=1
+
+bkj,L (ωkj − ωkj−τ )⊤
+
+> 2
+
+| {z }
+
+> I3
+
++ 48 ζ2
+
+K2L2
+
+> K
+
+X
+
+> k=1
+
+bkj,L (ωkj−τ )⊤
+
+> 2
+
+| {z }
+
+> I4
+
++U 2
+
+> ω
+
+24 ζ2
+
+K
+
+> K
+
+X
+
+> k=1
+
+|ykj |2.
+
+(111) For I3 in Eq. (111), by Lemma H.2 and Lemma I.1, we have 
+
+48 ζ2
+
+K2L2
+
+> K
+
+X
+
+> k=1
+
+bkj,L (ωkj − ωkj−τ )⊤
+
+> 2
+
+≤ 48 U 4
+
+> δ,L
+
+L4 τ 2ζ2β2. (112) For I4 in Eq. (111), we take the conditional expectation with respect to the Markovian trajectories up to time j − τ . Similar to Eq. (108), we obtain 
+
+48 ζ2
+
+K2L2 Ej−τ
+
+> K
+
+X
+
+> k=1
+
+bkj,L (ωkj−τ )⊤
+
+> 2
+
+≤ 48 ζ2
+
+K2L2
+
+ KU 2 
+
+> ω
+
+U 2 
+
+> δ,L
+
++ K2U 2
+
+> δ,L
+
+U 2 
+
+> ω
+
+m2ρ2τ 
+
+≤ 48 U 2 
+
+> ω
+
+U 2
+
+> δ,L
+
+L2
+
+ζ2
+
+K + 48 U 2 
+
+> ω
+
+U 2
+
+> δ,L
+
+L2 ζ2m2ρ2τ . (113) Plugging Eq. (112) and Eq. (113) back to Eq. (111) and Eq. (110), and applying the tower property, we get 
+
+Et−2τ ∥Bj+1 − Bj ∥2 = Et−2τ
+
+Ej−τ ∥Bj+1 − Bj ∥2
+
+≤96 U 2
+
+> ω
+
+ζ2
+
+KL 2
+
+> K
+
+X
+
+> k=1
+
+Et−2τ ∥xkj ∥2 + 48 U 4
+
+> δ,L
+
+L4 τ 2ζ2β2 + 48 U 2 
+
+> ω
+
+U 2
+
+> δ,L
+
+L2
+
+ζ2
+
+K
+
++ 48 U 2 
+
+> ω
+
+U 2
+
+> δ,L
+
+L2 ζ2m2ρ2τ + U 2
+
+> ω
+
+24 ζ2
+
+K2
+
+> K
+
+X
+
+> k=1
+
+Et−2τ |ykj |2 + 32( Uδ,L 
+
+L Uω ζ)4
+
+≤96 U 2
+
+> ω
+
+ζ2
+
+L2 4τ 2 U 2
+
+> δ,L
+
+L2 β2 + 64 τ 2U 3
+
+> ω
+
+U 2
+
+> δ,L
+
+L2 ζ2 + 2 1
+
+K
+
+> K
+
+X
+
+> k=1
+
+Et−2τ ∥xkt ∥2
+
+!
+
++ 48 U 4
+
+> δ,L
+
+L4 τ 2ζ2β2 + 48 U 2 
+
+> ω
+
+U 2
+
+> δ,L
+
+L2
+
+ζ2
+
+K
+
++ 48 U 2 
+
+> ω
+
+U 2
+
+> δ,L
+
+L2 ζ2m2ρ2τ + U 2
+
+> ω
+
+24 ζ2
+
+K2
+
+> K
+
+X
+
+> k=1
+
+ 8τ 2U 2 
+
+> r
+
+γ2 + 2 Et−2τ |ykt |2 + 32( Uδ,L 
+
+L Uω ζ)4 (applying Lemma I.4) 
+
+≤384 τ 2U 2
+
+> ω
+
+U 2
+
+> δ,L
+
+L2
+
+ζ2β2
+
+L2 + 6144 τ 2U 5
+
+> ω
+
+U 2
+
+> δ,L
+
+L2
+
+ζ4
+
+L2 + 192 U 2
+
+> ω
+
+ζ2
+
+KL 2
+
+> K
+
+X
+
+> k=1
+
+Et−2τ ∥xkt ∥2 + 48 U 4
+
+> δ,L
+
+L4 τ 2ζ2β2 + 48 U 2 
+
+> ω
+
+U 2
+
+> δ,L
+
+L2
+
+ζ2
+
+K
+
++ 48 U 2 
+
+> ω
+
+U 2
+
+> δ,L
+
+L2 ζ2m2ρ2τ + 192 U 2 
+
+> ω
+
+τ 2U 2 
+
+> r
+
+γ2ζ2 + 48 U 2
+
+> ω
+
+ζ2
+
+K
+
+> K
+
+X
+
+> k=1
+
+Et−2τ |ykt |2 + 32 U 4
+
+> δ,L
+
+L4 U 4 
+
+> ω
+
+ζ4.
+
+60 Personalized Multi-Agent Average Reward TD-Learning via Joint Linear Approximation 
+
+Lemma I.4. For 0 ≤ t − τ ≤ j ≤ t − 1, we have for any k ∈ [K],
+
+Et−2τ ∥xkj ∥ ≤ τ Uδ,L 
+
+L β + 4 τ Uδ,L 
+
+L U 2 
+
+> ω
+
+ζ + Et−2τ ∥xkt ∥,
+
+Et−2τ ∥xkj ∥2 ≤ 4τ 2 U 2
+
+> δ,L
+
+L2 β2 + 64 τ 2U 3
+
+> ω
+
+U 2
+
+> δ,L
+
+L2 ζ2 + 2 Et−2τ ∥xkt ∥2,
+
+Et−2τ |ykj | ≤ 2τ U r γ + Et−2τ |ykt |,
+
+Et−2τ |ykj |2 ≤ 8τ 2U 2 
+
+> r
+
+γ2 + 2 Et−2τ |ykt |2,
+
+when 4τ U 2 
+
+> δ,L
+> L2
+
+U 3 
+
+> ω
+
+ζ ≤ 2τ Uδ,L  
+
+> L
+
+U 2 
+
+> ω
+
+, and 128 τ 2U 5  
+
+> ωU2
+> δ,L
+> L2
+
+ζ2 ≤ 32 τ 2U 3  
+
+> ωU2
+> δ,L
+> L2
+
+.
+
+Lemma I.4 aligns the error terms indexed by j to a common reference time t, which is required for a consistent Lyapunov analysis. The bounds follow from the triangle inequality applied along the trajectory from j to t; since j ≥ t − τ , the difference between xkj (resp., ykj ) and xkt (resp., ykt ) accumulates at most τ one-step perturbations. Each perturbation is upper bounded using the update dynamics, yielding deviations that scale linearly in τ , while Et−2τ ∥xkt ∥ and Et−2τ |ykt |
+
+serve as anchored reference terms. 
+
+Proof. For any t − 1 ≥ j ≥ t − τ , we have 
+
+∥xkj ∥2 ≤ 2∥xkj − xkt ∥2 + 2 ∥xkt ∥2
+
+=2 ∥Btωkt − Bj ωkj ∥2 + 2 ∥xkt ∥2
+
+≤4∥Btωkt − Btωkj ∥2 + 4 ∥Btωkj − Bj ωkj ∥2 + 2 ∥xkt ∥2
+
+≤4∥ωkt − ωkj ∥2 + 4 Uω ∥Bt − Bj ∥2 + 2 ∥xkt ∥2
+
+≤4τ 2 U 2
+
+> δ,L
+
+L2 β2 + 4 τ 2Uω (2 Uδ,L 
+
+L Uω ζ + 4 U 2
+
+> δ,L
+
+L2 U 2 
+
+> ω
+
+ζ2)2 + 2 ∥xkt ∥2 (by Lemma I.1 ).
+
+Then, taking expectation, we get 
+
+Et−2τ ∥xkj ∥2 ≤ 4τ 2 U 2
+
+> δ,L
+
+L2 β2 + 32 τ 2U 3
+
+> ω
+
+U 2
+
+> δ,L
+
+L2 ζ2 + 128 τ 2U 5
+
+> ω
+
+U 2
+
+> δ,L
+
+L2 ζ4 + 2 Et−2τ ∥xkt ∥2
+
+≤4τ 2 U 2
+
+> δ,L
+
+L2 β2 + 64 τ 2U 3
+
+> ω
+
+U 2
+
+> δ,L
+
+L2 ζ2 + 2 Et−2τ ∥xkt ∥2.
+
+The last inequality holds since 128 τ 2U 5  
+
+> ωU2
+> δ,L
+> L2
+
+ζ2 ≤ 32 τ 2U 3  
+
+> ωU2
+> δ,L
+> L2
+
+.Analogously, we get, 
+
+Et−2τ ∥xkj ∥ ≤ τ Uδ,L 
+
+L β + 2 τ Uδ,L 
+
+L U 2 
+
+> ω
+
+ζ + 4 τ U 2
+
+> δ,L
+
+L2 U 3 
+
+> ω
+
+ζ2 + Et−2τ ∥xkt ∥≤τ Uδ,L 
+
+L β + 4 τ Uδ,L 
+
+L U 2 
+
+> ω
+
+ζ + Et−2τ ∥xkt ∥.
+
+The last inequality holds since 4τ U 2 
+
+> δ,L
+> L2
+
+U 3 
+
+> ω
+
+ζ ≤ 2τ Uδ,L  
+
+> L
+
+U 2 
+
+> ω
+
+.61 Personalized Multi-Agent Average Reward TD-Learning via Joint Linear Approximation 
+
+Similarly, for |ykj |, we have, 
+
+|ykj |2 ≤ 2|ykj − ykt |2 + 2 |ykt |2
+
+≤2τ
+
+> t−1
+
+X
+
+> i=j
+
+|yki+1 − yki |2 + 2 |ykt |2
+
+=2 τ
+
+> t−1
+
+X
+
+> i=j
+
+|ηki+1 − ηki |2 + |ykt |
+
+=2 τ γ 2
+
+> t−1
+
+X
+
+> i=j
+
+1
+
+L
+
+> L−1
+
+X
+
+> ℓ=0
+
+rkt,ℓ − ηkt
+
+> 2
+
++ 2 |ykt |2
+
+≤8τ 2U 2 
+
+> r
+
+γ2 + 2 |ykt |2.
+
+Taking expectation, we get 
+
+Et−2τ |ykj |2 ≤ 8τ 2U 2 
+
+> r
+
+γ2 + 2 Et−2τ |ykt |2.
+
+Analogously, we get, 
+
+Et−2τ |ykj | ≤ 2τ U r γ + Et−2τ |ykt |.
+
+Lemma I.5. For k ∈ [K], t ≥ 0, L > 0, and any state skt, 0, we have 
+
+E ∥bkt,L ∥ ≤
+
+
+
+Uδ + Uδ
+
+r 2mρ 
+
+1 − ρ
+
+ √L, (114) 
+
+E∥bkt,L ∥2 ≤ U 2 
+
+> δ
+
+(1 + 2 mρ 
+
+1 − ρ )L, (115) 
+
+E∥ebkt,L − ¯bkL∥ ≤ 
+
+r
+
+16 U 2 
+
+> r
+
++ 32 U 2
+
+> r
+
+mρ 
+
+1 − ρ
+
+√L, (116) 
+
+E∥ebkt,L − ¯bkL∥2 ≤
+
+
+
+16 U 2 
+
+> r
+
++ 32 U 2
+
+> r
+
+mρ 
+
+1 − ρ
+
+
+
+L, (117) 
+
+E eAkt,L − AkL ≤
+
+r
+
+16 + 32 mρ 
+
+1 − ρ
+
+√L, (118) 
+
+E eAkt,L − AkL
+
+> 2
+
+≤
+
+
+
+16 + 32 mρ 
+
+1 − ρ
+
+
+
+L, (119) 
+
+where Uδ := 2 Ur + 2 Uω , and the expectation is taken over the Markovian sampling trajectories. Proof. We know that V (s) = ϕ(s)⊤zk, ∗ = Eπ⊗P k [R(s, a ) − Jk + V (s′)] , which implies for any s,
+
+Es∼uk ,(a,s ′)∼π⊗P k [R(s, a ) − Jk + ( ϕ(s′) − ϕ(s)) ⊤zk, ∗] = 0 . (120) 62 Personalized Multi-Agent Average Reward TD-Learning via Joint Linear Approximation 
+
+Then, for ∥bkt,L ∥, taking expectation, we have 
+
+E∥bkt,L ∥ ≤ 
+
+q
+
+E∥bkt,L ∥2 (by Jensen’s inequality )=
+
+vuutE
+
+> L−1
+
+X
+
+> ℓ=0
+
+h
+
+(rkt,ℓ − Jk) + ( ϕ(skt,ℓ +1 ) − ϕ(skt,ℓ )) ⊤B∗ωk, ∗
+
+i
+
+ϕ(skt, 0)
+
+> 2
+
+≤
+
+> L−1
+
+X
+
+> ℓ=0
+
+E (rkt,ℓ − Jk) + ( ϕ(skt,ℓ +1 ) − ϕ(skt,ℓ )) ⊤B∗ωk, ∗ ϕ(skt, 0) 2
+
++ 2 
+
+> L−1
+
+X
+
+> ℓ=0
+> L−1
+
+X
+
+> ℓ′=ℓ+1
+
+E
+
+ (rkt,ℓ − Jk) + ( ϕ(skt,ℓ +1 ) − ϕ(skt,ℓ )) ⊤B∗ωk, ∗ ϕ(skt, 0),
+
+(rkt,ℓ ′ − Jk) + ( ϕ(skt,ℓ ′+1 ) − ϕ(skt,ℓ ′ )) ⊤B∗ωk, ∗ ϕ(skt, 0)
+
+! 12
+
+=
+
+> L−1
+
+X
+
+> ℓ=0
+
+E (rkt,ℓ − Jk) + ( ϕ(skt,ℓ +1 ) − ϕ(skt,ℓ )) ⊤B∗ωk, ∗ ϕ(skt, 0) 2
+
++ 2 
+
+> L−1
+
+X
+
+> ℓ=0
+> L−1
+
+X
+
+> ℓ′=ℓ+1
+
+E
+
+
+
+E
+
+ (rkt,ℓ − Jk) + ( ϕ(skt,ℓ +1 ) − ϕ(skt,ℓ )) ⊤B∗ωk, ∗ ϕ(skt, 0),
+
+(rkt,ℓ ′ − Jk) + ( ϕ(skt,ℓ ′+1 ) − ϕ(skt,ℓ ′ )) ⊤B∗ωk, ∗ ϕ(skt, 0)
+
+
+
+| v0:( j,ℓ )
+
+ ! 12
+
+≤ U 2 
+
+> δ
+
+L + 2 
+
+> L−1
+
+X
+
+> ℓ=0
+> L−1
+
+X
+
+> ℓ′=ℓ+1
+
+E ⟨(rkt,ℓ − Jk) + ( ϕ(skt,ℓ +1 ) − ϕ(skt,ℓ )) ⊤B∗ωk, ∗ ϕ(skt, 0),
+
+E[(rkt,ℓ ′ − Jk) + ( ϕ(skt,ℓ ′+1 ) − ϕ(skt,ℓ ′ )) ⊤B∗ωk, ∗ ϕ(skt, 0) | v0:( j,ℓ )]⟩
+
+! 12
+
+≤ U 2 
+
+> δ
+
+L + 2 
+
+> L−1
+
+X
+
+> ℓ=0
+> L−1
+
+X
+
+> ℓ′=ℓ+1
+
+E[ (rkt,ℓ − Jk) + ( ϕ(skt,ℓ +1 ) − ϕ(skt,ℓ )) ⊤B∗ωk, ∗ ϕ(skt, 0)
+
+∥E[(rkt,ℓ ′ − Jk) + ( ϕ(skt,ℓ ′+1 ) − ϕ(skt,ℓ ′ )) ⊤B∗ωk, ∗ ϕ(skt, 0) | v0:( t,ℓ )]∥]
+
+! 12
+
+(by Cauchy-Schwarz )
+
+> (a)
+
+≤
+
+vuutU 2 
+
+> δ
+
+L + 2 
+
+> L−1
+
+X
+
+> ℓ=0
+> L−1
+
+X
+
+> ℓ′=ℓ+1
+
+Uδ E
+
+hh 
+
+(rkt,ℓ ′ − Jk) + ( ϕ(skt,ℓ ′+1 ) − ϕ(skt,ℓ ′ )) ⊤B∗ωk, ∗
+
+i
+
+ϕ(skt, 0) | v0:( t,ℓ )
+
+i
+
+≤
+
+vuutU 2 
+
+> δ
+
+L + 2 
+
+> L−1
+
+X
+
+> ℓ=0
+> L−1
+
+X
+
+> ℓ′=ℓ+1
+
+U 2 
+
+> δ
+
+mρ ℓ′−ℓ (by the ergodicity Assumption )
+
+≤Uδ
+
+√L +
+
+s
+
+2U 2 
+
+> δ
+
+m ρL 
+
+1 − ρ
+
+=
+
+
+
+Uδ + Uδ
+
+r 2mρ 
+
+1 − ρ
+
+ √L, 
+
+where inequality (a) holds because 
+
+h
+
+(rkt,ℓ − Jk) + ( ϕ(skt,ℓ +1 ) − ϕ(skt,ℓ )) ⊤B∗ωk, ∗
+
+i
+
+ϕ(skt, 0) ≤ Uδ .63 Personalized Multi-Agent Average Reward TD-Learning via Joint Linear Approximation 
+
+Similarly, for Eq. (115), we have 
+
+E∥bkt,L ∥2 ≤ U 2
+
+δ L + 2 U 2
+
+δ
+
+mρ 
+
+1 − ρ L = U 2
+
+δ (1 + 2 mρ 
+
+1 − ρ )L. 
+
+Now we prove Eq. (117). For ease of exposition, we omit the explicit specification of the underlying distributions in the expectation when it is clear from the context. 
+
+E∥ebkt,L − ¯bkL∥2
+
+=E
+
+L−1X
+
+ℓ=0 
+
+(rkt,ℓ − Jk)ϕ(skt, 0) − Es(0) ∼μk ,(a(ℓ),s (ℓ))∼π⊗P k ∀ℓ∈[0 ,L −1] 
+
+"L−1X
+
+ℓ=0 
+
+(r(s(ℓ), a (ℓ)) − Jk)ϕ(s(0) )
+
+# 2
+
+≤
+
+L−1X
+
+ℓ=0 
+
+E
+
+h
+
+(rkt,ℓ − Jk)ϕ(skt, 0) − Es(0) ∼μk ,(a(ℓ),s (ℓ))∼π⊗P k ∀ℓ∈[0 ,L −1] 
+
+h
+
+(r(s(ℓ), a (ℓ)) − Jk)ϕ(s(0) )
+
+ii 2
+
++ 2 
+
+L−1X
+
+ℓ=0 
+
+L−1X
+
+ℓ′=ℓ+1 
+
+E (rkt,ℓ − Jk)ϕ(skt, 0) − Es(0) ∼μk ,(a(ℓ),s (ℓ))∼π⊗P k ∀ℓ∈[0 ,L −1] 
+
+h
+
+(r(s(ℓ), a (ℓ)) − Jk)ϕ(s(0) )
+
+i
+
+,
+
+(rkt,ℓ ′ − Jk)ϕ(skt, 0) − Es(0) ∼μk ,(a(ℓ),s (ℓ))∼π⊗P k ∀ℓ∈[0 ,L −1] 
+
+h
+
+(r(s(ℓ′), a (ℓ′)) − Jk)ϕ(s(0) )
+
+i
+
+(a)
+
+≤ 16 U 2
+
+r L + 32 U 2
+
+rL−1X
+
+ℓ=0 
+
+L−1X
+
+ℓ′=ℓ+1 
+
+mρ ℓ′−ℓ
+
+≤
+
+
+
+16 U 2
+
+r + 32 U 2
+
+r
+
+mρ 
+
+1 − ρ
+
+
+
+L. 
+
+(a) follows analogously to the proof of Eq. (114). For Eq. (116), by Jensen’s inequality, we easily get 
+
+E∥ebkt,L − ¯bkL∥ ≤ 
+
+q
+
+E∥ebkt,L − ¯bkL∥2 ≤
+
+r
+
+16 U 2
+
+r + 32 U 2
+
+r
+
+mρ 
+
+1 − ρ
+
+√L. 
+
+Similarly, for Eq. (119), we have, 
+
+E eAkt,L − AkL
+
+2
+
+=E
+
+L−1X
+
+ℓ=0 
+
+ϕ(skt, 0)( ϕ(skt,ℓ +1 ) − ϕ(skt,ℓ )) ⊤ − Es(0) ∼μk ,(a(ℓ),s (ℓ))∼π⊗P k ∀ℓ∈[0 ,L −1] [ϕ(s(0) )( ϕ(s(ℓ+1) ) − ϕ(s(ℓ))) ⊤
+
+2
+
+=
+
+L−1X
+
+ℓ=0 
+
+E ϕ(skt, 0)( ϕ(skt,ℓ +1 ) − ϕ(skt,ℓ )) ⊤ − Es(0) ∼μk ,(a(ℓ),s (ℓ))∼π⊗P k ∀ℓ∈[0 ,L −1] [ϕ(s(0) )( ϕ(s(ℓ+1) ) − ϕ(s(ℓ))) ⊤ 2
+
++ 2 
+
+L−1X
+
+ℓ=0 
+
+L−1X
+
+ℓ′=0 
+
+E
+
+D
+
+ϕ(skt, 0)( ϕ(skt,ℓ +1 ) − ϕ(skt,ℓ )) ⊤ − Es(0) ∼μk ,(a(ℓ),s (ℓ))∼π⊗P k ∀ℓ∈[0 ,L −1] [ϕ(s(0) )( ϕ(s(ℓ+1) ) − ϕ(s(ℓ))) ⊤,ϕ(skt, 0)( ϕ(skt,ℓ +1 ) − ϕ(skt,ℓ )) ⊤ − Es(0) ∼μk ,(a(ℓ),s (ℓ))∼π⊗P k ∀ℓ∈[0 ,L −1] [ϕ(s(0) )( ϕ(s(ℓ+1) ) − ϕ(s(ℓ))) ⊤E
+
+≤16 L + 32 
+
+L−1X
+
+ℓ=0 
+
+L−1X
+
+ℓ′=ℓ+1 
+
+mρ ℓ′−ℓ
+
+≤
+
+
+
+16 + 32 mρ 
+
+1 − ρ
+
+
+
+L. 
+
+64 Personalized Multi-Agent Average Reward TD-Learning via Joint Linear Approximation 
+
+By Jensen’s inequality, Eq. (118) can be proved, 
+
+E eAkt,L − AkL ≤
+
+r
+
+E eAkt,L − AkL
+
+> 2
+
+≤
+
+r
+
+16 + 32 mρ 
+
+1 − ρ
+
+√L. 
+
+Lemma I.6. Suppose that Assumption 2. Fix τ > 0. For any t ≥ τ , L > 0, and k ∈ [K], it holds that 
+
+∥Et−τ
+
+ebkt,L − ¯bkL
+
+∥ ≤ 4LU r mρ τ
+
+∥Et−τ
+
+ eAkt,L − ¯AkL
+
+∥ ≤ 4mρ τ
+
+∥Et−τ [bkt,L ]∥ ≤ 2Uδ,L mρ τ .
+
+Proof. Recall from Eq. (16) that 
+
+bkt,L =
+
+> L−1
+
+X
+
+> ℓ=0
+
+ (rkt,ℓ − Jk) + ( ϕ(skt,ℓ +1 ) − ϕ(skt,ℓ )) ⊤B∗ωk, ∗ϕ(skt, 0),
+
+and the average-reward Bellman equation 
+
+Es(0) ∼μk ,(a(ℓ),s (ℓ))∼π⊗P k ∀ℓ∈[0 ,L −1] 
+
+"L−1X
+
+> ℓ=0
+
+(r(a(ℓ), s (ℓ)) − Jk) + ( ϕ(s(ℓ+1) ) − ϕ(s(ℓ))) ⊤B∗wk, ∗ϕ(s(0) )
+
+#
+
+= 0 .
+
+Thus, we have 
+
+∥Et−τ [bkt,L ]∥ = Et−τ
+
+"L−1X
+
+> ℓ=0
+
+ (rkt,ℓ − Jk) + ( ϕ(skt,ℓ +1 ) − ϕ(skt,ℓ )) ⊤B∗ωk, ∗ϕ(skt, 0)
+
+#
+
+−Es(0) ∼μk ,(a(ℓ),s (ℓ))∼π⊗P k ∀ℓ∈[0 ,L −1] 
+
+"L−1X
+
+> ℓ=0
+
+(r(a(ℓ), s (ℓ)) − Jk) + ( ϕ(s(ℓ+1) ) − ϕ(s(ℓ))) ⊤B∗wk, ∗ϕ(s(0) )
+
+#
+
+≤2Uδ,L · dT V (Pk 
+
+> 0: τ
+
+(skt, 0, a kt, 1, s kt, 1, · · · , a kt,L −1, s kt,L | skt−τ = s), μ k ⊗ (π ⊗ P k)L−1)
+
+≤2Uδ,L mρ τ ,
+
+where the notation Pk 
+
+> 0: τ
+
+is defined in Assumption 2, the first inequality follows from Lemma H.2, and the last inequality follows from Assumption 2 and the fact that L-block of a Markov chain mixes at the same rate as the original chain. Recall from Eq. (14) that 
+
+ebkt,L =
+
+> L−1
+
+X
+
+> ℓ=0
+
+(rkt,ℓ − Jk)ϕ(skt, 0); ¯bkL = Es(0) ∼μk ,(a(ℓ),s (ℓ))∼π⊗P k ∀ℓ∈[0 ,L −1] 
+
+"L−1X
+
+> ℓ=0
+
+(r(s(ℓ), a (ℓ)) − Jk)ϕ(s(0) )
+
+#
+
+.
+
+Note that ebkt,L ≤ 2LU r . Similar to the above derivation, we have 
+
+∥Et−τ
+
+ebkt,L − ¯bkL
+
+∥ ≤ 2LU r 2 · dT V (Pk 
+
+> 0: τ
+
+(skt, 0, a kt, 1, s kt, 1, · · · , a kt,L −1, s kt,L | skt−τ = s), μ k ⊗ (π ⊗ P k)L−1)
+
+≤ 4LU r mρ τ .
+
+Recall from Eq. (16) that eAkt,L = ϕ(skt, 0)( ϕ(skt,L ) − ϕ(skt, 0)) ⊤. Since ∥ eAkt,L ∥ ≤ 2, we have 
+
+∥Et−τ
+
+ eAkt,L − ¯AkL
+
+∥ ≤ 4mρ τ .
+
+65 Personalized Multi-Agent Average Reward TD-Learning via Joint Linear Approximation 
+
+I.1. Proof of Eq. (31) 
+
+Proof. Recall that R is the optimal rotation matrix that aligns Bt+1 and B∗ in the sense that R = argmin R⊤R=I∥Bt+1 R − 
+
+B∗∥F . That is, R = UV ⊤, where UΣV⊤ = Bt+1 B∗ is the SVD. We have 
+
+I − (Bt+1 R)⊤B∗
+
+=I − R ⊤B⊤
+
+> t+1
+
+B∗
+
+=I − (UV ⊤)⊤UΣV⊤
+
+=I − VΣV⊤.
+
+For any given matrix A, let σi(A) denote its i-th largest singular value. Since multiplying an orthogonal matrix does not change the singular values, the singular values of I − (Bt+1 R)⊤B∗ can be bounded as follows, 
+
+σi(I − VΣV⊤) = σi(V(I − Σ) V⊤) = σi(I − Σ) = 1 − cos( θi),
+
+where cos( θi) are the singular values of the matrix (Bt+1 R)⊤B∗, and θi are the principal angles between the two subspaces of interest. Then 
+
+σi(I − (Bt+1 R)⊤B∗) = 1 − cos( θi) ≤ 1 − cos 2(θi) = sin 2(θi).
+
+Recall σi(B∗⊤ ⊥ Bt+1 ) = sin( θi). All the singular values of I − (Bt+1 R)⊤B∗ are smaller than the largest singular value of 
+
+B∗⊤ ⊥ Bt+1 squared, i.e., 
+
+σi(I − (Bt+1 R)⊤B∗) ≤ ∥ B∗⊤ ⊥ Bt+1 ∥2,
+
+which implies 
+
+∥I − (Bt+1 R)⊤B∗∥ ≤ ∥ B∗⊤ ⊥ Bt+1 ∥2.
+
+66 Personalized Multi-Agent Average Reward TD-Learning via Joint Linear Approximation 
+
+## J. More Experiment Results 
+
+Figure 4. Policy Learning Performance Comparison on Acrobot 
+
+Figure 5. Policy Learning Performance Comparison on Cartpole 
+
+67

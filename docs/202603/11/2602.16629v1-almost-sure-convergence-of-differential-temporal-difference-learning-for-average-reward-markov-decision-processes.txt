@@ -1,0 +1,1342 @@
+Title: Almost Sure Convergence of Differential Temporal Difference Learning for Average Reward Markov Decision Processes
+
+URL Source: https://arxiv.org/pdf/2602.16629v1
+
+Published Time: Thu, 19 Feb 2026 02:07:49 GMT
+
+Number of Pages: 16
+
+Markdown Content:
+# Almost Sure Convergence of Differential Temporal Difference Learning for Average Reward Markov Decision Processes 
+
+Ethan Blaser Jiuqi Wang Shangtong Zhang 
+
+University of Virginia blaser@email.virginia.edu University of Virginia jiuqi@email.virginia.edu University of Virginia shangtong@virginia.edu 
+
+# Abstract 
+
+The average reward is a fundamental perfor-mance metric in reinforcement learning (RL) focusing on the long-run performance of an agent. Differential temporal difference (TD) learning algorithms are a major advance for average reward RL as they provide an efficient online method to learn the value functions associated with the average reward in both on-policy and off-policy settings. However, existing convergence guarantees require a lo-cal clock in learning rates tied to state visit counts, which practitioners do not use and does not extend beyond tabular settings. We address this limitation by proving the almost sure convergence of on-policy n-step differen-tial TD for any n using standard diminish-ing learning rates without a local clock. We then derive three sufficient conditions under which off-policy n-step differential TD also converges without a local clock. These re-sults strengthen the theoretical foundations of differential TD and bring its convergence analysis closer to practical implementations. 
+
+# 1 Introduction 
+
+The average reward is an important performance met-ric in Reinforcement Learning (RL, Sutton and Barto (2018)). Compared with the commonly used discounted total rewards performance metric, the average reward setting more heavily emphasizes the long-term behav-ior of the RL agent, making it particularly suitable for applications like network resource allocation (Mar-bach et al., 1998; Bakhshi et al., 2021; Yang et al., 
+
+Proceedings of the 29 th International Conference on Arti-ficial Intelligence and Statistics (AISTATS) 2026, Tangier, Morocco. PMLR: Volume 300. Copyright 2026 by the au-thor(s). 
+
+2024), robotics (Kober et al., 2013), and scheduling (Ghavamzadeh and Mahadevan, 2007). Differential temporal difference (TD) (Wan et al., 2021b) learning is one of the most important recent advances for average reward RL. Differential TD is designed to estimate the corresponding value function for the average reward performance metric and can be used in both on-policy and off-policy settings. However, the convergence analysis of differential TD remains less satisfactory. In Wan et al. (2021b), almost sure con-vergence is proved only when the stepsizes depend on a local clock. Specifically, they require the learning rates of the form αν(t,S t) , where {αt} is a sequence of deterministic, nonnegative, and diminishing scalars and a local clock (i.e., a counter) ν(t, s ), which counts the number of visits to a state s up to timestep t. In other words, at time t the stepsize depends not only on 
+
+t, but also on the number of past visits to the current state St.We argue that this local clock based learning rate is unsatisfactory for at least three reasons. First, to our best knowledge, practitioners do not actually use the local clock in their learning rates, including Wan et al. (2021b) in their experiments. The local clock seems to be primarily a theoretically motivated technique (Borkar, 2009). Although recent work demonstrates that it can occasionally be required for convergence in certain settings (Chen, 2025), its adoption in practical implementations remains rare. Second, the local clock cannot be used in many function approximation set-tings, especially those considered in Sutton and Barto (2018), where the agent only has access to the feature of the current state, denoted as ϕ(St), not the state 
+
+St itself. With only ϕ(St), it is not clear how to count the visits to St since the feature function ϕ is usually not a one-to-one mapping. This means the local clock technique is only viable in the tabular setting. Third, although convergence analyses of discounted TD (Sut-ton, 1988) also require the local clock in learning rates (Jaakkola et al., 1993; Tsitsiklis, 1994), later works removed this requirement (Tsitsiklis and Roy, 1996; 
+
+> arXiv:2602.16629v1 [cs.LG] 18 Feb 2026 Almost Sure Convergence of Differential Temporal Difference Learning
+
+Liu et al., 2025a). Therefore, there is a theoretical gap in the literature for average reward RL, and gives rise to the central question this work aims to answer: 
+
+Can we establish the convergence of differential TD without using a local clock in the learning rates? 
+
+This question seems trivial at first glance. After all, local clocks can be avoided in the discounted setting, so one might expect the same argument to carry over to the average reward setting. However, as we will now explain, extending that analysis to the average-reward case introduces several fundamental obstacles. The convergence of the discounted TD with a local clock rests on the global asymptotic stability (G.A.S.) of the following ODE 1
+
+dv(t)dt = Av (t), (1) where v(t) ∈ R|S| can be viewed as the estimation of the value function and A ∈ R|S|×|S| corresponds to the discounted TD algorithm, with |S| being the number of states. Essentially, (1) is G.A.S. because the 
+
+A matrix corresponding to discounted TD with a local clock is negative definite (n.d.) 2. When the local clock is removed from the learning rates, the corresponding ODE becomes dv(t)dt = DAv (t), (2) where D ∈ R|S|×|S| is a diagonal matrix whose en-tries are the stationary state distribution. The change from (1) to (2) is intuitive. With a local clock, the total magnitude of updates applied to each state is forced to be the same, regardless of how frequently that state is visited. Without a local clock, the magnitude of the updates naturally depends on visitation frequency, which appears as the multiplier D in (2) . For instance, when a state s is visited for the first time, the learning rate is always α1 with a local clock, whereas without it the learning rate may be α100 if s is first visited at time 
+
+t = 100. Nevertheless, when A is n.d., it is straightfor-ward to show that DA is also n.d., implying that (2) is G.A.S., and thus that discounted TD converges even without a local clock. However, as we shall show soon, the corresponding A
+
+matrix for differential TD with the local clock is only              
+
+> 1The ODE (1) is G.A.S. if and only if the Amatrix is Hurwitz (Theorem 4.5 from Khalil (2002)). A matrix Ais Hurwitz if the real part of any of its eigenvalues is strictly negative.
+> 2A matrix A, not necessarily symmetric, is n.d. if for any y̸= 0, it holds that y⊤Ay < 0. A n.d. matrix must be Hurwitz. But a Hurwitz matrix does not need to be n.d. For example,
+> −110 0−1
+> 
+> is Hurwitz but not n.d.
+
+Hurwitz and not necessarily n.d. When A is Hurwitz, whether DA is also Hurwitz is a long-standing open problem in the linear algebra community, called the D-stability problem (Johnson, 1974b; Giorgi and Zuccotti, 2015). Progress on the D-stability problem has been limited in the past decade (Kushel, 2019; Kushel and Pavani, 2023; Tong and Su, 2024). As a result, verifying whether (2) is G.A.S. for differential TD without a local clock is substantially more challenging than it initially appears. Nevertheless, this paper makes three contributions. First, we establish the almost sure convergence of on-policy n-step differential TD for any n without the local clock. Second, we give three different sufficient conditions for the almost sure convergence of off-policy 
+
+n-step differential TD without the local clock. Ad-mittedly, our characterization in the off-policy case is incomplete and we correspondingly present our third contribution: we outline a few challenges and open problems in this area. 
+
+# 2 Background 
+
+In this work, all vectors are column. The ℓ2 norm in 
+
+Rd is denoted by ∥·∥ . The identity matrix is denoted by I, and we use e to denote the all-one vector. For a matrix A ∈ Rn×n, we denote its spectral radius by 
+
+λmax (A) .
+
+= max {| λ| : λ ∈ σ(A)}, with σ(A) as the set of eigenvalues of A. We say that a matrix A is (strictly) 
+
+positive stable if ∀λ ∈ σ(A) Re λ ≥ 0 ( Re λ > 0). It is easy to see that A is strictly positive stable if and only if −A is Hurwitz. 3 If a matrix A has only nonnegative (positive) entries, we write A ≥ 0, ( A > 0). If a matrix 
+
+A is positive definite, we write A ≻ 0. Given any vector 
+
+x, P x denotes the sum of all elements in x. We use 
+
+Ai,j to refer to the ( i, j )-th entry of A.
+
+Definition 2.1. An M −matrix is a matrix of the form 
+
+γI − P where P ∈ Rn×n, P ≥ 0, and γ ≥ λmax (P ). In RL, we consider a Markov Decision Process (MDP; Bellman (1957); Puterman (2014)) with a finite state space S, a finite action space A, a reward function 
+
+r : S × A → R, a transition function p : S × S × A → 
+
+[0 , 1], an initial distribution p0 : S → [0 , 1]. At time step 0, an initial state S0 is sampled from p0. At time t, given the state St, the agent samples an action 
+
+At ∼ π(·| St), where π : A × S → [0 , 1] is the policy being followed by the agent. A reward Rt+1 
+
+.
+
+= r(St, A t)is then emitted and the agent proceeds to a successor state St+1 ∼ p(·| St, A t). We assume the Markov chain {St} induced by 
+
+> 3
+> “Hurwitz” is often used in the control community while “positive stable” is often used in the linear algebra commu-nity
+
+Blaser, Wang, Zhang 
+
+the policy π is ergodic and thus adopts a unique stationary distribution dπ . We define Dπ =diag (dπ ). The average reward (a.k.a. gain, Puter-man (2014)) is defined as ¯Jπ
+
+.
+
+= lim T →∞ 1
+
+> T
+
+PTt=1 E [Rt] .
+
+Consequently, the differential value function (a.k.a. bias, Puterman (2014)) is defined as vπ (s) .
+
+=lim T →∞ 1
+
+> T
+
+PTτ =1 E P τi=1 (Rt+i − ¯Jπ ) | St = s . The corresponding Bellman equation (a.k.a. Poisson’s equa-tion) is then 
+
+v = rπ − ¯Jπ e + Pπ v, (3) where v ∈ R|S| is the free variable, rπ ∈ R|S| is the re-ward vector induced by the policy π, i.e., rπ (s) .
+
+=P 
+
+> a
+
+π(a|s)r(s, a ), and Pπ ∈ R|S|×|S| is the transi-tion matrix induced by the policy π, i.e., Pπ (s, s ′) .
+
+=P 
+
+> a
+
+π(a|s)p(s′|s, a ). It is known (Puterman, 2014) that all solutions to (3) form a set V∗
+
+.
+
+= {vπ + ce | c ∈ R}.
+
+The policy evaluation problem in average reward MDPs is to estimate vπ , perhaps up to a constant offset ce .In the off-policy setting, an agent aims to evaluate a target policy π but follows a behavior policy μ. We define the importance sampling ratio ρ(s, a ) .
+
+= π(a|s)
+
+> μ(a|s)
+
+and ρt
+
+.
+
+= ρ(St, A t). 
+
+# 3 Differential Temporal Difference Learning 
+
+Differential TD is designed to estimate vπ in an on-line manner. The differential TD algorithm proposed by Wan et al. (2021b) only considers a one-step look-ahead. Inspired by the success of n-step TD in the discounted setting (Sutton and Barto, 2018), we first extend the 1-step differential TD to the n-step case. As we shall see soon, this extension is vital to the analysis in the off-policy setting. Here we only present off-policy n-step differential TD as the on-policy version is just a special case with μ = π. Suppose a trajec-tory {S0, A 0, R 1, S 1, . . . } is generated by following a behavior policy μ as At ∼ μ(· | St). Since the n-step return for St is only observable after reaching St+n,the iterates vt ∈ R|S| , {Jt ∈ R} are updated at time 
+
+t + n as 
+
+δt = Rt+1: t+n − nJ t+n−1 + vt+n−1(St+n) − vt+n−1(St),Jt+n = Jt+n−1 + ηn αt+n−1ρt:t+n−1δt,vt+n(St) = vt+n−1(St) + αt+n−1ρt:t+n−1δt, (4) where ρt:t+n−1
+
+.
+
+= Qt+n−1 
+
+> k=t
+
+ρk and Rt+1: t+n
+
+.
+
+=Pnk=1 Rt+k are shorthands. To our knowledge, this is the first time that n-step dif-ferential TD is formalized, and the complete derivation is presented in Appendix B. When n = 1, it recovers the 1-step differential TD in Wan et al. (2021b). How-ever, in the convergence analysis in Wan et al. (2021b), they replace the learning rate {αt} with αν(t,S t) .We recall that ν(t, s ) counts the number of visits to the state s until time t and is referred to as the local clock. In this work, we shall conduct our analysis of (4) directly without altering the learning rates. Inspired by Wan et al. (2021b), to facilitate our analy-sis, we first rewrite (4) to eliminate the iterates {Jt}.Define Σ t
+
+.
+
+= P 
+
+> s
+
+vt(s). Since the n−step return for St
+
+is only available after time t + n, we adopt the stan-dard convention that no updates occur before the first 
+
+n−step return is observed, so Jt and vt are constant for t < n . Making use of the fact that vt+n and vt+n−1
+
+differ from each other only for the St-indexed entry, we obtain 
+
+Jt+n − Jn−1 = Pti=0  
+
+> ηn
+
+αi+n−1ρi:i+n−1δi,
+
+= Pti=0  
+
+> ηn
+
+(vi+n(Si) − vi+n−1(Si)) ,
+
+= Pti=0 
+
+> ηn
+
+P 
+
+> s
+
+(vi+n(s) − vi+n−1(s)) ,
+
+= ηn (Σ t+n − Σn−1).
+
+We can then rewrite δt from (4) as 
+
+δt = Rt+1: t+n − n Jn−1 + ηn (Σ t+n−1 − Σn−1)
+
++ vt+n−1(St+n) − vt+n−1(St).
+
+Then, (4) can be expressed more compactly as 
+
+vt+n(St) = vt+n−1(St) + αt+n−1ρt:t+n−1
+
+  ˜Rt+1: t+n
+
+− ηΣt+n−1 + vt+n−1(St+n) − vt+n−1(St), (5) where ˜Rt+1: t+n
+
+.
+
+= Pnk=1 (Rt+k − Jn−1 + ηn Σn−1). We assume initialization with Jn−1
+
+.
+
+= 0 and vn−1
+
+.
+
+= 0 for simplifying presentation so that ˜Rt+1: t+n = Rt+1: t+n.For nonzero initialization of J0 and v0, we only need to conduct the same analysis in a new MDP with a shifted reward function ˜r(s, a ) 7 → r(s, a )−Jn−1 + ηn Σn−1 (Wan et al., 2021b). 
+
+# 4 Convergence of Differential Temporal Difference Learning 
+
+We make the following standard assumptions. 
+
+Assumption 4.1 (Ergodicity and coverage) . The Markov chains induced by the behavior policy μ and target policy π are finite, irreducible, and aperiodic. The behavior policy μ covers π i.e. ∀ s ∈ S , ∀ a ∈ A :
+
+π(a | s) > 0 = ⇒ μ(a | s) > 0.
+
+The ergodicity assumption is standard for analyzing RL algorithms (Bertsekas and Tsitsiklis, 1996). Fur-thermore, the coverage assumption is the same as in Sutton and Barto (2018). Almost Sure Convergence of Differential Temporal Difference Learning 
+
+From Assumption 4.1, the Markov chains induced by the behavior policy and target policy each adopt a unique stationary distribution, which we denote respec-tively as dπ and dμ. Because the Markov chains are irreducible, dπ > 0 and dμ > 0 (Puterman, 2014). 
+
+Assumption 4.2. The learning rates {αt} are positive, decreasing, and satisfy 
+
+P∞ 
+
+> t=0
+
+αt = ∞, lim t→∞ αt = 0 , and αt−αt+1  
+
+> αt
+
+= O(αt).
+
+This is the standard set of assumptions for learning rates in stochastic approximation (Borkar, 2009). We emphasize that this definition of the learning rates is far more widely used compared to the state visitation-dependent learning rates found in Wan et al. (2021b). For example, Assumption 4.2 is satisfied by any learning rate of the form αt = C1 
+
+> (n+C2)β
+
+where C1 and C2 are constants and β ∈ (0 .5, 1]. Our proof of convergence will utilize some results from the stochastic approximation (SA) community. Thus, we begin by writing the update (5) as a canonical stochastic approximation update by first defining an augmented Markov chain {Yt} evolving in a finite state space Y as, 
+
+Yt+1 = ( St, A t, S t+1 , A t+1 , . . . , A t+n−1, S t+n). (6) From Assumption 4.1, it is clear that {Yt} is also ir-reducible and aperiodic, and we denote its stationary distribution as dY . Then, we can define the operator 
+
+H : R|S| × Y → R|S| as, 
+
+H(v, y )[ s] .
+
+= ρ0: n−1(y) P n−1 
+
+> k=0
+
+r(sk, a k) − η P v
+
++ v(sn) − v(s0)I{s = s0}. (7) where we have y .
+
+= (s0, a 0, . . . s n) and ρ0: n−1(y) .
+
+=
+
+Qn−1 
+
+> k=0
+
+ρ(sk, a k). Then we can write (5) as a canonical SA algorithm according to 
+
+vt+1 = vt + αtH(vt, Y t+1 ). (8) Note that the SA iteration index t differs from the environment time step in (5) . One SA update corre-sponds to an n-step block of experience, so SA step t
+
+corresponds to environment time t + n − 1, since the tuple Yt+1 becomes available only after observing up to St+n.One prominent method for analyzing the asymptotic behavior of {vt} is to regard {vt} as Euler’s discretiza-tion of the ODE dv(t)dt = h(v(t)) (9) where the expected operator h(v) .
+
+= Ey∼dY [H(v, y )] .Using this method, the asymptotic behavior of the discrete and stochastic updates {vt} can be character-ized by the continuous and deterministic trajectories of the ODE (9) , if the stability of the iterates can be established. The Borkar-Meyn theorem (Borkar and Meyn, 2000) establishes the desired stability given the ODE@ ∞ is G.A.S., which is defined as dv(t)dt = h∞(v(t)) ,
+
+where h∞
+
+.
+
+= lim c→∞ h(cv ) 
+
+> c
+
+. Although the original work of Borkar and Meyn (2000) only allows for {Yt} to be i.i.d, recently Liu et al. (2025a) generalized the Borkar-Meyn theorem to Markovian noise {Yt} under equally mild assumptions, an important extension which we will leverage here since our {Yt} in (6) is a Markov chain. We therefore proceed by studying the expected operator for (5): 
+
+h(v)[ s] = Ey∼dY [H(v, y )[ s]] = Eμ
+
+h
+
+ρ0: n−1(y) P n−1 
+
+> k=0
+
+r(sk, a k) − η P v
+
++ v(sn) − v(s)I{s = s0}
+
+i
+
+= dμ(s)Eμ
+
+h
+
+ρ0: n−1(y)
+
+Pn−1 
+
+> k=0
+
+r(sk, a k)
+
+− η P v + v(sn) − v(s)
+
+
+
+s0 = s
+
+i
+
+,
+
+where we have used Eμ to abbreviate the expectation over the trajectory generated by ak ∼ μ(·| sk) and 
+
+sk+1 ∼ p(·| sk, a k). Isolating the reward-sum term, we define the expected n-step reward by 
+
+r(n)(s) .
+
+= Eμ
+
+h
+
+ρ0: n−1
+
+Pn−1 
+
+> k=0
+
+r(sk, a k) s = s0
+
+i
+
+= Eπ
+
+hPn−1 
+
+> k=0
+
+r(sk, a k) s = s0
+
+i
+
+= Pn−1
+
+> k=0
+
+ P kπ rπ
+
+(s).
+
+Therefore, the expected operator for (5) is 
+
+h(v) = Dμ(r(n) − ηee ⊤v + P nπ v − v), (10) where Dμ is a diagonal matrix whose entries are dμ.The corresponding ODE@ ∞ is dv(t)dt = h∞(v(t)) = Dμ
+
+ P nπ − I − ηee ⊤v(t) = −Av (t),
+
+(11) where A .
+
+= Dμ
+
+ I − P nπ + ηee ⊤.We now outline the structure of our proof. The first milestone is to prove that the ODE (11) is G.A.S. It is then trivial to see that (9) is also G.A.S.. We will use v∞ to denote the G.A.S. equilibrium of (9) and we have h(v∞) = 0. This means that r(n) − ηee ⊤v∞ +Blaser, Wang, Zhang 
+
+P nπ v∞ − v∞ = 0. The analysis in Appendix B.2.1 of Wan et al. (2021b), which we omit to avoid redundancy, then immediately confirms that v∞ ∈ V ∗. The second milestone is to invoke a result from Liu et al. (2025a) (stated as Lemma A.7 in the Appendix) to prove that the iterates {vt} generated in (5) converge to v∞ almost surely. We now proceed to carry out this proof strategy in detail. It is known that a necessary and sufficient condition for (11) to be G.A.S. is that A is strictly positive stable (Theorem 4.5 from Khalil (2002)). Wan et al. (2021b) essentially prove that the matrix I − P nπ + ηee ⊤ is strictly positive stable. However, this does not mean that the A matrix is strictly positive stable. This is an instance of the D-stability problem. As discussed in Section 6, this is a very challenging problem in the linear algebra community. Nevertheless, to prove A is strictly positive stable, we will utilize the results from Bierkens and Ran (2014), which we present as Lemma 4.3, that establish conditions under which M -matrices (see Definition 2.1) are strictly positive stable under rank one perturbations. 
+
+Lemma 4.3. (Theorem 2.7 from Bierkens and Ran (2014)). Let B ∈ Rn×n and v, w ∈ Rn. Then B + vw ⊤
+
+is strictly positive stable if: 1. B = λmax (K)I − K is a singular M -matrix where 
+
+K ∈ Rn×n.2. 0 is a geometrically simple eigenvalue of B with left and right eigenvectors zl̸ = 0 and zr̸ = 0 . (i.e. 
+
+z⊤ 
+
+> l
+
+B = 0 and Bz r = 0 ). 3. (z⊤ 
+
+> l
+
+v)( w⊤zr )̸ = 0 
+
+and either of the following conditions hold: 4. Bv = 0 , or w⊤B = 0 .5. v, w > 0 and 2Ki,j ≥ viwj ∀ i, j (where vi, respec-tively, wj denote the i-th entry of v and the j-th entry of w)
+
+To utilize Lemma 4.3 to prove the strict positive sta-bility of A from (11) , we begin by decomposing A into the form of B + vw ⊤ with, 
+
+A = Dμ
+
+ I − P nπ + η e e ⊤
+
+= I − I + Dμ(I − P nπ ) + η d μ e⊤
+
+= I − (I + Dμ(P nπ − I)) + ηd μe⊤
+
+.
+
+= B + ηd μe⊤, (12) where B .
+
+= I − (I + Dμ(P nπ − I)) , and we recall that η
+
+is a positive constant. Without any additional assumptions, we can verify the first three conditions of Lemma 4.3 in the following Lemma. 
+
+Lemma 4.4. Let Assumption 4.1 hold. Then, B .
+
+=
+
+I − (I + Dμ(P nπ − I)) , v .
+
+= ηd μ, and w .
+
+= e satisfy conditions 1-3 of Lemma 4.3. Proof. First, we verify Condition 1. If we define K .
+
+=
+
+I + Dμ(P nπ − I), we have B = I − K. Therefore, it is sufficient to prove that λmax (K) = 1. Since Dμ =diag (dμ) with dμ > 0 and P nπ is non-negative, it is easy to see that 
+
+K .
+
+= I + Dμ(P nπ − I) = ( I − Dμ) + DμP nπ (13) is non-negative. Additionally, computing the row sums of K, we see that it is row-stochastic: 
+
+Ke = ( I − Dμ)e + DμP nπ e = e − Dμe + Dμe = e, 
+
+where the second equality holds because the transition matrix P nπ is row-stochastic. Then, we are guaranteed that λmax (K) = 1 (Theorem 8.1.22 from Horn and Johnson (2012)). To verify Condition 2, we demonstrate that B has 0 as an algebraically (and therefore geometrically) simple eigenvalue with left and right eigenvectors zl, z r̸ = 0 (i.e. z⊤ 
+
+> l
+
+B = 0 and Bz r = 0). We have ker B = ker ( I − K) = {zr : Kz r = zr }. (14) Additionally, since B⊤ = ( I − K)⊤ we have ker B⊤ = ker ( I − K)⊤ = zl : z⊤ 
+
+> l
+
+K = z⊤ 
+
+> l
+
+.
+
+Since Pπ is irreducible and aperiodic by Assumption 4.1, P nπ is irreducible for every n ≥ 1 (Puterman, 2014). Multiplying a positive diagonal matrix and adding another positive diagonal matrix leaves the zero pattern unchanged so K = I − Dμ + DμP nπ is also irreducible. Therefore, the Perron-Frobenius theorem (Theorem 8.4.4 in Horn and Johnson (2012)) guarantees that one is an algebraically simple eigenvalue of K. This implies that ker B and ker B⊤ are one - dimensional, and thus zero is a geometrically simple eigenvalue of B. We identify the one-dimensional left and right kernels of 
+
+B as, ker B = span( e), ker B⊤ = span( dπ /d μ),
+
+where dπ /d μ represents element-wise division. For the right kernel, it holds trivially from (14) and the fact that K is row-stochastic. For the left kernel, with 
+
+B⊤ = I − K⊤ = Dμ − P n⊤ 
+
+> π
+
+Dμ we have, 
+
+B⊤
+
+ dπ
+
+> dμ
+
+
+
+= Dμ
+
+ dπ
+
+> dμ
+
+
+
+− P n⊤ 
+
+> π
+
+Dμ
+
+ dπ
+
+> dμ
+
+
+
+= dπ − P n⊤ 
+
+> π
+
+dπ = 0 .Almost Sure Convergence of Differential Temporal Difference Learning 
+
+Clearly zl = dπ /d μ and zr = e are both nonzero, so Condition 2 is satisfied. To verify Condition 3, we note that all components of 
+
+e and dπ 
+
+> dμ
+
+are strictly positive, so any non-zero vector 
+
+z⊤ 
+
+> l
+
+∈ span ( dπ 
+
+> dμ
+
+) and zr ∈ span (e) will have uniform sign. Using the fact that v = ηd μ and w = e are strictly positive, it is easy to see that (z⊤ 
+
+> l
+
+v)( w⊤zr ) = η(z⊤ 
+
+> l
+
+dμ)( e⊤zr )̸ = 0 .
+
+Although we have verified Conditions 1-3 of Lemma 4.3 using only Assumption 4.1, we still need either Condition 4 or 5 to establish that A is strictly positive stable. We therefore split the analysis into two regimes. In the on-policy case with μ = π (Section 4.1), we are able to directly satisfy Condition 4. In the off-policy case (Section 4.2), additional restrictions are needed, and we provide three sufficient conditions. 
+
+4.1 On-Policy Case 
+
+In the on-policy case, we consider the following assump-tion. 
+
+Assumption 4.5 (On-policy) . The behavior policy followed by the agent is the target policy, i.e., π(a|s) = 
+
+μ(a|s) ∀s ∈ S , a ∈ A .To prove the strict positive stability of A in the on-policy case, since Conditions 1-3 are already in place from Lemma 4.4, it remains only to verify Condition 4. Theorem 4.6 does so, thereby establishing the strict positive stability of A. Corollary 4.7 then gives the almost-sure convergence of Differential TD. 
+
+Theorem 4.6. Let Assumptions 4.1 and 4.5 hold. Then, A = B + ηd μe⊤ is strictly positive stable for any n ≥ 1 and any η > 0.Proof. Recall from (12) , we have expressed A in the form of B + vw ⊤ where B .
+
+= I − (I + Dμ(P nπ − I)) ,
+
+v = ηd μ and w = e. Lemma 4.3 states that A is strictly positive-stable once Conditions 1-3 together with either Condition 4 or 5, are satisfied. In Lemma 4.4 we verify the first three conditions of Lemma 4.3 with this choice of B, v, w . In the on-policy case (Assumption 4.5), we have μ = π, which further gives 
+
+B = I − (I + Dπ (P nπ − I)) , v = ηd π , w = e. 
+
+To demonstrate Condition 4 holds in the on-policy setting, we show w⊤B = 0 with, 
+
+w⊤B = e⊤Dπ (I − P nπ ) = d⊤ 
+
+> π
+
+(I − P nπ ) = 0 .
+
+Corollary 4.7. Let Assumptions 4.1, 4.2 and 4.5 hold. Then the iterates {vt} in (5) satisfy: lim t→∞ vt =
+
+v∞, a.s. , where v∞ ∈ V ∗.Proof. To prove the almost sure convergence of the differential TD iterates in (5) to fixed point v∞ we will utilize Corollary 8 from (Liu et al., 2025a) which we present as Lemma A.7. We proceed by verifying the requisite Assumptions A.1-A.6. Starting with As-sumption A.5, in Theorem 4.6 we prove that A defined in (11) is strictly positive stable under Assumptions 4.1, 4.2, 4.5. Therefore, the ODE@ ∞ in (11) , is G.A.S. (Theorem 4.5 from Khalil (2002)). Verifying the remaining assumptions is straightforward. Note that our Assumptions 4.1 and 4.2 are sufficient to directly satisfy Assumptions A.1, A.2 and A.6. We refer the reader to Remarks 1-3 of (Liu et al., 2025a) for a discussion on how these are trivially satisfied for ergodic and finite {Yt}. We then verify Assumption A.3 in Lemma C.1. It is easy to verify that H(x, y ) is Lipschitz, which we present for completeness in Lemma C.2 that satisfies A.4. Then, Lemma A.7 guarantees that {vt} converges to the invariant set of the ODE, which is a singleton we denote as v∞.
+
+4.2 Off-Policy Case 
+
+In the off-policy setting, we consider three additional assumptions. We will first prove that there exists some η0 for which for η ∈ (0 , η 0], A is strictly positively stable using an extension of Lemma 4.3, Lemma 4.8. 
+
+Lemma 4.8 (Lemma 2.11 from Bierkens and Ran (2014)) . Let B ∈ Rn×n, v, w ∈ Rn, v, w ≥ 0 satisfy Conditions 1-3 of Lemma 4.3. Additionally, let 0 be an algebraically simple eigenvalue of B. Define a matrix-valued curve Γ( t) : t → B + tvw ⊤, t ∈ R. There exists a t0 > 0 such that Γ( t) is strictly positive stable for 
+
+t ∈ (0 , t 0].
+
+Lemma 4.9. Let Assumption 4.1 hold. Then, there exits a η0 > 0 such that A = B + ηd μe⊤ is strictly positive stable for η ∈ (0 , η 0].Proof. Recall from (12) that A = B + ηd μe⊤ where 
+
+B .
+
+= I − (I + Dμ(P nπ − I)) . By Lemma 4 .4, B, dμ, and 
+
+e satisfy Conditions 1-3 of Lemma 4.3. 4 Therefore, if we set v = dμ, w = e and t = η, then A = B + tvw ⊤
+
+and Lemma 4.8 guarantees the existence of some t0 > 0(hence η0) for which Γ( t) = B +tvw ⊤ is strictly positive stable on (0 , t 0]. It remains only to check that 0 is algebraically simple for B.        
+
+> 4In Lemma 4 .4, we prove this for v=ηd μinstead of
+> v=dμ. However, since ηis a positive constant, its easy to see that the argument still holds. Blaser, Wang, Zhang
+
+To show this, we need to show that 0 is a simple root of the characteristic polynomial of B. We use 
+
+χM (λ) = det( M − λI ) to denote the characteristic polynomial of a matrix M . Recall the definition of 
+
+K from (13) . Then, the characteristic polynomial of 
+
+B = I − K is, 
+
+χB (λ) = det (( I − K) − λI )= ( −1) |S| det ( K − (1 − λ)I)= ( −1) |S| χK (1 − λ).
+
+We proved in Lemma 4.6 that 1 is an algebraically simple eigenvalue of K. In other words, χK (κ) has a simple root at κ = 1. Then the change of variable 
+
+κ 7 → 1 − λ implies λ = 0 is a simple root of χB . Thus 0 is an algebraically simple eigenvalue of B.Then, Lemma 4.8 proves that there exists some η0 > 0for which A = B + ηd μe⊤ is strictly positive stable on (0 , η 0]. Having established that A is strictly positive–stable, the almost-sure convergence of (5) to v∞ follows imme-diately by the same argument used in Corollary 4.7. In that proof, every assumption except A.5 was checked without invoking Assumption 4.5, and A.5 itself is a direct consequence of the strict positive stability of A.Therefore, we omit the proof of the corollary to avoid redundancy. 
+
+Corollary 4.10. Let Assumptions 4.1, 4.2 hold. Then there exists some positive constant η0 > 0 such that for 
+
+η ∈ (0 , η 0] the iterates {vt} in (5) satisfy lim t→∞ vt =
+
+v∞, a.s. , where v∞ ∈ V ∗.
+
+The main limitation of this result is that, while it guar-antees some η0 > 0, it does not offer a closed form for its value. To address this, we impose the addi-tional assumption that P nπ becomes strictly positive under sufficiently large n. Under this condition, we can characterize η0.
+
+Assumption 4.11. P nπ is strictly positive. Such an n is guaranteed to exist by the irreducibility of Pπ from Assumption 4.1 (Levin and Peres, 2017). 
+
+Theorem 4.12. Let Assumption 4.1 and 4.11 hold. Then, A = B + ηd μe⊤ is strictly positive stable for 
+
+η ∈ (0 , η 0] where η0
+
+.
+
+= 2 min i,j P nπ (i, j ).Proof. To prove that A is strictly positive stable with the addition of Assumption 4.11, we will once again utilize Lemma 4.3. Lemma 4.4 shows that B defined in (12) , v = ηd μ, and w = e satisfy the first three conditions of Lemma 4.3. In addition to Conditions 1-3, we will also prove that Condition 5 holds, which is sufficient to guarantee the strict positive stability of A.Because P nπ is strictly positive, we have 
+
+Kij = (1 − dμ(i)) I{i = j} + dμ(i)P nπ (i, j )
+
+≥ dμ(i) pmin ∀ i, j. 
+
+where we define pmin 
+
+.
+
+= min i,j P nπ (i, j ) > 0. For any 
+
+η ∈ (0 , η 0], we therefore have 2Kij ≥ 2dμ(i)pmin ≥ ηd μ(i) = viwj , ∀ i, j, 
+
+so the entry-wise inequality in Condition 5 of Lemma 4.3 holds, and the theorem follows. Having established that A is strictly positive–stable, the almost-sure convergence of (5) to v∞ follows im-mediately by the same argument used in Corollary 4.7. 
+
+Corollary 4.13. Let Assumptions 4.1, 4.2, and 4.11 hold. Then for η ∈ (0 , η 0], where η0
+
+.
+
+= 2 min i,j P nπ (i, j ),the iterates {vt} in (5) satisfy: lim t→∞ vt = v∞, a.s. ,where v∞ ∈ V ∗.
+
+Having presented two sufficient conditions on η and 
+
+n, we now present the third sufficient condition on 
+
+Pπ . Namely, under the assumption that Pπ is doubly stochastic, we are able to establish the strict positive stability of A for any η ≥ 0 and n > 0. 
+
+Assumption 4.14. P nπ is doubly stochastic (i.e. 
+
+P nπ e = e and e⊤P nπ = e⊤). Admittedly, doubly stochastic matrices are a small portion of the transition matrices considered in RL. They do arise, however, in simple random walks on k-regular, undirected graphs, such as cycles and complete graphs (Levin and Peres, 2017). Furthermore, doubly stochastic matrices are also a popular mathematical model (Section 8.7 Horn and Johnson (2012)). 
+
+Theorem 4.15. Let Assumptions 4.1, 4.2, and 4.14 hold. Then A is strictly positive-stable for every n and 
+
+η > 0.Proof. By the Lyapunov theorem (Theorem 4.6 in Khalil (2002)), A is positive-stable if and only if there exists a symmetric positive-definite matrix M such that A⊤M + M A ≻ 0. In the off-policy case we take 
+
+M .
+
+= D−1 
+
+> μ
+
+. Then with the definition of A from (11) ,we have 
+
+A⊤M + M A = ( I − P n⊤ 
+
+> π
+
++ η ee ⊤) + ( I − P nπ + η ee ⊤).
+
+We now show that ( I − P nπ + ηee ⊤) is positive-definite. When P nπ is doubly stochastic (so ∥P nπ ∥ = 1), for any Almost Sure Convergence of Differential Temporal Difference Learning 
+
+nonzero v ∈ R|S| ,
+
+v⊤ I − P nπ + η ee ⊤v = v⊤v − v⊤P nπ v + η(v⊤e)2
+
+≥ ∥ v∥2 − ∥ P nπ ∥∥ v∥2 + η(v⊤e)2
+
+= (1 − ∥ P nπ ∥)∥v∥2 + η(v⊤e)2
+
+= η(v⊤e)2 > 0where the first inequality holds by Cauchy-Schwarz, and the second equality holds because ∥P nπ ∥ = 1. 
+
+Corollary 4.16. Let Assumptions 4.1, 4.2, and 4.14 hold. Then the iterates {vt} in (5) satisfy: lim t→∞ vt =
+
+v∞, a.s. , where v∞ ∈ V ∗.
+
+# 5 Challenges and Open Problems 
+
+We note that our off-policy convergence guarantee in Corollary 4.13 rests on the conservative bound 
+
+η ≤ η0 = 2 min i,j P nπ (i, j ), which requires P nπ to be strictly positive (Assumption 4.11). In this section, we demonstrate that empirically, this estimate for the upper bound of η is quite pessimistic. We con-sider a 5 × 5 gridworld and set n = 3. Notably, an agent cannot reach every state in three steps. So 
+
+η0 = min i,j P 3 
+
+> π
+
+(i, j ) = 0 in this environment and As-sumption 4.11 is violated. However, as Figure 1 shows, the algorithm still converges for a wide range of η
+
+values. This empirical result seems to suggest that the conver-gence can be obtained for any η. Furthermore, Wan et al. (2021b) also prove the convergence for any η
+
+with local-clock-based learning rates. Then we might expect that some future work may be able to prove the convergence for any η without the local clock as well. However, we must be cautious here. Anehila and Ran (2022) exhibit M -matrix counterexamples satisfying Conditions 1–3 for which B + tvw ⊤ fails to remain strictly positive-stable once t exceeds some fi-nite threshold. This implies our Lemma 4.9 may not hold for large η. Crucially, the linear algebra commu-nity still lacks a tight upper bound on admissible η and has no known necessary and sufficient characterization of triples ( B, v, w ) that ensure stability under rank-one perturbation (Anehila and Ran, 2022). Closing that theoretical gap would immediately yield sharper convergence guarantees here, and thus represents an important direction for future work. 
+
+# 6 Related Work 
+
+Average Reward RL. Several temporal difference methods have been proposed for Markov decision pro-cesses with an average-reward objective. The best 0 25000 50000 75000 100000      
+
+> Time steps
+> 0.0
+> 0.1
+> 0.2
+> 0.3
+> RMSVE
+> (TVR)
+> n-step Differential TD: Effect of η
+> η= 0.1
+> η= 0.5
+> η= 1.0
+> η= 2.0
+
+Figure 1: Off-policy convergence of n–step differential TD in a 5 ×5 gridworld ( n = 3) for various η. Although 
+
+η0 = 0 here, the algorithm is stable across η. We use a variant of root mean-squared value error from Tsitsiklis and Roy (1999), denoted as ‘RMSVE (TVR)’, which measures the distance of the estimated values to the nearest solution that satisfies the Bellman equation (3) . The trials are averaged over 30 seeds with shaded regions as 1 standard error. The experimental details and results for other n values appear in Appendix C. known is the average reward TD algorithm of Tsitsiklis and Roy (1999), whose convergence guarantees were first analyzed in the linear function approximation case, and further extended to the tabular setting by Blaser and Zhang (2026). The differential TD algorithm we analyze here belongs to the same family but estimates the average reward with the full temporal-difference error instead of only using the reward sample (Wan et al., 2021b). Additional TD-based algorithms for policy evaluation and control in the average-reward setting include Konda and Tsitsiklis (1999); Abounadi et al. (2001); Yang et al. (2016); Wan et al. (2021a); Zhang and Ross (2021); Zhang et al. (2021a,b); He et al. (2023); Saxena et al. (2023); Xie et al. (2025). 
+
+Convergence of RL Algorithms. The investiga-tion of the almost sure convergence of RL algorithms is an active area of research. Most prior work relies on the ODE based approach (Benveniste et al., 1990; Kushner and Yin, 2003; Borkar, 2009; Liu et al., 2025a), where the corresponding ODE is relatively easy to an-alyze (Tsitsiklis and Roy, 1996; Konda and Tsitsiklis, 1999; Sutton et al., 2008, 2009; Zhang et al., 2020a,b; Maei, 2011; Zhang and Whiteson, 2022). By contrast, the ODE studied in this work is highly nontrivial to analyze, and and we still do not have a complete char-acterization of it. Other notable works involving non-trivial ODEs include Meyn (2024); Wang and Zhang (2024). In addition to the ODE based approach, the Robbins-Siegmund theorem (Robbins and Siegmund, 1971) and its variant (Liu et al., 2025b) are gaining increasing attention for establishing almost sure con-Blaser, Wang, Zhang 
+
+vergence (Bertsekas and Tsitsiklis, 1996; Qian et al., 2024; Qian and Zhang, 2025; Liu et al., 2025b), and has recently been formally verified (Zhang, 2025). Beyond (asymptotic) almost sure convergence, the L2 conver-gence rates of RL algorithms are also widely studied. Notable works include Mahadevan et al. (2014); Liu et al. (2015); Wang et al. (2017); Srikant and Ying (2019); Zou et al. (2019); Wu et al. (2020); Zhang et al. (2022); Xie et al. (2025); Liu et al. (2025c). 
+
+Matrix Stability Under Perturbations and D-stability. The stability question in our paper lies within the broader D-stability problem which asks whether a given real matrix A ∈ Rn×n remains strictly positive stable under left multiplication by any posi-tive diagonal matrix D ≻ 0. Despite Johnson’s nec-essary and sufficient criteria in low dimensions (John-son, 1974b,a), the general case ( n > 4) remains open, see Hershkowitz (1992) and Kushel (2019) for compre-hensive surveys. Our analysis is based on the results of Bierkens and Ran (2014) who investigated the D-stability of M matrices under nonnegative rank-one perturbations. Their work extends a broader area of research investigating the eigenvalues and Jordan struc-ture of rank-one perturbations of matrices (Moro and Dopico, 2003; Savchenko, 2004; Ding and Zhou, 2007; Mehl et al., 2011; Ran and Wojtylak, 2012; Fourie et al., 2013; Mehl et al., 2014; Ran and Wojtylak, 2021). 
+
+# 7 Conclusion 
+
+Learning rates that use a local clock have played an essential role in the theoretical analysis of differential TD (Wan et al., 2021b), yet they remain largely unused by practitioners. This work bridges that divide by applying D−stability and rank-one perturbation theory from the linear algebra community, to provide novel almost sure convergence results of differential TD. To our knowledge, this is the first use of D−stability and rank-one perturbation techniques in RL. We expect this approach to enable further theoretical advances in RL, such as convergence proofs for differential Q-learning (Wan et al., 2021b) and for RVI Q-learning (Abounadi et al., 2001) without relying on a local clock. 
+
+Acknowledgements 
+
+EB acknowledges support from the NSF Graduate Re-search Fellowship under award 1842490. This work is supported in part by the US National Science Foun-dation under the awards III-2128019, SLES-2331904, and CAREER-2442098, the Commonwealth Cyber Ini-tiative’s Central Virginia Node under the award VV-1Q26-001, a Cisco Faculty Research Award, and an NVIDIA academic grant program award. 
+
+References 
+
+Abounadi, J., Bertsekas, D., and Borkar, V. S. (2001). Learning algorithms for markov decision processes with average cost. SIAM Journal on Control and Optimization .Anehila, B. and Ran, A. (2022). A note on a conjecture concerning rank one perturbations of singular m-matrices. Quaestiones Mathematicae .Bakhshi, B., Mangues-Bafalluy, J., and Baranda, J. (2021). R-learning-based admission control for service federation in multi-domain 5g networks. In IEEE Global Communications Conference .Bellman, R. (1957). A markovian decision process. 
+
+Journal of Mathematics and Mechanics .Benveniste, A., M´ etivier, M., and Priouret, P. (1990). 
+
+Adaptive Algorithms and Stochastic Approximations .Springer. Bertsekas, D. P. and Tsitsiklis, J. N. (1996). Neuro-Dynamic Programming . Athena Scientific Belmont, MA. Bierkens, J. and Ran, A. (2014). A singular M-matrix perturbed by a nonnegative rank one matrix has positive principal minors; is it D-stable? Linear Algebra and Its Applications .Blaser, E. and Zhang, S. (2026). Asymptotic and finite sample analysis of nonexpansive stochastic approxi-mations with markovian noise. In Proceedings of the AAAI Conference on Artificial Intelligence .Borkar, V. S. (2009). Stochastic approximation: adynamical systems viewpoint . Springer. Borkar, V. S. and Meyn, S. P. (2000). The ODE method for convergence of stochastic approximation and re-inforcement learning. SIAM Journal on Control and Optimization .Chen, Z. (2025). Non-asymptotic guarantees for average-reward Q-learning with adaptive stepsizes. 
+
+ArXiv Preprint .Ding, J. and Zhou, A. (2007). Eigenvalues of rank-one updated matrices with some applications. Applied Mathematics Letters .Fourie, J., Groenewald, G., van Rensburg, D. J., and Ran, A. (2013). Rank one perturbations of h-positive real matrices. Linear Algebra and its Applications .Ghavamzadeh, M. and Mahadevan, S. (2007). Hierar-chical average reward reinforcement learning. Jour-nal of Machine Learning Research .Giorgi, G. and Zuccotti, C. (2015). An overview on d-stable matrices. Department of Economics and Management DEM Working Paper Series .Almost Sure Convergence of Differential Temporal Difference Learning 
+
+He, J., Che, F., Wan, Y., and Mahmood, A. R. (2023). Loosely consistent emphatic temporal-difference learning. In Proceedings of the Conference on Uncertainty in Artificial Intelligence .Hershkowitz, D. (1992). Recent directions in matrix stability. Linear Algebra and its Applications .Horn, R. A. and Johnson, C. R. (2012). Matrix analysis (2nd Edition) . Cambridge university press. Jaakkola, T., Jordan, M., and Singh, S. (1993). Conver-gence of stochastic iterative dynamic programming algorithms. In Advances in Neural Information Pro-cessing Systems .Johnson, C. R. (1974a). D-stability and real and com-plex quadratic forms. Linear Algebra and its Appli-cations .Johnson, C. R. (1974b). Sufficient conditions for d-stability. Journal of Economic Theory .Khalil, H. K. (2002). Nonlinear Systems . Prentice Hall. Kober, J., Bagnell, J. A., and Peters, J. (2013). Rein-forcement learning in robotics: A survey. Interna-tional Journal of Robotics Research .Konda, V. R. and Tsitsiklis, J. N. (1999). Actor-critic algorithms. In Advances in Neural Information Pro-cessing Systems .Kushel, O. Y. (2019). Unifying matrix stability con-cepts with a view to applications. SIAM Review .Kushel, O. Y. and Pavani, R. (2023). Novel versions of d-stability in matrices provide new insights into ode dynamics. Mediterranean Journal of Mathematics .Kushner, H. and Yin, G. G. (2003). Stochastic approx-imation and recursive algorithms and applications .Springer Science & Business Media. Levin, D. A. and Peres, Y. (2017). Markov chains and mixing times . American Mathematical Soc. Liu, B., Liu, J., Ghavamzadeh, M., Mahadevan, S., and Petrik, M. (2015). Finite-sample analysis of proxi-mal gradient TD algorithms. In Proceedings of the Conference on Uncertainty in Artificial Intelligence .Liu, S., Chen, S., and Zhang, S. (2025a). The ODE method for stochastic approximation and reinforce-ment learning with markovian noise. Journal of Machine Learning Research .Liu, X., Xie, Z., and Zhang, S. (2025b). Extensions of robbins-siegmund theorem with applications in reinforcement learning. ArXiv Preprint .Liu, X., Xie, Z., and Zhang, S. (2025c). Linear Q-learning does not diverge in L2: Convergence rates to a bounded set. In Proceedings of the International Conference on Machine Learning .Maei, H. R. (2011). Gradient temporal-difference learn-ing algorithms . PhD thesis, University of Alberta. Mahadevan, S., Liu, B., Thomas, P. S., Dabney, W., Giguere, S., Jacek, N., Gemp, I., and Liu, J. (2014). Proximal reinforcement learning: A new theory of sequential decision making in primal-dual spaces. 
+
+ArXiv Preprint .Marbach, P., Mihatsch, O., and Tsitsiklis, J. N. (1998). Call admission control and routing in integrated services networks using reinforcement learning. In 
+
+Proceedings of the IEEE Conference on Decision and Control .Mehl, C., Mehrmann, V., Ran, A. C., and Rodman, L. (2011). Eigenvalue perturbation theory of classes of structured matrices under generic structured rank one perturbations. Linear Algebra and Its Applica-tions .Mehl, C., Mehrmann, V., Ran, A. C., and Rodman, L. (2014). Eigenvalue perturbation theory of symplec-tic, orthogonal, and unitary matrices under generic structured rank one perturbations. BIT Numerical Mathematics .Meyn, S. (2024). The projected bellman equation in reinforcement learning. IEEE Transactions on Automatic Control .Moro, J. and Dopico, F. M. (2003). Low rank pertur-bation of jordan structure. SIAM Journal on Matrix Analysis and Applications .Puterman, M. L. (2014). Markov decision processes: discrete stochastic dynamic programming . John Wiley & Sons. Qian, X., Xie, Z., Liu, X., and Zhang, S. (2024). Al-most sure convergence rates and concentration of stochastic approximation and reinforcement learning with markovian noise. ArXiv Preprint .Qian, X. and Zhang, S. (2025). Revisiting a design choice in gradient temporal difference learning. In 
+
+Proceedings of the International Conference on Learn-ing Representations .Ran, A. C. and Wojtylak, M. (2012). Eigenvalues of rank one perturbations of unstructured matrices. 
+
+Linear Algebra and its Applications .Ran, A. C. and Wojtylak, M. (2021). Global properties of eigenvalues of parametric rank one perturbations for unstructured and structured matrices. Complex Analysis and Operator Theory .Robbins, H. and Siegmund, D. (1971). A convergence theorem for non negative almost supermartingales and some applications. Optimizing Methods in Statis-tics .Savchenko, S. V. (2004). On the change in the spec-tral properties of a matrix under perturbations of sufficiently low rank. Functional Analysis and Its Applications .Blaser, Wang, Zhang 
+
+Saxena, N., Khastagir, S., Kolathaya, S., and Bhatna-gar, S. (2023). Off-policy average reward actor-critic with deterministic policy search. In Proceedings of the International Conference on Machine Learning .Srikant, R. and Ying, L. (2019). Finite-time error bounds for linear stochastic approximation andtd learning. In Proceedings of the Conference on Learn-ing Theory .Sutton, R. S. (1988). Learning to predict by the meth-ods of temporal differences. Machine Learning .Sutton, R. S. and Barto, A. G. (2018). Reinforcement Learning: An Introduction (2nd Edition) . MIT press. Sutton, R. S., Maei, H. R., Precup, D., Bhatnagar, S., Silver, D., Szepesv´ ari, C., and Wiewiora, E. (2009). Fast gradient-descent methods for temporal-difference learning with linear function approxima-tion. In Proceedings of the International Conference on Machine Learning .Sutton, R. S., Szepesv´ ari, C., and Maei, H. R. (2008). A convergent o(n) temporal-difference algorithm for off-policy learning with linear function approxima-tion. In Advances in Neural Information Processing Systems .Tong, Y. and Su, S. W. (2024). Sufficient d-stability conditions for non-square matrices. ArXiv Preprint .Tsitsiklis, J. N. (1994). Asynchronous stochastic ap-proximation and Q-learning. Machine Learning .Tsitsiklis, J. N. and Roy, B. V. (1996). Analysis of temporal-diffference learning with function approxi-mation. In IEEE Transactions on Automatic Control .Tsitsiklis, J. N. and Roy, B. V. (1999). Average cost temporal-difference learning. Automatica .Wan, Y., Naik, A., and Sutton, R. (2021a). Average-reward learning and planning with options. In Ad-vances in Neural Information Processing Systems .Wan, Y., Naik, A., and Sutton, R. S. (2021b). Learn-ing and planning in average-reward markov decision processes. In Proceedings of the International Con-ference on Machine Learning .Wang, J. and Zhang, S. (2024). Almost sure con-vergence of linear temporal difference learning with arbitrary features. ArXiv Preprint .Wang, Y., Chen, W., Liu, Y., Ma, Z., and Liu, T. (2017). Finite sample analysis of the GTD policy evaluation algorithms in markov setting. In Advances in Neural Information Processing Systems .Wu, Y., Zhang, W., Xu, P., and Gu, Q. (2020). A finite-time analysis of two time-scale actor-critic methods. In Advances in Neural Information Processing Sys-tems .Xie, Z., Liu, X., Chandra, R., and Zhang, S. (2025). Finite sample analysis of linear temporal difference learning with arbitrary features. In Advances in Neural Information Processing Systems .Yang, K., Yang, J., and Shen, C. (2024). Average reward reinforcement learning for wireless radio re-source management. In Proceedings of the Asilomar Conference on Signals, Systems, and Computers .Yang, S., Gao, Y., An, B., Wang, H., and Chen, X. (2016). Efficient average reward reinforcement learn-ing using constant shifting values. In Proceedings of the AAAI Conference on Artificial Intelligence .Zhang, S. (2025). Towards formalizing reinforcement learning theory. ArXiv Preprint .Zhang, S., Liu, B., and Whiteson, S. (2020a). Gradient-DICE: Rethinking generalized offline estimation of stationary values. In Proceedings of the International Conference on Machine Learning .Zhang, S., Liu, B., Yao, H., and Whiteson, S. (2020b). Provably convergent two-timescale off-policy actor-critic with function approximation. In Proceedings of the International Conference on Machine Learning .Zhang, S., Tachet, R., and Laroche, R. (2022). Global optimality and finite sample analysis of softmax off-policy actor critic under state distribution mismatch. 
+
+Journal of Machine Learning Research .Zhang, S., Wan, Y., Sutton, R. S., and Whiteson, S. (2021a). Average-reward off-policy policy evaluation with function approximation. In Proceedings of the International Conference on Machine Learning .Zhang, S. and Whiteson, S. (2022). Truncated em-phatic temporal difference methods for prediction and control. Journal of Machine Learning Research .Zhang, S., Yao, H., and Whiteson, S. (2021b). Breaking the deadly triad with a target network. In Proceed-ings of the International Conference on Machine Learning .Zhang, Y. and Ross, K. W. (2021). On-policy deep reinforcement learning for the average-reward crite-rion. In Proceedings of the International Conference on Machine Learning .Zou, S., Xu, T., and Liang, Y. (2019). Finite-sample analysis for SARSA with linear function approxima-tion. In Advances in Neural Information Processing Systems .Appendix 
+
+# A Mathematical Background 
+
+A.1 Main Results from Liu et al. (2025a) 
+
+First we will restate the main results from Liu et al. (2025a) concerning the convergence of SA iterates of the form (8) for completeness. 
+
+Assumption A.1. The Markov chain {Yn} has a unique invariant probability measure (i.e. stationary distribu-tion), denoted by dY .
+
+Assumption A.2. The learning rates {αn} are positive, decreasing and satisfy 
+
+> ∞
+
+X
+
+> i=0
+
+αi = ∞, lim  
+
+> n→∞
+
+αn = 0 , and αn − αn+1 
+
+αn
+
+= O(αn).
+
+Assumption A.3. Let Hc(x, y ) .
+
+= 1 
+
+> c
+
+H(cx, y ). There exists a measurable function H∞(x, y ) .
+
+= lim c→∞ Hc(x, y ), a scalar function κ : R → R (independent of x, y ), and a measurable function b(x, y ) such that for any x, y :
+
+Hc(x, y ) − H∞(x, y ) = κ(c)b(x, y ),
+
+lim  
+
+> c→∞
+
+κ(c) = 0 . (15) Moreover, there exists a measurable function Lb(y) such that for all x, x ′, y ,
+
+b(x, y ) − b(x′, y ) ≤ Lb(y) ∥x − x′∥, (16) and the expectation, 
+
+Lb
+
+.
+
+= Ey∼dy
+
+Lb(y)
+
+is well-defined and finite. 
+
+Assumption A.4. There exists a measurable function L(y) such that for any x, x ′, y ,
+
+H(x, y ) − H(x′, y ) ≤ L(y) ∥x − x′∥, (17) 
+
+H∞(x, y ) − H∞(x′, y ) ≤ L(y) ∥x − x′∥. (18) Moreover, the following expectations are well-defined and finite for every x:
+
+h(x) .
+
+= Ey∼dy
+
+H(x, y ), (19) 
+
+h∞(x) .
+
+= Ey∼dy
+
+H∞(x, y ), (20) 
+
+L .
+
+= Ey∼dy
+
+L(y). (21) 
+
+Assumption A.5. As c → ∞ , hc(x) converges to h∞(x) uniformly on x on any compact subsets of Rd. The ODE, dx(t)dt = h∞(x(t)) has 0 as its G.A.S equilibrium. Blaser, Wang, Zhang 
+
+Assumption A.6. Let g denote any of the following functions: 
+
+y 7 → H(x, y ) (∀x),y 7 → Lb(y),y 7 → L(y).
+
+Then for any initial condition Y1, it holds that lim  
+
+> n→∞
+
+αnnX
+
+> i=1
+
+
+
+g(Yi) − Ey∼dy [g(y)] 
+
+
+
+= 0 a.s. 
+
+Lemma A.7. Let Assumptions A.1 - A.6 hold. Then the iterates {xn} generated by (8) converge almost surely to a (sample-path-dependent) bounded invariant set of the ODE 
+
+dx(t)dt = h(x(t)) .
+
+# B Derivation of n-step Differential TD 
+
+We begin with the Bellman equation for differential TD in matrix-vector form (3) . Recall that Pπ ∈ [0 , 1] |S|×|S| 
+
+denotes the stochastic matrix of the Markov chain induced by the target policy π, rπ ∈ R|S| represents the expected rewards under π, and ¯Jπ is the average reward. The one-step Bellman equation of vπ is 
+
+vπ = rπ − ¯Jπe + Pπ vπ .
+
+We can keep unrolling it for n steps and get 
+
+vπ = rπ − ¯Jπ e + Pπ
+
+ rπ − ¯Jπ e + Pπ vπ
+
+
+
+= rπ − 2 ¯Jπ e + Pπ rπ + P 2 
+
+> π
+
+vπ
+
+...= −n ¯Jπ e + rπ + Pπ rπ + P 2 
+
+> π
+
+rπ + · · · + P n−1 
+
+> π
+
+rπ + P nπ vπ (22) Hence, by (22), we have for all s ∈ S ,
+
+vπ (s) = E
+
+"n−1X
+
+> i=0
+
+ r(Si, A i) − ¯Jπ
+
+ + vπ (Sn) S0 = s, A i ∼ π(· | Si), S i+1 ∼ p(· | Si, A i)
+
+#
+
+=vπ (s) + E
+
+"n−1X
+
+> i=0
+
+ r(Si, A i) − ¯Jπ
+
+ + vπ (Sn) − vπ (S0) S0 = s, A i ∼ π(· | Si), S i+1 ∼ p(· | Si, A i)
+
+#
+
+=vπ (s) + E
+
+"
+
+ρ0: n−1
+
+> n−1
+
+X
+
+> i=0
+
+ r(Si, A i) − ¯Jπ
+
+ + vπ (Sn) − vπ (S0)
+
+!
+
+S0 = s, A i ∼ μ(· | Si), S i+1 ∼ p(· | Si, A i)
+
+#
+
+.
+
+Therefore, we have the n-step bootstrapped differential TD update 
+
+vt+n(St) = vt+n−1(St) + αt+n−1ρt:t+n−1(Rt+1: t+n − nJ t+n−1 + vt+n−1(St+n) − vt+n−1(St)) where Jt is the average reward estimate to be defined shortly. Let dμ ∈ [0 , 1] |S| denote the stationary distribution induced by the behavior policy μ. Rearranging (22), we get 
+
+n ¯Jπ e = rπ + Pπ rπ + P 2 
+
+> π
+
+rπ + · · · + P n−1 
+
+> π
+
+rπ + P nπ vπ − vπ
+
+¯Jπ e = 1
+
+n
+
+ rπ + Pπ rπ + P 2 
+
+> π
+
+rπ + · · · + P n−1 
+
+> π
+
+rπ + P nπ vπ − vπ
+
+
+
+d⊤ 
+
+> μ
+
+¯Jπ e = d⊤
+
+> μ
+
+n
+
+ rπ + Pπ rπ + · · · + P n−1 
+
+> π
+
+rπ + P nπ vπ − vπ
+
+
+
+¯Jπ = d⊤
+
+> μ
+
+n
+
+ rπ + Pπ rπ + · · · + P n−1 
+
+> π
+
+rπ + P nπ vπ − vπ
+
+ (23) Almost Sure Convergence of Differential Temporal Difference Learning 
+
+Therefore, by (23), we have ¯Jπ = 1
+
+n E
+
+"n−1X
+
+> i=0
+
+r(Si, A i) + vπ (Sn) − vπ (S0) S0 ∼ dπ , A i ∼ π(· | Si), S i+1 ∼ p(· | Si, A i)
+
+#
+
+= ¯Jπ + 1
+
+n E
+
+"n−1X
+
+> i=0
+
+ r(Si, A i) − ¯Jπ
+
+ + vπ (Sn) − vπ (S0) S0 ∼ dπ , A i ∼ π(· | Si), S i+1 ∼ p(· | Si, A i)
+
+#
+
+= ¯Jπ + 1
+
+n E
+
+"
+
+ρ0: n−1
+
+> n−1
+
+X
+
+> i=0
+
+ r(Si, A i) − ¯Jπ
+
+ + vπ (Sn) − vπ (S0)
+
+!
+
+S0 ∼ dμ, A i ∼ μ(· | Si), S i+1 ∼ p(· | Si, A i)
+
+#
+
+.
+
+As a result, we update the average reward estimate as 
+
+Jt+n = Jt+n−1 + ηn αt+n−1ρt:t+n−1(Rt+1: t+n − nJ t+n−1 + vt+n−1(St+n) − vt+n−1(St)) ,
+
+where η is a positive multiplicative constant to allow for a different update rate relative to v.
+
+# C Technical Lemmas 
+
+Lemma C.1. The function H(v, y ) defined in (7) satisfies Assumption A.3. Proof. Recall that for a scalar c > 0, the scaled operator is defined as Hc(x, y ) .
+
+= 1 
+
+> c
+
+H(cx, y ). Substituting the definition of H from (7), we obtain 
+
+Hc(v, y )[ s] = ρ0: n−1(y) 1
+
+c
+
+> n−1
+
+X
+
+> k=0
+
+r(sk, a k) − η X v + v(sn) − v(s0)
+
+!
+
+I{s = s0}.
+
+This implies that the limit of the operator H∞(v, y ) = lim c→∞ Hc(v, y ) is given by 
+
+H∞(v, y )[ s] .
+
+= ρ0: n−1(y)
+
+
+
+−η X v + v(sn) − v(s0)
+
+
+
+I{s = s0}, (24) and the difference Hc(v, y ) − H∞(v, y ) simplifies to 
+
+Hc(v, y )[ s] − H∞(v, y )[ s] = ρ0: n−1(y) 1
+
+c
+
+> n−1
+
+X
+
+> k=0
+
+r(sk, a k)
+
+!
+
+I{s = s0}.
+
+Therefore, Assumption A.3 (15) is satisfied by setting κ(c) .
+
+= 1 
+
+> c
+
+, which vanishes as c → ∞ , and defining 
+
+b(x, y )[ s] .
+
+= ρ0: n−1(y)
+
+> n−1
+
+X
+
+> k=0
+
+r(sk, a k)
+
+!
+
+I{s = s0}.
+
+Importantly, b(x, y ) is independent of x, so for all x, x ′, y we have ∥b(x, y ) − b(x′, y )∥ = 0. Thus, the Lipschitz condition in (16) from Assumption A.3 is trivially satisfied with Lb(y) = 0, and the expectation E[Lb(y)] is finite. 
+
+Lemma C.2. The function H(v, y ) defined in (7) satisfies Assumption A.4. Proof. We first verify that H is Lipschitz continuous in the ∞− norm, i.e. (17) . Fix any transition y =(s0, a 0, s 1, . . . s n) and any state s. Using the indicator ( I{s = s0}), we have 
+
+H(v)[ s] − H(w)[ s] = ρ(y)
+
+h n−1X
+
+> k=0
+
+r(sk, a k) − η X v + v(sn) − v(s0)
+
+!
+
+−
+
+> n−1
+
+X
+
+> k=0
+
+r(sk, a k) − η X w + w(sn) − w(s0)
+
+!i
+
+I{s = s0}
+
+=
+
+(
+
+ρ(y)−η P(v − w) + ( v(sn) − w(sn)) − (v(s0) − w(s0)) , s = s0,
+
+0, s̸ = s0.Blaser, Wang, Zhang 
+
+Hence 
+
+H(v)[ s] − H(w)[ s] ≤
+
+(
+
+ρ(y)η|S|∥ v − w∥∞ + 2 ∥v − w∥∞
+
+, s = s0,
+
+∥v − w∥∞, s̸ = s0.
+
+The only remaining task is to upper-bound ρ(y) defined in (7) . Under our standard “coverage” assumption (Assumption 4.1), whenever π(a|s) > 0, we also have μ(a|s) > 0, and because both |S| and |A| are finite, there is a uniform lower bound 
+
+μmin = min   
+
+> s,a :π(a|s)>0
+
+μ(a | s) > 0.
+
+This implies that 
+
+ρ(y) = 
+
+> n−1
+
+Y
+
+> k=0
+
+π(ak | sk)
+
+μ(ak | sk) ≤
+
+ 1
+
+μmin 
+
+n .
+
+= ¯ ρ < ∞.
+
+Therefore, 
+
+∥H(v, y ) − H(w, y )∥∞ = max  
+
+> s∈S
+
+|H(v, y )[ s] − H(w, y )[ s]|≤ L∥v − w∥∞,
+
+where L .
+
+= max {1, ¯ρ(η|S| + 2) }.
+
+Verifying the Lipschitz continuity of H∞, starting from (24) from the proof of Lemma C.1 to avoid repetition, we have, 
+
+H∞(v)[ s] − H∞(w)[ s] = ρ(y)
+
+h 
+
+−η X v + v(sn) − v(s0)
+
+
+
+−
+
+
+
+−η X w + w(sn) − w(s0)
+
+i 
+
+I{s = s0}
+
+=
+
+(
+
+ρ(y)−η P(v − w) + ( v(sn) − w(sn)) − (v(s0) − w(s0)) , s = s0,
+
+0, s̸ = s0.
+
+= H(v)[ s] − H(w)[ s]Therefore, the Lipschitz continuity of H∞ holds for L as well, proving (18) holds. From equation (10), its easy to see that h is finite, verifying (19). To verify (20), its also easy to see that 
+
+Ey∼dY
+
+H∞(v, y )[ s] = Eμ
+
+h
+
+ρ0: n−1(y)  −ηP 
+
+> p
+
+v(p) + v(sn) − v(s0)I{s = s0}
+
+i
+
+= dμ(s) Eπ
+
+h
+
+−η e ⊤v + v(sn) − v(s) s0 = s
+
+i
+
+= dμ(s)
+
+h
+
+−η e ⊤v + ( P nπ v)( s) − v(s)
+
+i
+
+= Dμ
+
+ P nπ − I − η ee ⊤v(s).
+
+In vector form, 
+
+Ey∼dY
+
+H∞(v, y ) = Dμ
+
+ P nπ − I − η ee ⊤v, 
+
+which is clearly finite. Finally, since the Lipschitz constant L is independent of y, (21) holds trivially. 
+
+# D Experimental Details and Additional Results 
+
+D.1 Experimental Details 
+
+Our experiments were carried out in a simple, continuing gridworld. At each timestep t the agent occupies one cell in an 5 × 5 grid, can move to any of the four orthogonal neighbors (subject to walls at the borders where an illegal move keeps the agent in the same state), and receives a unit reward each time it reaches the designated Almost Sure Convergence of Differential Temporal Difference Learning 
+
+“goal” state in the bottom right corner. Rather than terminating, after reaching the goal state, the agent is put back to the start corner (top left) on the very next step with probability 1, making this a continuing task. We evaluated an off-policy, multi-step differential TD learner for a fixed ϵ-greedy target policy with ϵ = 0 .1. The behavior policy is random. The value function and reward estimate were both initialized to zero. Throughout training, the agent took actions following the random behavior policy, observed the deterministic next state and reward, and performed its n-step TD updates with Off-Policy Differential TD to estimate the value function associated with the target policy. The experiment was run for 100 , 000 steps, and repeated with 30 random seeds. For Figure 1, the η values were reported for η = {0.1, 0.5, 1, 2}, while keeping n = 3. In Figure 2, η = 0 .1 and 
+
+n = {1, 2, 3, 4}. In both experiments, we used a constant learning rate α = 0 .01. We now elaborate on the evaluation metric. The convergence was assessed using a variant of root-mean-squared value error from (Tsitsiklis and Roy, 1999) which we denote as ‘RMSVE (TVR)’, which is also used in (Wan et al., 2021b). As noted in Section 2, the solutions to the differential Bellman equation (3) form a set V∗ = {vπ + ce }.Which point in this set an algorithm converges to depends on initializations and the design choices of the algorithm. Therefore, computing the value error with respect to vπ does not say much about convergence. To remedy this, (Tsitsiklis and Roy, 1999) proposed computing the error with respect to the nearest valid solution to the Bellman equations. The metric is defined as RMSVE(TVR)( v, v π ) .
+
+= inf  
+
+> c
+
+∥v − (vπ + ce )∥dπ .
+
+Algorithmically, this amounts to computing the offset of the learned value function, subtracting it, and then computing the RMSVE with respect to vπ . As demonstrated in Section C.4 of Wan et al. (2021b) this vπ can be analytically computed using the Bellman equations with the additional constraint that d⊤ 
+
+> π
+
+vπ = 0 (effectively centering the value function). 
+
+D.2 Additional Experiment on the effect of n
+
+Here, we present additional experiments, demonstrating that the conclusions from Section 5 also hold for various 
+
+n values. Despite the fact that η0 = 0, we empirically observe the convergence of differential TD with η = 0 .1under several choices of n. In this experiment, we used the environment described in Section D.1. 0 25000 50000 75000 100000 
+
+> Time steps
+> 0.0
+> 0.1
+> 0.2
+> 0.3
+> RMSVE
+> (TVR)
+
+n-step Differential TD: Effect of n     
+
+> n= 1
+> n= 2
+> n= 3
+> n= 4
+
+Figure 2: Off-policy convergence of n–step differential TD in a 5 × 5 gridworld for various n with fixed η = 0 .1. See Section D.1 for the complete experiment description. Despite η0 = 0, we still observe the convergence of differential TD with across several n values.

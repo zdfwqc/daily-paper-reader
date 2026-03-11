@@ -1,0 +1,1542 @@
+Title: SMAC: Score-Matched Actor-Critics for Robust Offline-to-Online Transfer
+
+URL Source: https://arxiv.org/pdf/2602.17632v1
+
+Published Time: Fri, 20 Feb 2026 02:06:33 GMT
+
+Number of Pages: 26
+
+Markdown Content:
+# SMAC: Score-Matched Actor-Critics for Robust Offline-to-Online Transfer 
+
+Nathan S. de Lara 1 2 Florian Shkurti 1 2 
+
+Abstract 
+
+Modern offline Reinforcement Learning (RL) methods find performant actor-critics, however, fine-tuning these actor-critics online with value-based RL algorithms typically causes immediate drops in performance. We provide evidence con-sistent with the hypothesis that, in the loss land-scape, offline maxima for prior algorithms and online maxima are separated by low-performance valleys that gradient-based fine-tuning traverses. Following this, we present Score Matched Actor-Critic (SMAC), an offline RL method designed to learn actor–critics that transition to online value-based RL algorithms with no drop in performance. SMAC avoids valleys between offline and online maxima by regularizing the Q-function during the offline phase to respect a first-order deriva-tive equality between the score of the policy and action-gradient of the Q-function. We experimen-tally demonstrate that SMAC converges to offline maxima that are connected to better online max-ima via paths with monotonically increasing re-ward found by first-order optimization. SMAC achieves smooth transfer to Soft Actor-Critic and TD3 in 6/6 D4RL tasks. In 4/6 environments, it reduces regret by 34-58% over the best baseline. 
+
+1. Introduction 
+
+Fine-tuning actor–critics from offline RL checkpoints with online value-based methods often triggers an immediate drop in performance. We study why offline algorithms pro-duce actor–critics that are brittle to such fine-tuning, through the lens of optimization landscape geometry. For offline RL to truly support a pre-train fine-tune paradigm, it should produce actor–critics that are both performant and able to readily learn from new data. Ideally, an offline RL algorithm should pre-train an actor-critic that can be fine-tuned by any online method without performance degradation. If this con-dition is satisfied, the usefulness of offline RL increases, as 
+
+> 1
+
+Department of Computer Science, University of Toronto, Toronto, Canada 2Vector Institute. Correspondence to: Nathan S. de Lara <nathan.delara@mail.utoronto.ca >.Preprint. Work in progress. Discounted 
+
+> Reward
+
+Figure 1. Past offline RL methods converge to maxima sepa-rated from online optima by low-reward valleys . Top: reward landscapes on the Kitchen task for CalQL (left) and SMAC (right). Blue and checkered flags being the real locations of the pre-trained and fine-tuned checkpoints on the landscape respectively. The paths and red/yellow flag are illustrative annotations showing the hypothesized trajectory during transfer. Paths demonstrate the ex-istence of a low reward valley between pre-trained and fine-tuned checkpoints when using CalQL. Our method SMAC has no such valleys and is on a unified hill with the fine-tuning checkpoint. Bottom: SMAC vs. CalQL performance in the Kitchen task. See Section 5 for analysis. 
+
+pre-trained actor-critics can be chained with the most data-efficient online algorithms to mimic the pre-train fine-tune paradigm common for large language models today. To prevent early fine-tuning drops, offline checkpoints should be adaptable: standard online actor–critic up-dates should not traverse low-reward regions of parameter space. We formalize this via mode connectivity: two high-performing solutions are connected if some path between them has monotonically changing reward, and linearly con-nected if the straight line between maxima has monotoni-cally changing reward (Garipov et al., 2018; Frankle et al., 2020; Mirzadeh et al., 2020; Juneja et al., 2023). Popu-lar offline RL methods rely on minimizing Q-values for out-of-distribution actions (Nakamoto et al., 2023; Kumar et al., 2020; Jin et al., 2022), or explicit policy constraints (Fujimoto & Gu, 2021; Kostrikov et al., 2022; Nair et al., 2020) which can misalign the offline objective with the online objective, making offline and online optima poorly 1
+
+> arXiv:2602.17632v1 [cs.LG] 19 Feb 2026
+
+Score Matched Actor-Critic 1.0 0.5 0.0 0.5 1.0 1.5 2.0                     
+
+> ×10 5
+> 200
+> 180
+> 160
+> 140
+> 120
+> 100
+> 80
+> 60
+> 40
+> Door
+> Reward
+> IQL
+> 1.0 0.5 0.0 0.5 1.0 1.5 2.0
+> ×10 5
+> 200
+> 180
+> 160
+> 140
+> 120
+> 100
+> 80
+> 60
+> CalQL
+> 1.0 0.5 0.0 0.5 1.0 1.5 2.0
+> Gradient Steps
+> (Centered Around Offline Online)
+> ×10 5
+> 200
+> 175
+> 150
+> 125
+> 100
+> 75
+> 50
+> 25
+> Relocate
+> Reward
+> 1.0 0.5 0.0 0.5 1.0 1.5 2.0
+> Gradient Steps
+> (Centered Around Offline Online)
+> ×10 5
+> 200
+> 175
+> 150
+> 125
+> 100
+> 75
+> 50
+> 25
+> 50,000 samples
+> 100,000 samples
+> 200,000 samples
+> 400,000 samples
+> 800,000 samples
+> 1,600,000 samples
+> 3,200,000 samples
+> 6,400,000 samples
+> 10,000,000 samples
+
+Figure 2. Increasing dataset size and coverage does not bridge offline-to-online gap. We generate rollouts in two environments with a policy that has a 0.7 success rate and plot the offline-to-online performance as we increase the dataset size. We observe that even when the dataset is so large that it is sufficient for learning optimal policies, the actor-critics found are still quickly unlearned by online fine-tuning. 
+
+connected. We hypothesize that this linear disconnection is an explanatory factor for initial drops in performance during fine-tuning. In section 5, we empirically investigate this and find that several widely used offline RL methods converge to solutions that are not linearly connected to online Soft Actor Critic (SAC) (Haarnoja et al., 2018) optima by a line along which reward improves monotonically. Following this, we introduce Score Matched Actor-Critic (SMAC), which extends SAC with (i) a single critic reg-ularizer, motivated by maximum-entropy RL (Haarnoja et al., 2017), that aligns the Q-function’s action-gradient 
+
+∇aQ(s, a ) with the score of the dataset’s action distribu-tion ∇a log πD (a|s); and (ii) the Muon optimizer (Jordan, 2024), which Anonymous (2025) reported to favour flat-ter solutions than Adam (Kingma & Ba, 2017) a property often associated with improved pre-training checkpoints’ downstream transfer ability (Liu et al., 2023). Across our benchmarks, SMAC converges to offline maxima that are connected to online SAC maxima, supporting the view that connectivity explains offline-to-online transfer. We demonstrate this smooth transfer property of SMAC across online RL algorithms, long-horizon tasks, sparse reward tasks, and high-dimensional tasks from the D4RL benchmark datasets (Fu et al., 2021). We show that SMAC robustly transfers to online fine-tuning with SAC, TD3 (Fuji-moto et al., 2018), and TD3+BC (Fujimoto & Gu, 2021). In 4/6 tasks, SMAC pre-training followed by SAC fine-tuning reduces regret by 34–58% relative to the best baseline. Our contributions are as follows: • We show that past offline RL methods exhibiting a per-formance drop when transitioned to online RL methods coincides with offline methods converging to solutions which are not linearly connected to the solutions that SAC fine-tuning them finds. • We provide an offline RL method that can smoothly transition to online RL algorithms for efficient online fine-tuning, outperforming fine-tuning state-of-the-art offline RL algorithms. 
+
+2. Preliminaries 
+
+We use the canonical Markov Decision Process (MDP) for-mulation of RL, which optimizes policies towards maxi-mizing the future discounted sum of rewards. We give a detailed description of: RL, value-based RL, and offline RL in Appendices: A, B, and C. For notation we use s for states, 
+
+a for actions, r for rewards, π(a|s) for policies, Q(s, a )
+
+for Q-functions, J (π) for the expected discounted reward running π, and D = {(si, a i, r i, s ′
+
+> i
+
+)}Ni=1 for datasets. 
+
+The transition from offline pre-training to online fine-tuning causes the policy to explore out-of-distribution states and actions. This exacerbates problems that arise from making out-of-distribution Q-value predictions (Zhou et al., 2024; Nakamoto et al., 2023). Previous approaches focus on either (i) methods for the entire offline-to-online process that learn Q-functions, which are not ”unlearned” upon transfer (Nakamoto et al., 2023; Wen et al., 2024); or (ii) policy regularization methods implemented in the online phase to stop the policy updates from causing a drop in performance (Dong et al., 2025a; Zhang et al., 2023a). TD3+BC (Fuji-moto & Gu, 2021) is a simple example of (ii). TD3+BC is originally an offline RL algorithm but has been shown to achieve smooth transfer when fine-tuning offline agents by trading off the drop in performance during transfer for final performance (Dong et al., 2025b; Lee et al., 2021). 
+
+Local connectivity of maxima in our paper refers to the geometry of expected return J (π) as a function of policy parameters. Two maxima are linearly connected if reward changes monotonically along the line between them in pa-rameter space. A slightly different notion of mode con-nectivity in supervised learning has been studied, where connectivity means that loss is convex between minima (Frankle et al., 2020). Frankle et al. (2020) observed that in supervised learning, networks trained from a shared pre-training checkpoint often converge to linearly connected maxima. This suggests that after sufficient pre-training, op-timization moves within a connected subspace rather than traversing disjoint basins. Further work in supervised learn-ing by Juneja et al. (2023) show that maxima which are connected have similar generalization abilities. 
+
+Diffusion models estimate the score ∇x log p(x) of a dis-tribution p(x) given only samples by learning to reverse a K-step noising process. We detail how they are trained and give more specifics in Appendix J. Diffusion models can be used for learning effective policies in continuous MDPs (Ajay et al., 2023; Chi et al., 2024; Intelligence et al., 2Score Matched Actor-Critic 
+
+2025; Janner et al., 2022). For policy learning via BC, the diffusion model, written ϵ(a, s, k ), is conditioned on state s
+
+(not denoised), where k indexes the noising step; notably, at 
+
+k = 1 , this approximates ∇a log πD (a|s) (Ho et al., 2020; Song & Ermon, 2020). Reinforcement via Supervision (RvS) can attain better performance than BC (Piche et al., 2022; Emmons et al., 2022). RvS adds forward-looking information to the conditioning. During inference, RvS sets the forward-looking information to a high value. 
+
+Max-Entropy Reinforcement Learning extends the RL objective to include an entropy bonus. For α ∈ (0 , ∞), the objective function becomes: 
+
+J = Eπ [
+
+> ∞
+
+X
+
+> t=1
+
+γt(R(st, a t) + αH(π(·| st))] 
+
+The policy’s objective for Max-Entropy RL is minimizing: 
+
+Lπ (θ) = Es∼D [DKL (πθ || exp( 1 
+
+> α
+
+Q(s, a )) 
+
+R 
+
+> ¯a
+
+exp( 1 
+
+> α
+
+Q(s, ¯a)) d¯a )] 
+
+The optimal Max-Entropy RL policy π∗ satisfies 
+
+log π∗(a|s) = 1 
+
+> α
+
+Qπ∗
+
+(s, a ) − log R 
+
+> ¯a
+
+exp( 1 
+
+> α
+
+Qπ∗
+
+(s, ¯a)) d¯a
+
+(Haarnoja et al., 2017) called the exact Max-Entropy identity. Taking the gradient with respect to a we get this identity: 
+
+∇a log π∗(a|s) = 1
+
+α ∇aQ∗(s, a ) (1) 
+
+3. Problem statement 
+
+Let D be an offline dataset collected in an MDP M . An offline RL algorithm A outputs an actor-critic initialization 
+
+(Q0, π 0) = A(D). We fine-tune (Q0, π 0) with an online RL algorithm F that iteratively produces (Qt+1 , π t+1 ) = 
+
+F (Qt, π t) for t = 1 , . . . , N − 1 using interaction data from 
+
+M and πt. We evaluate A by how well it supports fine-tuning across a family F of online RL algorithms using the following criteria: 1. Stable transfer: E[J (π1)] ≥ E[J (π0)] where the expectation is over inherent noise in algorithms. This corresponds to not having a drop during the initial phase of online fine-tuning. 2. Low online regret: Regret N := PNt=1 
+
+ J (π∗) −J (πt), where π∗ ∈ arg max π J (π).
+
+4. Experimental setup 
+
+For baselines, we choose to compare against three com-mon offline RL algorithms: Calibrated Q-Learning (CalQL) (Nakamoto et al., 2023), Implicit Q-Learning (IQL) (Kostrikov et al., 2022), and TD3+BC (Fujimoto & Gu, 2021). CalQL is the succeeding algorithm for Conserva-tive Q-Learning (CQL). CalQL is specifically designed for offline-to-online RL but requires Monte-Carlo returns, so, in environments where a Monte-Carlo return isn’t available, we use CQL (Kumar et al., 2020); we describe this more in depth in Appendix N.3. We choose these algorithms as baselines because they return actor-critics which can be straightforwardly used in other actor-critic algorithms. We further describe the baselines in Appendix L. 
+
+4.1. Benchmarks 
+
+We use 6 D4RL (Fu et al., 2021) benchmarks: hopp er-medium-replay-v2 , walker2d-medium-re play-v2 , kitchen-partial-v0 , door-binar y-v0 , pen-binary-v0 , and relocate-binary -v0 . The pen/door/relocate-binary-v0 envi-ronments and datasets are modifications of the original 
+
+{pen/door/relocate}-cloned-v0 that are used in Nair et al. (2020), Zhou et al. (2024), and Nakamoto et al. (2023). In Appendix N.1, we describe this in more depth. CALQL TD3+BC       
+
+> IQL SMAC
+> 1040 800 560 320
+> Reward
+> Pre-train SAC Fine-tune TD3+BC Fine-tune
+
+Figure 3. Reward visualized along a plane in parameter space reveals difference in maxima found by different pre-training and fine-tuning methods on Kitchen task . We see that the SAC maxima are wider and not connected to the pre-trained checkpoint along monotonically improving line across all baselines. Con-versely, SAC maxima and SMAC maxima are linearly connected. Subplot titles denote offline algorithm used 
+
+4.2. Offline-to-online Setup 
+
+After the offline phase, we collect 5,000 on-policy examples to ”warm start” the replay buffer as in (Zhou et al., 2024; Nakamoto et al., 2023). We compute online updates by sampling batches with 50% coming from the dataset, and 50% coming from the replay buffer of experiences and train for 200 , 000 online steps. 3Score Matched Actor-Critic 
+
+5. Linear connectivity of offline and online maxima 
+
+This section links the absence of linearly connected offline and online maxima to the instability often seen when fine-tuning offline actor–critics. We use reward landscapes to visualize reward geometry along fine-tuning directions. Re-ward landscapes are the RL analog to loss landscapes in supervised learning. We focus on SAC, as it is a representa-tive online actor-critic algorithm. We plot reward landscapes in the kitchen-partial-v0 environment. Offline RL algorithms achieve strong but suboptimal performance in the environment, so online fine-tuning can strongly improve, or worsen a good policy. We investigate the reward land-scapes for offline RL baselines. We also show results for SMAC, the algorithm we present in Section 6 as a reference for effective transfer. 1000 
+
+> 500
+> CALQL/CQL
+> Reward
+
+Kitchen 
+
+> 200
+> 150
+
+Door 
+
+> 1000
+> 2000
+> 3000
+
+Hopper    
+
+> 1000
+> 750
+> IQL
+> Reward
+> 195
+> 190
+> 0
+> 2000
+> 1000
+> 500
+> TD3+BC
+> Reward
+> 200
+> 100
+> 0
+> 2000
+> 01
+> 1000
+> 500
+> SMAC
+> Reward
+> 01
+> 200
+> 100
+> 01
+> 1000
+> 2000
+> 3000
+> Interpolation Coefficient
+
+Figure 4. Reward valleys when linearly interpolating between pre-training and fine-tuning checkpoints for all baselines in tasks show linearly disconnected maxima consistent with offline-to-online transfer performance in later plots . We plot the performance along the line between the pre-trained checkpoint and final fine-tuning checkpoint for methods in kitchen-partial (left), door-binary (centre), and hopper-medium-replay (right). 0 is the pre-trained checkpoint, and 1 is the SAC fine-tuned checkpoint. Lines show mean over 4 seeds with shading being standard error. 
+
+In Figure 4, we interpolate between the pre-trained and fine-tuned checkpoints for different offline RL algorithms and plot the average reward at different points along the line. More specifically, we pre-train to get parameters θoffline , and then fine-tune with SAC to get θonline . We plot performance on the line θ(t) = θoffline t + (1 − t)θonline by rolling out with parameters θ(t) at various values of t. We observe that in the two left columns all algorithms except SMAC (ours) exhibit a drop in performance between 0 (pre-trained check-point) and 1 (fine-tuned checkpoint). Similarly, in Figure 6, all methods except SMAC suffer a drop in performance when transferring from offline-to-online training in the corre-sponding tasks. This suggests that in an environment where a drop in performance is observed upon transfer, the maxima for offline and online actor-critic methods do not lie on a con-cave subspace. In the hopper-medium-replay-v2 
+
+environment, 3/4 methods show that performance mono-tonically improves as you interpolate between checkpoints, confirming the results in Figure 6, where the corresponding 
+
+3/4 methods transfer with no drop in performance. CALQL TD3+BC           
+
+> IQL
+> 0.0 0.5 1.0
+> Normalized Online Time
+> 1.0
+> 0.8
+> 0.6
+> 0.4
+> Rewards
+> 1e3
+> CALQL
+> TD3+BC
+> IQL
+> 1200 900 600 300 0300
+> Value
+> Pre-trained SAC Fine-tune TD3+BC Fine-tune Training Direction
+
+Figure 5. t-SNE projections of training trajectories show lin-early disconnected maxima . We take the pre-training check-points, SAC fine-tuning checkpoints, and TD3+BC fine-tuning checkpoints and plot their T-SNE projections with lines and arrows signifying the training trajectory/ordering of the checkpoints. We observe that the projected checkpoints (i) travel in straight lines, and (ii) cross a valley of low reward when fine-tuned with SAC but not when fine-tuned with TD3+BC, providing evidence consistent with the reward valley hypothesis. 
+
+As described in Section 2, TD3+BC, an offline algorithm, can fine-tune pre-trained actor-critics without suffering a dip in performance, but, at the cost of converging to subop-timal policies. A natural conclusion is that fine-tuning with TD3+BC moves the parameters in different directions that fine-tuning with SAC. In Figure 3, we visualize the loss land-scape along these directions by looking at the plane defined by three parameterizations: a θ pre-trained by each subplots labelled algorithm, a SAC fine-tuned θ1, and a TD3+BC fine-tuned θ2. Both θ1 and θ2 are found by fine-tuning θ with the respective algorithms. The plane is spanned by u := θ1 − θ,and v := θ2 − θ, with performance visualized as a contour graph. We denote where in the plane the three parameters lie. We observe that the line between the pre-trained and SAC fine-tuned parameters travels through a low reward valley for all algorithms except SMAC. For all methods, the line between the pre-trained parameters and TD3+BC fine-tuned parameters is thin and high reward. Furthermore, we see that the parameters found by fine-tuning with SAC vs. TD3+BC are not linearly connected. In Appendix M, 4Score Matched Actor-Critic 
+
+we describe how we visualize the planes. We do acknowledge that optimization trajectories are un-likely to be exactly linear. It is possible that during opti-mization the parameters follow a curve outside the plotted plane. In Figure 5, we show the result of our attempt to check whether a projection of the parameters into 2D aligns with our observations in Figure 3. The plots show the t-SNE (van der Maaten & Hinton, 2008) projection of checkpoints along the pre-training and two fine-tuning optimization tra-jectories from Figure 3. While t-SNE cannot characterize global geometry, the projection is consistent with our pla-nar visualization, in that SAC fine-tuning trajectories pass through regions of substantially lower reward before con-verging. This supports the interpretation that the observed performance collapse is associated with low-reward regions in between offline and online maxima. 
+
+6. Score Matched Actor-Critic (SMAC): regularizing Q-values with dataset scores 
+
+In this section, we introduce SMAC, our offline RL method that smoothly transitions to fine-tuning with an arbitrary online RL algorithm. Our approach relies on one theory-inspired regularization of the Q-function and a switch to using the Muon optimizer (Jordan, 2024) instead of the Adam optimizer (Kingma & Ba, 2017). The theory-inspired regularization comes from the exact Max-Entropy identity. To regularize the Q-function during the offline phase, we regularize the network’s action gradient ∇aQ(s, a ) to be proportional to an estimate of the dataset’s action score 
+
+∇a log π(a|s). This relationship comes from the identity in equation (1) : ∇a log π∗(a|s) = 1 
+
+> α
+
+∇aQ∗(s, a ). While the identity is only proven for the optimal policy π∗, there are other situations where it holds. While the standard SAC algorithm updates Q and π jointly, if Q is frozen and only the π objective is considered, we get that log π(a|s) =  
+
+> 1
+> α
+
+Q(s, a ) + R 
+
+> ¯a
+
+exp ( 1 
+
+> α
+
+Q(s, ¯a)) d¯a as the solution to π’s opti-mization objective. From this we get an identity equivalent to equation (1) for π and Q. Additionally the noisily ra-tional decision maker model of humans which is a popular model for how humans behave would imply that human-collected demonstrations respect the same identity (Ghosal et al., 2023; Bobu et al., 2024). Even when it does not hold, exactly matching ∇aQ(s, a ) to ∇a log π(a|s) would result in OOD actions being penalized proportionally to how OOD the action is. In this way it is a more careful form of pes-simism than what CalQL/CQL use which uniformly lowers all OOD actions. 
+
+6.1. Estimating the dataset’s score 
+
+We employ Reinforcement via Supervision (RvS) methods (Emmons et al., 2022; Piche et al., 2022; Schmidhuber, 2020) for obtaining a strong diffusion policy which in turn provides strong score estimates. Specifically, we condition the estimator to model ∇a log( p(a|s, w )) where w is the sum of rewards or binary success indicator of the trajectory that (s, a ) belongs to in the dataset. We min-max normal-ize w in every dataset so w = 1 implies an action in a trajectory with an optimal outcome. For parameterization of our diffusion model, we use the architecture proposed in (Hansen-Estruch et al., 2023). We detail training and hyper-parameter choices in Appendix J and ablate the use of RvS in appendix E. 
+
+6.2. Regularizing the Q-function with score matching 
+
+To regularize the critic’s network to be proportional to the dataset score, we learn α through a network αψ (s) con-ditioned on states. Conditioning on states allows a more expressive class of networks to minimize the regularization term. Letting ϵω be the learned diffusion model we use as a score-estimate, our regularization loss, which we denote 
+
+LSM (θ, ψ ), is defined as: 
+
+LSM (θ, ψ ) = E
+
+> s∼D
+> a∼B(A)
+
+[||∇ aQθ (s, a ) − αψ (s)ϵω (s, a, w, 1) || 22]
+
+We set k = 1 on our diffusion model to get the least per-turbed noise estimate. We define the distribution we sample actions from, B(A), as being a 50/50 split between sam-pling from π and from the uniform distribution over the action space A. LSM is the only change we make to the original SAC (Haarnoja et al., 2018) objective functions. We follow their implementation by using target Q-networks (Mnih et al., 2013; Lillicrap et al., 2019) and ensembles of Q-functions (Chen et al., 2021; Peer et al., 2021) which are both well-established techniques for reducing Q-function misestimation. For simplicity of notation, we omit the en-sembles, but denote the target network as Q¯θ . Using this notation, the original SAC critic loss is: 
+
+LAC (θ) = Es,a,r,s ′∼Da′∼πϕ(a|s)
+
+[( Qθ (s, a ) − r − γQ ¯θ (s′, a ′)) 2]
+
+We augment this loss by adding LSM (θ, ψ ) multiplied by a coefficient κ. With this, we define SMAC’s critic loss, 
+
+LSM AC , as: 
+
+LSM AC (θ, ψ ) = κLSM (θ, ψ ) + LAC (θ)
+
+We optimize the πϕ in SMAC by using the SAC policy loss: 
+
+Lπ (ϕ) = E s∼Da∼πϕ
+
+[−Qθ (s, a ) + log πϕ(a|s)] 
+
+5Score Matched Actor-Critic 1.0 0.5 0.0 0.5 1.0 1.5 2.0                                         
+
+> Gradient Steps
+> (Centered Around Offline Online)
+> ×10 5
+> 1000
+> 500
+> Reward
+> kitchen
+> 1.0 0.5 0.0 0.5 1.0 1.5 2.0
+> Gradient Steps
+> (Centered Around Offline Online)
+> ×10 5
+> 75
+> 50
+> 25
+> Reward
+> pen
+> 1.0 0.5 0.0 0.5 1.0 1.5 2.0
+> Gradient Steps
+> (Centered Around Offline Online)
+> ×10 5
+> 200
+> 100
+> Reward
+> door
+> 1.0 0.5 0.0 0.5 1.0 1.5 2.0
+> Gradient Steps
+> (Centered Around Offline Online)
+> ×10 5
+> 200
+> 150
+> 100
+> Reward
+> relocate
+> 1.0 0.5 0.0 0.5 1.0 1.5 2.0
+> Gradient Steps
+> (Centered Around Offline Online)
+> ×10 5
+> 0
+> 2000
+> Reward
+> hopper
+> 1.0 0.5 0.0 0.5 1.0 1.5 2.0
+> Gradient Steps
+> (Centered Around Offline Online)
+> ×10 5
+> 0
+> 2000
+> 4000
+> Reward
+> walker2d
+> SMAC CalQL CQL IQL TD3+BC
+
+Figure 6. SMAC achieves smooth offline-to-online transfer to SAC . Plot shows offline-to-online transfer results for SMAC and baselines when fine-tuned with SAC. Environments are only named with the first word since that uniquely identifies them among the six. The dotted line shows where the agent transfers from offline learning to online learning, with the shaded section denoting offline learning. 
+
+6.3. Using Muon as an optimizer 
+
+We found that switching the optimizer from Adam (Kingma & Ba, 2017) to Muon (Jordan, 2024; Bernstein & Newhouse, 2024) improved the offline-to-online transfer of SMAC, we present an ablation of this in Appendix I. Bernstein & New-house (2024) show that Adam takes a step in the direction of steepest descent under the max-of-max norm, which is effec-tively the maximum absolute value of any single parameter. Muon, on the other hand, takes a step in the direction of steepest descent under the spectral norm, the largest singular value in a matrix. Recent work finds that Muon optimizes towards shallower optima (Anonymous, 2025) which has been linked to stronger transfer to downstream fine-tuning (Liu et al., 2023). In Appendix I we ablate optimizing the baselines with Muon and find they get no positive effect from the change. 
+
+7. Experimental Results 
+
+We compare different offline RL algorithms’ generated of-fline checkpoints’ ability to transfer to online RL algorithms by transferring to: SAC, TD3, and TD3+BC. SAC is the most representative and popular algorithm in online value-based RL combining deterministic gradients with entropy regularization. TD3 is an antecedent algorithm to SAC which doesn’t use entropy regularization and only uses deterministic gradients for updating the policy. For this reason we include it, Lee et al. (2025) similarly evaluate their architecture against SAC and DDPG (antecedent al-gorithm to TD3 which only uses deterministic gradients) to show the architecture works well along popular online value-based techniques. TD3+BC adds behaviour cloning to TD3, while originally an offline RL algorithm and less efficient than TD3, it has been shown to improve trans-fer abilities for offline-to-online RL (Dong et al., 2025b). Additionally, in appendix G we have results when using Ad-vantage Weighted Regression (AWR) for fine-tuning. AWR is an offline policy optimization approach and so we find it provides stable transfer for baselines but at a significant cost of fine-tuning efficiency and final performance. SMAC still smoothly transfers under AWR, and attains lower regret on average than the baselines but we find fine-tuning with AWR is almost always worse than any of the three fine-tuning methods above. We don’t consider online transfer to SMAC because the pre-trained diffusion model would then have to be continually updated which would be both com-putationally costly and can result in catastrophic forgetting in important states and actions. Figure 6 shows offline-to-online transfer when fine-tuning with SAC. Most baselines experience drastic performance drops upon transfer: CalQL in 3/4 environments, IQL in 4/6, and TD3+BC in 5/6. In contrast, SMAC avoids any perfor-mance drop across all environments, smoothly improving to the highest observed performance. These results correlate well with the interpolation and planar plots from Section 5. When fine-tuning with TD3, we again observe smooth transfer for SMAC, which generally dominates both offline and online performance in 4/6 environments. Table 1 shows the average regret over all environments when regrets are min-max normalized so that 1 is worst regret ob-served and 0 is best regret observed per environment. We observe that across all online algorithms tested SMAC out-performs the baselines when averaging over environments. In Appendix G we list the average regret for each algorithm we test in each environment. We define regret for an algo-6Score Matched Actor-Critic 1.0 0.5 0.0 0.5 1.0 1.5 2.0  
+
+> Gradient Steps
+> (Centered Around Offline Online)
+> ×10 5
+> 1000
+> 500
+> Reward
+
+kitchen        
+
+> 1.0 0.5 0.0 0.5 1.0 1.5 2.0
+> Gradient Steps
+> (Centered Around Offline Online)
+> ×10 5
+> 75
+> 50
+> 25
+> Reward
+
+pen        
+
+> 1.0 0.5 0.0 0.5 1.0 1.5 2.0
+> Gradient Steps
+> (Centered Around Offline Online)
+> ×10 5
+> 200
+> 150
+> 100
+> Reward
+
+door        
+
+> 1.0 0.5 0.0 0.5 1.0 1.5 2.0
+> Gradient Steps
+> (Centered Around Offline Online)
+> ×10 5
+> 200
+> 150
+> Reward
+
+relocate        
+
+> 1.0 0.5 0.0 0.5 1.0 1.5 2.0
+> Gradient Steps
+> (Centered Around Offline Online)
+> ×10 5
+> 1000
+> 2000
+> 3000
+> Reward
+
+hopper        
+
+> 1.0 0.5 0.0 0.5 1.0 1.5 2.0
+> Gradient Steps
+> (Centered Around Offline Online)
+> ×10 5
+> 0
+> 2000
+> 4000
+> Reward
+
+walker2d 
+
+SMAC CalQL CQL IQL TD3+BC 
+
+Figure 7. SMAC achieves smooth offline-to-online transfer to TD3 . Plot shows offline-to-online transfer results for SMAC and baselines when fine-tuned with TD3. The format follows Figure 6. 1.0 0.5 0.0 0.5 1.0 1.5 2.0  
+
+> Steps (Centered Around Offline Online)
+> ×10 5
+> 750
+> 500
+> 250
+> Reward
+
+kitchen        
+
+> 1.0 0.5 0.0 0.5 1.0 1.5 2.0
+> Steps (Centered Around Offline Online)
+> ×10 5
+> 60
+> 40
+> Reward
+
+pen        
+
+> 1.0 0.5 0.0 0.5 1.0 1.5 2.0
+> Steps (Centered Around Offline Online)
+> ×10 5
+> 200
+> 100
+> Reward
+
+door        
+
+> 1.0 0.5 0.0 0.5 1.0 1.5 2.0
+> Steps (Centered Around Offline Online)
+> ×10 5
+> 200
+> 150
+> 100
+> Reward
+
+relocate        
+
+> 1.0 0.5 0.0 0.5 1.0 1.5 2.0
+> Steps (Centered Around Offline Online)
+> ×10 5
+> 1000
+> 2000
+> 3000
+> Reward
+
+hopper        
+
+> 1.0 0.5 0.0 0.5 1.0 1.5 2.0
+> Steps (Centered Around Offline Online)
+> ×10 5
+> 2000
+> 4000
+> Reward
+
+walker2d 
+
+SMAC TD3+BC SMAC SAC CalQL CQL IQL TD3+BC 
+
+Figure 8. Fine-tuning with TD3+BC stabilizes offline-to-online . Plot shows offline-to-online transfer results for SMAC and baselines when fine-tuned with TD3+BC. The format follows Figure 6. 
+
+rithm as P∞
+
+t=0 (R∗ − Rt), where R∗, denotes the highest reward observed in the environment over all agents, and 
+
+Rt is the reward the algorithm obtained at timestep t dur-ing the online phase. In 4/6 environments SMAC achieves the lowest regret when considering all offline and online combinations. In those 4 environments, SMAC achieves regret anywhere from 34% to 58% lower than the best per-forming baseline. In the 2 environments where SMAC does not achieve the lowest regret it attains the second and third lowest regret. In Figure 7 we plot all methods fine-tuned with TD3. Simi-larly, Figure 8 plots all methods fine-tuned with TD3+BC, with SMAC →SAC overlaid as a lower bound for optimal adaptive performance. SMAC still achieves smooth trans-fer in 6/6 environments when fine-tuning with TD3 and 4/6 when fine-tuning with TD3+BC. However in 2 environments (kitchen and walker2d) SMAC’s performance deteriorates with ongoing training. We attribute this to the BC term incentivizing the policy to copy suboptimal actions in the dataset and replay buffer. This attribution is supported by the fact that pen, door, and relocate (which contain only successful demonstrations) show no such degradation. From comparing Figures 7 and 8 we observe that in some environments, adding a BC term stabilizes offline-to-online transfer for IQL and TD3+BC while causing long term per-formance drops in SMAC and CalQL/CQL not observed when using TD3. One can also separate IQL and TD3+BC from CalQL/CQL and SMAC by whether they constrain the policy during the offline phase. During the online phase, reg-ularizing the actor-critics generated by IQL and TD3+BC 7Score Matched Actor-Critic                      
+
+> Table 1. Normalized Regret averaged over all six environments ( ↓
+> lower is better). Values are min-max normalized per environment then averaged. SMAC achieves the lowest regret across all four online algorithms, with particularly strong gains when paired with SAC. Online Algorithm Offline Algorithm AWR SAC TD3 TD3+BC IQL 0.508 0.471 0.653 0.494 SMAC 0.380 0.031 0.090 0.226 TD3+BC 0.654 0.962 0.545 0.562 CalQL/CQL 0.482 0.448 0.442 0.614
+
+close to the behaviour data is a continuation of their of-fline optimization; this is the opposite for CalQL/CQL and SMAC. Conversely, fine-tuning with TD3 where the agents must only maximize the critic’s estimate of the policy’s sampled actions closely resembles the offline policy opti-mization for CalQL/CQL and SMAC. We believe this di-chotomy between fine-tuning with TD3 vs. TD3+BC and which offline algorithms pair better reinforces our hypothe-sis about connected optima being an explanatory factor for offline-to-online stability. 
+
+8. Related works 
+
+SMAC follows previous work showing that strong offline RL agents can be trained by penalizing the Q-function on OOD actions (Kumar et al., 2020; Jin et al., 2022; Wen et al., 2024; Kostrikov et al., 2021; Yu & Zhang, 2023; Zhou et al., 2024; Nakamoto et al., 2023). This regularization ensures that the critic disincentivizes the policy from choosing OOD actions. A different branch of algorithms ensures this by regularizing the policy to stay close to dataset actions (Fuji-moto & Gu, 2021; Wu et al., 2019; Kostrikov et al., 2022; Nair et al., 2020). As discussed in Section 5 the first type of approach mis-specifies the problem while the second under-specifies it. In our results section, we show that algorithms which follow the first branch exhibit better offline-to-online performance, implying that mis-specification is better than under-specification for offline-to-online transfer. Unlike our method, several offline-to-online papers have looked at algorithms which are applied in both the offline and online phases. These methods rely on regularizing the critic (Nakamoto et al., 2023; Lee et al., 2021; Yu & Zhang, 2023; Zheng et al., 2023), policy (Zhang et al., 2023a;b), or both (Wen et al., 2024). We differentiate our method from this collection of work as our focus is purely on offline RL algorithms which transfer to general actor-critic algorithms like SAC or TD3. This focus is shared with Yu & Zhang (2023) and Zhao et al. (2023). Zhao et al. (2023) advocate CQL with large critic ensembles for the offline stage. Since our CalQL/CQL baseline already uses an ensemble critic, we expect it to capture much of the benefit of their proposal. Kostrikov et al. (2021) and Yu & Zhang (2023) are the meth-ods most similar to SMAC. Both papers leverage the exact Max-Entropy RL identity to design offline RL algorithms whose Q-value estimates are influenced by the score of the dataset. Our work is most similar to Yu & Zhang (2023) who first learn a Q-function that is parameterized by a value function plus the score of the policy, similar to Gu et al. (2016). Yu & Zhang (2023) extends beyond Gu et al. (2016) because at the start of online training, they extend the width of the first layer of the value network to incorporate actions as well. We chose not to include Yu & Zhang (2023) as a baseline because, while conceptually similar, their parame-terization means that the offline algorithm does not return an actor network and a critic network which can be used straightforwardly by SAC or TD3+BC. Additionally, their experimental results show unstable transfer and suboptimal regret as compared to CQL fine-tuned with SAC. 
+
+9. Limitations & future work 
+
+There are several promising future directions building off SMAC and limitations to be addressed. SMAC fits well with the current state of pre-trained VLAs, which are large BC diffusion models. One of the highest computational costs in SMAC is the pre-training of an accurate dataset score esti-mator. At the time of publication, several of these models already exist for general robotic tasks, and fine-tuning them to new tasks is straightforward (Intelligence et al., 2025; NVIDIA et al., 2025; Team et al., 2025; Shukor et al., 2025). SMAC can easily build off this existing architecture to go be-yond the VLAs performance on tasks where reward-labelled trajectories have been collected. While SMAC’s offline-to-online performance improves upon baselines, there are several limitations which are them-selves interesting areas of research. Namely, the reliance on a diffusion model imposes a large upfront computational cost for a model which does not end up getting used in the online phase, finding ways to reliably estimate the score of the model or directly regressing the action-gradient of the Q-function against a score-matching loss show promise as future approaches. Smooth online transfer is also still dependent on large batch sizes in the online setting as shown in Appendix D. 
+
+10. Conclusion 
+
+In offline RL, we can pre-train strong actor–critics from a fixed dataset, but when these same models are fine-tuned on-line with standard value-based algorithms (e.g., SAC/TD3), they often suffer an immediate drop in reward. We provide evidence consistent with a geometric explanation: prior of-fline methods converge to high-reward solutions that are 8Score Matched Actor-Critic 
+
+separated from online optima by low-reward regions, so gradient-based fine-tuning traverses a “low reward valley” before recovering. To address this, we introduced Score-Matched Actor-Critic (SMAC), an offline RL method that pre-trains actor–critics to be compatible with subsequent online fine-tuning by (i) regularizing the critic so its action-gradient matches the dataset policy score (estimated with a return-conditioned diffusion model), and (ii) using the Muon optimizer to improve the stability of the learned so-lution. Across 6 D4RL tasks, SMAC transfers smoothly to online SAC and TD3 without an initial performance col-lapse, and in 4/6 environments it reduces online regret by 34–58% relative to the best baseline, while reaching the highest final performance among the methods we tested. 
+
+11. Impact Statement 
+
+This paper presents work whose goal is to advance the field of machine learning. There are many potential societal consequences of our work, none of which we feel must be specifically highlighted here. 
+
+References 
+
+Ajay, A., Du, Y., Gupta, A., Tenenbaum, J., Jaakkola, T., and Agrawal, P. Is conditional generative modeling all you need for decision-making?, 2023. URL https: //arxiv.org/abs/2211.15657 .Anonymous. Long-tailed learning with muon optimizer. In 
+
+Submitted to The Fourteenth International Conference on Learning Representations , 2025. URL https:// openreview.net/forum?id=go388T3QjQ . un-der review. Bernstein, J. and Newhouse, L. Old optimizer, new norm: An anthology, 2024. URL https://arxiv.org/ abs/2409.20325 .Bobu, A., Peng, A., Agrawal, P., Shah, J. A., and Dragan, A. D. Aligning human and robot representations. In 
+
+Proceedings of the 2024 ACM/IEEE International Con-ference on Human-Robot Interaction , HRI ’24, pp. 42–54. ACM, March 2024. doi: 10.1145/3610977.3634987. URL http://dx.doi.org/10.1145/3610977. 3634987 .Chen, X., Wang, C., Zhou, Z., and Ross, K. Random-ized ensembled double q-learning: Learning fast without a model, 2021. URL https://arxiv.org/abs/ 2101.05982 .Chi, C., Xu, Z., Feng, S., Cousineau, E., Du, Y., Burchfiel, B., Tedrake, R., and Song, S. Diffusion policy: Visuo-motor policy learning via action diffusion, 2024. URL 
+
+https://arxiv.org/abs/2303.04137 .Dong, P., Li, Q., Sadigh, D., and Finn, C. Expo: Stable reinforcement learning with expressive policies. arXiv preprint arXiv:2507.07986 , 2025a. Dong, P., Zheng, C., Finn, C., Sadigh, D., and Eysenbach, B. Value flows, 2025b. URL https://arxiv.org/ abs/2510.07650 .Dong, Z., Yuan, Y., Hao, J., Ni, F., Ma, Y., Li, P., and Zheng, Y. Cleandiffuser: An easy-to-use modular-ized library for diffusion models in decision making. 
+
+arXiv preprint arXiv:2406.09509 , 2024. URL https: //arxiv.org/abs/2406.09509 .9Score Matched Actor-Critic 
+
+Elgharabawy, A., Li, M., and Zhang, W. Reproducing analysis on batch size and learningrate for model general-ization, 2020. URL https://openreview.net/ forum?id=BMbPxn4a-A . Submitted to NeurIPS 2019 Reproducibility Challenge. Emmons, S., Eysenbach, B., Kostrikov, I., and Levine, S. Rvs: What is essential for offline rl via supervised learning?, 2022. URL https://arxiv.org/abs/ 2112.10751 .Frankle, J., Dziugaite, G. K., Roy, D. M., and Carbin, M. Linear mode connectivity and the lottery ticket hypoth-esis, 2020. URL https://arxiv.org/abs/1912. 05671 .Frans, K., Abbeel, P., and Levine, S. What really matters in matrix-whitening optimizers?, 2025. URL https: //arxiv.org/abs/2510.25000 .Fu, J., Kumar, A., Nachum, O., Tucker, G., and Levine, S. D4 {rl }: Datasets for deep data-driven reinforcement learning, 2021. URL https://openreview.net/ forum?id=px0-N3_KjA .Fujimoto, S. and Gu, S. S. A minimalist approach to offline reinforcement learning. In Ranzato, M., Beygelzimer, A., Dauphin, Y., Liang, P., and Vaughan, J. W. (eds.), 
+
+Advances in Neural Information Processing Systems ,volume 34, pp. 20132–20145. Curran Associates, Inc., 2021. URL https://proceedings.neurips. cc/paper_files/paper/2021/file/ a8166da05c5a094f7dc03724b41886e5-Paper. pdf .Fujimoto, S., van Hoof, H., and Meger, D. Addressing func-tion approximation error in actor-critic methods, 2018. URL https://arxiv.org/abs/1802.09477 .Garipov, T., Izmailov, P., Podoprikhin, D., Vetrov, D., and Wilson, A. G. Loss surfaces, mode connectivity, and fast ensembling of dnns, 2018. URL https://arxiv. org/abs/1802.10026 .Ghosal, G. R., Zurek, M., Brown, D. S., and Dragan, A. D. The effect of modeling human rationality level on learn-ing rewards from multiple feedback types, 2023. URL 
+
+https://arxiv.org/abs/2208.10687 .Gu, S., Lillicrap, T., Sutskever, I., and Levine, S. Continu-ous deep q-learning with model-based acceleration, 2016. URL https://arxiv.org/abs/1603.00748 .Guo, S., Sun, Y., Hu, J., Huang, S., Chen, H., Piao, H., Sun, L., and Chang, Y. A simple unified uncertainty-guided framework for offline-to-online reinforcement learning, 2024. URL https://arxiv.org/abs/ 2306.07541 .Haarnoja, T., Tang, H., Abbeel, P., and Levine, S. Rein-forcement learning with deep energy-based policies, 2017. URL https://arxiv.org/abs/1702.08165 .Haarnoja, T., Zhou, A., Hartikainen, K., Tucker, G., Ha, S., Tan, J., Kumar, V., Zhu, H., Gupta, A., Abbeel, P., et al. Soft actor-critic algorithms and applications. arXiv preprint arXiv:1812.05905 , 2018. Hansen-Estruch, P., Kostrikov, I., Janner, M., Kuba, J. G., and Levine, S. Idql: Implicit q-learning as an actor-critic method with diffusion policies, 2023. URL https: //arxiv.org/abs/2304.10573 .He, F., Liu, T., and Tao, D. Control batch size and learning rate to generalize well: Theoretical and empirical evi-dence. In Wallach, H., Larochelle, H., Beygelzimer, A., d'Alch ´e-Buc, F., Fox, E., and Garnett, R. (eds.), Advances in Neural Information Processing Systems , volume 32. Curran Associates, Inc., 2019. Ho, J., Jain, A., and Abbeel, P. Denoising diffusion prob-abilistic models, 2020. URL https://arxiv.org/ abs/2006.11239 .Ibayashi, H. and Imaizumi, M. Why does SGD pre-fer flat minima?: Through the lens of dynamical sys-tems. In When Machine Learning meets Dynamical Sys-tems: Theory and Applications , 2023. URL https: //openreview.net/forum?id=Zffca0v-i5S .Intelligence, P., Amin, A., Aniceto, R., Balakrishna, A., Black, K., Conley, K., Connors, G., Darpinian, J., Dha-balia, K., DiCarlo, J., Driess, D., Equi, M., Esmail, A., Fang, Y., Finn, C., Glossop, C., Godden, T., Goryachev, I., Groom, L., Hancock, H., Hausman, K., Hussein, G., Ichter, B., Jakubczak, S., Jen, R., Jones, T., Katz, B., Ke, L., Kuchi, C., Lamb, M., LeBlanc, D., Levine, S., Li-Bell, A., Lu, Y., Mano, V., Mothukuri, M., Nair, S., Pertsch, K., Ren, A. Z., Sharma, C., Shi, L. X., Smith, L., Sprin-genberg, J. T., Stachowicz, K., Stoeckle, W., Swerdlow, A., Tanner, J., Torne, M., Vuong, Q., Walling, A., Wang, H., Williams, B., Yoo, S., Yu, L., Zhilinsky, U., and Zhou, Z. π∗
+
+> 0.6
+
+: a vla that learns from experience, 2025. URL 
+
+https://arxiv.org/abs/2511.14759 .Janner, M., Du, Y., Tenenbaum, J. B., and Levine, S. Plan-ning with diffusion for flexible behavior synthesis, 2022. URL https://arxiv.org/abs/2205.09991 .Jin, Y., Yang, Z., and Wang, Z. Is pessimism provably efficient for offline rl?, 2022. URL https://arxiv. org/abs/2012.15085 .Jordan, K. Muon: An optimizer for hidden layers in neu-ral networks. https://kellerjordan.github. io/posts/muon/ , 2024. Blog post. 10 Score Matched Actor-Critic 
+
+Juneja, J., Bansal, R., Cho, K., Sedoc, J., and Saphra, N. Lin-ear connectivity reveals generalization strategies, 2023. URL https://arxiv.org/abs/2205.12411 .Kingma, D. P. and Ba, J. Adam: A method for stochastic op-timization, 2017. URL https://arxiv.org/abs/ 1412.6980 .Kleinberg, B., Li, Y., and Yuan, Y. An alterna-tive view: When does SGD escape local minima? In Dy, J. and Krause, A. (eds.), Proceedings of the 35th International Conference on Machine Learn-ing , volume 80 of Proceedings of Machine Learn-ing Research , pp. 2698–2707. PMLR, 10–15 Jul 2018. URL https://proceedings.mlr.press/v80/ kleinberg18a.html .Kostrikov, I., Tompson, J., Fergus, R., and Nachum, O. Of-fline reinforcement learning with fisher divergence critic regularization, 2021. URL https://arxiv.org/ abs/2103.08050 .Kostrikov, I., Nair, A., and Levine, S. Offline reinforcement learning with implicit q-learning. In International Confer-ence on Learning Representations , 2022. URL https: //openreview.net/forum?id=68n2s9ZJWF8 .Kumar, A., Zhou, A., Tucker, G., and Levine, S. Conserva-tive q-learning for offline reinforcement learning, 2020. URL https://arxiv.org/abs/2006.04779 .Lee, H., Hwang, D., Kim, D., Kim, H., Tai, J. J., Sub-ramanian, K., Wurman, P. R., Choo, J., Stone, P., and Seno, T. Simba: Simplicity bias for scaling up parame-ters in deep reinforcement learning. In The Thirteenth International Conference on Learning Representations ,2025. URL https://openreview.net/forum? id=jXLiDKsuDo .Lee, S., Seo, Y., Lee, K., Abbeel, P., and Shin, J. Offline-to-online reinforcement learning via balanced replay and pessimistic q-ensemble, 2021. URL https://arxiv. org/abs/2107.00591 .Li, J., Hu, X., Xu, H., Liu, J., Zhan, X., and Zhang, Y.-Q. Proto: Iterative policy regularized offline-to-online reinforcement learning. arXiv preprint arXiv:2305.15669 ,2023. Lillicrap, T. P., Hunt, J. J., Pritzel, A., Heess, N., Erez, T., Tassa, Y., Silver, D., and Wierstra, D. Continuous control with deep reinforcement learning, 2019. URL 
+
+https://arxiv.org/abs/1509.02971 .Liu, H., Xie, S. M., Li, Z., and Ma, T. Same pre-training loss, better downstream: Implicit bias matters for lan-guage models. In Krause, A., Brunskill, E., Cho, K., Engelhardt, B., Sabato, S., and Scarlett, J. (eds.), Pro-ceedings of the 40th International Conference on Ma-chine Learning , volume 202 of Proceedings of Machine Learning Research , pp. 22188–22214. PMLR, 23–29 Jul 2023. URL https://proceedings.mlr.press/ v202/liu23ao.html .Mirzadeh, S. I., Farajtabar, M., Gorur, D., Pascanu, R., and Ghasemzadeh, H. Linear mode connectivity in multitask and continual learning, 2020. URL https://arxiv. org/abs/2010.04495 .Mnih, V., Kavukcuoglu, K., Silver, D., Graves, A., Antonoglou, I., Wierstra, D., and Riedmiller, M. Play-ing atari with deep reinforcement learning, 2013. URL 
+
+https://arxiv.org/abs/1312.5602 .Nair, A., Gupta, A., Dalal, M., and Levine, S. Awac: Accel-erating online reinforcement learning with offline datasets. 
+
+arXiv preprint arXiv:2006.09359 , 2020. Nakamoto, M., Zhai, S., Singh, A., Sobol Mark, M., Ma, Y., Finn, C., Kumar, A., and Levine, S. Cal-ql: Calibrated offline rl pre-training for efficient online fine-tuning. Ad-vances in Neural Information Processing Systems , 36: 62244–62269, 2023. NVIDIA, :, Bjorck, J., Casta ˜neda, F., Cherniadev, N., Da, X., Ding, R., Fan, L. J., Fang, Y., Fox, D., Hu, F., Huang, S., Jang, J., Jiang, Z., Kautz, J., Kundalia, K., Lao, L., Li, Z., Lin, Z., Lin, K., Liu, G., Llontop, E., Magne, L., Mandlekar, A., Narayan, A., Nasiriany, S., Reed, S., Tan, Y. L., Wang, G., Wang, Z., Wang, J., Wang, Q., Xiang, J., Xie, Y., Xu, Y., Xu, Z., Ye, S., Yu, Z., Zhang, A., Zhang, H., Zhao, Y., Zheng, R., and Zhu, Y. Gr00t n1: An open foundation model for generalist humanoid robots, 2025. URL https://arxiv.org/abs/2503.14734 .Peer, O., Tessler, C., Merlis, N., and Meir, R. Ensemble bootstrapping for q-learning, 2021. URL https:// arxiv.org/abs/2103.00445 .Piche, A., Pardinas, R., Vazquez, D., Mordatch, I., and Pal, C. Implicit offline reinforcement learning via supervised learning, 2022. URL https://arxiv.org/abs/ 2210.12272 .Ramesh, A., Pavlov, M., Goh, G., Gray, S., Voss, C., Rad-ford, A., Chen, M., and Sutskever, I. Zero-shot text-to-image generation, 2021. URL https://arxiv.org/ abs/2102.12092 .Schmidhuber, J. Reinforcement learning upside down: Don’t predict rewards – just map them to actions, 2020. URL https://arxiv.org/abs/1912.02875 .Schulman, J., Wolski, F., Dhariwal, P., Radford, A., and Klimov, O. Proximal policy optimization algorithms. 
+
+arXiv preprint arXiv:1707.06347 , 2017. 11 Score Matched Actor-Critic 
+
+Shukor, M., Aubakirova, D., Capuano, F., Kooijmans, P., Palma, S., Zouitine, A., Aractingi, M., Pascal, C., Russi, M., Marafioti, A., Alibert, S., Cord, M., Wolf, T., and Cadene, R. Smolvla: A vision-language-action model for affordable and efficient robotics, 2025. URL https: //arxiv.org/abs/2506.01844 .Song, Y. and Ermon, S. Generative modeling by estimating gradients of the data distribution, 2020. URL https: //arxiv.org/abs/1907.05600 .Team, T. L., Barreiros, J., Beaulieu, A., Bhat, A., Cory, R., Cousineau, E., Dai, H., Fang, C.-H., Hashimoto, K., Irshad, M. Z., Itkina, M., Kuppuswamy, N., Lee, K.-H., Liu, K., McConachie, D., McMahon, I., Nishimura, H., Phillips-Grafflin, C., Richter, C., Shah, P., Srinivasan, K., Wulfe, B., Xu, C., Zhang, M., Alspach, A., Angeles, M., Arora, K., Guizilini, V. C., Castro, A., Chen, D., Chu, T.-S., Creasey, S., Curtis, S., Denitto, R., Dixon, E., Dusel, E., Ferreira, M., Goncalves, A., Gould, G., Guoy, D., Gupta, S., Han, X., Hatch, K., Hathaway, B., Henry, A., Hochsztein, H., Horgan, P., Iwase, S., Jackson, D., Karamcheti, S., Keh, S., Masterjohn, J., Mercat, J., Miller, P., Mitiguy, P., Nguyen, T., Nimmer, J., Noguchi, Y., Ong, R., Onol, A., Pfannenstiehl, O., Poyner, R., Rocha, L. P. M., Richardson, G., Rodriguez, C., Seale, D., Sherman, M., Smith-Jones, M., Tago, D., Tokmakov, P., Tran, M., Hoorick, B. V., Vasiljevic, I., Zakharov, S., Zolotas, M., Ambrus, R., Fetzer-Borelli, K., Burchfiel, B., Kress-Gazit, H., Feng, S., Ford, S., and Tedrake, R. A careful examination of large behavior models for multitask dexterous manipulation, 2025. URL https: //arxiv.org/abs/2507.05331 .van der Maaten, L. and Hinton, G. Visualizing data using t-sne. Journal of Machine Learning Research , 9(86):2579– 2605, 2008. URL http://jmlr.org/papers/v9/ vandermaaten08a.html .Wen, X., Yu, X., Yang, R., Chen, H., Bai, C., and Wang, Z. Towards robust offline-to-online reinforcement learn-ing via uncertainty and smoothness. Journal of Artifi-cial Intelligence Research , 81:481–509, November 2024. ISSN 1076-9757. doi: 10.1613/jair.1.16457. URL http: //dx.doi.org/10.1613/jair.1.16457 .Wu, Y., Tucker, G., and Nachum, O. Behavior regularized offline reinforcement learning, 2019. URL https:// arxiv.org/abs/1911.11361 .Yu, Z. and Zhang, X. Actor-critic alignment for offline-to-online reinforcement learning. In Krause, A., Brunskill, E., Cho, K., Engelhardt, B., Sabato, S., and Scarlett, J. (eds.), Proceedings of the 40th International Conference on Machine Learning , volume 202 of Proceedings of Ma-chine Learning Research , pp. 40452–40474. PMLR, 23– 29 Jul 2023. URL https://proceedings.mlr. press/v202/yu23k.html .Zhang, H., Xu, W., and Yu, H. Policy expansion for bridging offline-to-online reinforcement learning. arXiv preprint arXiv:2302.00935 , 2023a. Zhang, Y., Liu, J., Li, C., Niu, Y., Yang, Y., Liu, Y., and Ouyang, W. A perspective of q-value estimation on offline-to-online reinforcement learning, 2023b. URL 
+
+https://arxiv.org/abs/2312.07685 .Zhao, K., Ma, Y., Liu, J., HAO, J., ZHENG, Y., and Meng, Z. Improving offline-to-online reinforcement learning with q-ensembles. In ICML Workshop on New Frontiers in Learning, Control, and Dynamical Systems ,2023. URL https://openreview.net/forum? id=96v4oHJ1OE .Zheng, H., Luo, X., Wei, P., Song, X., Li, D., and Jiang, J. Adaptive policy learning for offline-to-online reinforce-ment learning. In Proceedings of the AAAI Conference on Artificial Intelligence , volume 37, pp. 11372–11380, 2023. Zhou, Z., Peng, A., Li, Q., Levine, S., and Kumar, A. Ef-ficient online reinforcement learning fine-tuning need not retain offline data. arXiv preprint arXiv:2412.07762 ,2024. 12 Score Matched Actor-Critic 
+
+A. Reinforcement Learning 
+
+We assume the traditional Markov Decision Process (MDP) formulation of RL, which optimizes policies π towards maximizing the future discounted sum of rewards. An MDP, commonly referred to as an environment, is defined as a 6-tuple (S, A, R s,a , T s′
+
+> s,a
+
+, d 0, γ ) where: S is a state space, A an action space, Rs,a : S × A → R a reward function, 
+
+T s′ 
+
+> s,a
+
+: S × A → ∆( S) a transition function which takes a state-action pair and returns a next state, and d0 an initial state distribution. A policy π : S → ∆( A) maps states to distributions over actions. The optimization objective for RL is to find π which maximizes J (π) = Es0∼d0 [P∞ 
+
+> t=1
+
+γtR(st, a t)|st ∼ T s′
+
+> s,a
+
+(st|st−1, a t−1), a t ∼ π(at|st)] which is the expected return from following π in the MDP. For notation, we use s for states, a for actions, r for rewards, π(a|s) for policies, Gt
+
+for the discounted sum of rewards following time-step t, Eπ [P∞ 
+
+> t
+
+γtR(st, a t)] as the expected sum of rewards following π.We denote the policy that generates a dataset D by πD and define datasets as a set of state, action, reward, and next state tuples: D = {(si, a i, r i, s ′
+
+> i
+
+)}Ni=1 .
+
+B. Value-based Reinforcement Learning 
+
+Value-based RL is an efficient approach for learning optimal policies from on-policy and off-policy experience. It involves learning a Q-function Qπ (s, a ), also called a critic, for a policy π which takes the current state s and action a and attempts to predict the discounted sum of future rewards Eπ [PTt=0 γtR(st, a t)|a0 = a, s 0 = s]. We craft prediction targets for learning a Q-function through the temporal difference update that leverages the following identity: 
+
+Eπ [
+
+> ∞
+
+X
+
+> l=t
+
+γlrl] = rt + γEπ [
+
+> ∞
+
+X
+
+> l=t+1
+
+γl−tR(sl, a l)] = rt + γEs′∼T s′
+
+> s,a (s,a )
+> a′∼π(a′|s)
+
+[Q(s′, a ′)] 
+
+The Q-function is then learned by minimizing Eπ [( Q(s, a ) − r(s, a ) − γQ (s′, a ′)) 2]. Value-based RL uses the learned Q-function to update the policy. This approach relies on Q-function being accurate in the states and actions where the policy queries it during learning. Hence, inaccurate critics can cause divergences in learning because the policy can be optimized towards sampling bad actions that the critic has mis-estimated. 
+
+C. Offline Reinforcement Learning 
+
+Offline RL assumes access to only a dataset D = {(si, a i, r i, s ′
+
+> i
+
+)}Ni=1 and prohibits the policy from directly interacting with the MDP. Value estimation errors are the main problem that offline RL methods attempt to overcome. In the temporal difference update, the policy is able to pick unseen actions for a′. This causes the created prediction target to depend on the Q-function’s out-of-distribution predictions. If these out-of-distribution predictions are over-estimates, a biased and incorrectly high target will be formed for our Q-value. This can, in turn, reinforce the policy to sample bad out-of-distribution actions because the Q-function over-estimates their value. To avoid this, the majority of offline RL methods either train the policy to generate actions as close to the data as possible (Fujimoto & Gu, 2021; Kostrikov et al., 2022), restrict the policy from sampling actions in creating the TD-target, or use pessimism , which explicitly minimizes out-of-distribution Q-value predictions (Kumar et al., 2020; Nakamoto et al., 2023). 
+
+D. Batch size and notions of sharpness matter in offline-to-online RL 
+
+Optimization landscapes have shown that the ratio between batch size and learning rate impacts the generalization strength of the final parameters (He et al., 2019; Elgharabawy et al., 2020). The best generalizing offline RL actor-critic should generalize to the online setting without suffering from distribution shift. So, we investigate whether the findings transfer over to the offline-to-online setting. We vary the ratio by varying the batch size and observe how it relates to the performance drops in offline-to-online RL. In Figure 9, we ablate over several offline batch sizes while keeping an online batch size of 512 constant. We observe that larger batch sizes uniformly lead to better offline performance. Interestingly, we observe that across methods, the performance drops to a similar point. For the baselines, this common point is worse than any offline performance value. 13 Score Matched Actor-Critic 1.0 0.5 0.0 0.5 1.0  
+
+> Gradient Steps
+> (Centered Around Offline Online)
+> ×10 5
+> 1000
+> 800
+> 600
+> Reward
+
+IQL      
+
+> 1.0 0.5 0.0 0.5 1.0
+> Gradient Steps
+> (Centered Around Offline Online)
+> ×10 5
+> 1000
+> 800
+> Reward
+
+TD3+BC      
+
+> 1.0 0.5 0.0 0.5 1.0
+> Gradient Steps
+> (Centered Around Offline Online)
+> ×10 5
+> 1000
+> 800
+> 600
+> Reward
+
+CalQL      
+
+> 1.0 0.5 0.0 0.5 1.0
+> Gradient Steps
+> (Centered Around Offline Online)
+> ×10 5
+> 800
+> 600
+> 400
+> Reward
+
+SMAC    
+
+> 32 64 128 256
+
+Figure 9. Offline Batch Size has negligible effect on failing baselines, but impacts SMAC 1.0 0.5 0.0 0.5 1.0                     
+
+> Gradient Steps
+> (Centred Around Offline Online)
+> ×10 5
+> 1000
+> 800
+> Reward
+> Iql
+> 1.0 0.5 0.0 0.5 1.0
+> Gradient Steps
+> (Centred Around Offline Online)
+> ×10 5
+> 1000
+> 800
+> Reward
+> TD3+BC
+> 1.0 0.5 0.0 0.5 1.0
+> Gradient Steps
+> (Centred Around Offline Online)
+> ×10 5
+> 1000
+> 800
+> 600
+> Reward
+> Calql
+> 1.0 0.5 0.0 0.5 1.0
+> Gradient Steps
+> (Centred Around Offline Online)
+> ×10 5
+> 1000
+> 750
+> 500
+> 250
+> Reward
+> Smac
+> 64 128 256 512 1024
+
+Figure 10. Larger batch sizes lead to faster online adaptation 
+
+However, for our method, that point is the worst offline performance value we observe over batch sizes, and it is often higher than or equal to the baselines’ observed offline performances. Following this observation about minimum batch size, we set an offline batch size of 32 and ablate the online batch size across methods. We plot the results in Figure 10. Similarly to Zhou et al. (2024), we observe that generally larger batch sizes lead to stronger performance, except for the case of TD3+BC, where we continue to see that all batch size choices lead to a drop in performance which is not recovered from within the number of online steps we allotted for the experiment. 
+
+E. Ablating Reinforcement via Supervision in Offline-to-Online performance 
+
+In the figure below we plot the performance of SMAC when we use RvS to train and inference the diffusion model vs. when we train the diffusion model without any extra conditioning. We observe that the performance is still significantly stronger than the baselines but suffers slight drops in performance when transferring to online learning across the environments. We also observe that the offline performance is worsened as well. Given that the three environments are ones where the main assumption underlying SMAC is broken, this puts more evidence behind the claim that RvS is a key component allowing SMAC to work when datasets fail the key assumption that ∇a log π(a|s) ∝ ∇ aQ(s, a ).14 Score Matched Actor-Critic 1.0 0.5 0.0 0.5 1.0 1.5 2.0                    
+
+> Gradient Steps
+> (Centered Around Offline Online)
+> ×10 5
+> 1000
+> 800
+> 600
+> 400
+> 200
+> Reward
+> Kitchen
+> 1.0 0.5 0.0 0.5 1.0 1.5 2.0
+> Gradient Steps
+> (Centered Around Offline Online)
+> ×10 5
+> 200
+> 180
+> 160
+> 140
+> 120
+> 100
+> 80
+> 60
+> Reward
+> Door
+> 1.0 0.5 0.0 0.5 1.0 1.5 2.0
+> Gradient Steps
+> (Centered Around Offline Online)
+> ×10 5
+> 200
+> 180
+> 160
+> 140
+> 120
+> 100
+> Reward
+> Relocate
+> SMAC SMAC (no RVS) IQL CalQL TD3+BC
+
+Figure 11. Removing RvS hurts transfer in 2/3 environments but has mixed impact on online performance. SMAC still dominates baselines without using RvS for training the diffusion model 
+
+F. Verifying Score-Matching Identity Throughout Training 
+
+Figure 12. Q-function and score of policy are proportional throughout training . We plot the Q-function and policy for a SAC agent after 50, 100, 250, and 400 episodes of training in the Reacher-v2 environment. 
+
+In Figure 12 we plot π(a|s) and Q(s, a ) in an environment where A is 2-dimensional. We plot π(a|s) and Q(s, a ) at several checkpoints during training. The figure shows that identity (1) appears to roughly hold during online training. 
+
+G. Regret during online phase 
+
+For each environment we find the max reward observed over all runs and denote it R∗. For a run with observed online rewards {Rt}∞
+
+t=1 we define its regret at 1
+
+T
+
+PTt=1 R∗ − Rt. In the tables below we list the regret of each offline-online algorithm pairing per environment. We write the mean and standard error of the regret. We also shade cells gold, silver, and bronze to signify lowest regret, second lowest regret, and third lowest regret per environment. 15 Score Matched Actor-Critic 
+
+Table 2. Offline-to-online regret when fine-tuning with SAC ( ↓ lower is better). Entries are mean ± std over seeds; “-” indicates not evaluated. Cell colors are assigned per environment across all four tables : best (gold), second (silver), third (bronze). Offline Algorithm Environment CalQL/CQL IQL SMAC TD3+BC door 134.5 ± 1.6 120.0 ± 0.8 50.3 ± 2.7 129.7 ± 2.4 hopper 293.7 ± 20.4 798.0 ± 126.5 386.3 ± 10.8 3213.3 ± 16.3 kitchen 467.1 ± 38.1 492.9 ± 13.7 131.4 ± 13.0 762.5 ± 11.4 pen 8.0 ± 0.7 10.3 ± 0.7 5.3 ± 0.7 55.2 ± 1.9 relocate 98.1 ± 0.4 97.4 ± 0.4 62.8 ± 2.1 99.2 ± 0.0 walker2d 1553.7 ± 0.0 1801.2 ± 180.6 650.5 ± 39.9 4739.6 ± 125.8 
+
+Table 3. Offline-to-online regret when fine-tuning with TD3 ( ↓ lower is better). Entries are mean ± std over seeds; “-” indicates not evaluated. Cell colors are assigned per environment across all four tables : best (gold), second (silver), third (bronze). Offline Algorithm Environment CalQL/CQL IQL SMAC TD3+BC door 131.1 ± 3.0 126.1 ± 0.4 65.5 ± 2.1 137.7 ± 1.4 hopper 311.4 ± 46.5 1834.3 ± 150.3 297.3 ± 6.5 329.3 ± 39.0 kitchen 526.6 ± 32.3 445.9 ± 13.2 259.3 ± 22.8 529.1 ± 21.6 pen 8.4 ± 0.7 16.1 ± 0.5 8.5 ± 0.8 41.6 ± 2.9 relocate 97.8 ± 0.5 95.2 ± 0.3 58.3 ± 1.3 99.1 ± 0.0 walker2d 1148.2 ± 63.4 4689.0 ± 101.3 987.5 ± 17.2 454.9 ± 62.2 
+
+Table 4. Offline-to-online regret when fine-tuning with AWR ( ↓ lower is better). Entries are mean ± std over seeds; “-” indicates not evaluated. Cell colors are assigned per environment across all four tables : best (gold), second (silver), third (bronze). Offline Algorithm Environment CalQL/CQL IQL SMAC TD3+BC door 129.9 ± 0.7 127.9 ± 0.4 122.8 ± 0.8 136.0 ± 0.7 hopper 533.7 ± 43.0 958.0 ± 89.9 353.0 ± 2.6 552.4 ± 26.8 kitchen 343.7 ± 7.3 446.4 ± 10.0 340.6 ± 15.8 837.0 ± 3.7 pen 28.8 ± 2.6 18.0 ± 0.5 13.3 ± 0.7 32.9 ± 3.0 relocate 99.0 ± 0.1 95.8 ± 0.3 98.3 ± 0.2 98.1 ± 0.2 walker2d 1136.9 ± 42.6 1918.7 ± 114.4 544.4 ± 58.1 1988.4 ± 312.6 
+
+Table 5. Offline-to-online regret when fine-tuning with TD3+BC ( ↓ lower is better). Entries are mean ± std over seeds; “-” indicates not evaluated. Cell colors are assigned per environment across all four tables : best (gold), second (silver), third (bronze). Offline Algorithm Environment CalQL/CQL IQL SMAC TD3+BC door 140.8 ± 0.1 127.0 ± 0.3 72.3 ± 1.8 140.3 ± 0.2 hopper 2469.9 ± 42.3 1392.6 ± 118.4 425.5 ± 44.3 1295.4 ± 62.3 kitchen 256.6 ± 4.0 385.2 ± 7.6 262.2 ± 14.6 373.4 ± 11.5 pen 17.8 ± 2.9 16.1 ± 0.6 7.7 ± 0.6 31.8 ± 1.0 relocate 99.1 ± 0.0 95.3 ± 0.3 84.9 ± 2.0 98.2 ± 0.2 walker2d 2642.5 ± 235.6 1548.6 ± 118.0 1232.3 ± 194.5 1242.6 ± 64.8 
+
+16 Score Matched Actor-Critic 1.0 0.5 0.0 0.5 1.0 1.5 2.0 
+
+Gradient Steps 
+
+(Centered Around Offline Online) 
+
+×10 5
+
+1000 
+
+500 
+
+> Reward
+
+kitchen 
+
+1.0 0.5 0.0 0.5 1.0 1.5 2.0 
+
+Gradient Steps 
+
+(Centered Around Offline Online) 
+
+×10 5
+
+60 
+
+40 
+
+> Reward
+
+pen 
+
+1.0 0.5 0.0 0.5 1.0 1.5 2.0 
+
+Gradient Steps 
+
+(Centered Around Offline Online) 
+
+×10 5
+
+200 
+
+190 
+
+180 
+
+> Reward
+
+door 
+
+1.0 0.5 0.0 0.5 1.0 1.5 2.0 
+
+Gradient Steps 
+
+(Centered Around Offline Online) 
+
+×10 5
+
+200 
+
+195 
+
+190 
+
+> Reward
+
+relocate 
+
+1.0 0.5 0.0 0.5 1.0 1.5 2.0 
+
+Gradient Steps 
+
+(Centered Around Offline Online) 
+
+×10 5
+
+1000 
+
+2000 
+
+3000 
+
+> Reward
+
+hopper 
+
+1.0 0.5 0.0 0.5 1.0 1.5 2.0 
+
+Gradient Steps 
+
+(Centered Around Offline Online) 
+
+×10 5
+
+2000 
+
+4000 
+
+> Reward
+
+walker2d 
+
+SMAC CalQL CQL IQL TD3+BC 
+
+Figure 13. Offline-to-Online RL curves when fine-tuning with AWR. Observe that SMAC achieves smooth transfer on 4/6 environments, dominating other approaches in 5/6 environments. However, in kitchen pen, door, and relocate which are our hardest benchmarks the reward curves are universally lower than for other fine-tuning approaches. 
+
+17 Score Matched Actor-Critic 
+
+H. Sensitivity to κ
+
+In Figure 14 we show offline-to-online performance curves for SMAC when fine-tuned by SAC in the kitchen task across varying values of κ. SMAC shows good performance across a wide range of values for κ, with performance improving as κ
+
+increases before eventually levelling off. We do however observe that κ = 5 performance is significantly worse and there is a slight drop upon transfer to online RL. For κ < 5 offline performance is unable to maximize reward at all, staying at the lowest reward possible. 1.0 0.5 0.0 0.5 1.0 1.5 2.0            
+
+> Gradient Steps (Centered Around Online Training) ×10 5
+> 1000
+> 800
+> 600
+> 400
+> 200
+> Average Return
+> 012510 20 40 80 120 160 Offline
+> SMAC Kitchen: Kappa Ablation
+
+Figure 14. SMAC is robust to varying κ once κ exceeds a certain threshold . SMAC shows good performance across a wide range of values for κ, with performance improving as κ increases before eventually levelling off. Once κ > 5 performance begins to look the same between runs. 
+
+I. How much does adding Muon matter? 
+
+In Figure 15, we plot the considered baselines’ performance when optimized with Muon in the kitchen-partial-v0 
+
+environment. We do this to answer whether Muon was the only key improvement that led to the stable transfer we get from SMAC. Optimizing with Muon leads to better offline performance, but worse transfer stability with IQL and TD3+BC experiencing complete policy collapse. Previous papers studying the use of Muon and other ”whitening” optimizers show that Muon converges to maxima which exhibit smaller condition numbers in the loss Hessian and take steps that minimize the spectral norm of the gradients (Bernstein & Newhouse, 2024; Frans et al., 2025). This leads the network to converge to flatter maxima, which are in turn harder to escape from if trying to optimize towards a different maximum (Ibayashi & Imaizumi, 2023; Kleinberg et al., 2018). We now plot the results across the 6 environments when we optimize SMAC with Adam instead of Muon. We find that SMAC still transfers in 3/6 environments but performance suffers across nearly all environments except Hopper. 18 Score Matched Actor-Critic 1.0 0.5 0.0 0.5 1.0 1.5 
+
+# Gradient Steps 
+
+# (Centered Around Offline Online) 
+
+## ×10 5
+
+# 0.0 
+
+# 0.2 
+
+# 0.4 
+
+# 0.6 
+
+> Reward
+
+IQL (Adam) 
+
+IQL (Muon) 
+
+CalQL (Adam) 
+
+CalQL (Muon) 
+
+TD3+BC (Adam) 
+
+TD3+BC (Muon) 
+
+Figure 15. Optimizing the baselines with Muon yields no offline-to-online improvement 1.5 1.0 0.5 0.0 0.5 1.0 1.5 2.0 
+
+Gradient Steps 
+
+(Centered Around Offline Online) 
+
+×10 5
+
+1000 
+
+800 
+
+600 
+
+400 
+
+200 
+
+> Reward
+
+kitchen 
+
+1.5 1.0 0.5 0.0 0.5 1.0 1.5 2.0 
+
+Gradient Steps 
+
+(Centered Around Offline Online) 
+
+×10 5
+
+80 
+
+60 
+
+40 
+
+20 
+
+> Reward
+
+pen 
+
+1.5 1.0 0.5 0.0 0.5 1.0 1.5 2.0 
+
+Gradient Steps 
+
+(Centered Around Offline Online) 
+
+×10 5
+
+200 
+
+175 
+
+150 
+
+125 
+
+100 
+
+75 
+
+50 
+
+> Reward
+
+door 
+
+1.5 1.0 0.5 0.0 0.5 1.0 1.5 2.0 
+
+Gradient Steps 
+
+(Centered Around Offline Online) 
+
+×10 5
+
+200 
+
+180 
+
+160 
+
+140 
+
+120 
+
+100 
+
+> Reward
+
+relocate 
+
+1.5 1.0 0.5 0.0 0.5 1.0 1.5 2.0 
+
+Gradient Steps 
+
+(Centered Around Offline Online) 
+
+×10 5
+
+0
+
+1000 
+
+2000 
+
+3000 
+
+> Reward
+
+hopper 
+
+1.5 1.0 0.5 0.0 0.5 1.0 1.5 2.0 
+
+Gradient Steps 
+
+(Centered Around Offline Online) 
+
+×10 5
+
+0
+
+1000 
+
+2000 
+
+3000 
+
+4000 
+
+5000 
+
+> Reward
+
+walker2d 
+
+SMAC SMAC (No Muon) IQL CalQL TD3+BC 
+
+Figure 16. Muon critical for offline-to-online success of SMAC we plot the offline-to-online curves for SMAC when using Muon vs. Adam optimizers. We observe that using Adam leads to a drop in performance during transfer in 3/6 environments whereas using Muon experiences no drop across all environments. 
+
+19 Score Matched Actor-Critic 
+
+J. Diffusion Model Introduction, Training, and Hyper-parameters 
+
+A diffusion model ϵθ (x) learns to match noised versions of ∇ log p(x) at K varying noise levels (Song & Ermon, 2020; Ho et al., 2020). In practice, a diffusion model is trained to reverse the K-step noising process xk = √¯αkxk−1 + √1 − ¯αkϵk
+
+where, ϵ ∼ N (0 , I ) and {αk}Kk=1 define the noise schedule. The noise schedule can be any monotonically decreasing function, but, for our experiments we used the cosine noise schedule (Ramesh et al., 2021). The reverse denoising step is 
+
+xk−1 = ( xk − √1 − ¯αkϵk)/√¯αk. The ¯αk noise schedule is assumed to be known and, so the diffusion model is trained to predict ϵ given √¯αkx + √1 − ¯αkϵ and k as input. The loss for a diffusion model ϵθ is 
+
+Ex∼D,ϵ ∼I,k ∼U [k][|| ϵ − ϵθ (√¯αkx + √1 − ¯αkϵ, k )|| 22]
+
+This loss function is equivalent to the noised conditional score network loss (Song & Ermon, 2020). So, the converged model ϵθ (x, k ) estimates ∇ log p(x)/√¯αk, a scaled version of the score. 
+
+J.1. Hyper-parameters 
+
+We use the CleanDiffuser (Dong et al., 2024) package for initializing, training, and inferencing the diffusion models. Within the package we make use of the IDQMLP introduced by Hansen-Estruch et al. (2023). Recall for RvS conditioning the value is min-max normalized during training so 1 is the highest the model has seen. We list the hyper-parameter choices below: 
+
+Table 6. Diffusion-model hyper-parameters used by SMAC (diffusion BC) across task families. Each column corresponds to the diffusion configuration used for that environment family. 
+
+Hyper-parameter Locomotion Adroit Tasks Kitchen 
+
+Obs Dimension / Emb Dimension 64 / 64 64 / 64 64 / 64 Hidden Dimension 512 512 512 # of blocks 3 5 5Condition Network architecture MLP MLP MLP 
+
+Condition Network Hidden Dimensions [512, 512, 512] [256, 256, 256] [256, 256, 256] Condition out dim 64 64 64 Diffusion steps ( K) 32 32 32 Training steps 1,000,000 3,000,000 3,000,000 Batch size 512 1024 1024 RvS Conditioner Trajectory Reward Trajectory Reward Number of Tasks Completed RvS inference value γrtg 1.0 1.0 1.0 
+
+K. SMAC Hyper-parameters 
+
+20 Score Matched Actor-Critic 
+
+Table 7. SMAC (non-diffusion) hyper-parameters across task families. Diffusion-related fields are excluded and in section above. 
+
+Hyper-parameter Locomotion Adroit Tasks Kitchen 
+
+Critic Learning rate 0.0003 0.0003 0.0003 
+
+Critic hidden dims [512, 512, 512] [512, 512, 512, 512] [512, 512, 512, 512] Critic activations tanh tanh tanh 
+
+Critic ensemble size 10 10 10 Critic Target Update Ratio 0.005 0.005 0.005 Policy Learning rate 0.0001 0.0001 0.0001 
+
+Policy std transform to be ≥ 0 exp exp exp 
+
+Policy hidden dims [512, 512, 512] [256, 256, 256] [512, 512, 512] Policy activations relu relu relu 
+
+α(s) optimizer learning rate 0.0001 0.0001 0.0001 
+
+α(s) Hidden Dimensions [256, 256] [256, 256] [256, 256] 
+
+α(s) Activation relu relu relu 
+
+κ 40 40 50 Discount γ 0.99 0.99 0.99 Offline Batch Size 64 64 64 Online Batch Size 1024 1024 1024 Offline Gradient Steps 250,000 200,000 400,000 AWR Temperature 0.4 20.0 5.0 TD3+BC BC loss weight 5.0 0.2 2SAC Target Entropy -10 ·|A| -10 ·|A| -10 ·|A| 
+
+L. Baselines 
+
+L.1. IQL 
+
+IQL learns three networks a critic Qϕ, value Vψ , and policy πθ . The IQL loss functions are as follows: 
+
+L(ϕ) = Es,a,r,s ′∼D [( Qϕ(s, a ) − r − γV ψ (s′)) 2]
+
+L(ψ) = Es∼D ,a ′∼πθ (a|s)[|τ − δ(Vψ (s) − Qϕ(s, a ) < 0) |(Vψ (s) − Qϕ(s, a )) 2]
+
+The term |τ − δ(Vψ (s) − Qϕ(s, a ) < 0) | is the expectile loss so differences where Vψ (s) − Qϕ(s, a ) > 0 have τ weights and differences where Vψ (s) − Qϕ(s, a ) < 0 get (τ − 1) weights. When τ > 0.5 this incentivizes predicting above the mean. The closer τ is to 1 the more the value network is incentivized to over-shoot the Q-values. The hyper-parameters we use for IQL are listed below Table 8: IQL hyper-parameters across task families (non-diffusion). Door column uses adroit iql . Locomotion/Kitchen columns are filled us-ing the IQL default config in get config and then overridden where specified in the task config. 
+
+Hyper-parameter Locomotion Door (Adroit) Kitchen 
+
+Critic learning rate 0.0003 0.0003 0.0003 
+
+Critic hidden dims [256, 256] [256, 256, 256] [512, 512, 512] Critic activations relu relu relu 
+
+Critic ensemble size 2 2 2Target update rate 0.005 0.005 0.005 
+
+Value net learning rate 0.0003 0.0003 0.0003 
+
+Value hidden dims [256, 256] [256, 256, 256] [512, 512, 512] 
+
+Continued on next page 
+
+21 Score Matched Actor-Critic 
+
+Hyper-parameter Locomotion Door (Adroit) Kitchen 
+
+Value activations relu relu relu 
+
+Actor optimizer lr 0.0001 0.0001 0.0001 
+
+Policy std parameterization to be ≥ 0 uniform uniform uniform 
+
+Policy hidden dims [256, 256] [512, 512, 512] [512, 512, 512] Policy activations relu relu relu 
+
+Policy tanh transform distribution False False False Discount γ 0.99 0.99 0.99 Expectile τ 0.9 0.7 0.7 AWR temperature β 1.0 0.5 0.5 TD3+BC loss weight β 1.0 5.0 2.5 
+
+L.2. CalQL/CQL 
+
+Calibrated Q-Learning and Conservative Q-Learning are two offline RL methods which use pessimism. Letting Qψ be the critic, πθ the actor and V M C (s) be the observed monte-carlo return for a state s in the dataset the Calibrated Q-Learning loss functions are: 
+
+L(ψ) = Es,a,r,s ′∼D  
+
+> a′∼πθ(a|s)
+
+[( Qϕ(s, a ) − r − γQ ¯ϕ(s′, a ′)) 2 + α(E s∼D 
+
+> a∼B (s)
+
+[min( V M C (s), Q ψ (s, a ))] − Es,a ∼D [Qψ (s, a )]) 
+
+L(θ) = −Es∼D ,a ∼πθ (a|s)[Qψ (s, a ) − log( π(a|s))] 
+
+where B(s) is defined the same as its defined in section 6. The Conservative Q-Learning loss functions are: 
+
+L(ψ) = Es,a,r,s ′∼D  
+
+> a′∼πθ(a|s)
+
+[( Qϕ(s, a ) − r − γQ ¯ϕ(s′, a ′)) 2 + α(E s∼D 
+
+> a∼B (s)
+
+[Qψ (s, a )] − Es,a ∼D [Qψ (s, a )]) 
+
+L(θ) = −Es∼D ,a ∼πθ (a|s)[Qψ (s, a ) − log( π(a|s))] 
+
+From this it becomes clear how CQL is the antecedent algorithm to CalQL as CalQL modifies the second term on the CQL objective to mitigate under-estimation. In the table below the Locomotion column is for CQL while the other columns show hyper-params for CaQL Table 9: CQL / Cal-QL hyper-parameters across task families 
+
+Hyper-parameter Locomotion Adroit Kitchen 
+
+Critic learning rate 0.0003 0.0003 0.0003 
+
+Critic hidden dims [512, 512, 512] [512, 512, 512, 512] [512, 512, 512] Critic activations relu relu relu 
+
+Critic ensemble size 10 10 10 Target update rate 0.005 0.005 0.005 
+
+Policy tanh-squash dist. True True True Policy std parameterization to be ≥ 0 exp exp exp 
+
+Policy hidden dims [512, 512] [256, 256, 256] [512, 512, 512] Policy activations relu relu relu 
+
+Discount γ 0.99 0.99 0.99 Offline batch size 64 64 64 
+
+Continued on next page 
+
+22 Score Matched Actor-Critic 
+
+Hyper-parameter Locomotion Door (Adroit) Kitchen 
+
+Online batch size 512 512 512 Offline Gradient steps 250,000 200,000 400,000 CalQL/CQL α (cql alpha ) 5.0 5.0 5.0 AWR temperature β 1.0 0.5 1.0 TD3+BC loss weight β 2.5 2.5 5.0 SAC target entropy −10 · |A| −10 · |A| −10 · |A| 
+
+L.3. TD3+BC 
+
+The TD3+BC (Fujimoto & Gu, 2021) loss functions are as follows for a critic parameterized by ϕ with target params ¯ϕ, and policy parameterized by θ
+
+L(ϕ) = Es,a,r,s ′∼D  
+
+> a′∼πθ(a|s)
+
+[( Qϕ(s, a ) − r − γQ ¯ϕ(s′, a ′)) 2
+
+L(θ) = −Es,a ∼D ,a ′∼πθ (a|s)[− Qϕ(s, a )
+
+sg (|Qϕ(s, a )|) + β|| a′ − a|| 22]
+
+where sg (·) is the stop-gradient operator. We use the following hyper-parameters for TD3+BC in each environment: Table 10: TD3+BC hyper-parameters across task. 
+
+Hyper-parameter Locomotion Adroit Kitchen 
+
+Critic learning rate 0.0003 0.0003 0.0003 
+
+Critic hidden dims [512, 512, 512] [512, 512] [512, 512, 512] Critic activations relu relu relu 
+
+Critic ensemble size 10 10 10 
+
+Critic target update ratio 0.005 0.005 0.005 
+
+Policy learning rate 0.0001 0.0001 0.0001 
+
+Policy hidden dims [512, 512] [512, 512] [512, 512, 512] Policy std transformation to be ≥ 0 exp exp exp 
+
+Policy activations relu relu relu 
+
+Discount γ 0.99 0.99 0.99 
+
+Offline batch size 32 32 32 Online batch size 1024 1024 1024 Offline Gradient Steps 250,000 200,000 400,000 TD3 BC loss weight β 2 15 5.0 AWR Temperature β 1 1 1Sac target entropy −|A| −|A| −|A| 
+
+M. Generating contour graphs of planes in parameter space 
+
+To generate and plot a plane in parameter space from three parameterizations θ1, θ 2, θ 3 we follow Mirzadeh et al. (2020) and do the following: get difference vectors u := θ2 − θ1, v := θ3 − θ1 which span the plane; orthogonalize them by making u′ := u, v ′ := v − cos (u, v )v; sample parameters along grid of parameters defined by θ(t, l ) = θ + lu + tv where 
+
+t, l ∈ [−0.2, 1.2] × [−0.2, 1.2] and run in environment to get corresponding reward. Following this we use matplotlib’s 
+
+contour plotting function to generate the plot from the grid data. 23 Score Matched Actor-Critic 
+
+N. Experimental Details 
+
+N.1. Benchmark Environments 
+
+The hopper-medium-replay-v2 and walker2d-medium-replay-v2 were chosen as they are datasets with purely suboptimal behaviours from which optimal behaviour can be learned. kitchen-partial-v0 was picked as it is an example of a long-horizon task that involves composing the completion of 4 independent tasks together. Lastly, 
+
+door-binary-v0 , relocate-binary-v0 , and pen-binary-v0 were picked as they are sparse reward, long-horizon, and high-dimensional tasks where offline RL methods are known to struggle. The modifications made to them are removing failure demonstrations, and terminating episodes at states where the goal is achieved which changes the termination condition of the environment. 
+
+N.2. A note on Offline-to-Online Specific Benchmarks 
+
+We choose not to use online RL algorithms like O3F SUNG (Guo et al., 2024), PROTO (Li et al., 2023), or PEX (Zhang et al., 2023a) specifically designed for offline-to-online comparison because they are generally working on the inverse of our problem statement. Finding one online RL algorithm which works for as many offline RL algorithms. We show that sufficient BC regularization of the policy in the online phase is generally sufficient for this to be accomplished. Additionally, several of these works demonstrate significantly longer online training periods in the millions of steps to accomplish rewards which we report in the first few thousand steps when fine-tuning with SAC or TD3+BC. 
+
+N.3. Evaluating CalQL vs CQL 
+
+In infinite-horizon environments datasets fail to have full Monte-Carlo returns since trajectories must be truncated to fit into a finite dataset. So, in datasets where Monte-Carlo returns are available, we use CalQL, and when Monte-Carlo returns are unavailable we use CQL. The two environments which don’t have Monte-Carlo returns in their datasets that we test on are 
+
+hopper-medium-replay-v2 and walker2d-medium-replay-v2 as they are infinite-horizon tasks. 
+
+O. Algorithm Pseudocode 
+
+Algorithm 1 Score Matched Actor-Critic: Offline Phase 
+
+Require: Learning rates δQ, δ π , δ α and Polyak term λQ
+
+Pre-train ϵω with RvS and the Diffusion Loss initialize Qθ , π ϕ, α ψ
+
+initialize Q¯θ with ¯θ = θ
+
+for N offline steps do 
+
+Sample batch {(si, a i, r i, s ′
+
+> i
+
+)} ∼ D 
+
+Sample actions ¯ai for score-matching loss 
+
+θ ← θ − δQMuon (∇θ LSM AC (θ, ψ )) 
+
+ψ ← ψ − δω Muon (∇ψ LSM AC (θ, ψ )) 
+
+ϕ ← ϕ − δπ Muon (∇ϕLπ (ϕ)) ¯θ ← λQθ + (1 − λQ)¯θ
+
+end for 
+
+We present our algorithm Score Matched Actor-Critic (SMAC) in pseudocode. We point out that SMAC is only defined for the offline phase since our intent is for SMAC to be usable by arbitrary online actor-critic algorithms. 
+
+P. SAC and PPO respect identity at Optima 
+
+P.1. SAC 
+
+The SAC loss function for a policy π with Q-function Qπold is By assumption, let ∇a log( π(a|s)) = ∇aQ(s, a ). Then since π(a|s) must satisfy the axioms of probability measures we have R 
+
+> A
+
+π(a|s) = 1 , hence. Now, keeping s fixed we consider Q and π along only a.24 Score Matched Actor-Critic 
+
+∇a log( π(a|s)) = ∇aQ(s, a )
+
+Then integrating with respect to a gives 
+
+log( π(a|s)) = 1
+
+α Q(s, a ) + C
+
+Now, exponentiating we arrive at 
+
+π(a|s) = exp ( 1
+
+α Q(s, a ) + C)
+
+π(a|s) = exp (C)exp ( 1
+
+α Q(s, a )) 
+
+But, since R 
+
+> A
+
+π(a|s) = 1 we must have exp (C) = 1R  
+
+> A
+> 1
+> αQ(s,a )
+
+= 1 
+
+> Z(s)
+
+and hence: 
+
+π(a|s) = exp ( 1 
+
+> a
+
+(Q(s, a )) 
+
+Z(s)
+
+But since the SAC policy loss is: 
+
+DKL (π(a|s)|| exp ( 1 
+
+> α
+
+Q(s, a )) 
+
+Z(s) )
+
+We have that π minimizes the loss. 
+
+P.2. PPO 
+
+At convergence πθold = πθ , then for a fixed state s and data collected by π PPO gets the policy to maximize this expression 
+
+= Ea∼πθold (a|s)[A(s, a ) πθ (a|s)
+
+πold (a|s) ] − c2Ea∼πθ (a|s)[log( πθ (a|s))] 
+
+Recognize that θold and divide out by 1 
+
+> c2
+
+:
+
+= Ea∼πθ (a|s)[ 1
+
+c2
+
+A(s, a )] − Ea∼πθ (a|s)[log( π(a|s))] 
+
+Apply definition of advantage to separate into Q and V :
+
+= −Ea∼πθ (a|s)[ 1
+
+c2
+
+Q(s, a )] + 1
+
+c2
+
+V (s) − Ea∼πθ (a|s)[log( π(a|s))] 
+
+Apply log (exp (·)) to Q 
+
+= Ea∼πθ (a|s)[log(exp( 1
+
+c2
+
+Q)))] − Ea∼πθ (a|s)[log( π(a|s))] + V (s)
+
+Apply log rules unify the two left terms into one fraction 
+
+= Ea∼πθ (a|s)[log( exp ( 1 
+
+> c2
+
+Q)) 
+
+π(a|s)) )] + 1
+
+c2
+
+V (s)
+
+25 Score Matched Actor-Critic 
+
+Raise the first term to (( ·)−1)−1 and applying log rules bring one exponent to the front and apply the other to flip the fraction. 
+
+= −Ea∼πθ (a|s)[log( π(a|s)
+
+exp ( 1 
+
+> c2
+
+Q) )] + V (s)
+
+add and subtract log (Z(s)) :
+
+= −Ea∼πθ (a|s)[log( π(a|s)
+
+exp ( 1 
+
+> c2
+
+Q) Z(s))] + V (s) − log (Z(s)) 
+
+bring the Z(s) down to the denominator 
+
+= −Ea∼πθ (a|s)[log( π(a|s)  
+
+> exp (1
+> c2Q)
+> Z(s)
+
+)] + V (s) − log (Z(s)) 
+
+and observe that the first term is a KL-divergence: 
+
+= −DKL (π(a|s)|| exp ( 1 
+
+> c2
+
+Q)
+
+Z(s) ) + V (s) − Z(s)
+
+By the proof in the section above, we see then that π maximizes this objective function since V (s) and Z(s) are invariant to it. For the first update step of line 6 in the original PPO algorithm (Schulman et al., 2017), θ = θold . So, this objective above matches the objective at the start of the training part for every iteration of the PPO algorithm. If ∇a log( π(a|s)) =  
+
+> 1
+> c2
+
+∇aQ(s, a ) then the objective above is maximized. Since the objective above matches the objective at the first step in the training section of the PPO loop the policy will not be updated. Then θ = θold for the following updates in the training section and resulting iterations through the PPO algorithm. Thus, θ maximizes the objective. 26

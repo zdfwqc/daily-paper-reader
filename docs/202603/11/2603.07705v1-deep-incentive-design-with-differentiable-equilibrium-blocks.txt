@@ -1,0 +1,1018 @@
+Title: Deep Incentive Design with Differentiable Equilibrium Blocks
+
+URL Source: https://arxiv.org/pdf/2603.07705v1
+
+Published Time: Tue, 10 Mar 2026 01:24:05 GMT
+
+Number of Pages: 24
+
+Markdown Content:
+# Deep Incentive Design with Differentiable Equilibrium Blocks 
+
+Vinzenz Thoma 1, †, Georgios Piliouras 2 and Luke Marris 2  
+
+> 1Department of Computer Science, ETH Zurich & ETH AI Center, 2Google DeepMind, †Research conducted during an internship at Google DeepMind.
+
+Automated design of multi-agent interactions with desirable equilibrium outcomes is inherently difficult due to the computational hardness, non-uniqueness, and instability of the resulting equilibria. In this work, we propose the use of game-agnostic differentiable equilibrium blocks (DEBs) as modules in a novel, differentiable framework to address a wide variety of incentive design problems from economics and computer science. We call this framework deep incentive design (DID). To validate our approach, we examine three diverse, challenging incentive design tasks: contract design, machine scheduling, and inverse equilibrium problems. For each task, we train a single neural network using a unified pipeline and DEB. This architecture solves the full distribution of problem instances, parameterized by a context, handling all games across a wide range of scales (from two to sixteen actions per player). 
+
+## 1. Introduction 
+
+Game-theoretic equilibria provide us with the lan-guage to describe and study multi-agent interac-tions. Many works have focused on their compu-tation and the respective complexity classes. In contrast, from a policy-making perspective, we typically want to solve the inverse problem of set-ting up the rules of a game to guarantee desirable equilibrium outcomes. In economics, for exam-ple, institutions design taxes or markets with the aim of improving social welfare or revenue at the anticipated equilibrium behavior. Similarly, as we create agentic AIs interacting with each other, our aim is to set up incentives such that the resulting behavior is aligned with societal welfare. This fundamental problem of incentive design 
+
+(ID) can be formalized as a mathematical pro-gram with equilibrium constraints (MPEC) (Luo et al., 1996). In the upper-level problem, an in-centive designer selects decision parameters 𝜃 to minimize a loss function L. These parameters 𝜃 
+
+induce a general-sum normal-form game 𝐺 . In the lower-level problem the players face the in-duced 𝐺 and respond by playing an equilibrium (Eql) 𝜎 ∗. This equilibrium in turn impacts the designer’s loss L. Crucially, rather than solving a single, isolated instance, we aim to learn a de-sign policy that generalizes across a whole class of problems, parameterized by a context 𝜔 ∼ Ω. The problem is thus learning 𝜃 , such that the induced games 𝐺 (𝜃 ; 𝜔 ) yield equilibria 𝜎 ∗ that minimize the designer’s loss L𝜎 ∗ (𝜃 ; 𝜔 ) in expectation over 
+
+𝜔 .
+
+The Incentive Design Problem 
+
+min  
+
+> 𝜃
+
+𝔼 𝜔 ∼Ω [L 𝜎 ∗ (𝜃 ; 𝜔 )] s.t. 𝜎 ∗ ∈ Eql (𝐺 (𝜃 ; 𝜔 )) 
+
+(ID) As an example, the context 𝜔 may define a base game 𝐵 , and the learnable parameter 𝜃 
+
+defines a conditioned and possibly constrained perturbation 𝛿 to induce the game 𝐺 (𝜃 ; 𝜔 ) =
+
+𝐵 (𝜔 ) + 𝛿 (𝜃 ; 𝜔 ). The loss function in this case may be negative welfare L𝜎 ∗ = − Í𝑝,𝑎 𝜎 ∗ (𝑎 )𝐺 𝑝 (𝑎 ; 𝜃, 𝜔 ),where 𝐺 𝑝 (𝑎 ; 𝜃, 𝜔 ) is the payoff of each player. We focus on correlated and coarse correlated equilibria as the lower-level constraints. These are natural choices for a problem setting where a central designer exists and can help correlate players’ strategies. Moreover, mathematically, these solution concepts allow us to select the unique maximum-entropy equilibrium from the convex equilibrium set, rendering this choice dif-ferentiable with respect to 𝜃 .Recently, Marris et al. (2022) and Liu et al. (2024) presented two distinct approaches to train neural networks to map a wide spectrum of 
+
+> Corresponding author(s): vinzenz.thoma@ai.ethz.ch
+> arXiv:2603.07705v1 [cs.GT] 8 Mar 2026 Deep Incentive Design with Differentiable Equilibrium Blocks
+> Mechanism Generator
+> Differentiable Equilibrium Block
+
+L𝜎 ∗ (𝜃 ; 𝜔 )Context 𝜔   
+
+> 𝜔
+> 𝐺 (𝜃 ;𝜔 )
+> 𝜎 ∗
+> 𝜔
+> 𝜃 𝜕 L
+> 𝜕𝜎 ∗
+> 𝜕𝜎 ∗
+> 𝜕𝐺 𝜕𝐺 𝜕𝜃
+> 𝜕 L
+> 𝜕𝜃
+
+Figure 1 | Deep Incentive Design framework. Black (green) arrows show the forward (back-ward) computation. normal-form games to their unique maximum entropy (coarse) correlated equilibrium. Once trained, they allow the approximate computation of the equilibrium’s derivatives in any game up to a certain size. We thus refer to such networks as differentiable equilibrium blocks (DEBs). In this work, we introduce the framework of deep incen-tive design (DID), where we parameterize 𝐺 (· ; ·) 
+
+as a class of (game-theoretically equivariant) neu-ral networks, called mechanism generators , and learn the network’s weights 𝜃 to minimize the expected loss over the possible distribution of the context 𝜔 , which is passed as input to the network. To achieve this, we compose the mechanism gen-erator with a pretrained DEB to evaluate L at the predicted equilibrium 𝜎 ∗ and then backpropagate through the DEB to train the generator weights 
+
+𝜃 . Our training pipeline is illustrated in Figure 1. 
+
+Our Contributions Our contributions are three-fold: 
+
+• On a conceptual level, we introduce the DID framework, a principled and general approach to solve (ID) by backpropagating through a DEB. 
+
+• From a system perspective, we present a highly scalable, modular and generalizable training pipeline. Our networks are trained as mechanism generators : they take as input the context 𝜔 and can handle the whole class of problems in Ω instead of being retrained for individual contexts. The networks have a game-theoretically equivariant architecture, which (i) provides a strong inductive bias by respecting domain symmetries, (ii) enables principled dimensionality reduction, and (iii) allows the networks to train on games of dif-ferent shapes. Specifically, we train a single network for all games of sizes ranging from 
+
+2×2 up to 16 ×16 .
+
+• Experimentally, we show the promise of DID by tackling several well-studied and di-verse problems from the literature, includ-ing multi-agent contract design (Holmstrom, 1982), machine scheduling (Heydenreich et al., 2007) and inverse equilibrium prob-lems (Kuleshov and Schrijvers, 2015). 
+
+## 2. Related Works 
+
+We situate our approach in the related literature and refer the reader to Appendix B for an in-depth comparison. 
+
+2.1. Gradient-Based MPEC 
+
+Several works have studied gradient-based ap-proaches to solve MPECs. Generally these can be grouped into two approaches: those using implicit differentiation, relying on the implicit function theorem, and those using automatic dif-ferentiation, unrolling the computational graph of some converging dynamics. Both approaches rely on assuming a unique Nash equilibrium exists. Implicit differentiation has been used to converge to unique Stackelberg equilibria (Fiez et al., 2020; Wang et al., 2022). Li et al. (2020) study (ID) for a single, fixed context and frame the lower-level equilibrium problem as a monotone variational in-equality, which they solve with both implicit and automatic differentiation. Extensions to this work have included distributed algorithms (Grontas et al., 2024), hierarchy-free two-timescale meth-ods (Li et al., 2023; Liu et al., 2022; Maheshwari et al., 2022), and using automatic differentia-tion to design congestion games (Li et al., 2024), mean-field games (Corecco et al., 2025), and social-dilemmas (Balaguer et al., 2022; Baumann et al., 2018). 
+
+2.2. Differentiable Economics 
+
+Mechanism design has been described as “inverse game theory”. It is concerned with designing the 
+
+> 2Deep Incentive Design with Differentiable Equilibrium Blocks
+
+rules of a (Bayesian) game, specifically the allo-cations and payment rules, such that the players truthfully reveal their private preferences and the designer maximizes social welfare or revenue. Conitzer and Sandholm (2002, 2004) were the first to propose automated mechanism de-sign, i.e., the (computational) design of a tai-lored mechanism to the specific problem. More recently, Dütting et al. (2024) introduced dif-ferentiable economics , using neural networks to parameterize an auction mechanism. The net-work takes as input the bids and outputs the pay-ments and allocations. Some constraints, such as payment non-negativity and allocation feasi-bility are hardcoded in the architecture, others such as strategyproofness are enforced via a La-grangian penalty. Several works have since pro-posed improved training pipelines and architec-tures (Curry et al., 2023, 2024; Duan et al., 2022, 2023; Ivanov et al., 2022; Rahme et al., 2021; Tacchetti et al., 2022; Wang et al., 2024). We refer to Curry et al. (2025) for a comprehensive survey of the field. 
+
+2.3. Reinforcement Learning and Incentive Design 
+
+The problem of incentive design has been studied in the context of reinforcement learning with re-spect to designing rewards in MDPs (Chakraborty et al., 2024; Chen et al., 2024, 2022; Shen et al., 2024; Thoma et al., 2024) and Markov games (Brero et al., 2024; Canyakmaz et al., 2024; Ger-stgrasser and Parkes, 2023; Huang et al., 2024). Curry et al. (2022); Zheng et al. (2022) pro-posed the idea of an AI economist , where multi-agent RL is used to simulate an economy and its outcomes under different tax policies. These approaches take a descriptive approach, using heuristics mimicking human behavior without equilibrium guarantees. 
+
+## 3. Preliminaries 
+
+3.1. Game Theory and Equilibria 
+
+In this work, we study the design of 𝑁 -player 
+
+normal-form games . Each player 𝑝 has an ac-tion space A𝑝 . Players choose their action si-multaneously, resulting in the joint action 𝑎 =
+
+(𝑎 1, . . . , 𝑎 𝑁 ) ∈ Î𝑁 𝑝 =1 A𝑝 = A. We denote by 𝑎 − 𝑝 
+
+the actions of all players, except 𝑝 . A joint ac-tion 𝑎 yields a payoff 𝐺 𝑝 (𝑎 ) for player 𝑝 . We use 
+
+𝐺 to refer to the game defined by the payoffs 
+
+(𝐺 1, . . . , 𝐺 𝑝 ). A distribution 𝜎 (𝑎 ) over actions is called a joint strategy or simply joint . In case players choose actions independently, the joint factorizes as 𝜎 (𝑎 ) = Î𝑁 𝑝 =1 𝜎 𝑝 (𝑎 𝑝 ) into the play-ers’ marginals . For a given joint 𝜎 , each player receives the expected payoff Í𝑎 ∈ A 𝜎 (𝑎 )𝐺 𝑝 (𝑎 ).The solution concept of 𝐺 is a joint 𝜎 ∗, from which broadly speaking no player has an incentive to deviate. If any unilateral deviation gives a player at most an 𝜀 gain in expected payoff, 𝜎 ∗
+
+is called an 𝜀 -equilibrium . If 𝜀 = 0, we simply call 𝜎 ∗ an equilibrium . In this work, we discuss three equilibrium concepts, which are gradual generalizations of each other. 
+
+𝜎 ∗ is an 𝜀 -correlated equilibrium (𝜀 -CE ) (Au-mann, 1974), if no player achieves more than an 𝜀 
+
+gain in expected payoff by deviating to any action 
+
+𝑎 ′
+
+> 𝑝
+
+, after having received a recommended action 
+
+𝑎 ′′  
+
+> 𝑝
+
+, drawn from 𝜎 ∗. More formally, 𝜎 ∗ ∈ 𝜀 -CE (𝐺 ),if for all 𝑝 ∈ [ 1, 𝑁 ], 𝑎 ′ 
+
+> 𝑝
+
+∈ A 𝑝 , 𝑎 ′′  
+
+> 𝑝
+
+≠ 𝑎 ′ 
+
+> 𝑝
+
+∈ A 𝑝 :∑︁  
+
+> 𝑎 ∈ A −𝑝
+
+𝜎 ∗ (𝑎 ′′  
+
+> 𝑝
+
+, 𝑎 − 𝑝 ) [ 𝐺 𝑝 (𝑎 ′
+
+> 𝑝
+
+, 𝑎 − 𝑝 ) − 𝐺 𝑝 (𝑎 ′′  
+
+> 𝑝
+
+, 𝑎 − 𝑝 )] ≤ 𝜀. 
+
+(𝜀 -CE) In case players can only choose to deviate before observing the recommended action, we call 𝜎 ∗ an 𝜀 -coarse correlated equilibrium (𝜀 -CCE )(Moulin and Vial, 1978). Formally, 𝜎 ∗ ∈
+
+𝜀 -CCE (𝐺 ), if for all 𝑝 ∈ [ 1, 𝑁 ], 𝑎 ′ 
+
+> 𝑝
+
+∈ A 𝑝 :∑︁ 
+
+> 𝑎 ∈ A
+
+𝜎 (𝑎 ) [ 𝐺 𝑝 (𝑎 ′
+
+> 𝑝
+
+, 𝑎 − 𝑝 ) − 𝐺 𝑝 (𝑎 )] ≤ 𝜀. (𝜀 -CCE) Both equilibrium notions require a common source of randomness to act as a coordination mechanism. This need not be an explicit signal, but could be a shared history of play. In fact, in a repeated game setup, no-regret learning algo-rithms, such as regret matching, use this history to provably converge to the set of (coarse) corre-lated equilibria, further motivating their use in this work (Hart and Mas-Colell, 2000). 
+
+> 3Deep Incentive Design with Differentiable Equilibrium Blocks
+
+A (C)CE is also a Nash equilibrium (NE), if it fur-ther holds that the joint can be written as the prod-uct of independent player marginals, i.e., if the players choose their actions independently. Note that NE ⊆ CE ⊆ CCE and 𝜀 1-(C)CE ⊆ 𝜀 2-(C)CE for 𝜀 1 ≤ 𝜀 2. As every normal-form game has a NE (Nash, 1951), it follows that none of the equilib-rium sets is empty. Further note that the set of 
+
+𝜀 -(C)CEs always is a convex polytope, which is generally not true for NEs, with the exception of two-player constant-sum games when 𝜀 = 0. Our DID framework requires the equilibrium set being a convex polytope. However, the approach works analogously for 𝜀 -CEs and 𝜀 -CCEs. 1 We therefore write 𝜀 -Eql (𝐺 ) to denote the convex equilibrium polytope of 𝐺 for statements that hold equiva-lently for both 𝜀 -CEs and 𝜀 -CCEs. While the NE is often used in the literature, it is not suitable for our purposes. In particu-lar, there are several obstacles to tackling (ID) with Nash constraints via gradient-based opti-mization. These include the computational hard-ness (Daskalakis et al., 2009), the multiplicity of NEs, and the fact that for general-sum games the set of NEs is not necessarily connected. In addi-tion, as we vary 𝜃 , certain connected components of the NE set may disappear and new ones appear (Kohlberg and Mertens, 1986). 
+
+3.2. Incentive Design 
+
+Incentive design refers to the problem of design-ing games or game interventions with the goal of minimizing some upper-level loss that depends on the resulting game’s equilibria. It is a fundamen-tal problem capturing many strategic interactions, where a leader acts—or commits to act—before a set of followers, and was first studied by Stack-elberg (1934) in the context of duopolies. In our setup, there is a designer that controls a continuous parameter 𝜃 ∈ ℝ𝑑 for some 𝑑 ∈ ℕ.The designer’s objective is to minimize the ex-pected loss 𝔼 𝜔 ∼Ω [L 𝜎 ∗ (𝜃 ; 𝜔 )] over the context 𝜔 ,drawn from a distribution Ω. The loss depends 
+
+> 1DID could also be extended to implementing other equi-libria, as long as their equilibrium set is a convex polytope, such as communication equilibria or Bayes-correlated equi-libria.
+
+on 𝜃, 𝜔 , and 𝜎 ∗. The latter is the equilibrium solu-tion of a general-sum normal-form game 𝐺 (𝜃 ; 𝜔 ),whose payoffs 𝐺 𝑝 (𝑎 ; 𝜃, 𝜔 ) are parameterized by both the decision variable 𝜃 and the drawn con-text 𝜔 . The designer thus needs to learn a 𝜃 such that, in expectation over 𝜔 , the players playing the induced games 𝐺 (𝜃 ; 𝜔 ) are incentivized to play the designer’s desired joint. The resulting MPEC is written down in Equation (ID). For notational brevity we drop the dependence of 𝜎 ∗ on 𝜔 and 𝜃 throughout this paper. We as-sume that the function L𝜎 (𝜃 ; 𝜔 ) is differentiable with respect to both the decision parameter 𝜃 
+
+and a given joint strategy 𝜎 for all 𝜔 .2 We further assume that the payoffs 𝐺 𝑝 (𝑎 ; 𝜃, 𝜔 ) are differen-tiable for all 𝑎 and 𝜔 with respect to 𝜃 .
+
+## 4. Deep Incentive Design 
+
+In this section we formalize our framework. We show that we can select a unique and differen-tiable equilibrium from the 𝜀 -Eql set. The differ-entiability is pivotal, allowing us to cast (ID) as a machine learning problem. 
+
+4.1. Differentiating through the Equilibrium 
+
+In this work, we use 𝜀 -Eql (𝐺 ) as the lower-level solution concept. It is a natural choice as the incentive designer can serve as a coordination mechanism for the players. Moreover, this choice yields two advantages. First, the polytope’s con-straints are linear functions of the payoffs and thus of 𝜃 . Second, the set is convex, allowing us to define a strongly convex equilibrium selec-tion function to choose a unique 𝜎 ∗ ∈ 𝜀 -Eql (𝐺 ),such that the choice is locally Lipschitz continu-ous and thus differentiable almost everywhere with respect to 𝜃 for 𝜖 > 0.3 In this work, we choose the unique maximum-entropy equi-librium 𝜀 -ME-Eql (𝐺 (𝜃 ; 𝜔 )) . This is motivated by             
+
+> 2Note we do not directly assume that the function is differentiable with respect to the equilibrium joint 𝜎 ∗, as this also varies with 𝜃 . Instead, we show this explicitly in Section 4.
+> 3The inequality is strict. For 𝜀 =0the set Eql may be a single point on the face of the simplex and not differentiable in 𝜃 .For 𝜀 > 0, the differentiability almost everywhere follows from Rademacher’s theorem.
+> 4Deep Incentive Design with Differentiable Equilibrium Blocks
+
+the established theory on efficiently computing maximum-entropy equilibria (Marris et al., 2022; Ortiz et al., 2007). Following this approach we can reformulate (ID) in a more tractable form as 
+
+min  
+
+> 𝜃
+
+𝔼 𝜔 [L 𝜎 ∗ (𝜃 ; 𝜔 )] s.t. 𝜎 ∗ = 𝜀 -ME-Eql (𝐺 (𝜃 ; 𝜔 )) ,
+
+(𝜀 -ME-ID) where 𝜀 -ME-Eql (𝐺 (𝜃 ; 𝜔 )) is the unique solution to max 𝜎 𝐻 (𝜎 ) s.t 𝜎 ∈ 𝜀 -Eql (𝐺 (𝜃 ; 𝜔 )) and 𝐻 (𝜎 ) =
+
+− Í𝑎 𝜎 (𝑎 ) log (𝜎 (𝑎 )) .We established that the derivative 𝑑𝜎 ∗  
+
+> 𝑑𝐺 (𝜃 ;𝜔 )
+
+exists if we choose 𝜎 ∗ = 𝜀 -ME-Eql. By the chain rule, this implies the existence of 𝑑 L𝜎 ∗ (𝜃 ;𝜔 ) 
+
+> 𝑑𝜃
+
+, which is equal to 𝜕 L𝜎 ∗ (𝜃 ;𝜔 ) 
+
+> 𝜕𝜃
+
++ 𝜕 L𝜎 ∗ (𝜃 ;𝜔 )    
+
+> 𝜕𝜎 ∗𝑑𝜎 ∗
+> 𝑑𝐺 (𝜃 ;𝜔 )
+> 𝑑𝐺 (𝜃 ;𝜔 )
+> 𝑑𝜃
+
+.4
+
+Using the 𝜀 -ME-Eql ensures we can differen-tiate through the lower level of (𝜀 -ME-ID) and enables us to use gradient-based optimization. However, computing the gradients exactly would require differentiating through a convex program with the constraints from (𝜀 -CCE) respectively (𝜀 -CE) , which is impractical for large problems. Moreover, there should be some generalization between the different contexts without having to rerun the optimization algorithm. This motivates a machine-learning based approach. 
+
+4.2. Incentive Design with Neural Networks 
+
+Having established the differentiability of L, we can cast (𝜀 -ME-ID) as a machine learning prob-lem. We parameterize the function 𝜔 ↦ → 𝐺 (𝜃 ; 𝜔 )
+
+as a neural network with weights 𝜃 . We will re-fer to this network as the mechanism generator .This emphasizes that we do not learn a single mechanism to tackle a single task, represented by a single context. Instead, we train the network to learn the optimal game interventions for all 
+
+𝜔 ∈ Ω.In order to train a mechanism generator, the network architecture requires a DEB that com-putes 𝜎 ∗ = 𝜀 -ME-Eql (𝐺 (𝜃 ; 𝜔 )) on the forward pass and 𝑑𝜎 ∗ 
+
+> 𝑑𝜃
+
+on the backward pass. As mentioned in Section 1, both Liu et al. (2024) and Marris et al. (2022) have presented different approaches to train such DEBs for computing the 𝜀 -ME-Eql of     
+
+> 4𝑑𝐺 (𝜃 ;𝜔 )is short for the change in payoffs (𝐺 1, . . . , 𝐺 𝑁 ).
+
+any given game 𝐺 using an equivariant neural net-work architecture. They were able to solve very large normal-form games up to sizes of 64 ×64 
+
+for two players and 16 ×16 ×16 for three players. While their work showed impressive results in the forward computation, the potential of backprop-agating through their networks to approximate   
+
+> 𝑑𝜎 ∗
+> 𝑑𝐺 (𝜃 ;𝜔 )
+
+has been unexplored. Indeed, it is a priori unclear whether the gradients of these DEBs are sufficiently well-behaved to be useful for solving (𝜀 -ME-ID) at scale. 5
+
+Figure 1 illustrates our DID pipeline, which composes the mechanism generator and the differentiable equilibrium oracle. The mecha-nism generator takes as input a batch of con-texts 𝜔 1, . . . , 𝜔 𝐵 and outputs the induced games 
+
+𝐺 (𝜃 ; 𝜔 1), . . . , 𝐺 (𝜃 ; 𝜔 𝐵 ), which are passed through the DEB to evaluate the minibatch loss. On the backward pass, we backpropagate through the DEB to train the mechanism generator’s weights 
+
+𝜃 . The DEB’s weights are fixed, as it is pre-trained on predicting the 𝜀 -ME-Eql. To summarize, with our DID framework and the use of DEBs, we are able to reduce the difficult game-theoretic problem (ID) to a standard opti-mization problem, amenable to the rich toolkit of machine learning. Notably, having a neural network trained across the whole context space 
+
+Ω has two advantages over gradient-based opti-mization for a fixed context: (i) once trained, we can tackle many problems in parallel and quickly as the forward pass takes only O(|A|) instead of having to rerun the optimization algorithm, and (ii) for any fixed 𝜔 , (𝜀 -ME-ID) is generally a non-convex problem and gradient-based approaches easily get stuck in bad local minima. Using neu-ral networks with high-dimensional parameter spaces and their ability to generalize between settings helps with escaping some of these bad local minima.  
+
+> 5This higher-order approximation problem of neural net-works is well-documented in the literature and has led to novel training approaches such as Sobolev Training , using ground-truth gradients to improve the networks first-order approximations and sample efficiency (Czarnecki et al., 2017). However, in our setting ground-truth gradients are not available or too expensive to compute.
+> 5Deep Incentive Design with Differentiable Equilibrium Blocks
+
+## 5. Experimental Results 
+
+In this section, we describe the setup and per-formance of DID on three hard problems from the literature: (i) multi-agent contract design, (ii) inverse equilibrium problems, and (iii) machine scheduling. 
+
+5.1. Network Architecture 
+
+For two of the three experiments—the inverse equilibrium and machine scheduling problems— the mechanism generators take as input the initial payoffs and output perturbed payoffs of the same shape [𝑁, |A 1 |, . . . , |A 𝑁 |] .6 These are of size 
+
+𝑁 Î𝑁 𝑝 =1 |A 𝑝 |, presenting a challenge for training on large games. Fortunately, the game-theoretic maps we are trying to learn have many equivari-ances . A function is equivariant to a permutation 
+
+𝜏 if it commutes with it, i.e., 𝑓 (𝜏 (𝑥 )) = 𝜏 ( 𝑓 (𝑥 )) .
+
+In our case, any permutation of either the play-ers or their action spaces in the input payoffs should also commute with the map 𝐺 (𝜃 ; 𝜔 ), i.e., 
+
+𝐺 (𝜃 ; 𝜔 ) is equivariant with respect to these per-mutations. Building a network architecture that respects these equivariances gives the network a strong inductive bias, as every input represents all possible 𝑁 ! Î𝑁 𝑝 =1 (|A 𝑝 |!) permutations of itself. As outlined below, an equivariant architecture also massively reduces the number of trainable parameters in the network, resulting in a more scalable training pipeline. Our mechanism generators are built using vari-ations of the following fundamental equivariant layer. In our experiments the data consists of a channel dimension 𝐶 and a set of equivariant di-mensions (such as the player dimension of size 𝑁 
+
+or the players’ strategy dimensions of size |A 𝑝 |). To preserve these equivariances, we apply 𝐼 pool-ing functions 𝜙 𝑖 , whose output is concatenated along the channel dimension before being passed through a linear layer and an activation function 
+
+𝑓 . The weights 𝑤 of the linear layer are shared be-tween all points in the equivariant dimensions. At layer 𝑙 , they just depend on the 𝐶 𝑙 +1 output chan-nels and the 𝐼𝐶 𝑙 input channels. Therefore, the 
+
+> 6In these cases, the context is equal to the initial pay-offs. The details can be found in Sections 5.4 and 5.5 and Appendix A.
+
+number of parameters depends neither on 𝑁 nor on |A 𝑝 |, but only on the selected number of chan-nels 𝐶 1, . . . , 𝐶 𝐿 and pooling functions 𝐼 , where 𝐿 is the number of layers. Moreover, the networks can handle games of different sizes, allowing for even greater generalizability. The output 𝑔 𝑙 +1 (𝑐 𝑙 +1, . . . )
+
+of the 𝑙 +1-th equivariant layer can be recursively expressed as 
+
+𝑓 
+
+> 𝐶 𝑙
+
+∑︁  
+
+> 𝑐 𝑙 =1
+> 𝐼
+
+∑︁ 
+
+> 𝑖 =1
+
+𝑤 (𝑐 𝑙 +1, 𝑐 𝑙 , 𝑖 )𝜙 𝑖 (𝑔 𝑙 (𝑐 𝑙 , . . . )) + 𝑏 (𝑐 𝑙 +1)
+
+!
+
+.
+
+For the contract design problem, the rationale is akin to above. The main difference is an addi-tional equivariance with respect to permutations of the outcomes, resulting in an additional set of pooling functions applied along the outcome dimension. The exact architectures and training pipelines are described in Appendix A. 
+
+5.2. Experiment Setup 
+
+In our experiments, we solved (𝜀 -ME-ID) with both 𝜀 -ME-CE and 𝜀 -ME-CCE as the lower-level solution concept, where 𝜀 = 0.01 . Across all ex-periments we used the same two DEBs, one for computing the 𝜀 -ME-CCE and one for the 𝜀 -ME-CE, following the approach of Marris et al. (2022). The DEBs were trained to handle game sizes be-tween 2×2 and 16 ×16 .For all experiments, we evaluated the loss both at the approximate 𝜀 -ME-Eql computed from the DEB and the exact equilibrium (up to a tolerance) computed with the ECOS solver (Domahidi et al., 2013) using cvxpy (Agrawal et al., 2019; Dia-mond and Boyd, 2016) with default tolerances. This allows us to measure the errors from the DEB. Furthermore, we also compute a “polished” (local optimum) solution found using scipy ’s (Virta-nen et al., 2020) Nelder–Mead method (Nelder and Mead, 1965), initialized from the solution found by our approach. This method alone can-not identify a globally optimal solution in the high-dimensional parameter space. However, ini-tializing it from the found solution allows us to quantify the local improvement missed by DID and serves as an approximate local upper bound. 
+
+> 6Deep Incentive Design with Differentiable Equilibrium Blocks
+
+5.3. Multi-Agent Contract Design 
+
+Multi-Agent Contract Design was introduced by Holmstrom (1982). Subsequent works focused on the complexity of implementing equilibria in multi-agent contracts under different assump-tions such as linear contracts or binary vs. gen-eral action spaces (Babaioff and Winter, 2014; Cacciamani et al., 2024; Castiglioni et al., 2023; Dütting et al., 2023, 2025b). Recently, Dütting et al. (2025a) introduced a model of multi-agent contract design where the lower-level problem is a (coarse) correlated equilibrium, similar to the 
+
+𝜀 -ME-Eql solution concept we use in this work. Despite the great economic interest in contract de-sign, we are not aware of existing, implementable algorithms for the multi-agent case, underlining the promise of DID. In multi-agent contract design we consider a set of agents 𝑁 , who are playing a normal form game with costs 𝑐 , where each agent incurs a cost 𝑐 𝑝 (𝑎 )
+
+for the joint action 𝑎 . 𝑎 is mapped to an outcome 
+
+𝑜 ∈ 𝑂 , via a transition probability 𝑃 (𝑜 |𝑎 ). The out-come is observed by the principal who receives a payoff of 𝑊 (𝑜 ). Together the tuple of costs, transitions and principal payoffs defines the con-text of the multi-agent contract design problem. We write 𝜔 = (𝑐, 𝑃, 𝑊 ) and use the superscripts 
+
+𝑐 𝜔 , 𝑃 𝜔 , 𝑊 𝜔 , when referring to the costs, transi-tions or payoffs of a specific context 𝜔 . To increase the expected payoff, the principal offers a positive payment 7, called a contract 𝑣 𝑝 (𝑜 ; 𝜃, 𝜔 ) ∈ ℝ≥0 to each agent, contingent on the observed outcome. Importantly, the principal cannot directly ob-serve the agents’ actions nor condition contracts on these, which is referred to as moral hazard .The agents aim to maximize their expected pay-off 𝐺 𝑝 (𝑎 ; 𝜃, 𝜔 ) = Í𝑜 𝑃 𝜔 (𝑜 |𝑎 )𝑣 𝑝 (𝑜 ; 𝜃, 𝜔 ) − 𝑐 𝜔 𝑝 (𝑎 ) in the induced game 𝐺 (𝜃 ; 𝜔 ), whereas the principal aims to maximize the payoff minus the total con-tracts paid Í𝑜 𝑃 𝜔 (𝑜 |𝑎 )
+
+
+
+𝑊 𝜔 (𝑜 ) − Í𝑝 𝑣 𝑝 (𝑜 ; 𝜃, 𝜔 )
+
+
+
+.Following Dütting et al. (2025a), who consider (C)CEs, we are using the unique 𝜀 -ME-Eql as the lower-level solution concept. 8 Our multi-agent    
+
+> 7The fact that the contract designer can only give but not take money away from agents is referred to as limited liability .
+> 8The 𝜀 -ME-Eql corresponds to the point of the 𝜀 -Eql poly-tope closest to the center of the probability simplex. The
+
+contract design problem can thus be formulated as an instance of ( 𝜀 -ME-ID) as follows: 
+
+max  
+
+> 𝜃
+
+𝔼 𝜔 
+
+"
+
+𝔼 𝑎 ∼𝜎 ∗,𝑜 ∼𝑃 𝜔 
+
+"
+
+𝑊 𝜔 (𝑜 ) − ∑︁ 
+
+> 𝑝
+
+𝑣 𝑝 (𝑜 ; 𝜃, 𝜔 )
+
+!# # 
+
+s.t. 𝜎 ∗ = 𝜀 -ME-Eql (𝐺 (𝜃 ; 𝜔 )) .
+
+Consider the contract design problem illus-trated in Figure 2 as an intuitive example. There are two players “Alice” and “Bob”, who are sib-lings and tasked to set up a Christmas tree. They each have two actions, they can either help or not help set up the tree and will incur costs de-pending on their exerted efforts. Their choices stochastically lead to one of three outcomes: (i) the tree is set up if they either both helped or with a 50% chance if one helped, (ii) the tree is set up wrong and burns down with a 50% chance if only one child helped, and (iii) no tree is set up if no one helps. The father prefers the tree being set up over not being set up over the tree burning down. Importantly, the father comes home and will not know who helped and who did not, i.e., he cannot observe the joint action 𝑎 . He can only observe the tree, i.e., the outcome 𝑜 , and promise to pay his children contracts contingent on the observed outcome. To train our mechanism generator for square two-player games, we sample the size of the ac-tion space uniformly from {2×2, . . . , 16 ×16 }, the number of measurable outcomes uniformly from 
+
+{2, . . . , 10 }, the transitions from joint actions to outcomes from a Dirichlet distribution with 
+
+𝛼 = 0.1, the principal payoffs 𝑊 (𝑜 ; ·) uniformly from the interval [− 5, 5] and the agents’ cost from the interval [− 4, 0]. Note that, in contrast to the other two experimental settings, there are three inputs 𝑐 𝜔 , 𝑃 𝜔 , 𝑊 𝜔 with respective shapes 
+
+[𝑁, |A 1 |, . . . , |A 𝑁 |] , [|A 1 |, . . . , |A 𝑁 |, 𝑂 ], [𝑁, 𝑂 ].These are broadcasted and concatenated along the channel dimension to yield an input of shape [3, 𝑁, |A 1 |, . . . , |A 𝑁 |, 𝑂 ]. Nonetheless, the outputted contracts will be of shape [𝑁, 𝑂 ],requiring the use of different equivariant layers   
+
+> principal’s utility is a linear function and thus maximized at the vertices. The 𝜀 -ME-Eql thus never presents the most optimistic estimate of the principal’s utility in the induced game, making the solution more robust to players playing other joints in the 𝜀 -Eql set.
+> 7Deep Incentive Design with Differentiable Equilibrium Blocks
+
+Figure 2 | A simple example of a contract design problem with action space 2×2 and 3 outcomes. that at some point collapse the player and action dimensions. The details of this architecture can be found in Appendix A. To evaluate the mechanism generator, we cal-culate the change in expected principal utility defined as 
+
+𝔼 𝜔,𝑜 ∼𝑃 𝜔 
+
+"
+
+𝔼 𝑎 ∼𝜎 ∗
+
+h  
+
+> 𝑊 𝜔
+
+(𝑜 ) − Í𝑝 𝑣 𝑝 (𝑜 ; 𝜃, 𝜔 )
+
+i 
+
+−𝔼 𝑎 ∼𝜎 0
+
+h  
+
+> 𝑊 𝜔
+
+(𝑜 ) − Í𝑝 𝑣 𝑝 (𝑜 ; 𝜃, 𝜔 )
+
+i #
+
+> ,
+
+where 𝜎 ∗ is the 𝜀 -ME-Eql under the game induced by the learned contracts 𝑣 𝑝 (· ; 𝜃, ·) and 𝜎 0 is the 
+
+> 𝜀
+
+-ME-Eql under the initial game with costs 𝑐 𝜔 𝑝 
+
+and no contracts offered. For each game shape in {2×2, . . . , 16 ×16 } and number of outcomes in 
+
+{2, . . . , 10 } we evaluated 8 randomly generated games. We then locally polished the solutions using 400 function evaluations. Our results can be found in Table 1a. For both CEs and CCEs, the learned 𝜃 produces contracts that significantly im-prove the principal’s utility over no intervention. While the found contracts perform well when eval-uated under the DEB, we see a decrease in per-formance when evaluating with the exact solver (ECOS). This shows that the mechanism genera-tor may be utilizing inaccuracies in the DEB. This could be ameliorated in future works by continu-ously training the DEB with the games generated by the generator. In all settings, except the CE being evaluated with ECOS, we see that the DID solution can be improved locally by no more than a factor of roughly 2. 
+
+5.4. Inverse Equilibrium Problems 
+
+Traditionally, there has been much attention on computing the equilibrium of a given game. How-ever, there is the challenging inverse problem of coming up with a game that implements the desired equilibrium. This can be equivalently framed as rationalizing observed equilibrium be-havior by defining suitable payoff functions and has been studied by Kuleshov and Schrijvers (2015) and Bestick et al. (2013) using linear pro-gramming approaches. Waugh et al. (2013) fo-cused on learning utility functions from stochastic observations of equilibrium behavior. A similar approach was taken by Syrgkanis et al. (2017) to learn the bidders’ values from observing bids in different auctions. Here we are interested in the following variant of the problem. Given a target equilibrium 𝜎 𝜔 ,which defines the context 𝜔 , generate a game 
+
+> 𝐺
+
+(𝜃 ; 𝜔 ), such that its 𝜀 -ME-Eql minimizes the KL divergence to 𝜎 𝜔 . Such problems that aim to compute game-theoretic equilibria, which are anchored to learned policies from (potentially human) expert behavior, are critical for many di-verse ML applications, as they can be used, e.g., to discover near-optimal game play that is also interpretable and natural (Bakhtin et al., 2022; Jacob et al., 2022; Lerer and Peysakhovich, 2019; McIlroy-Young et al., 2020; Munos et al., 2024). This problem can be formulated as an instance of (𝜀 -ME-ID) as follows: 
+
+min  
+
+> 𝜃
+
+𝔼 𝜔 ∼Ω [KL (𝜎 ∗ || 𝜎 𝜔 )] s.t. 𝜎 ∗ = 𝜀 -ME-Eql (𝐺 (𝜃 ; 𝜔 )) .
+
+To train the mechanism generator for this task we sample the joint action space A uniformly from {2×2, . . . , 16 ×16 } and joint targets 𝜎 𝜔 uni-formly from the simplex Δ| A | − 1. The loss com-puted is 𝐾𝐿 (𝜎 ∗ || 𝜎 𝜔 ) + 𝜆 ∥𝐺 (𝜃 ; 𝜔 ) − Π(𝐺 (𝜃 ; 𝜔 ))∥ 2.Here Π(𝐺 ) is the equilibrium-invariant embed-ding of 𝐺 (Marris et al., 2023). This means 
+
+> 8Deep Incentive Design with Differentiable Equilibrium Blocks
+
+Table 1 | Experimental results. We report results for our approach (DID) and with and without local polishing (+Local) to give an approximate ceiling on the optimal local performance missed by DID. We also evaluate at the equilibrium com-puted by the DEB and ECOS to measure discrep-ancies from the DEB. 
+
+(a) Contract Design. Average change in principal util-ity from the generated contracts and the percentage non-harmful interventions ( ≥ − 10 −4) in parentheses.                
+
+> Eql DID +Local DID +Local (DEB) (DEB) (ECOS) (ECOS) CE 0.25 (79%) 0.51 (97%) 0.05 (52%) 0.29 (93%) CCE 0.33 (83%) 0.59 (98%) 0.20 (75%) 0.52 (97%)
+
+(b) Inverse Equilibrium. Average KL distance between the generated payoffs and the target joint. We include a naive baseline (Uni) of the KL distance between the uniform joint to the target joint to ground the numbers.                   
+
+> Eql DID +Local DID +Local Uni (DEB) (DEB) (ECOS) (ECOS) CE 0.056 0.024 0.175 0.133 0.400 CCE 0.043 0.013 0.071 0.028 0.400
+
+(c) Machine Scheduling. Average change in expected makespan (lower is better) from the generated taxes and the percentage of non-harmful interventions ( ≤
+
+10 −4) in parenthesis.                
+
+> Eql DID +Local DID +Local (DEB) (DEB) (ECOS) (ECOS) CE -0.339 (88%) -0.408 (100%) -0.096 (57%) -0.352 (75%)
+> CCE -0.211 (99%) -0.240 (100%) -0.050 (84%) -0.077 (97%)
+
+∥Π(𝐺 )∥ 2 = 1 and Í𝑎 𝑝 Π(𝐺 )𝑝 (𝑎 𝑝 , 𝑎 − 𝑝 ) = 0. Note that both of these operations do not change the equilibrium set as long as the target 𝜀 is scaled by the same factor as the payoffs. The penalty term thus only serves to enforce a standardized output format by decreasing the degrees of freedom. As it evaluates to zero on a subset of the possible outputs with minimum KL divergence it should not compromise the performance of the neural networks. We evaluate on 8 samples for each game with shape in {2×2, . . . , 16 ×16 } and report the aver-age over all contexts. Due to the increased di-mensionality of the search space, we polish using 4,000 function evaluations. The results can be found in Table 1b. The average KL divergence of our approach significantly outperforms the naive benchmark of outputting a constant game with the uniform joint as 𝜀 -ME-Eql. As before, there is some room for improvement if we polish the solution using a local optimizer. Unsurprisingly, we also see reduced performance when evaluat-ing under ECOS, highlighting the approximate nature of the DEB. Note that for 2×2 games, we can identify the joint strategy space with Δ3 and thus plot our results on the simplex. Figure 3 illus-trates two sampled targets 𝜎 𝑤 , the 𝜀 -Eql polytope of the generated game 𝐺 (𝜃, 𝜔 ) and the resulting 
+
+𝜀 -ME-Eql 𝜎 ∗, which nicely matches the target. 
+
+Figure 3 | 𝜎 𝜔 is plotted in cyan, the 0.01 -ME-CCE in magenta. The red polytope corresponds to the 
+
+0.01 -CCE set. The underlying game is between a row player with actions Up and Down and a column player with actions Left and Right. The four vertices represent the four deterministic joint actions. Figure was produced with a smaller net-work trained on 2×2 games. 
+
+5.5. Machine Scheduling 
+
+The game-theoretic foundations of scheduling jobs to machines have been studied by Heydenre-ich et al. (2007) and Immorlica et al. (2009). The problem captures many real-world applications, such as fair load balancing of users to wireless access points (Bejerano et al., 2004), optimizing performance for content multihoming (Liu et al., 2012), and multiprocessor scheduling (Schuur-man and Vredeveld, 2001). More recently, it has been revisited in the context of routing prompts to different LLM models (Cao et al., 2025; Hu et al., 2024; Jitkrittum et al., 2025; Ong et al., 2025). Here we study the following variant. There are 
+
+𝑁 players and 𝑀 machines. Each player 𝑝 has a job and as an action 𝑎 𝑝 ∈ { 1, . . . , 𝑀 } can choose 
+
+> 9Deep Incentive Design with Differentiable Equilibrium Blocks
+
+which machine to submit the job to. Each job-machine pair has an associated completion time 
+
+𝑡 𝑝, 𝑗 . If multiple players schedule to the same ma-chine, the jobs get resolved in random order. The expected utility 𝑢 𝑝 (𝑎 ) is given by the negative ex-pected completion time, −𝑡 𝑝,𝑎 𝑝 − 12
+
+Í𝑝 ′≠𝑝,𝑎 𝑝 ′ =𝑎 𝑝 𝑡 𝑝 ′,𝑎 𝑝 .The context 𝜔 is thus equal to the sampled job times 𝑡 and we again use the superscript 𝑡 𝜔 to refer to a specific draw. We consider an incentive designer that wants to minimize the maximum makespan of the ma-chines given by max 𝑗 
+
+Í𝑝 :𝑎 𝑝 =𝑗 𝑡 𝜔 𝑝, 𝑗 . We assume the designer can levy taxes 𝑠 𝑝 (𝑎 ; 𝜃, 𝜔 ) ≥ 0 on the agents, i.e., positive transfers from the agents to the designer, but wants to keep these mini-mal. The designer thus induces a game 𝐺 (𝜃, 𝜔 )
+
+with payoffs 𝐺 𝑝 (𝜃 ; 𝜔 ) = 𝑢 𝑝 (𝑎 ; 𝜔 ) − 𝑠 𝑝 (𝑎 ; 𝜃 ). For-mulating the machine scheduling problem as an instance of ( 𝜀 -ME-ID) yields 
+
+min  
+
+> 𝜃
+
+𝔼 𝜔 ∼Ω
+
+"∑︁ 
+
+> 𝑎
+
+𝜎 ∗ (𝑎 ) max 
+
+> 𝑗
+
+∑︁ 𝑝 :𝑎 𝑝 =𝑗 
+
+𝑡 𝜔 𝑝, 𝑗 − 𝜆 ∥𝑠 (𝜃 ; 𝜔 )∥ 2
+
+#
+
+s.t. 𝜎 ∗ = 𝜀 -ME-Eql (𝐺 (𝜃 ; 𝜔 )) ,
+
+where the last term in the upper level serves as regularization to limit the tax magnitude. In our experiments, we sampled the job times 
+
+𝑡 𝑝, 𝑗 ∼ Lognormal (0, 0.5) and the number of ma-chines uniformly from {2, . . . , 12 } resulting in games of sizes between 2×2 and 12 ×12 . To train our mechanism generator, we used as input the utility matrix [𝑢 1 (· ; 𝜔 ), . . . , 𝑢 𝑝 (· ; 𝜔 )] with batch size 64 instead of the sampled job times. The reason is the utilities also contain the necessary contextual information but are of the same shape as the outputted taxes and thus more compatible with our equivariant architecture. To evaluate our algorithm we measure the change in makespan 
+
+𝐸 𝜔 ∼Ω
+
+"∑︁ 
+
+> 𝑎
+
+𝜎 ∗ (𝑎 ) max 
+
+> 𝑗
+
+∑︁ 𝑝 :𝑎 𝑝 =𝑗 
+
+𝑡 𝑝, 𝑗 −∑︁ 
+
+> 𝑎
+
+𝜎 0 (𝑎 ) max 
+
+> 𝑗
+
+∑︁ 𝑝 :𝑎 𝑝 =𝑗 
+
+𝑡 𝑝, 𝑗 
+
+#
+
+,
+
+where 𝜎 0 is the 𝜀 -ME-Eql of the original game with 𝑠 𝑝 (𝑎 ; 𝜃, 𝜔 ) = 0. The results can be found in Table 1c. We see that our mechanism generator, for the vast majority of sampled contexts outputs taxes, which decrease the makespan and that the decrease outperforms the benchmark in expec-tation. The small room for improvement when polishing (4,000 function evaluations) shows our method performs well. However, as before, eval-uating under the ECOS distribution reduces per-formance. 
+
+## 6. Conclusion 
+
+In this work, we introduced deep incentive design 
+
+(DID). It is a framework for solving mathematical programs with equilibrium constraints (MPECs), based on backpropagating gradients through dif-ferentiable equilibrium blocks (DEBs). By exploit-ing the differentiability and convexity of the 𝜀 -(coarse) correlated equilibrium polytope, we can train networks to predict the unique 𝜀 -maximum-entropy equilibrium of normal form games up to large scales and easily compute the gradients of these equilibria. Thereby, we unlock the whole toolkit of machine learning and gradient-based optimization to tackle the large class of relevant and hard game-theoretic incentive design prob-lems. Section 5 illustrated both the success of our approach on three diverse tasks and, more impor-tantly, how easily it can be adapted to different problems. Indeed, with one single DEB (per de-sired solution concept), one fundamental type of equivariant layer, and a unified training pipeline with many fixed hyperparameters, we were able to train mechanism generators for three different problems, which themselves generalized across many game sizes and contexts. Given this gen-eralizability, we anticipate that DID will be use-ful across the multi-agent community in tackling a wide array of problems with equilibrium con-straints. DID is a versatile framework that does not rely on specific solution concepts or architectures and opens several promising future research direc-tions to complement our work. One example is extending DID to different equivariant architec-tures, such as transformers, or running it while continuously training the DEB to avoid adversar-ial examples. Another is improving the scalabil-ity. The computation currently scales linearly with the game size Î𝑁 𝑝 =1 |A 𝑝 |, which limits the number of feasible players. Therefore, studying our approach with succinct game representations, 
+
+> 10 Deep Incentive Design with Differentiable Equilibrium Blocks
+
+such as polymatrix games, could help scale to even larger strategic interactions. We are confi-dent DID can be extended to such games with minor architectural adaptations. Another impor-tant research avenue is incentive design with equilibrium constraints. Hard constraints on fair-ness or welfare for example are particularly im-portant if DID is to be implemented in the real world and should be straightforward to add to our framework. In general, we look forward to future applications of DID to other diverse prob-lems with setting-specific DEBs, architectures and constraints. 
+
+## References 
+
+A. Agrawal, S. Diamond, and S. Boyd. Disciplined geometric programming. Optimization Letters ,13(5):961–976, 2019. (Cited on page 6.) R. J. Aumann. Subjectivity and correlation in randomized strategies. Journal of Mathematical Economics , 1(1):67–96, Mar. 1974. ISSN 0304-4068. doi: 10.1016/0304-4068(74)90037-8. (Cited on page 3.) M. Babaioff and E. Winter. Contract complexity. In Proceedings of the fifteenth ACM conference on Economics and computation , EC ’14, pages 911–911. ACM, June 2014. doi: 10.1145/26 00057.2602852. (Cited on page 7.) Y. Bai, C. Jin, and T. Yu. Near-optimal re-inforcement learning with self-play. CoRR ,abs/2006.12007, 2020. URL https://ar xiv.org/abs/2006.12007 . (Cited on page 24.) A. Bakhtin, D. J. Wu, A. Lerer, J. Gray, A. P. Jacob, G. Farina, A. H. Miller, and N. Brown. Master-ing the game of no-press diplomacy via human-regularized reinforcement learning and plan-ning. arXiv preprint arXiv:2210.05492 , 2022. (Cited on page 8.) J. Balaguer, R. Koster, C. Summerfield, and A. Tac-chetti. The good shepherd: An oracle agent for mechanism design. In ICLR 2022 Workshop on Gamification and Multiagent Solutions , 2022. URL https://openreview.net/forum?i d=HGNLs51peq . (Cited on page 2.) T. Baumann, T. Graepel, and J. Shawe-Taylor. Adaptive mechanism design: Learning to pro-mote cooperation. CoRR , abs/1806.04067, 2018. URL http://arxiv.org/abs/18 06.04067 . (Cited on page 2.) Y. Bejerano, S.-J. Han, and L. E. Li. Fairness and load balancing in wireless lans using associa-tion control. In Proceedings of the 10th Annual International Conference on Mobile Computing and Networking , MobiCom ’04, page 315–329, New York, NY, USA, 2004. Association for Com-puting Machinery. ISBN 1581138687. doi: 10.1145/1023720.1023751. URL https: //doi.org/10.1145/1023720.1023751 .(Cited on page 9.) A. Bestick, L. J. Ratliff, P. Yan, R. Bajcsy, and S. S. Sastry. An inverse correlated equilibrium framework for utility learning in multiplayer, noncooperative settings. In Proceedings of the 2nd ACM International Conference on High Con-fidence Networked Systems , HiCoNS ’13, page 9–16, New York, NY, USA, 2013. Association for Computing Machinery. ISBN 9781450319614. doi: 10.1145/2461446.2461449. URL https: //doi.org/10.1145/2461446.2461449 .(Cited on page 8.) J. Bradbury, R. Frostig, P. Hawkins, M. J. Johnson, C. Leary, D. Maclaurin, G. Necula, A. Paszke, J. VanderPlas, S. Wanderman-Milne, and Q. Zhang. JAX: composable transforma-tions of Python+NumPy programs, 2018. URL 
+
+http://github.com/jax-ml/jax . (Cited on page 18.) G. Brero, A. Eden, D. Chakrabarti, M. Gerst-grasser, A. Greenwald, V. Li, and D. C. Parkes. Stackelberg pomdp: A reinforcement learning approach for economic design, 2024. URL 
+
+https://arxiv.org/abs/2210.03852 .(Cited on page 3.) F. Cacciamani, M. Bernasconi, M. Castiglioni, and N. Gatti. Multi-agent contract design beyond binary actions. In Proceedings of the 25th ACM Conference on Economics and Computation , EC ’24, page 1293, New York, NY, USA, 2024. Association for Computing Machinery. ISBN 9798400707049. doi: 10.1145/3670865.36 
+
+> 11 Deep Incentive Design with Differentiable Equilibrium Blocks
+
+73633. URL https://doi.org/10.1145/ 3670865.3673633 . (Cited on page 7.) I. Canyakmaz, I. Sakos, W. Lin, A. Varvitsiotis, and G. Piliouras. Learning and steering game dynamics towards desirable outcomes, 2024. URL https://arxiv.org/abs/2404.010 66 . (Cited on page 3.) Y. Cao, Y. Wang, S. Liu, M. Li, Y. Tao, and T. He. Pay for the second-best service: Agame-theoretic approach against dishonest llm providers, 2025. URL https://arxiv.org/ abs/2511.00847 . (Cited on page 9.) M. Castiglioni, A. Marchesi, and N. Gatti. Multi-agent contract design: How to commission mul-tiple agents with individual outcomes. In Pro-ceedings of the 24th ACM Conference on Eco-nomics and Computation , EC ’23, page 412–448, New York, NY, USA, 2023. Association for Com-puting Machinery. ISBN 9798400701047. doi: 10.1145/3580507.3597793. URL https: //doi.org/10.1145/3580507.3597793 .(Cited on page 7.) S. Chakraborty, A. Bedi, A. Koppel, H. Wang, D. Manocha, M. Wang, and F. Huang. PARL: A unified framework for policy alignment in rein-forcement learning from human feedback. In 
+
+The Twelfth International Conference on Learn-ing Representations , 2024. URL https://op enreview.net/forum?id=ByR3NdDSZB .(Cited on page 3.) L. Chen, J. Xu, and J. Zhang. Bilevel optimization without lower-level strong convexity from the hyper-objective perspective, 2024. URL https: //openreview.net/forum?id=2fSyBPBf Bs . (Cited on page 3.) S. Chen, D. Yang, J. Li, S. Wang, Z. Yang, and Z. Wang. Adaptive model design for markov decision process. In International Conference on Machine Learning , pages 3679–3700. PMLR, 2022. (Cited on page 3.) V. Conitzer and T. Sandholm. Complexity of mech-anism design. In Proceedings of the Eighteenth Conference on Uncertainty in Artificial Intelli-gence , UAI’02, page 103–110, San Francisco, CA, USA, 2002. Morgan Kaufmann Publishers Inc. ISBN 1558608974. (Cited on page 3.) V. Conitzer and T. Sandholm. Self-interested au-tomated mechanism design and implications for optimal combinatorial auctions. In Pro-ceedings of the 5th ACM Conference on Elec-tronic Commerce , EC ’04, page 132–141, New York, NY, USA, 2004. Association for Com-puting Machinery. ISBN 1581137710. doi: 10.1145/988772.988793. URL https: //doi.org/10.1145/988772.988793 .(Cited on page 3.) N. Corecco, B. Yardim, V. Thoma, Z. Shen, and N. He. Scalable neural incentive design with pa-rameterized mean-field approximation, 2025. URL https://arxiv.org/abs/2510.214 42 . (Cited on page 2.) M. Curry, A. R. Trott, S. Phade, Y. Bai, and S. Zheng. Finding general equilibria in many-agent economic simulations using deep rein-forcement learning, 2022. URL https://op enreview.net/forum?id=d5IQ3k7ed__ .(Cited on page 3.) M. Curry, T. Sandholm, and J. Dickerson. Differ-entiable economics for randomized affine maxi-mizer auctions. In Proceedings of the Thirty-Second International Joint Conference on Ar-tificial Intelligence , IJCAI-2023, pages 2633– 2641. International Joint Conferences on Artifi-cial Intelligence Organization, Aug. 2023. doi: 10.24963/ijcai.2023/293. (Cited on page 3.) M. Curry, V. Thoma, D. Chakrabarti, S. McAleer, C. Kroer, T. Sandholm, N. He, and S. Seuken. Automated design of affine maximizer mecha-nisms in dynamic settings. Proceedings of the AAAI Conference on Artificial Intelligence , 38(9): 9626–9635, Mar. 2024. ISSN 2159-5399. doi: 10.1609/aaai.v38i9.28819. (Cited on page 3.) M. Curry, Z. Fan, Y. Jiang, S. S. Ravindranath, T. Wang, and D. C. Parkes. Automated mecha-nism design: A survey. ACM SIGecom Exchanges ,22(2):102–120, 2025. (Cited on page 3.) W. M. Czarnecki, S. Osindero, M. Jaderberg, G. Swirszcz, and R. Pascanu. Sobolev training for neural networks. In Proceedings of the 31st International Conference on Neural Information Processing Systems , NIPS’17, page 4281–4290, 
+
+> 12 Deep Incentive Design with Differentiable Equilibrium Blocks
+
+Red Hook, NY, USA, 2017. Curran Associates Inc. ISBN 9781510860964. (Cited on page 5.) C. Daskalakis, P. W. Goldberg, and C. H. Pa-padimitriou. The complexity of computing a Nash equilibrium. Commun. ACM , 52(2): 89–97, feb 2009. ISSN 0001-0782. doi: 10.1145/1461928.1461951. URL https: //doi.org/10.1145/1461928.1461951 .(Cited on page 4.) S. Diamond and S. Boyd. CVXPY: A Python-embedded modeling language for convex opti-mization. Journal of Machine Learning Research ,17(83):1–5, 2016. (Cited on page 6.) A. Domahidi, E. Chu, and S. Boyd. Ecos: An socp solver for embedded systems. In 2013 European Control Conference (ECC) , pages 3071–3076, 2013. doi: 10.23919/ECC.2013.6669541. (Cited on page 6.) Z. Duan, Y. Du, J. Wang, and X. Deng. To-wards the pac learnability of nash equilibrium. 
+
+CoRR , abs/2108.07472, 2021. URL https: //arxiv.org/abs/2108.07472 . (Cited on page 24.) Z. Duan, J. Tang, Y. Yin, Z. Feng, X. Yan, M. Zaheer, and X. Deng. A context-integrated transformer-based neural network for auction design. In K. Chaudhuri, S. Jegelka, L. Song, C. Szepes-vari, G. Niu, and S. Sabato, editors, Proceedings of the 39th International Conference on Machine Learning , volume 162 of Proceedings of Machine Learning Research , pages 5609–5626. PMLR, 17–23 Jul 2022. URL https://proceeding s.mlr.press/v162/duan22a.html . (Cited on page 3.) Z. Duan, H. Sun, Y. Chen, and X. Deng. A scal-able neural network for dsic affine maximizer auction design. In Proceedings of the 37th In-ternational Conference on Neural Information Processing Systems , NIPS ’23, Red Hook, NY, USA, 2023. Curran Associates Inc. (Cited on page 3.) P. Dütting, Z. Feng, H. Narasimhan, D. C. Parkes, and S. S. Ravindranath. Optimal auctions through deep learning: Advances in differen-tiable economics. J. ACM , 71(1), Feb. 2024. ISSN 0004-5411. doi: 10.1145/3630749. URL 
+
+https://doi.org/10.1145/3630749 .(Cited on page 3.) P. Dütting, T. Ezra, M. Feldman, and T. Kessel-heim. Multi-agent contracts. In Proceedings of the 55th Annual ACM Symposium on Theory of Computing , STOC ’23, pages 1311–1324. ACM, June 2023. doi: 10.1145/3564246.3585193. (Cited on page 7.) P. Dütting, T. Ezra, M. Feldman, and T. Kessel-heim. Black-box lifting and robustness theo-rems for multi-agent contracts, 2025a. URL 
+
+https://arxiv.org/abs/2511.19358 .(Cited on page 7.) P. Dütting, T. Ezra, M. Feldman, and T. Kessel-heim. Multi-Agent Combinatorial Contracts ,pages 1857–1891. Society for Industrial and Applied Mathematics, Jan. 2025b. ISBN 9781611978322. doi: 10.1137/1.978161 1978322.58. (Cited on page 7.) X. Feng, O. Slumbers, Z. Wan, B. Liu, S. McAleer, Y. Wen, J. Wang, and Y. Yang. Neural auto-curricula in two-player zero-sum games. In M. Ranzato, A. Beygelzimer, Y. Dauphin, P. Liang, and J. W. Vaughan, editors, Advances in Neural Information Processing Systems , vol-ume 34, pages 3504–3517. Curran Associates, Inc., 2021. URL https://proceedings.ne urips.cc/paper/2021/file/1cd73be1e 256a7405516501e94e892ac-Paper.pdf .(Cited on page 24.) T. Fiez, B. Chasnov, and L. Ratliff. Implicit learn-ing dynamics in stackelberg games: Equilib-ria characterization, convergence analysis, and empirical study. In H. D. III and A. Singh, editors, Proceedings of the 37th International Conference on Machine Learning , volume 119 of Proceedings of Machine Learning Research ,pages 3133–3144. PMLR, 13–18 Jul 2020. URL 
+
+https://proceedings.mlr.press/v119 /fiez20a.html . (Cited on page 2.) M. Gerstgrasser and D. C. Parkes. Oracles & fol-lowers: Stackelberg equilibria in deep multi-agent reinforcement learning. In A. Krause, E. Brunskill, K. Cho, B. Engelhardt, S. Sabato, and J. Scarlett, editors, Proceedings of the 40th 
+
+> 13 Deep Incentive Design with Differentiable Equilibrium Blocks
+
+International Conference on Machine Learning ,volume 202 of Proceedings of Machine Learning Research , pages 11213–11236. PMLR, 23–29 Jul 2023. URL https://proceedings.ml r.press/v202/gerstgrasser23a.html .(Cited on page 3.) P. D. Grontas, G. Belgioioso, C. Cenedese, M. Fochesato, J. Lygeros, and F. Dörfler. Big hype: Best intervention in games via dis-tributed hypergradient descent. IEEE Transac-tions on Automatic Control , 69(12):8338–8353, 2024. doi: 10.1109/TAC.2024.3410890. (Cited on page 2.) S. Hart and A. Mas-Colell. A simple adaptive procedure leading to correlated equilibrium. 
+
+Econometrica , 68(5):1127–1150, 2000. ISSN 00129682, 14680262. URL http://www. jstor.org/stable/2999445 . (Cited on page 3.) J. S. Hartford, J. R. Wright, and K. Leyton-Brown. Deep learning for predicting human strategic behavior. In D. Lee, M. Sugiyama, U. Luxburg, I. Guyon, and R. Garnett, editors, Advances in Neural Information Processing Systems , vol-ume 29. Curran Associates, Inc., 2016. URL 
+
+https://proceedings.neurips.cc/p aper/2016/file/7eb3c8be3d411e8eb fab08eba5f49632-Paper.pdf . (Cited on page 24.) H. Heaton, D. McKenzie, Q. Li, S. W. Fung, S. J. Os-her, and W. Yin. Learn to predict equilibria via fixed point networks. CoRR , abs/2106.00906, 2021. URL https://arxiv.org/abs/2106 .00906 . (Cited on page 24.) J. Heek, A. Levskaya, A. Oliver, M. Ritter, B. Ron-depierre, A. Steiner, and M. van Zee. Flax: A neural network library and ecosystem for JAX, 2024. URL http://github.com/google/ flax . (Cited on page 18.) B. Heydenreich, R. Müller, and M. Uetz. Games and mechanism design in machine schedul-ing—an introduction. Production and Opera-tions Management , 16(4):437–454, 2007. doi: https://doi.org/10.1111/j.1937-5956.2007 .tb00271.x. URL https://onlinelibrar y.wiley.com/doi/abs/10.1111/j.1937 -5956.2007.tb00271.x . (Cited on pages 2 and 9.) B. Holmstrom. Moral hazard in teams. The Bell Journal of Economics , 13(2):324, 1982. ISSN 0361-915X. doi: 10.2307/3003457. (Cited on pages 2 and 7.) Q. J. Hu, J. Bieker, X. Li, N. Jiang, B. Keigwin, G. Ranganath, K. Keutzer, and S. K. Upadhyay. Routerbench: A benchmark for multi-llm rout-ing system. arXiv preprint arXiv: 2403.12031 ,2024. (Cited on page 9.) J. Huang, V. Thoma, Z. Shen, H. H. Nax, and N. He. Learning to steer markovian agents under model uncertainty, 2024. URL https: //arxiv.org/abs/2407.10207 . (Cited on page 3.) N. Immorlica, L. E. Li, V. S. Mirrokni, and A. S. Schulz. Coordination mechanisms for selfish scheduling. Theoretical Computer Science , 410 (17):1589–1598, Apr. 2009. ISSN 0304-3975. doi: 10.1016/j.tcs.2008.12.032. (Cited on page 9.) D. Ivanov, I. Safiulin, I. Filippov, and K. Balabaeva. Optimal-er auctions through attention. In Pro-ceedings of the 36th International Conference on Neural Information Processing Systems , NIPS ’22, Red Hook, NY, USA, 2022. Curran Asso-ciates Inc. ISBN 9781713871088. (Cited on page 3.) A. P. Jacob, D. J. Wu, G. Farina, A. Lerer, H. Hu, A. Bakhtin, J. Andreas, and N. Brown. Mod-eling strong and human-like gameplay with kl-regularized search. In International Confer-ence on Machine Learning , pages 9695–9728. PMLR, 2022. (Cited on page 8.) C. Jin, Q. Liu, Y. Wang, and T. Yu. V-learning -A simple, efficient, decentralized algorithm for multiagent RL. CoRR , abs/2110.14555, 2021. URL https://arxiv.org/abs/2110.145 55 . (Cited on page 24.) W. Jitkrittum, H. Narasimhan, A. S. Rawat, J. Juneja, C. Wang, Z. Wang, A. Go, C.-Y. Lee, P. Shenoy, R. Panigrahy, A. K. Menon, and S. Ku-mar. Universal model routing for efficient llm 
+
+> 14 Deep Incentive Design with Differentiable Equilibrium Blocks
+
+inference, 2025. URL https://arxiv.org/ abs/2502.08773 . (Cited on page 9.) D. P. Kingma and J. Ba. Adam: A method for stochastic optimization. In Y. Bengio and Y. Le-Cun, editors, 3rd International Conference on Learning Representations, ICLR 2015, San Diego, CA, USA, May 7-9, 2015, Conference Track Pro-ceedings , 2015. URL http://arxiv.org/ abs/1412.6980 . (Cited on pages 20, 21, and 22.) E. Kohlberg and J.-F. Mertens. On the strate-gic stability of equilibria. Econometrica , 54 (5):1003, Sept. 1986. ISSN 0012-9682. doi: 10.2307/1912320. (Cited on page 4.) V. Kuleshov and O. Schrijvers. Inverse game theory: Learning utilities in succinct games. In Web and Internet Economics: 11th Inter-national Conference, WINE 2015, Amsterdam, The Netherlands, December 9-12, 2015, Pro-ceedings , page 413–427, Berlin, Heidelberg, 2015. Springer-Verlag. ISBN 978-3-662-48994-9. doi: 10.1007/978-3-662-48995-6_30. URL 
+
+https://doi.org/10.1007/978-3-662 -48995-6_30 . (Cited on pages 2 and 8.) A. Lerer and A. Peysakhovich. Learning exist-ing social conventions via observationally aug-mented self-play. In Proceedings of the 2019 AAAI/ACM Conference on AI, Ethics, and Soci-ety , pages 107–114, 2019. (Cited on page 8.) J. Li, J. Yu, Y. Nie, and Z. Wang. End-to-end learn-ing and intervention in games. In H. Larochelle, M. Ranzato, R. Hadsell, M. Balcan, and H. Lin, editors, Advances in Neural Information Process-ing Systems , volume 33, pages 16653–16665. Curran Associates, Inc., 2020. URL https: //proceedings.neurips.cc/paper_fil es/paper/2020/file/c21f4ce780c5c9d 774f79841b81fdc6d-Paper.pdf . (Cited on page 2.) J. Li, J. Yu, B. Liu, Y. Nie, and Z. Wang. Achieving hierarchy-free approximation for bilevel pro-grams with equilibrium constraints. In Pro-ceedings of the 40th International Conference on Machine Learning , ICML’23, Honolulu, Hawaii, USA, 2023. JMLR.org. (Cited on pages 2 and 24.) J. Li, J. Yu, Q. Wang, B. Liu, Z. Wang, and Y. M. Nie. Differentiable bilevel programming for stackelberg congestion games, 2024. URL 
+
+https://arxiv.org/abs/2209.07618 .(Cited on page 2.) C. K. Ling, F. Fang, and J. Z. Kolter. What game are we playing? end-to-end learning in normal and extensive form games. CoRR , abs/1805.02777, 2018. URL http://arxiv.org/abs/1805 .02777 . (Cited on page 24.) B. Liu, J. Li, Z. Yang, H.-T. Wai, M. Hong, Y. Nie, and Z. Wang. Inducing equilibria via incen-tives: Simultaneous design-and-play ensures global convergence. In S. Koyejo, S. Mohamed, A. Agarwal, D. Belgrave, K. Cho, and A. Oh, ed-itors, Advances in Neural Information Processing Systems , volume 35, pages 29001–29013. Cur-ran Associates, Inc., 2022. URL https://pr oceedings.neurips.cc/paper_files/p aper/2022/file/ba5f85ce126aad12075 a3ffa68a3e969-Paper-Conference.pdf .(Cited on page 2.) H. H. Liu, Y. Wang, Y. R. Yang, H. Wang, and C. Tian. Optimizing cost and performance for content multihoming. In Proceedings of the ACM SIGCOMM 2012 conference on Appli-cations, technologies, architectures, and proto-cols for computer communication , SIGCOMM ’12, pages 371–382. ACM, Aug. 2012. doi: 10.1145/2342356.2342432. (Cited on page 9.) S. Liu, L. Marris, G. Piliouras, I. Gemp, and N. Heess. Nfgtransformer: Equivariant repre-sentation learning for normal-form games. In 
+
+The Twelfth International Conference on Learn-ing Representations , 2024. URL https://op enreview.net/forum?id=4YESQqIys7 .(Cited on pages 1, 5, and 24.) Z.-Q. Luo, J.-S. Pang, and D. Ralph. Mathe-matical Programs with Equilibrium Constraints .Cambridge University Press, nov 1996. doi: 10.1017/cbo9780511983658. (Cited on page 1.) C. Maheshwari, K. Kulkarni, M. Wu, and S. S. Sastry. Inducing social optimality in games via adaptive incentive design. In 2022 IEEE 61st Conference on Decision and Control (CDC) , pages 
+
+> 15 Deep Incentive Design with Differentiable Equilibrium Blocks
+
+2864–2869, 2022. doi: 10.1109/CDC51059.2 022.9992685. (Cited on page 2.) L. Marris, I. Gemp, T. Anthony, A. Tacchetti, S. Liu, and K. Tuyls. Turbocharging solution concepts: Solving NEs, CEs and CCEs with neural equi-librium solvers, 2022. (Cited on pages 1, 5, 6, 22, 23, and 24.) L. Marris, I. Gemp, and G. Piliouras. Equilibrium-invariant embedding, metric space, and funda-mental set of 2 × 2 normal-form games, 2023. URL https://arxiv.org/abs/2304.099 78 . (Cited on pages 8 and 22.) R. McIlroy-Young, S. Sen, J. Kleinberg, and A. An-derson. Aligning superhuman ai with human behavior: Chess as a model system. In Proceed-ings of the 26th ACM SIGKDD international con-ference on knowledge discovery & data mining ,pages 1677–1687, 2020. (Cited on page 8.) H. Moulin and J. P. Vial. Strategically zero-sum games: The class of games whose completely mixed equilibria cannot be improved upon. In-ternational Journal of Game Theory , 7(3–4): 201–221, Sept. 1978. ISSN 1432-1270. doi: 10.1007/bf01769190. (Cited on page 3.) R. Munos, M. Valko, D. Calandriello, M. G. Azar, M. Rowland, Z. D. Guo, Y. Tang, M. Geist, T. Mesnard, C. Fiegel, et al. Nash learning from human feedback. In Forty-first Interna-tional Conference on Machine Learning , 2024. (Cited on page 8.) J. Nash. Non-cooperative games. The Annals of Mathematics , 54(2):286, sep 1951. doi: 10.2 307/1969529. (Cited on page 4.) J. A. Nelder and R. Mead. A simplex method for function minimization. The Computer Journal ,7(4):308–313, 01 1965. ISSN 0010-4620. doi: 10.1093/comjnl/7.4.308. URL https://doi. org/10.1093/comjnl/7.4.308 . (Cited on page 6.) I. Ong, A. Almahairi, V. Wu, W.-L. Chiang, T. Wu, J. E. Gonzalez, M. W. Kadous, and I. Stoica. Routellm: Learning to route llms with prefer-ence data, 2025. URL https://arxiv.org/ abs/2406.18665 . (Cited on page 9.) L. E. Ortiz, R. E. Schapire, and S. M. Kakade. Maximum entropy correlated equilibria. In M. Meila and X. Shen, editors, Proceedings of the Eleventh International Conference on Artifi-cial Intelligence and Statistics , volume 2 of Pro-ceedings of Machine Learning Research , pages 347–354, San Juan, Puerto Rico, 21–24 Mar 2007. PMLR. URL https://proceedings. mlr.press/v2/ortiz07a.html . (Cited on page 5.) J. Rahme, S. Jelassi, and S. M. Weinberg. Auction learning as a two-player game. In International Conference on Learning Representations , 2021. URL https://openreview.net/forum?i d=YHdeAO61l6T . (Cited on page 3.) P. Schuurman and T. Vredeveld. Performance Guarantees of Local Search for Multiprocessor Scheduling , pages 370–382. Springer Berlin Heidelberg, 2001. ISBN 9783540455356. doi: 10.1007/3- 540- 45535- 3_29. (Cited on page 9.) H. Shen, Z. Yang, and T. Chen. Principled penalty-based methods for bilevel reinforcement learn-ing and rlhf. arXiv preprint arXiv:2402.06886 ,2024. (Cited on page 3.) H. v. Stackelberg. Marktform und Gle-ichgewicht . Klassiker der Nationalökonomie. Verlag Wirtschaft und Finanzen, Düsseldorf, faks. der 1934 ersch. erstausg. edition, 1934. (Cited on page 4.) V. Syrgkanis, E. Tamer, and J. Ziani. Inference on auctions with weak assumptions on infor-mation, 2017. (Cited on page 8.) A. Tacchetti, D. Strouse, M. Garnelo, T. Graepel, and Y. Bachrach. Learning truthful, efficient, and welfare maximizing auction rules. In ICLR 2022 Workshop on Gamification and Multiagent Solutions , 2022. URL https://openrevi ew.net/forum?id=Sql8oqJTe9 . (Cited on page 3.) V. Thoma, B. Pásztor, A. Krause, G. Ramponi, and Y. Hu. Contextual bilevel reinforcement learning for incentive alignment. In The Thirty-eighth Annual Conference on Neural Information Processing Systems , 2024. URL https://op 
+
+> 16 Deep Incentive Design with Differentiable Equilibrium Blocks
+
+enreview.net/forum?id=W3Dx1TGW3f .(Cited on page 3.) P. Virtanen, R. Gommers, T. E. Oliphant, M. Haberland, T. Reddy, D. Cournapeau, E. Burovski, P. Peterson, W. Weckesser, J. Bright, S. J. van der Walt, M. Brett, J. Wilson, K. J. Mill-man, N. Mayorov, A. R. J. Nelson, E. Jones, R. Kern, E. Larson, C. J. Carey, İ. Polat, Y. Feng, E. W. Moore, J. VanderPlas, D. Laxalde, J. Perk-told, R. Cimrman, I. Henriksen, E. A. Quintero, C. R. Harris, A. M. Archibald, A. H. Ribeiro, F. Pedregosa, P. van Mulbregt, and SciPy 1.0 Contributors. SciPy 1.0: Fundamental Algo-rithms for Scientific Computing in Python. Na-ture Methods , 17:261–272, 2020. doi: 10.103 8/s41592-019-0686-2. (Cited on page 6.) K. Wang, L. Xu, A. Perrault, M. K. Reiter, and M. Tambe. Coordinating followers to reach better equilibria: End-to-end gradient descent for stackelberg games. Proceedings of the AAAI Conference on Artificial Intelligence , 36(5):5219– 5227, June 2022. ISSN 2159-5399. doi: 10.1 609/aaai.v36i5.20457. (Cited on page 2.) T. Wang, Y. Jiang, and D. C. Parkes. Gem-net: Menu-based, strategy-proof multi-bidder auctions through deep learning. In Proceed-ings of the 25th ACM Conference on Economics and Computation , EC ’24, page 1100, New York, NY, USA, 2024. Association for Comput-ing Machinery. ISBN 9798400707049. doi: 10.1145/3670865.3673454. URL https: //doi.org/10.1145/3670865.3673454 .(Cited on page 3.) K. Waugh, B. D. Ziebart, and J. A. Bagnell. Com-putational rationalization: The inverse equilib-rium problem. CoRR , abs/1308.3506, 2013. URL http://arxiv.org/abs/1308.3506 .(Cited on page 8.) S. Zheng, A. Trott, S. Srinivasa, D. C. Parkes, and R. Socher. The ai economist: Taxation policy design via two-level deep multiagent reinforce-ment learning. Science Advances , 8(18), May 2022. ISSN 2375-2548. doi: 10.1126/sciadv.a bk2607. (Cited on page 3.) 
+
+> 17 Deep Incentive Design with Differentiable Equilibrium Blocks
+
+## A. Experimental Details 
+
+A.1. Architectures and Code 
+
+Our networks are built to respect the equivariances of the underlying game-theoretic functions. A function 𝑓 is said to be equivariant if applying a permutation 𝜏 to its input is equivalent to applying the same permutation to the output, i.e., 
+
+𝑓 (𝜏 (𝑥 )) = 𝜏 ( 𝑓 (𝑥 )) .
+
+The game-theoretic functions we are trying to learn have several such equivariances, e.g., if we permute the action space of a player 𝑝 in a game 𝐺 to yield a game 𝐺 𝜏 and do the same for 𝐺 ’s equilibrium 𝜎 ∗ to yield 𝜎 ∗ 
+
+> 𝜏
+
+then 𝜎 ∗ 
+
+> 𝜏
+
+∈ Eql (𝐺 𝜏 ) and we say the equilibrium map is equivariant with respect to the permutation 𝜏 .We briefly explain the fundamental architecture used for all layers in our network. All our data has a channel dimension and a varying amount of equivariant dimensions (such as players, strategies and outcomes). For a given input at channel 𝑐 , (𝑐, . . . ) we apply a set of pooling functions 𝜙 𝑖 which preserve some corresponding equivariances 𝜏 𝑖 of the equivariant dimensions, i.e., 
+
+𝜙 𝑖 (( 𝑐, 𝜏 𝑖 (. . . ))) = (𝑐, 𝜙 𝑖 (𝜏 (. . . ))) = (𝑐, 𝜏 (𝜙 𝑖 (. . . ))) .
+
+The output from the pooling functions is then concatenated along the channel dimension and passed through a linear transform, whose weights are shared across the equivariant dimensions, i.e., only depend on the channel dimension. This ensures the equivariance is preserved and gives the network the inductive bias. Afterwards we apply a (nonlinear) activation function. In general we can thus recursively define the output 𝑔 𝑙 +1 of the 𝑙 + 1 layer as 
+
+𝑔 𝑙 +1 (𝑐 𝑙 +1, . . . ) = 𝑓  ∑︁ 
+
+> 𝑐 𝑙
+> 𝐼
+
+∑︁ 
+
+> 𝑖 =1
+
+𝑤 (𝑐 𝑙 +1, 𝑐 𝑙 , 𝑖 )𝜙 𝑖 (𝑔 𝑙 (𝑐 𝑙 , . . . )) + 𝑏 (𝑐 𝑙 +1)
+
+!
+
+,
+
+where 𝐼 represents the number of different pooling functions applied, 𝐶 𝑙 is the numbers of channels set for layer 𝑙 and 𝑤 is the weight of the linear layer. In all our experiments all hidden layers use GELU as the nonlinear activation function. For the final layers, the activation depends on the setting, which we will outline below. All our code is written in Python. The neural networks are built using JAX (Bradbury et al., 2018) and Flax (Heek et al., 2024). 
+
+A.2. Inverse Equilibrium Problem 
+
+A.2.1. Architecture 
+
+For the inverse equilibrium problem, the mechanism generator outputs payoffs of shape 
+
+[𝐵, 𝑁, A1, . . . , A𝑁 , 1]. It takes as input the target equilibrium 𝜎 ∗ of shape [𝐵, A1, . . . , A𝑁 ]. Note, that there are many possible games that might have the same equilibrium. We are thus trying to learn a one-to-many mapping. To avoid the network averaging over the multimodal loss landscape, we also add a noise vector to the input. To match the output shape, we further expand and broadcast the input to shape [𝐵, 𝑁, A1, . . . , A𝑁 , 2], where the target joint is in the first channel and the noise is in the second channel. As the input and output are of the same shape, we will only use one type of equivariant layer in the architecture, called P2P layer (for payoff shape to payoff shape), which preserves the payoff shape and its natural equivariances. There are two different equivariances for the P2P layer to respect: 
+
+> 18 Deep Incentive Design with Differentiable Equilibrium Blocks
+
+• For each player 𝑝 , and permutation 𝜏 𝑝 (1), . . . , 𝜏 𝑝 (|A 𝑝 |) of their strategy space, it has to hold for all 𝑐 𝑙 ∈ 𝐶 𝑙 , 𝑛 ∈ 𝑁, (𝑎 1, . . . , 𝑎 𝑁 ) ∈ A that 𝑔 𝑙 (𝑐 𝑙 , 𝑛, 𝑎 1, . . . , 𝜏 𝑝 (𝑎 𝑝 ), . . . , 𝑎 𝑁 ) =
+
+𝜏 𝑝 (𝑔 𝑙 (𝑐 𝑙 , 𝑛, 𝑎 1, . . . , 𝜏 𝑝 (𝑎 𝑝 ), . . . , 𝑎 𝑁 )) .
+
+• For each permutation 𝜏 𝑁 (1), . . . , 𝜏 𝑁 (𝑁 ) of the players it has to hold for all 𝑐 𝑙 ∈ 𝐶 𝑙 , 𝑛 ∈
+
+𝑁, (𝑎 1, . . . , 𝑎 𝑁 ) ∈ A that 𝑔 𝑙 (𝑐 𝑙 , 𝑛, 𝑎 𝜏 𝑁 (1) , . . . , 𝑎 𝜏 𝑁 (𝑁 ) ) = 𝜏 𝑁 (𝑔 𝑙 (𝑐 𝑙 , 𝑛, 𝑎 1, . . . , 𝑎 𝑁 )) .In this work, we build a set of equivariant pooling functions 𝐼 that respects the above equivariance by combining a few fundamental equivariant operations. First, we identify a set of axes over which we can "reduce" the data, such that the equivariances are preserved. For the payoffs, these are (i) the player axis, and (ii) for a given player 𝑝 either their strategy axis 𝑎 𝑝 or the strategy axes of all other players 𝑎 − 𝑝 . For each possible axis, we can choose one of two possible equivariant reductions: either the identity, which takes the current element, or the whole axis, which returns all elements in the axis. In a last step we apply an aggregation function over the returned elements from the axes. In our experiments we use the meanvar aggregation, which is defined as 𝜙 𝑚𝑣 (𝑥 ) =  
+
+> Í𝑛 𝑖 =1𝑥 𝑖
+> √𝑛
+
+for 𝑥 ∈ ℝ𝑛 .However, other pooling functions, such as mean, sum, max, min etc. are possible. With these operations we can sequentially define our equivariant pooling functions. First, we choose either the strategy axis 𝑎 𝑝 or 𝑎 − 𝑝 then choose the reductions over the player and strategy axis and then choose one of multiple aggregation functions. In general, for 𝑥 axes, 𝑦 reductions and 𝑧 
+
+aggregation functions, this will yield 𝐼 = 𝑧 𝑦 𝑥 channels as input to the linear layer for each channel in the input of the equivariant layer. In our case 𝐼 = 23 = 8. The 8 channels are made up of the 6 distinct pooling functions 𝜙 𝑚𝑣 , 𝜙 𝑚𝑣 𝑝 , 𝜙 𝑚𝑣 𝑎 𝑝 , 𝜙 𝑚𝑣 𝑝,𝑎 𝑝 , 𝜙 𝑚𝑣 𝑎 − 𝑝 , 𝜙 𝑚𝑣 𝑝,𝑎 − 𝑝 , where the lower case represents the axes over which we apply the meanvar reduction and the first two functions are duplicated. Note that when we apply the meanvar reduction across all elements of a given axis, we broadcast the result across the axis to preserve the shape (and the equivariance). In our experiments we use three hidden layers with 64 nodes each, i.e., 𝐶 𝑙 = 64 . Note that after the pooling we have 𝐶 𝑙 𝐼 = 512 channels, which then get mapped back to 𝐶 𝑙 +1 = 64 channels by the linear layer. The exception is the first layer, which only has 2 input channels and the final layer, whose output has channel dimension 1. Moreover, for the final layer we do not apply a GELU activation but the identity to ensure the network can generate both positive and negative payoffs. 
+
+A.2.2. Training pipeline 
+
+The training pipeline for the inverse equilibrium problem is illustrated in Figure 4          
+
+> Target joints ˜𝜎 𝜔
+> [B, A1,. . . , A𝑁 ]
+> Noise vector [B,N, A1,. . . , A𝑁 ]
+> Mechanism Generator
+> Diff. Equilibrium Block
+> 𝐾𝐿 (𝜎 ∗| | 𝜎 𝐶𝐶𝐸 )+𝜆 | | 𝐺 −Π(𝐺 ) | | 2
+
+𝐺 (𝜃 ; 𝜔 ) 
+
+> [B,N, A1,. . . , A𝑁 ]
+
+𝜎 ∗ 
+
+> [B, A1,. . . , A𝑁 ]
+
+Figure 4 | Inverse equilibrium training pipeline. The target joints are sampled uniformly from the simplex and the noise from a standard normal distribution. The batch size is 64. The network is set up to expect an input shape of [𝐵, 2, 16 , 16 , 2].
+
+> 19 Deep Incentive Design with Differentiable Equilibrium Blocks
+
+However by sampling masks uniformly at random, we train the generator to solve the task for games with sizes from 2×2 up to 16 ×16 . We run the training with three seeds for 10 6 steps using an exponential optimizer schedule with an ADAM optimizer (Kingma and Ba, 2015) and report the best run. The optimization parameters are 𝑏 1 = 0.9, 𝑏 2 = 0.999 with learning rate 0.01 . We first increase learning rate to 0.01 over 50000 steps and then start ramping it down over 900000 steps. For each seed training takes about six hours on an H100. 
+
+A.3. Contract Design 
+
+A.3.1. Architecture 
+
+The architecture of the mechanism generator for contract design is illustrated in Figure 5. For the contract design task, we have as input: 
+
+• The principal payoff of shape [𝐵, 𝑂 ].
+
+• The samples payoffs of the agents of shape [𝐵, 𝑁, A1, . . . , A𝑁 ]
+
+• The sampled transition probabilities of shape [𝐵, A1, . . . , A𝑁 , 𝑂 ].In order to easily pass this as batched input through a neural network, we broadcast each to have a shape of [𝐵, 𝑁, A1, . . . , A𝑁 , 𝑂 ] and concatenate them along a channel dimension. The generator needs to compute contracts of shape [𝐵, 𝑁, 𝑂 ]. These contracts are then transformed into expected payoffs of the agents using the transition probabilities and added to the initial payoffs before being handed to the DEB. The change between input shape [𝐵, 𝑁, A1, . . . , A𝑁 , 𝑂, 3] and output shape [𝐵, 𝑁, 𝑂 ], requires us to use three different layers: 1. First we pass the input through PO2PO layers. These work like the P2P layers described for the inverse equilibrium problem, using the same meanvar aggregation functions. However, they work with and preserve the shapes [𝐵, 𝑁, A1, . . . , A𝑁 , 𝑂, 𝐶 𝑙 ] and additionally preserve the equivariance with respect to permutations along the outcome axis. This means there is an additional axis, along which we can choose to reduce across all elements or just return the identity. Therefore, for every channel in the input, there are 24 extra channels to map through the linear layer instead of 
+
+23 for the P2P. To add to that our inputs have the extra output dimension, increasing the input size by a factor of 𝑂 . This can lead to larger memory requirements and slow down training. To combat this, we split the PO2PO layer into three equivariant layers. First we reduce over the strategy axes leading to 4𝐶 𝑙 −1 channels and pass through a linear layer to reduce the channel dimension to 𝐶 𝑙 . Next we pool the player dimension leading to 2𝐶 𝑙 channels, followed by another linear layer reducing the channel dimension to 𝐶 𝑙 and finally pool over the outcomes to get 
+
+2𝐶 𝑙 channels which get mapped to 𝐶 𝑙 by another linear layer and a single nonlinear activation function. Training these three linear layers instead of one large linear layer roughly halves the number of weights we need to train. 2. Next, the PO2O layer maps the shape from [𝐵, A1, . . . , A𝑁 , 𝑂, 𝐶 ] to the shape [𝐵, 𝑁, 𝑂, 𝐶 ] by applying the described pooling functions to the player and outcome axis and collapsing the strategy axes by applying the meanvar-pooling over all the points without broadcasting the result back to the original shape. 3. Finally, we have multiple O2O layers which take as input shapes [𝐵, 𝑁, 𝑂, 𝐶 ], apply the pooling functions along the player and outcome axis and then broadcast back to shape [𝐵, 𝑁, 𝑂, 𝐶 ] and concatenate along the channel. For the final layer, we set the channel dimension to be 1 and squeeze it. We also include a softplus activation to ensure positive contracts.            
+
+> 20 Deep Incentive Design with Differentiable Equilibrium Blocks
+> Sampled agents’ payoffs [B,N, A1, . . . , A𝑁 ]
+> Sampled principal’s payoff [B,O]
+> Sampled transition Probabilities [B, A1, . . . , A𝑁 ,O]
+> Broadcast & Concatenate
+> Equivariant PO2PO
+> Equivariant PO2O
+> Equivariant O2O
+> Contracts
+> {𝑣 𝑝 (·) } 𝑁 𝑝 =1
+> [B,N, O]
+> [B,N, A1, . . . , A𝑁 ,O,3] [B,N, A1, . . . , A𝑁 ,O,C]
+> [B,N, A1, . . . , A𝑁 ,O,C]
+> ↓
+> [B,N,O,C]
+> [B,N,O,C]
+
+Figure 5 | The architecture of the contract design mechanism generator. Blue boxes show the core generator and the green text shows the shapes. 
+
+A.3.2. Training Pipeline 
+
+The training pipeline is illustrated in Figure 6. The network has three PO2PO layers with 𝐶 𝑙 = 32 ,one PO2O layer and two O2O layers with 𝐶 𝑙 = 32 nodes each. The batch size 𝐵 is 64 and we run the training for 2 ∗ 10 6 steps. We run it with three seeds each for both the 0.01 -ME-CE and 0.01 -ME-CCE and take the best run. The optimization is done with an exponential optimization schedule based on an ADAM optimizer (Kingma and Ba, 2015). The optimization parameters are 𝑏 1 = 0.9, 𝑏 2 = 0.999 
+
+with learning rate 0.01 . We first increase learning rate to 0.01 over 50000 steps and then start ramping it down over 900000 steps. Moreover, over 500000 steps we increase the penalty weight of the paid contracts (i.e., Í𝑝 𝑣 𝑝 (𝑜 ; 𝜃, 𝜔 )) from 0 to 1 to avoid the network learning zero contracts early on. Each run takes about 15 hours on a NVIDIA A100 GPU. The batched input is set up to be of shape 
+
+[𝐵, 2, 16 , 16 , 10 , 3], so the network can handle up to 10 outcomes and 16 ×16 action space. However, we sample masks uniformly at random, which are also batched and passed to the network, so that within any batch we train the network for a broad distribution of outcomes between 2 and 10 and action spaces between 2 and 16 actions. The transitions are sampled from a Dirichlet distribution with 𝛼 = 0.1. The costs of the agents are sampled from [− 4, 0] and the principal payoff is uniformly sampled from [− 5, 5].              
+
+> Batched agent’s initial payoffs [B,N, A1, . . . , A𝑁 ]
+> Principal’s payoffs, [B,O]
+> Sampled Transition Probabilities [B, A1, . . . , A𝑁 ,O]
+> Mechanism Generator
+> Differentiable Equilibrium Block
+> 𝔼 𝑎 ∼𝜎 ∗,𝑜 ∼𝑃
+> h
+> 𝑊 (𝑜 ;𝜔 ) − Í𝑝 𝑣 𝑝 (𝑜 ;𝜃, 𝜔 )
+> i {𝑣 𝑝 (· ;𝜃, 𝜔 ) } 𝑁 𝑝 =1
+> [B,N,O]
+> 𝜎 ∗
+> [B, A1, . . . , A𝑁 ]
+
+Figure 6 | Training pipeline for the contract design task. 
+
+> 21 Deep Incentive Design with Differentiable Equilibrium Blocks
+
+A.4. Machine Scheduling 
+
+A.4.1. Architecture 
+
+We take as input the agents’ payoffs of shape [𝐵, 𝑁, A1, . . . , A𝑁 , 1] for the machine scheduling problem and output the induced payoffs of the same shape [𝐵, 𝑁, A1, . . . , A𝑁 , 1]. More precisely the generator learns taxes on each joint action of shape [𝐵, 𝑁, A1, . . . , A𝑁 , 1] which are subtracted from the original payoffs. Therefore the equivariance and the network architecture is identical (3 hidden layers with size (64,64,64)) to the one used for the inverse equilibrium problem with the only difference being the final activation function, which in this case is −Softplus (𝑥 ) to ensure the change to the agents payoff is negative, as they are getting taxed. 
+
+A.4.2. Training Pipeline 
+
+The training pipeline for the machine scheduling problem is illustrated in Figure 7                
+
+> Batch of agents’ payoffs [B,N, A1, . . . , A𝑁 ]
+> Mechanism Generator
+> Differentiable Equilibrium Block
+> Í𝑎 𝜎 ∗(𝑎 )max 𝑗
+> Í𝑝 :𝑎 𝑝 =𝑗 𝑡 𝑝, 𝑗
+> −𝜆 ∥𝑠 𝑝 (𝜃 ;𝜔 )∥ 2
+> {𝑠 𝑝 (· ;𝜃, 𝜔 ) } 𝑁 𝑝 =1
+> [B,N, A1, . . . , A𝑁 ]
+> 𝜎 ∗
+> [B, A1, . . . , A𝑁 ]
+
+Figure 7 | Training pipeline for the machine scheduling problem. We sample the job time distribution 𝑡 𝑝, 𝑗 ∼ Lognormal (0, 0.5) . From these we calculate the expected payoffs of the players using the formulas provided in Section 5.5. The batch size is 64 and we run three seeds and take the best run. The weights are optimized with an exponential optimization schedule based using ADAM (Kingma and Ba, 2015). The optimization parameters are 𝑏 1 = 0.9, 𝑏 2 = 0.999 
+
+with learning rate 0.01 . We first increase learning rate to 0.01 over 50000 steps and then start ramping it down over 900000 steps. We also ramp up the penalty parameter 𝜆 from 0 to 0.1 over 50000 steps. Each complete training run consists of 10 6 training steps and takes roughly 10 hours on a NVIDIA A100 GPU. 
+
+A.5. Differentiable Equilibrium Blocks 
+
+For all mechanism generators the final output is a batch of payoffs of shape [𝐵, 𝑁, A1, . . . , A𝑁 ], which gets passed to the differentiable equilibrium block. We defer the reader to Marris et al. (2022) for a discussion on the architecture used for the DEB. The DEB we train consists of three layers of P2P layers with 𝐶 𝑙 = 64 , one P2D layer and another three D2D layers with 64 nodes. Moreover, similar to the way we split the PO2PO layers into three linear layers for contract design, we split the P2P layer into two layers (one for reduction along the player and one for the reductions along the strategy axes) to save memory. The DEB is set up to handle payoffs of shape [𝐵, 2, 16 , 16 , 𝐶 ]. However, we implemented all layers to handle masked input. For each batch, we uniformly sample masks of sizes 0 to 30 to apply to the action space of both players, so that in each batch of size 64, we train on all games from sizes 2×2 up to 16 ×16 .The games are sampled from the equilibrium invariant embedding (Marris et al., 2023) with their 
+
+𝐿 2 norm set to √︃ Î𝑁 𝑝 =1 |A 𝑝 |, where |A 𝑝 | is the effective action size after masking, to ensure unit 
+
+> 22 Deep Incentive Design with Differentiable Equilibrium Blocks
+
+variance of all inputs. The loss function, as derived in Marris et al. (2022) is given by the dual formulation as: 
+
+𝐿 (𝐶 )𝐶𝐸 = ln  ∑︁ 
+
+> 𝑎 ∈ A
+
+ˆ𝜎 (𝑎 ) exp 
+
+
+
+𝑙 (𝐶 )𝐶𝐸 (𝑎 )
+
+!
+
++∑︁ 
+
+> 𝑝
+
+𝜖 +
+
+∑︁ 𝑎 ′
+
+> 𝑝 ,𝑎 ′′
+> 𝑝
+
+𝛼 𝐶𝐸 𝑝 (𝑎 ′
+
+> 𝑝
+
+, 𝑎 ′′  
+
+> 𝑝
+
+),∑︁ 
+
+> 𝑎 ′
+> 𝑝
+
+𝛼 𝐶𝐶𝐸 𝑝 (𝑎 ′
+
+> 𝑝
+
+)
+
+
+
+− 𝜌 ∑︁ 
+
+> 𝑝
+
+𝜖 𝑝 .
+
+The logits 𝑙 (𝐶 )𝐶𝐸 (𝑎 ) are given by: 
+
+𝑙 (𝐶 )𝐶𝐸 (𝑎 ) = −∑︁ 
+
+> 𝑝
+
+∑︁ 𝑎 ′
+
+> 𝑝 ,𝑎 ′′
+> 𝑝
+
+𝛼 𝐶𝐸 𝑝 (𝑎 ′
+
+> 𝑝
+
+, 𝑎 ′′  
+
+> 𝑝
+
+) 𝐴 𝑝 (𝑎 ′
+
+> 𝑝
+
+, 𝑎 ′′  
+
+> 𝑝
+
+, 𝑎 ),∑︁ 
+
+> 𝑎 ′
+> 𝑝
+
+𝛼 𝐶𝐶𝐸 𝑝 (𝑎 ′
+
+> 𝑝
+
+) 𝐴 𝑝 (𝑎 ′
+
+> 𝑝
+
+, 𝑎 )
+
+
+
+,
+
+and the primal joint distribution 𝜎 (𝐶 )𝐶𝐸 (𝑎 ) is computed analytically as: 
+
+𝜎 (𝐶 )𝐶𝐸 (𝑎 ) = ˆ𝜎 (𝑎 ) exp  𝑙 (𝐶 )𝐶𝐸 (𝑎 )Í𝑎 ∈ A ˆ𝜎 (𝑎 ) exp  𝑙 (𝐶 )𝐶𝐸 (𝑎 ) .
+
+Similarly, the primal approximation parameter 𝜖 𝑝 for each player is recovered via: 
+
+𝜖 𝑝 = (𝜖 − 𝜖 +) exp ©«
+
+− 1
+
+𝜌 
+
+∑︁ 𝑎 ′
+
+> 𝑝 ,𝑎 ′′
+> 𝑝
+
+𝛼 𝐶𝐸 𝑝 (𝑎 ′
+
+> 𝑝
+
+, 𝑎 ′′  
+
+> 𝑝
+
+),∑︁ 
+
+> 𝑎 ′
+> 𝑝
+
+𝛼 𝐶𝐶𝐸 𝑝 (𝑎 ′
+
+> 𝑝
+
+)
+
+ª®¬
+
++ 𝜖 +
+
+Moreover, the following notation is used: 
+
+• 𝛼 𝐶𝐸 𝑝 (𝑎 ′
+
+> 𝑝
+
+, 𝑎 ′′  
+
+> 𝑝
+
+) ≥ 0 and 𝛼 𝐶𝐶𝐸 𝑝 (𝑎 ′
+
+> 𝑝
+
+) ≥ 0: The dual deviation gains corresponding to the CE and CCE constraints, which are the outputs of the neural network. 
+
+• 𝐴 𝐶𝐸 𝑝 (𝑎 ′
+
+> 𝑝
+
+, 𝑎 ′′  
+
+> 𝑝
+
+, 𝑎 ) and 𝐴 𝐶𝐶𝐸 𝑝 (𝑎 ′
+
+> 𝑝
+
+, 𝑎 ): The deviation gains, i.e., 
+
+𝐴 𝐶𝐸 𝑝 (𝑎 ′
+
+> 𝑝
+
+, 𝑎 ′′  
+
+> 𝑝
+
+, 𝑎 ) =
+
+(
+
+𝐺 𝑝 (𝑎 ′
+
+> 𝑝
+
+, 𝑎 − 𝑝 ) − 𝐺 𝑝 (𝑎 ′′  
+
+> 𝑝
+
+, 𝑎 − 𝑝 ) if 𝑎 𝑝 = 𝑎 ′′ 
+
+> 𝑝
+
+0 otherwise (1) 
+
+𝐴 𝐶𝐶𝐸 𝑝 (𝑎 ′
+
+> 𝑝
+
+, 𝑎 ) =∑︁  
+
+> 𝑎 ′′
+> 𝑝 ∈ A 𝑝
+
+𝐴 𝐶𝐸 𝑝 (𝑎 ′
+
+> 𝑝
+
+, 𝑎 ′′  
+
+> 𝑝
+
+, 𝑎 ) = 𝐺 𝑝 (𝑎 ′
+
+> 𝑝
+
+, 𝑎 − 𝑝 ) − 𝐺 𝑝 (𝑎 ) (2) 
+
+• ˆ𝜎 (𝑎 ): The uniform target distribution. 
+
+• 𝜖 : The target approximation parameter. 
+
+• 𝜖 +: A maximum approximation parameter constant. 
+
+• 𝜌 : A hyperparameter that controls the balance of the optimization by weighting the approximation distance term. 
+
+## B. In-depth Contrast to Previous Lines of Work 
+
+B.1. Discussion 
+
+To situate our contribution of making (ID) accessible as a machine learning problem, we contrast deep incentive design with the most relevant precursors: (i) gradient-based MPEC solvers, (ii) differentiable economics, and (iii) Neural Equilibrium Solvers. 
+
+> 23 Deep Incentive Design with Differentiable Equilibrium Blocks
+
+Gradient-Based MPEC While gradient-based approaches have been tried before in the setting of (ID) , the existing works have two important restrictions. First, instead of using 𝜖 -ME-Eql as solution concept, they generally use the Nash equilibrium and have to make restrictive assumptions on its uniqueness and the monotonicity of the game. Second, the gradient computation is very expensive. Some approaches build on implicit differentiation, which requires inverting a matrix that is quadratic in the game size (Li et al., 2023). The remaining ones use automatic differentiation which requires running many steps of an iterative solver to converge to an approximate equilibrium and then backpropagating through the whole computational graph. In contrast, deep incentive design computes approximate gradients in time linear in O(|A|) by backpropagating through the learned DEB. Moreover, our approach naturally learns to generalize between different contexts, whereas the classical gradient-based MPEC solvers need to be (re)run for a specific context. 
+
+Differentiable Economics is similar in spirit to our approach. It consists of running gradient descent on neural networks to design a game. However, the existing literature has focused on Bayesian games—the natural setting for mechanism design problems. In those games, players are reporting their private types and the famous revelation principle states that any mechanism implementing an outcome in dominant strategies has an outcome-equivalent counterpart where it is a dominant strategy equilibrium for all players to report their types truthfully. Therefore, it is natural to restrict to searching within the space of truthful mechanisms. As the equilibrium is already known for these mechanisms, this circumvents the problem of differentiating through the equilibrium of the resulting game. Our focus is on non-Bayesian normal-form games with discrete action spaces, where truthfulness is not a salient concept as the players do not have private information. Therefore the problem of differentiating through the equilibrium persists and is tackled using our DEBs. We thus consider the existing works in differentiable economics as complementary to deep incentive design. Moreover, in the differentiable economics literature the neural networks have generally been trained as the mechanism themselves, taking as input a distribution of bids and outputting the prices for each problem instance. Each task thus requires a different network and training run. In contrast, our networks are not mechanisms but “mechanism generators”, taking as input the distribution of contexts 𝜔 ∼ Ω and outputting the induced mechanism 𝐺 (𝜃 ; 𝜔 ). These generators are trained once upfront and can be evaluated quickly for a broad class of problems, instead of having to be retrained when facing a different problem instance. 
+
+Neural Equilibrium Solvers There has been a line of work on using machine learning for learning game-theoretic equilibria. (Bai et al., 2020; Duan et al., 2021; Feng et al., 2021; Hartford et al., 2016; Heaton et al., 2021; Jin et al., 2021; Ling et al., 2018; Liu et al., 2024). In this work, our DEBs build upon the work of Marris et al. (2022), who proposed using layers with equivariant pooling functions for learning the 𝜀 -ME-Eql of a normal form game. Our DEBs further extend the work of Marris et al. (2022). Among our contributions is the fact that we implement an equivariant masking, which allows us to successfully train on a distribution of games of sizes between 2×2 and 16 ×16 , compared to Marris et al. (2022) who train a single network per game size. This is a massive improvement in generalizability compared to previous works. More importantly, our work uses DEBs as one of multiple building blocks to solve a very broad class of incentive design problems. Our framework is the first to successfully backpropagate through such equilibrium blocks and proves they can be trained to have informative gradients and be integrated in larger workflows.

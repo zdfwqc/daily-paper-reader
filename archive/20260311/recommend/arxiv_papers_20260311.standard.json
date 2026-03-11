@@ -1,0 +1,762 @@
+{
+  "mode": "standard",
+  "generated_at": "2026-03-11T19:42:14.545576+00:00",
+  "stats": {
+    "mode": "standard",
+    "tag_count": 2,
+    "deep_divecandidates": 54,
+    "deep_cap": 7,
+    "deep_selected": 7,
+    "quick_candidates": 144,
+    "quick_skim_target": 12,
+    "quick_selected": 12
+  },
+  "deep_dive": [
+    {
+      "id": "2603.09950v1",
+      "title": "When Learning Rates Go Wrong: Early Structural Signals in PPO Actor-Critic",
+      "abstract": "Deep Reinforcement Learning systems are highly sensitive to the learning rate (LR), and selecting stable and performant training runs often requires extensive hyperparameter search. In Proximal Policy Optimization (PPO) actor--critic methods, small LR values lead to slow convergence, whereas large LR values may induce instability or collapse. We analyse this phenomenon from the behavior of the hidden neurons in the network using the Overfitting-Underfitting Indicator (OUI), a metric that quantifies the balance of binary activation patterns over a fixed probe batch. We introduce an efficient batch-based formulation of OUI and derive a theoretical connection between LR and activation sign changes, clarifying how a correct evolution of the neuron's inner structure depends on the step size.   Empirically, across three discrete-control environments and multiple seeds, we show that OUI measured at only 10\\% of training already discriminates between LR regimes. We observe a consistent asymmetry: critic networks achieving highest return operate in an intermediate OUI band (avoiding saturation), whereas actor networks achieving highest return exhibit comparatively high OUI values. We then compare OUI-based screening rules against early return, clip-based, divergence-based, and flip-based criteria under matched recall over successful runs. In this setting, OUI provides the strongest early screening signal: OUI alone achieves the best precision at broader recall, while combining early return with OUI yields the highest precision in best-performing screening regimes, enabling aggressive pruning of unpromising runs without requiring full training.",
+      "authors": [
+        "Alberto Fernández-Hernández",
+        "Cristian Pérez-Corral",
+        "Jose I. Mestre",
+        "Manuel F. Dolz",
+        "Jose Duato",
+        "Enrique S. Quintana-Ortí"
+      ],
+      "primary_category": "cs.LG",
+      "categories": [
+        "cs.LG",
+        "cs.AI"
+      ],
+      "published": "2026-03-10T17:46:31+00:00",
+      "link": "https://arxiv.org/pdf/2603.09950v1",
+      "tags": [
+        "keyword:DRL",
+        "keyword:DRL JSP",
+        "query:DRL",
+        "query:DRL JSP"
+      ],
+      "llm_score": 10.0,
+      "llm_evidence_en": "Training stability and convergence in PPO",
+      "llm_evidence_cn": "PPO中的训练稳定性和收敛性",
+      "llm_evidence": "PPO中的训练稳定性和收敛性",
+      "canonical_evidence": "PPO中的训练稳定性和收敛性",
+      "llm_tldr_en": "Analyzes learning rate effects on PPO stability using a new structural indicator for hidden neurons.",
+      "llm_tldr_cn": "通过新的隐藏神经元结构指标，分析了学习率对PPO算法稳定性的影响。",
+      "llm_tldr": "通过新的隐藏神经元结构指标，分析了学习率对PPO算法稳定性的影响。",
+      "llm_tags": [
+        "query:drl"
+      ],
+      "matched_query_tag": "query:drl",
+      "matched_query_text": "techniques for improving training stability and convergence in DRL",
+      "matched_requirement_id": "req-10",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2603.07705v1",
+      "title": "Deep Incentive Design with Differentiable Equilibrium Blocks",
+      "abstract": "Automated design of multi-agent interactions with desirable equilibrium outcomes is inherently difficult due to the computational hardness, non-uniqueness, and instability of the resulting equilibria. In this work, we propose the use of game-agnostic differentiable equilibrium blocks (DEBs) as modules in a novel, differentiable framework to address a wide variety of incentive design problems from economics and computer science. We call this framework deep incentive design (DID). To validate our approach, we examine three diverse, challenging incentive design tasks: contract design, machine scheduling, and inverse equilibrium problems. For each task, we train a single neural network using a unified pipeline and DEB. This architecture solves the full distribution of problem instances, parameterized by a context, handling all games across a wide range of scales (from two to sixteen actions per player).",
+      "authors": [
+        "Vinzenz Thoma",
+        "Georgios Piliouras",
+        "Luke Marris"
+      ],
+      "primary_category": "cs.GT",
+      "categories": [
+        "cs.GT",
+        "cs.LG"
+      ],
+      "published": "2026-03-08T16:15:03+00:00",
+      "link": "https://arxiv.org/pdf/2603.07705v1",
+      "tags": [
+        "keyword:DRL",
+        "keyword:DRL JSP",
+        "query:DRL",
+        "query:DRL JSP"
+      ],
+      "llm_score": 9.0,
+      "llm_evidence_en": "deep incentive design for machine scheduling tasks",
+      "llm_evidence_cn": "针对机器调度任务的深度激励设计",
+      "llm_evidence": "针对机器调度任务的深度激励设计",
+      "canonical_evidence": "针对机器调度任务的深度激励设计",
+      "llm_tldr_en": "Applies deep learning and equilibrium blocks to solve complex incentive problems including machine scheduling.",
+      "llm_tldr_cn": "应用深度学习和均衡块来解决包括机器调度在内的复杂激励设计问题。",
+      "llm_tldr": "应用深度学习和均衡块来解决包括机器调度在内的复杂激励设计问题。",
+      "llm_tags": [
+        "query:drl-jsp"
+      ],
+      "matched_query_tag": "query:drl-jsp",
+      "matched_query_text": "Deep Reinforcement Learning for scheduling",
+      "matched_requirement_id": "req-1",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2603.07844v1",
+      "title": "Relating Reinforcement Learning to Dynamic Programming-Based Planning",
+      "abstract": "This paper bridges some of the gap between optimal planning and reinforcement learning (RL), both of which share roots in dynamic programming applied to sequential decision making or optimal control. Whereas planning typically favors deterministic models, goal termination, and cost minimization, RL tends to favor stochastic models, infinite-horizon discounting, and reward maximization in addition to learning-related parameters such as the learning rate and greediness factor. A derandomized version of RL is developed, analyzed, and implemented to yield performance comparisons with value iteration and Dijkstra's algorithm using simple planning models. Next, mathematical analysis shows: 1) conditions under which cost minimization and reward maximization are equivalent, 2) conditions for equivalence of single-shot goal termination and infinite-horizon episodic learning, and 3) conditions under which discounting causes goal achievement to fail. The paper then advocates for defining and optimizing truecost, rather than inserting arbitrary parameters to guide operations. Performance studies are then extended to the stochastic case, using planning-oriented criteria and comparing value iteration to RL with learning rates and greediness factors.",
+      "authors": [
+        "Filip V. Georgiev",
+        "Kalle G. Timperi",
+        "Başak Sakçak",
+        "Steven M. LaValle"
+      ],
+      "primary_category": "cs.RO",
+      "categories": [
+        "cs.RO"
+      ],
+      "published": "2026-03-08T23:28:23+00:00",
+      "link": "https://arxiv.org/pdf/2603.07844v1",
+      "tags": [
+        "keyword:DRL",
+        "keyword:DRL JSP",
+        "query:DRL",
+        "query:DRL JSP"
+      ],
+      "llm_score": 9.0,
+      "llm_evidence_en": "mathematical foundations relating RL to dynamic programming",
+      "llm_evidence_cn": "强化学习与动态规划关联的数学基础",
+      "llm_evidence": "强化学习与动态规划关联的数学基础",
+      "canonical_evidence": "强化学习与动态规划关联的数学基础",
+      "llm_tldr_en": "Analyzes the mathematical relationship between RL and dynamic programming-based planning for optimal control.",
+      "llm_tldr_cn": "分析了强化学习与基于动态规划的规划方法在最优控制中的数学关系。",
+      "llm_tldr": "分析了强化学习与基于动态规划的规划方法在最优控制中的数学关系。",
+      "llm_tags": [
+        "query:drl"
+      ],
+      "matched_query_tag": "query:drl",
+      "matched_query_text": "core principles and mathematical foundations of deep reinforcement learning",
+      "matched_requirement_id": "req-9",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2603.08399v1",
+      "title": "A Recipe for Stable Offline Multi-agent Reinforcement Learning",
+      "abstract": "Despite remarkable achievements in single-agent offline reinforcement learning (RL), multi-agent RL (MARL) has struggled to adopt this paradigm, largely persisting with on-policy training and self-play from scratch. One reason for this gap comes from the instability of non-linear value decomposition, leading prior works to avoid complex mixing networks in favor of linear value decomposition (e.g., VDN) with value regularization used in single-agent setups. In this work, we analyze the source of instability in non-linear value decomposition within the offline MARL setting. Our observations confirm that they induce value-scale amplification and unstable optimization. To alleviate this, we propose a simple technique, scale-invariant value normalization (SVN), that stabilizes actor-critic training without altering the Bellman fixed point. Empirically, we examine the interaction among key components of offline MARL (e.g., value decomposition, value learning, and policy extraction) and derive a practical recipe that unlocks its full potential.",
+      "authors": [
+        "Dongsu Lee",
+        "Daehee Lee",
+        "Amy Zhang"
+      ],
+      "primary_category": "cs.LG",
+      "categories": [
+        "cs.LG",
+        "cs.AI",
+        "cs.RO"
+      ],
+      "published": "2026-03-09T13:57:08+00:00",
+      "link": "https://arxiv.org/pdf/2603.08399v1",
+      "tags": [
+        "keyword:DRL",
+        "keyword:DRL JSP",
+        "query:DRL",
+        "query:DRL JSP"
+      ],
+      "llm_score": 9.0,
+      "llm_evidence_en": "stability in offline multi-agent RL",
+      "llm_evidence_cn": "离线多智能体强化学习的稳定性",
+      "llm_evidence": "离线多智能体强化学习的稳定性",
+      "canonical_evidence": "离线多智能体强化学习的稳定性",
+      "llm_tldr_en": "Addresses instability in offline MARL using scale-invariant value normalization for better convergence.",
+      "llm_tldr_cn": "通过尺度不变值归一化解决了离线多智能体强化学习中的不稳定问题。",
+      "llm_tldr": "通过尺度不变值归一化解决了离线多智能体强化学习中的不稳定问题。",
+      "llm_tags": [
+        "query:drl"
+      ],
+      "matched_query_tag": "query:drl",
+      "matched_query_text": "techniques for improving training stability and convergence in DRL",
+      "matched_requirement_id": "req-10",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2603.09090v1",
+      "title": "Overcoming Valid Action Suppression in Unmasked Policy Gradient Algorithms",
+      "abstract": "In reinforcement learning environments with state-dependent action validity, action masking consistently outperforms penalty-based handling of invalid actions, yet existing theory only shows that masking preserves the policy gradient theorem. We identify a distinct failure mode of unmasked training: it systematically suppresses valid actions at states the agent has not yet visited. This occurs because gradients pushing down invalid actions at visited states propagate through shared network parameters to unvisited states where those actions are valid. We prove that for softmax policies with shared features, when an action is invalid at visited states but valid at an unvisited state $s^*$, the probability $π(a \\mid s^*)$ is bounded by exponential decay due to parameter sharing and the zero-sum identity of softmax logits. This bound reveals that entropy regularization trades off between protecting valid actions and sample efficiency, a tradeoff that masking eliminates. We validate empirically that deep networks exhibit the feature alignment condition required for suppression, and experiments on Craftax, Craftax-Classic, and MiniHack confirm the predicted exponential suppression and demonstrate that feasibility classification enables deployment without oracle masks.",
+      "authors": [
+        "Renos Zabounidis",
+        "Roy Siegelmann",
+        "Mohamad Qadri",
+        "Woojun Kim",
+        "Simon Stepputtis",
+        "Katia P. Sycara"
+      ],
+      "primary_category": "cs.LG",
+      "categories": [
+        "cs.LG"
+      ],
+      "published": "2026-03-10T02:07:37+00:00",
+      "link": "https://arxiv.org/pdf/2603.09090v1",
+      "tags": [
+        "keyword:DRL",
+        "keyword:DRL JSP",
+        "query:DRL",
+        "query:DRL JSP"
+      ],
+      "llm_score": 9.0,
+      "llm_evidence_en": "improving training stability by overcoming valid action suppression",
+      "llm_evidence_cn": "通过克服有效动作抑制来提高训练稳定性",
+      "llm_evidence": "通过克服有效动作抑制来提高训练稳定性",
+      "canonical_evidence": "通过克服有效动作抑制来提高训练稳定性",
+      "llm_tldr_en": "Identifies and addresses a failure mode in unmasked policy gradient algorithms to improve RL training.",
+      "llm_tldr_cn": "识别并解决了无掩码策略梯度算法中的失效模式，以改进强化学习训练。",
+      "llm_tldr": "识别并解决了无掩码策略梯度算法中的失效模式，以改进强化学习训练。",
+      "llm_tags": [
+        "query:drl"
+      ],
+      "matched_query_tag": "query:drl",
+      "matched_query_text": "techniques for improving training stability and convergence in DRL",
+      "matched_requirement_id": "req-10",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2603.02765v1",
+      "title": "Next Embedding Prediction Makes World Models Stronger",
+      "abstract": "Capturing temporal dependencies is critical for model-based reinforcement learning (MBRL) in partially observable, high-dimensional domains. We introduce NE-Dreamer, a decoder-free MBRL agent that leverages a temporal transformer to predict next-step encoder embeddings from latent state sequences, directly optimizing temporal predictive alignment in representation space. This approach enables NE-Dreamer to learn coherent, predictive state representations without reconstruction losses or auxiliary supervision. On the DeepMind Control Suite, NE-Dreamer matches or exceeds the performance of DreamerV3 and leading decoder-free agents. On a challenging subset of DMLab tasks involving memory and spatial reasoning, NE-Dreamer achieves substantial gains. These results establish next-embedding prediction with temporal transformers as an effective, scalable framework for MBRL in complex, partially observable environments.",
+      "authors": [
+        "George Bredis",
+        "Nikita Balagansky",
+        "Daniil Gavrilov",
+        "Ruslan Rakhimov"
+      ],
+      "primary_category": "cs.LG",
+      "categories": [
+        "cs.LG",
+        "cs.AI"
+      ],
+      "published": "2026-03-03T09:04:28+00:00",
+      "link": "https://arxiv.org/pdf/2603.02765v1",
+      "tags": [
+        "keyword:DRL",
+        "keyword:DRL JSP",
+        "query:DRL",
+        "query:DRL JSP"
+      ],
+      "llm_score": 8.0,
+      "llm_evidence_en": "state of the art model-based reinforcement learning algorithm",
+      "llm_evidence_cn": "最先进的基于模型的强化学习算法",
+      "llm_evidence": "最先进的基于模型的强化学习算法",
+      "canonical_evidence": "最先进的基于模型的强化学习算法",
+      "llm_tldr_en": "Introduces NE-Dreamer, a decoder-free MBRL agent that improves state representation and performance.",
+      "llm_tldr_cn": "引入 NE-Dreamer，一种无解码器的 MBRL 智能体，通过预测嵌入提升状态表示和性能。",
+      "llm_tldr": "引入 NE-Dreamer，一种无解码器的 MBRL 智能体，通过预测嵌入提升状态表示和性能。",
+      "llm_tags": [
+        "query:drl"
+      ],
+      "matched_query_tag": "query:drl",
+      "matched_query_text": "state of the art algorithms in deep reinforcement learning research",
+      "matched_requirement_id": "req-11",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2602.14872v1",
+      "title": "On the Learning Dynamics of RLVR at the Edge of Competence",
+      "abstract": "Reinforcement learning with verifiable rewards (RLVR) has been a main driver of recent breakthroughs in large reasoning models. Yet it remains a mystery how rewards based solely on final outcomes can help overcome the long-horizon barrier to extended reasoning. To understand this, we develop a theory of the training dynamics of RL for transformers on compositional reasoning tasks. Our theory characterizes how the effectiveness of RLVR is governed by the smoothness of the difficulty spectrum. When data contains abrupt discontinuities in difficulty, learning undergoes grokking-type phase transitions, producing prolonged plateaus before progress recurs. In contrast, a smooth difficulty spectrum leads to a relay effect: persistent gradient signals on easier problems elevate the model's capabilities to the point where harder ones become tractable, resulting in steady and continuous improvement. Our theory explains how RLVR can improve performance at the edge of competence, and suggests that appropriately designed data mixtures can yield scalable gains. As a technical contribution, our analysis develops and adapts tools from Fourier analysis on finite groups to our setting. We validate the predicted mechanisms empirically via synthetic experiments.",
+      "authors": [
+        "Yu Huang",
+        "Zixin Wen",
+        "Yuejie Chi",
+        "Yuting Wei",
+        "Aarti Singh",
+        "Yingbin Liang",
+        "Yuxin Chen"
+      ],
+      "primary_category": "cs.LG",
+      "categories": [
+        "cs.LG",
+        "cs.AI",
+        "math.OC",
+        "stat.ML"
+      ],
+      "published": "2026-02-16T16:03:08+00:00",
+      "link": "https://arxiv.org/pdf/2602.14872v1",
+      "tags": [
+        "query:DRL"
+      ],
+      "llm_score": 8.0,
+      "llm_evidence_en": "Theory of training dynamics and convergence in reinforcement learning",
+      "llm_evidence_cn": "强化学习训练动力学与收敛理论",
+      "llm_evidence": "强化学习训练动力学与收敛理论",
+      "canonical_evidence": "强化学习训练动力学与收敛理论",
+      "llm_tldr_en": "Develops a theory characterizing the training dynamics and difficulty spectrum in reinforcement learning.",
+      "llm_tldr_cn": "开发了一种表征强化学习中训练动力学和难度谱的理论。",
+      "llm_tldr": "开发了一种表征强化学习中训练动力学和难度谱的理论。",
+      "llm_tags": [
+        "query:drl"
+      ],
+      "matched_query_tag": "query:drl",
+      "matched_query_text": "core principles and mathematical foundations of deep reinforcement learning",
+      "matched_requirement_id": "req-9",
+      "selection_source": "carryover_cache",
+      "paper_id": "2602.14872v1"
+    }
+  ],
+  "quick_skim": [
+    {
+      "id": "2602.16475v1",
+      "title": "Certifying Hamilton-Jacobi Reachability Learned via Reinforcement Learning",
+      "abstract": "We present a framework to \\emph{certify} Hamilton--Jacobi (HJ) reachability learned by reinforcement learning (RL). Building on a discounted initial time \\emph{travel-cost} formulation that makes small-step RL value iteration provably equivalent to a forward Hamilton--Jacobi (HJ) equation with damping, we convert certified learning errors into calibrated inner/outer enclosures of strict backward reachable tube. The core device is an additive-offset identity: if $W_λ$ solves the discounted travel-cost Hamilton--Jacobi--Bellman (HJB) equation, then $W_\\varepsilon:=W_λ+ \\varepsilon$ solves the same PDE with a constant offset $λ\\varepsilon$. This means that a uniform value error is \\emph{exactly} equal to a constant HJB offset. We establish this uniform value error via two routes: (A) a Bellman operator-residual bound, and (B) a HJB PDE-slack bound. Our framework preserves HJ-level safety semantics and is compatible with deep RL. We demonstrate the approach on a double-integrator system by formally certifying, via satisfiability modulo theories (SMT), a value function learned through reinforcement learning to induce provably correct inner and outer backward-reachable set enclosures over a compact region of interest.",
+      "authors": [
+        "Prashant Solanki",
+        "Isabelle El-Hajj",
+        "Jasper J. van Beers",
+        "Erik-Jan van Kampen",
+        "Coen C. de Visser"
+      ],
+      "primary_category": "eess.SY",
+      "categories": [
+        "eess.SY"
+      ],
+      "published": "2026-02-18T14:05:17+00:00",
+      "link": "https://arxiv.org/pdf/2602.16475v1",
+      "tags": [
+        "query:DRL"
+      ],
+      "llm_score": 8.0,
+      "llm_evidence_en": "Mathematical foundations and certification of RL reachability",
+      "llm_evidence_cn": "强化学习可达性的数学基础与认证",
+      "llm_evidence": "强化学习可达性的数学基础与认证",
+      "canonical_evidence": "强化学习可达性的数学基础与认证",
+      "llm_tldr_en": "Provides a mathematical framework to certify Hamilton-Jacobi reachability learned via reinforcement learning.",
+      "llm_tldr_cn": "提供了一个数学框架，用于认证通过强化学习学习到的汉密尔顿-雅可比可达性。",
+      "llm_tldr": "提供了一个数学框架，用于认证通过强化学习学习到的汉密尔顿-雅可比可达性。",
+      "llm_tags": [
+        "query:drl"
+      ],
+      "matched_query_tag": "query:drl",
+      "matched_query_text": "core principles and mathematical foundations of deep reinforcement learning",
+      "matched_requirement_id": "req-9",
+      "selection_source": "carryover_cache",
+      "paper_id": "2602.16475v1",
+      "quick_tier": "8plus"
+    },
+    {
+      "id": "2603.02426v1",
+      "title": "Personalized Multi-Agent Average Reward TD-Learning via Joint Linear Approximation",
+      "abstract": "We study personalized multi-agent average reward TD learning, in which a collection of agents interacts with different environments and jointly learns their respective value functions. We focus on the setting where there exists a shared linear representation, and the agents' optimal weights collectively lie in an unknown linear subspace. Inspired by the recent success of personalized federated learning (PFL), we study the convergence of cooperative single-timescale TD learning in which agents iteratively estimate the common subspace and local heads. We showed that this decomposition can filter out conflicting signals, effectively mitigating the negative impacts of ``misaligned'' signals, and achieving linear speedup. The main technical challenges lie in the heterogeneity, the Markovian sampling, and their intricate interplay in shaping error evolutions. Specifically, not only are the error dynamics of multiple variables closely interconnected, but there is also no direct contraction for the principal angle distance between the optimal subspace and the estimated subspace. We hope our analytical techniques can be useful to inspire research on deeper exploration into leveraging common structures. Experiments are provided to show the benefits of learning via a shared structure to the more general control problem.",
+      "authors": [
+        "Leo",
+        "Wang",
+        "Pengkun Yang",
+        "Lili Su"
+      ],
+      "primary_category": "cs.LG",
+      "categories": [
+        "cs.LG"
+      ],
+      "published": "2026-03-02T22:10:56+00:00",
+      "link": "https://arxiv.org/pdf/2603.02426v1",
+      "tags": [
+        "keyword:DRL",
+        "keyword:DRL JSP",
+        "query:DRL",
+        "query:DRL JSP"
+      ],
+      "llm_score": 7.0,
+      "llm_evidence_en": "multi-agent average reward TD-learning algorithms",
+      "llm_evidence_cn": "多智能体平均奖励TD学习算法",
+      "llm_evidence": "多智能体平均奖励TD学习算法",
+      "canonical_evidence": "多智能体平均奖励TD学习算法",
+      "llm_tldr_en": "Investigates personalized multi-agent TD learning with shared linear representations for faster convergence.",
+      "llm_tldr_cn": "研究具有共享线性表示的个性化多智能体TD学习，以实现更快的收敛。",
+      "llm_tldr": "研究具有共享线性表示的个性化多智能体TD学习，以实现更快的收敛。",
+      "llm_tags": [
+        "query:drl"
+      ],
+      "matched_query_tag": "query:drl",
+      "matched_query_text": "state of the art algorithms in deep reinforcement learning research",
+      "matched_requirement_id": "req-11",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "7"
+    },
+    {
+      "id": "2603.02396v1",
+      "title": "COOL-MC: Verifying and Explaining RL Policies for Platelet Inventory Management",
+      "abstract": "Platelets expire within five days. Blood banks face uncertain daily demand and must balance ordering decisions between costly wastage from overstocking and life-threatening shortages from understocking. Reinforcement learning (RL) can learn effective ordering policies for this Markov decision process (MDP), but the resulting neural policies remain black boxes, hindering trust and adoption in safety-critical domains. We apply COOL-MC, a tool that combines RL with probabilistic model checking and explainable RL, to verify and explain a trained policy for the MDP on platelet inventory management inspired by Haijema et al. By constructing a policy-induced discrete-time Markov chain (which includes only the reachable states under the trained policy to reduce memory usage), we verify PCTL properties and provide feature-level explanations. Results show that the trained policy achieves a 2.9% stockout probability and a 1.1% inventory-full (potential wastage) probability within a 200-step horizon, primarily attends to the age distribution of inventory rather than other features such as day of week or pending orders. Action reachability analysis reveals that the policy employs a diverse replenishment strategy, with most order quantities reached quickly, while several are never selected. Counterfactual analysis shows that replacing medium-large orders with smaller ones leaves both safety probabilities nearly unchanged, indicating that these orders are placed in well-buffered inventory states. This first formal verification and explanation of an RL platelet inventory management policy demonstrates COOL-MC's value for transparent, auditable decision-making in safety-critical healthcare supply chain domains.",
+      "authors": [
+        "Dennis Gross"
+      ],
+      "primary_category": "cs.AI",
+      "categories": [
+        "cs.AI",
+        "cs.LG"
+      ],
+      "published": "2026-03-02T21:17:23+00:00",
+      "link": "https://arxiv.org/pdf/2603.02396v1",
+      "tags": [
+        "keyword:DRL JSP",
+        "query:DRL JSP"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "RL for inventory management and ordering decisions",
+      "llm_evidence_cn": "用于库存管理和订货决策的强化学习",
+      "llm_evidence": "用于库存管理和订货决策的强化学习",
+      "canonical_evidence": "用于库存管理和订货决策的强化学习",
+      "llm_tldr_en": "Applies RL to platelet inventory management and provides tools for policy verification and explanation.",
+      "llm_tldr_cn": "将强化学习应用于血小板库存管理，并提供策略验证与解释工具。",
+      "llm_tldr": "将强化学习应用于血小板库存管理，并提供策略验证与解释工具。",
+      "llm_tags": [
+        "query:drl-jsp"
+      ],
+      "matched_query_tag": "query:drl-jsp",
+      "matched_query_text": "Deep Reinforcement Learning for scheduling",
+      "matched_requirement_id": "req-1",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    },
+    {
+      "id": "2602.16629v1",
+      "title": "Almost Sure Convergence of Differential Temporal Difference Learning for Average Reward Markov Decision Processes",
+      "abstract": "The average reward is a fundamental performance metric in reinforcement learning (RL) focusing on the long-run performance of an agent. Differential temporal difference (TD) learning algorithms are a major advance for average reward RL as they provide an efficient online method to learn the value functions associated with the average reward in both on-policy and off-policy settings. However, existing convergence guarantees require a local clock in learning rates tied to state visit counts, which practitioners do not use and does not extend beyond tabular settings. We address this limitation by proving the almost sure convergence of on-policy $n$-step differential TD for any $n$ using standard diminishing learning rates without a local clock. We then derive three sufficient conditions under which off-policy $n$-step differential TD also converges without a local clock. These results strengthen the theoretical foundations of differential TD and bring its convergence analysis closer to practical implementations.",
+      "authors": [
+        "Ethan Blaser",
+        "Jiuqi Wang",
+        "Shangtong Zhang"
+      ],
+      "primary_category": "cs.LG",
+      "categories": [
+        "cs.LG",
+        "cs.AI"
+      ],
+      "published": "2026-02-18T17:24:27+00:00",
+      "link": "https://arxiv.org/pdf/2602.16629v1",
+      "tags": [
+        "query:DRL",
+        "query:DRL JSP"
+      ],
+      "llm_score": 8.0,
+      "llm_evidence_en": "mathematical foundations of average reward RL",
+      "llm_evidence_cn": "平均奖励强化学习的数学基础",
+      "llm_evidence": "平均奖励强化学习的数学基础",
+      "canonical_evidence": "平均奖励强化学习的数学基础",
+      "llm_tldr_en": "Proves almost sure convergence for differential TD learning in average reward MDPs using standard learning rates.",
+      "llm_tldr_cn": "证明了平均奖励MDP中微分TD学习在标准学习率下的几乎处处收敛性。",
+      "llm_tldr": "证明了平均奖励MDP中微分TD学习在标准学习率下的几乎处处收敛性。",
+      "llm_tags": [
+        "query:drl"
+      ],
+      "matched_query_tag": "query:drl",
+      "matched_query_text": "core principles and mathematical foundations of deep reinforcement learning",
+      "matched_requirement_id": "req-9",
+      "selection_source": "carryover_cache",
+      "paper_id": "2602.16629v1",
+      "quick_tier": "8plus"
+    },
+    {
+      "id": "2603.02462v1",
+      "title": "Can Computational Reducibility Lead to Transferable Models for Graph Combinatorial Optimization?",
+      "abstract": "A key challenge in deriving unified neural solvers for combinatorial optimization (CO) is efficient generalization of models between a given set of tasks to new tasks not used during the initial training process. To address it, we first establish a new model, which uses a GCON module as a form of expressive message passing together with energy-based unsupervised loss functions. This model achieves high performance (often comparable with state-of-the-art results) across multiple CO tasks when trained individually on each task. We then leverage knowledge from the computational reducibility literature to propose pretraining and fine-tuning strategies that transfer effectively (a) between MVC, MIS and MaxClique, and (b) in a multi-task learning setting that additionally incorporates MaxCut, MDS and graph coloring. Additionally, in a leave-one-out, multi-task learning setting, we observe that pretraining on all but one task almost always leads to faster convergence on the remaining task when fine-tuning while avoiding negative transfer. Our findings indicate that learning common representations across multiple graph CO problems is viable through the use of expressive message passing coupled with pretraining strategies that are informed by the polynomial reduction literature, thereby taking an important step towards enabling the development of foundational models for neural CO. We provide an open-source implementation of our work at https://github.com/semihcanturk/COPT-MT .",
+      "authors": [
+        "Semih Cantürk",
+        "Thomas Sabourin",
+        "Frederik Wenkel",
+        "Michael Perlmutter",
+        "Guy Wolf"
+      ],
+      "primary_category": "cs.LG",
+      "categories": [
+        "cs.LG",
+        "cs.AI"
+      ],
+      "published": "2026-03-02T23:03:00+00:00",
+      "link": "https://arxiv.org/pdf/2603.02462v1",
+      "tags": [
+        "keyword:DRL JSP",
+        "query:DRL",
+        "query:DRL JSP"
+      ],
+      "llm_score": 7.0,
+      "llm_evidence_en": "Neural solvers for combinatorial optimization",
+      "llm_evidence_cn": "组合优化的神经求解器",
+      "llm_evidence": "组合优化的神经求解器",
+      "canonical_evidence": "组合优化的神经求解器",
+      "llm_tldr_en": "Explores transferable neural solvers for graph combinatorial optimization tasks using message passing.",
+      "llm_tldr_cn": "探索了用于图组合优化任务的可迁移神经求解器，利用消息传递提高泛化性。",
+      "llm_tldr": "探索了用于图组合优化任务的可迁移神经求解器，利用消息传递提高泛化性。",
+      "llm_tags": [
+        "query:drl-jsp:composite"
+      ],
+      "matched_query_tag": "query:drl-jsp:composite",
+      "matched_query_text": "Papers central to 深度强化学习解决作业车间调度问题 (JSP), especially work that connects or combines: Deep Reinforcement Learning for scheduling; s; Deep reinforcement learning approaches for job shop scheduling problems; Solving flexible job shop scheduling using deep reinforcement learning; End to end deep reinforcement learning for production scheduling; Comparison of DRL algorithms for manufacturing scheduling; Dynamic job shop scheduling via deep reinforcement learning.",
+      "matched_requirement_id": "req-composite-drl-jsp",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "7"
+    },
+    {
+      "id": "2603.02489v1",
+      "title": "RIS-Enabled Wireless Channel Equalization: Adaptive RIS Equalizer and Deep Reinforcement Learning",
+      "abstract": "Reconfigurable Intelligent Surfaces (RISs) offer a promising means of reshaping the wireless propagation environment, yet practical methods for configuring large passive arrays to achieve reliable signal equalization remain limited. Equalization is essential in wideband links to counteract multipath-induced pulse distortion that otherwise degrades symbol recovery. This work investigates RIS-assisted pulse response equalization and signal boosting using both classical adaptive filtering and model-free deep reinforcement learning (DRL). We develop a steepest descent (SD) method that exploits cascaded BS-RIS-UE channel information to configure RIS coefficients for multipath mitigation and SNR enhancement, and we show that the tradeoffs between SD and DRL primarily arise from the extensive channel estimation required for accurate equalization with passive RIS hardware. Unlike traditional adaptive filtering, which updates delayed filter coefficients after signal reception, our approach uses the RIS positioned within the cascaded channel to perform equalization without delay elements, prior to reception at the UE. In this framework, the channel is estimated before equalization, forming the basis of what we term adaptive RIS equalization (ARISE). To overcome the reliance on channel estimation required for ARISE, we explore several DRL algorithms -- DDPG, TD3, and SAC -- that optimize RIS coefficients directly from the received pulse response without explicit channel estimation. Through extensive simulations across diverse channel conditions and RIS sizes, we show that SAC achieves fast, stable convergence and equalization performance comparable to ARISE while offering significantly lower implementation complexity. These results highlight the potential of DRL as a practical and scalable solution for real-time RIS control in future wireless systems.",
+      "authors": [
+        "Gal Ben-Itzhak",
+        "Ender Ayanoglu"
+      ],
+      "primary_category": "cs.IT",
+      "categories": [
+        "cs.IT",
+        "cs.ET",
+        "eess.SP"
+      ],
+      "published": "2026-03-03T00:43:00+00:00",
+      "link": "https://arxiv.org/pdf/2603.02489v1",
+      "tags": [
+        "keyword:DRL",
+        "keyword:DRL JSP",
+        "query:DRL",
+        "query:DRL JSP"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "Model-free deep reinforcement learning for wireless channel equalization",
+      "llm_evidence_cn": "用于无线信道均衡的无模型深度强化学习",
+      "llm_evidence": "用于无线信道均衡的无模型深度强化学习",
+      "canonical_evidence": "用于无线信道均衡的无模型深度强化学习",
+      "llm_tldr_en": "Applies DRL to configure Reconfigurable Intelligent Surfaces for signal equalization and multipath mitigation.",
+      "llm_tldr_cn": "应用深度强化学习配置可重构智能表面，实现信号均衡和多径抑制。",
+      "llm_tldr": "应用深度强化学习配置可重构智能表面，实现信号均衡和多径抑制。",
+      "llm_tags": [
+        "query:drl"
+      ],
+      "matched_query_tag": "query:drl",
+      "matched_query_text": "state of the art algorithms in deep reinforcement learning research",
+      "matched_requirement_id": "req-11",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    },
+    {
+      "id": "2602.17616v1",
+      "title": "Stable Asynchrony: Variance-Controlled Off-Policy RL for LLMs",
+      "abstract": "Reinforcement learning (RL) is widely used to improve large language models on reasoning tasks, and asynchronous RL training is attractive because it increases end-to-end throughput. However, for widely adopted critic-free policy-gradient methods such as REINFORCE and GRPO, high asynchrony makes the policy-gradient estimator markedly $\\textbf{higher variance}$: training on stale rollouts creates heavy-tailed importance ratios, causing a small fraction of samples to dominate updates. This amplification makes gradients noisy and learning unstable relative to matched on-policy training. Across math and general reasoning benchmarks, we find collapse is reliably predicted by effective sample size (ESS) and unstable gradient norms. Motivated by this diagnosis, we propose $\\textbf{V}$ariance $\\textbf{C}$ontrolled $\\textbf{P}$olicy $\\textbf{O}$ptimization ($\\textbf{VCPO}$), a general stabilization method for REINFORCE/GRPO-style algorithms that (i) scales learning rate based on effective sample size to dampen unreliable updates, and (ii) applies a closed-form minimum-variance baseline for the off-policy setting, avoiding an auxiliary value model and adding minimal overhead. Empirically, VCPO substantially improves robustness for asynchronous training across math, general reasoning, and tool-use tasks, outperforming a broad suite of baselines spanning masking/clipping stabilizers and algorithmic variants. This reduces long-context, multi-turn training time by 2.5$\\times$ while matching synchronous performance, demonstrating that explicit control of policy-gradient variance is key for reliable asynchronous RL at scale.",
+      "authors": [
+        "Luke Huang",
+        "Zhuoyang Zhang",
+        "Qinghao Hu",
+        "Shang Yang",
+        "Song Han"
+      ],
+      "primary_category": "cs.LG",
+      "categories": [
+        "cs.LG",
+        "cs.AI"
+      ],
+      "published": "2026-02-19T18:40:51+00:00",
+      "link": "https://arxiv.org/pdf/2602.17616v1",
+      "tags": [
+        "query:DRL"
+      ],
+      "llm_score": 8.0,
+      "llm_evidence_en": "Addressing training instability in asynchronous RL",
+      "llm_evidence_cn": "解决异步强化学习中的训练不稳定问题",
+      "llm_evidence": "解决异步强化学习中的训练不稳定问题",
+      "canonical_evidence": "解决异步强化学习中的训练不稳定问题",
+      "llm_tldr_en": "Diagnoses and mitigates variance-induced instability in asynchronous RL training for LLMs.",
+      "llm_tldr_cn": "诊断并解决了大语言模型异步强化学习训练中由高方差导致的学习不稳定问题。",
+      "llm_tldr": "诊断并解决了大语言模型异步强化学习训练中由高方差导致的学习不稳定问题。",
+      "llm_tags": [
+        "query:drl"
+      ],
+      "matched_query_tag": "query:drl",
+      "matched_query_text": "techniques for improving training stability and convergence in DRL",
+      "matched_requirement_id": "req-10",
+      "selection_source": "carryover_cache",
+      "paper_id": "2602.17616v1",
+      "quick_tier": "8plus"
+    },
+    {
+      "id": "2603.02491v1",
+      "title": "What Capable Agents Must Know: Selection Theorems for Robust Decision-Making under Uncertainty",
+      "abstract": "As artificial agents become increasingly capable, what internal structure is *necessary* for an agent to act competently under uncertainty? Classical results show that optimal control can be *implemented* using belief states or world models, but not that such representations are required. We prove quantitative \"selection theorems\" showing that low *average-case regret* on structured families of action-conditioned prediction tasks forces an agent to implement a predictive, structured internal state. Our results cover stochastic policies, partial observability, and evaluation under task distributions, without assuming optimality, determinism, or access to an explicit model. Technically, we reduce predictive modeling to binary \"betting\" decisions and show that regret bounds limit probability mass on suboptimal bets, enforcing the predictive distinctions needed to separate high-margin outcomes. In fully observed settings, this yields approximate recovery of the interventional transition kernel; under partial observability, it implies necessity of belief-like memory and predictive state, addressing an open question in prior world-model recovery work.",
+      "authors": [
+        "Aran Nayebi"
+      ],
+      "primary_category": "cs.LG",
+      "categories": [
+        "cs.LG",
+        "cs.AI",
+        "cs.RO",
+        "q-bio.NC",
+        "stat.ML"
+      ],
+      "published": "2026-03-03T00:47:58+00:00",
+      "link": "https://arxiv.org/pdf/2603.02491v1",
+      "tags": [
+        "keyword:DRL",
+        "keyword:DRL JSP",
+        "query:DRL"
+      ],
+      "llm_score": 7.0,
+      "llm_evidence_en": "mathematical foundations of internal states for robust decision-making",
+      "llm_evidence_cn": "鲁棒决策内部状态的数学基础",
+      "llm_evidence": "鲁棒决策内部状态的数学基础",
+      "canonical_evidence": "鲁棒决策内部状态的数学基础",
+      "llm_tldr_en": "Proves selection theorems regarding the necessary internal structures for competent agents under uncertainty.",
+      "llm_tldr_cn": "证明了关于智能体在不确定性下表现称职所需的内部结构的数学选择定理。",
+      "llm_tldr": "证明了关于智能体在不确定性下表现称职所需的内部结构的数学选择定理。",
+      "llm_tags": [
+        "query:drl"
+      ],
+      "matched_query_tag": "query:drl",
+      "matched_query_text": "core principles and mathematical foundations of deep reinforcement learning",
+      "matched_requirement_id": "req-9",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "7"
+    },
+    {
+      "id": "2603.02650v1",
+      "title": "Improving Diffusion Planners by Self-Supervised Action Gating with Energies",
+      "abstract": "Diffusion planners are a strong approach for offline reinforcement learning, but they can fail when value-guided selection favours trajectories that score well yet are locally inconsistent with the environment dynamics, resulting in brittle execution. We propose Self-supervised Action Gating with Energies (SAGE), an inference-time re-ranking method that penalises dynamically inconsistent plans using a latent consistency signal. SAGE trains a Joint-Embedding Predictive Architecture (JEPA) encoder on offline state sequences and an action-conditioned latent predictor for short horizon transitions. At test time, SAGE assigns each sampled candidate an energy given by its latent prediction error and combines this feasibility score with value estimates to select actions. SAGE can integrate into existing diffusion planning pipelines that can sample trajectories and select actions via value scoring; it requires no environment rollouts and no policy re-training. Across locomotion, navigation, and manipulation benchmarks, SAGE improves the performance and robustness of diffusion planners.",
+      "authors": [
+        "Yuan Lu",
+        "Dongqi Han",
+        "Yansen Wang",
+        "Dongsheng Li"
+      ],
+      "primary_category": "cs.LG",
+      "categories": [
+        "cs.LG",
+        "cs.AI",
+        "cs.RO"
+      ],
+      "published": "2026-03-03T06:36:16+00:00",
+      "link": "https://arxiv.org/pdf/2603.02650v1",
+      "tags": [
+        "keyword:DRL",
+        "keyword:DRL JSP",
+        "query:DRL",
+        "query:DRL JSP"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "improving offline reinforcement learning planners",
+      "llm_evidence_cn": "改进离线强化学习规划器",
+      "llm_evidence": "改进离线强化学习规划器",
+      "canonical_evidence": "改进离线强化学习规划器",
+      "llm_tldr_en": "Proposes SAGE, a re-ranking method to improve the dynamic consistency and execution of diffusion planners in RL.",
+      "llm_tldr_cn": "提出 SAGE，一种重排序方法，用于提高强化学习中扩散规划器的动态一致性和执行力。",
+      "llm_tldr": "提出 SAGE，一种重排序方法，用于提高强化学习中扩散规划器的动态一致性和执行力。",
+      "llm_tags": [
+        "query:drl"
+      ],
+      "matched_query_tag": "query:drl",
+      "matched_query_text": "state of the art algorithms in deep reinforcement learning research",
+      "matched_requirement_id": "req-11",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    },
+    {
+      "id": "2602.17632v1",
+      "title": "SMAC: Score-Matched Actor-Critics for Robust Offline-to-Online Transfer",
+      "abstract": "Modern offline Reinforcement Learning (RL) methods find performant actor-critics, however, fine-tuning these actor-critics online with value-based RL algorithms typically causes immediate drops in performance. We provide evidence consistent with the hypothesis that, in the loss landscape, offline maxima for prior algorithms and online maxima are separated by low-performance valleys that gradient-based fine-tuning traverses. Following this, we present Score Matched Actor-Critic (SMAC), an offline RL method designed to learn actor-critics that transition to online value-based RL algorithms with no drop in performance. SMAC avoids valleys between offline and online maxima by regularizing the Q-function during the offline phase to respect a first-order derivative equality between the score of the policy and action-gradient of the Q-function. We experimentally demonstrate that SMAC converges to offline maxima that are connected to better online maxima via paths with monotonically increasing reward found by first-order optimization. SMAC achieves smooth transfer to Soft Actor-Critic and TD3 in 6/6 D4RL tasks. In 4/6 environments, it reduces regret by 34-58% over the best baseline.",
+      "authors": [
+        "Nathan S. de Lara",
+        "Florian Shkurti"
+      ],
+      "primary_category": "cs.LG",
+      "categories": [
+        "cs.LG",
+        "cs.AI"
+      ],
+      "published": "2026-02-19T18:47:31+00:00",
+      "link": "https://arxiv.org/pdf/2602.17632v1",
+      "tags": [
+        "query:DRL"
+      ],
+      "llm_score": 8.0,
+      "llm_evidence_en": "improving training stability in offline-to-online RL transfer",
+      "llm_evidence_cn": "提高离线到在线强化学习迁移中的训练稳定性",
+      "llm_evidence": "提高离线到在线强化学习迁移中的训练稳定性",
+      "canonical_evidence": "提高离线到在线强化学习迁移中的训练稳定性",
+      "llm_tldr_en": "Proposes SMAC to prevent performance drops during offline-to-online RL fine-tuning.",
+      "llm_tldr_cn": "提出 SMAC 方法以防止离线到在线强化学习微调过程中的性能下降。",
+      "llm_tldr": "提出 SMAC 方法以防止离线到在线强化学习微调过程中的性能下降。",
+      "llm_tags": [
+        "query:drl"
+      ],
+      "matched_query_tag": "query:drl",
+      "matched_query_text": "techniques for improving training stability and convergence in DRL",
+      "matched_requirement_id": "req-10",
+      "selection_source": "carryover_cache",
+      "paper_id": "2602.17632v1",
+      "quick_tier": "8plus"
+    },
+    {
+      "id": "2603.02613v1",
+      "title": "Real-Time Generative Policy via Langevin-Guided Flow Matching for Autonomous Driving",
+      "abstract": "Reinforcement learning (RL) is a fundamental methodology in autonomous driving systems, where generative policies exhibit considerable potential by leveraging their ability to model complex distributions to enhance exploration. However, their inherent high inference latency severely impedes their deployment in real-time decision-making and control. To address this issue, we propose diffusion actor-critic with entropy regulator via flow matching (DACER-F) by introducing flow matching into online RL, enabling the generation of competitive actions in a single inference step. By leveraging Langevin dynamics and gradients of the Q-function, DACER-F dynamically optimizes actions from experience replay toward a target distribution that balances high Q-value information with exploratory behavior. The flow policy is then trained to efficiently learn a mapping from a simple prior distribution to this dynamic target. In complex multi-lane and intersection simulations, DACER-F outperforms baselines diffusion actor-critic with entropy regulator (DACER) and distributional soft actor-critic (DSAC), while maintaining an ultra-low inference latency. DACER-F further demonstrates its scalability on standard RL benchmark DeepMind Control Suite (DMC), achieving a score of 775.8 in the humanoid-stand task and surpassing prior methods. Collectively, these results establish DACER-F as a high-performance and computationally efficient RL algorithm.",
+      "authors": [
+        "Tianze Zhu",
+        "Yinuo Wang",
+        "Wenjun Zou",
+        "Tianyi Zhang",
+        "Likun Wang",
+        "Letian Tao",
+        "Feihong Zhang",
+        "Yao Lyu",
+        "Shengbo Eben Li"
+      ],
+      "primary_category": "cs.LG",
+      "categories": [
+        "cs.LG",
+        "cs.RO"
+      ],
+      "published": "2026-03-03T05:35:53+00:00",
+      "link": "https://arxiv.org/pdf/2603.02613v1",
+      "tags": [
+        "keyword:DRL",
+        "keyword:DRL JSP",
+        "query:DRL",
+        "query:DRL JSP"
+      ],
+      "llm_score": 7.0,
+      "llm_evidence_en": "online RL with flow matching for real-time decision-making",
+      "llm_evidence_cn": "用于实时决策的流匹配在线强化学习",
+      "llm_evidence": "用于实时决策的流匹配在线强化学习",
+      "canonical_evidence": "用于实时决策的流匹配在线强化学习",
+      "llm_tldr_en": "Proposes DACER-F to enable real-time generative policies in RL using flow matching for autonomous driving.",
+      "llm_tldr_cn": "提出DACER-F，通过流匹配在强化学习中实现自动驾驶的实时生成策略。",
+      "llm_tldr": "提出DACER-F，通过流匹配在强化学习中实现自动驾驶的实时生成策略。",
+      "llm_tags": [
+        "query:drl"
+      ],
+      "matched_query_tag": "query:drl",
+      "matched_query_text": "state of the art algorithms in deep reinforcement learning research",
+      "matched_requirement_id": "req-11",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "7"
+    },
+    {
+      "id": "2603.02669v1",
+      "title": "IMR-LLM: Industrial Multi-Robot Task Planning and Program Generation using Large Language Models",
+      "abstract": "In modern industrial production, multiple robots often collaborate to complete complex manufacturing tasks. Large language models (LLMs), with their strong reasoning capabilities, have shown potential in coordinating robots for simple household and manipulation tasks. However, in industrial scenarios, stricter sequential constraints and more complex dependencies within tasks present new challenges for LLMs. To address this, we propose IMR-LLM, a novel LLM-driven Industrial Multi-Robot task planning and program generation framework. Specifically, we utilize LLMs to assist in constructing disjunctive graphs and employ deterministic solving methods to obtain a feasible and efficient high-level task plan. Based on this, we use a process tree to guide LLMs to generate executable low-level programs. Additionally, we create IMR-Bench, a challenging benchmark that encompasses multi-robot industrial tasks across three levels of complexity. Experimental results indicate that our method significantly surpasses existing methods across all evaluation metrics.",
+      "authors": [
+        "Xiangyu Su",
+        "Juzhan Xu",
+        "Oliver van Kaick",
+        "Kai Xu",
+        "Ruizhen Hu"
+      ],
+      "primary_category": "cs.RO",
+      "categories": [
+        "cs.RO"
+      ],
+      "published": "2026-03-03T06:55:27+00:00",
+      "link": "https://arxiv.org/pdf/2603.02669v1",
+      "tags": [
+        "keyword:DRL JSP",
+        "query:DRL JSP"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "Industrial multi-robot task planning using disjunctive graphs and LLMs",
+      "llm_evidence_cn": "利用析取图和大语言模型进行工业多机器人任务规划",
+      "llm_evidence": "利用析取图和大语言模型进行工业多机器人任务规划",
+      "canonical_evidence": "利用析取图和大语言模型进行工业多机器人任务规划",
+      "llm_tldr_en": "IMR-LLM combines LLMs with disjunctive graphs for efficient industrial multi-robot task planning.",
+      "llm_tldr_cn": "IMR-LLM将大语言模型与析取图结合，用于高效的工业多机器人任务规划。",
+      "llm_tldr": "IMR-LLM将大语言模型与析取图结合，用于高效的工业多机器人任务规划。",
+      "llm_tags": [
+        "query:drl-jsp:composite"
+      ],
+      "matched_query_tag": "query:drl-jsp:composite",
+      "matched_query_text": "Papers central to 深度强化学习解决作业车间调度问题 (JSP), especially work that connects or combines: Deep Reinforcement Learning for scheduling; s; Deep reinforcement learning approaches for job shop scheduling problems; Solving flexible job shop scheduling using deep reinforcement learning; End to end deep reinforcement learning for production scheduling; Comparison of DRL algorithms for manufacturing scheduling; Dynamic job shop scheduling via deep reinforcement learning.",
+      "matched_requirement_id": "req-composite-drl-jsp",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    }
+  ]
+}
