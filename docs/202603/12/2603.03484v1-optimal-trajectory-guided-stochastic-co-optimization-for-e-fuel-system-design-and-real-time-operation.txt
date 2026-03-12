@@ -1,0 +1,2003 @@
+Title: Optimal trajectory-guided stochastic co-optimization for e-fuel system design and real-time operation
+
+URL Source: https://arxiv.org/pdf/2603.03484v1
+
+Published Time: Thu, 05 Mar 2026 01:23:12 GMT
+
+Number of Pages: 59
+
+Markdown Content:
+# Optimal trajectory-guided stochastic co-optimization for e-fuel system design and real-time operation 
+
+Jeongdong Kim 1,2 , Minsu Kim 1, Jonggeol Na 3,4, 5* ,Junghwan Kim 2* 
+
+> 1
+
+Department of Chemical Engineering , Massachusetts Institute of Technology, 77 Massachusetts Ave, Cambridge, 02139, Massachusetts, United States. 
+
+> 2
+
+Department of Chemical and Biomolecular Engineering, Yonsei University, 50 Yonsei-ro, Seoul, 03722, Republic of Korea. 
+
+> 3
+
+Department of Chemical Engineering and Materials Science, Ewha Womans University, 52 Ewhayeodae-gil, Seoul, 03760, Republic of Korea. 
+
+> 4
+
+Graduate Program in System Health Science and Engineering, Ewha Womans University, 52 Ewhayeodae-gil, Seoul, 03760, Republic of Korea. 
+
+> 5
+
+Institute for Multiscale Matter and Systems (IMMS), Ewha Womans University, 52 Ewhayeodae-gil, Seoul, 03760, Republic of Korea. *Corresponding author(s). E-mail(s): jgna@ewha.ac.kr; kjh24@yonsei.ac.kr; Contributing authors: jdong96@mit.edu; mskim77@mit.edu; 
+
+Abstract 
+
+E-fuels are promising long-term energy carriers with the supporting net-zero tran-sition. However, the large combinatorial design–operation spaces under renew-able uncertainty makes the use of mathematical programming impractical for co-optimizing e-fuel production systems. Here, we present MasCOR, a machine-learning-assisted co-optimization framework that learns from global operational trajectories. By encoding design and renewable trend, a single MasCOR agent generalizes dynamic operation across diverse configurations and scenarios, substantially simplifying design–operation co-optimization under uncertainty. Benchmark comparisons against state-of-the-art reinforcement learning baseline demonstrate near-optimum performance, while computational costs are substan-tially lower than mathematical programming, enabling rapid parallel evaluation 
+
+1
+
+> arXiv:2603.03484v1 [cs.LG] 3 Mar 2026 of design within the co-optimization loop. This framework enables rapid screen-ing of feasible design spaces together with corresponding operational policies. When applied to four potential European sites targeting e-methanol production, MasCOR showed that most locations benefited from reducing system load below 50 MW to achieve carbon-neutral methanol production, with production costs of
+> $1.0–1.2 kg-1. In contrast, Dunkirk (France), with limited renewable availability and high grid prices, favored system loads above 200 MW and expanded storage to exploit dynamic grid exchange and hydrogen sales to the market. These results underscores the value of the MasCOR framework for site-specific guidance, from system design to real-time operation.
+
+# Introduction 
+
+Decarbonization has emerged as a central pillar of global climate policy, with com-mitments expanding rapidly over the past decade. Current strategies largely focus on transitioning the power sector to renewable energy [1]. However, renewable energy sources are inherently intermittent, have low energy density, and are unevenly dis-tributed across regions [2, 3, 4]. These limitations have underscored the need for long-term, high-energy-density energy carriers, motivating a growing interest in electrofuels (e-fuels)–synthetic fuels produced via electrified conversion [5, 6]. This interest has already translated into action: several countries have commissioned large-scale demonstration projects exceeding 10 MW [7]. Furthermore, they can serve as carbon-neutral alternatives to fossil fuels in hard-to-abate sectors–such as chemicals, petrochemicals, and shipping–which together account for nearly 37% of global final energy consumption [8, 9]. Various e-fuel production pathways have been proposed, which begin with renewable-energy-powered electrolysis [10]. One promising e-fuel is e-methanol, produced via the power-to-methanol pathway, in which green hydrogen is catalytically combined with captured carbon dioxide [11, 12]. With a high carbon capture efficiency of 1.4–1.8 kg CO 2/kg MeOH [13] and compatibility with existing engines and chemical infrastructure, e-methanol is considered a promising candidate for decarbonizing hard-to-abate sectors. For instance, the maritime shipping sector, responsible for approximately 3% of global CO emissions, is beginning to adopt e-methanol as a low-carbon alternative fuel [14, 15]. Similarly, the chemical industry is exploring e-methanol as a sustainable feedstock to reduce reliance on fossil carbon [16]. Despite the growing acceptance of e-fuels in hard-to-abate sectors, most existing e-fuel production systems still face critical technical and operational limitations, par-ticularly when coupled with intermittent renewable power [17]. Methanol synthesis reactors, for instance, require stable temperature, pressure, and feedstock flow, and thus operate most efficiently under steady-state conditions [18]. Thus, for sustained practical application, the use of energy storage systems (ESS)–such as battery energy storage systems (BESS) and compressed hydrogen tanks (CHTs)–coupled with backup grid supply have to be considered to ensure seamless operation even in the face of supply variability [19, 20, 21]. However, this configuration negatively impacts both the economic and environmental feasibility of these pathways. For example, installing 2BESS can reduce renewable curtailment by approximately 2–10% but increase produc-tion costs by up to 60%, raising them to $1,670 per ton of MeOH [22, 23]. Conversely, incorporating steady grid power can lower production costs by up to 50% but result in substantial carbon emissions of up to 8,000 kg CO 2 per ton of MeOH [19]. These trade-offs highlight the need for co-optimization of system design (e.g., ESS size, fuel production capacity, etc.) and for operational strategies that minimize production cost with net-negative carbon emission under region-specific renewable uncertainty. Three key research gaps remain in the co-optimization of e-fuel production systems, limiting the applicability of existing approaches to real-world system design and opera-tion. First, most existing studies represent renewable energy variability using empirical or probabilistic distribution [24, 25]. While such explicit representations are inter-pretable and tractable, they neglect the temporal correlation inherent in renewable profiles, limiting the fidelity and generalizability of the representation of uncertainty [26]. Co-optimization is therefore typically formulated as a scenario-based bilevel prob-lem, in which the first stage determines system design and the second stage optimizes hourly operation [27, 28]. The second gap lies in the reliance on deterministic oper-ational solutions for second-stage optimization. While it guarantees optimality, its deterministic nature limits its applicability in real-time operation, where full-horizon information is inherently unavailable. Third, co-optimization requires solving a large number of second-stage operational problems to quantify uncertainty in system design, resulting in high computational cost and scalability issues [29]. Thus, there remains a need for a new framework capable of rapidly and in parallel solving second-stage operational problems while accurately capturing the distribution of objectives and constraint violations under renewable uncertainty. This study addresses the research gaps by introducing two machine-learning (ML) models: a generative model to capture temporal uncertainty in renewable generation and an optimal operational trajectory-driven agent model that addresses second-stage operational problems. The generative model captures region-specific temporal patterns from historical renewable datasets and generates synthetic scenarios without relying on prior distributional assump-tions. These scenarios support uncertainty quantification (UQ) by providing synthetic inputs for second-stage operational evaluation. In addition, deep reinforcement learn-ing (DRL) can be used in the second stage to approximate dynamic operational policies [30]. However, DRL requires extensive episodic training and cannot guarantee satis-faction of operational and net-carbon-negative constraints across diverse designs and renewable generation conditions [31]. To overcome this limitation, we developed a gen-eralized operational agent model that directly learns from optimal solutions obtained from presolved linear programming (LP) problems. Once trained, this model can replace second-stage deterministic optimization and enable fast, parallel evaluation of dynamic operational problems under given synthetic scenario sets and first-stage design conditions. 3Results 
+
+MasCOR framework for co-optimization of e-fuel systems 
+
+We developed MasCOR (Fig. 1), an ML-assisted framework that co-optimizes the design (Supplementary Fig. S1) and dynamic operation of e-fuel production sys-tems while enforcing net-negative carbon emission under region-specific temporal uncertainty in renewable generation. MasCOR represents temporal uncertainty using monthly renewable scenario sets sampled from a generative model, and it learns hourly operational policies from an oracle dataset comprising optimal operation trajectories across diverse designs and renewable trends, extracted directly from LP solutions. In this study, the hourly operational problems of e-methanol production were formulated as LP problems (Supplementary Note 1) using technical parameters and region-specific carbon taxes, as listed in Supplementary Tables S1 and S2. We first trained a Wasserstein generative adversarial network with gradient penalty (WGAN-GP) [26, 32] to generate monthly 576-hour wind speed scenarios, using the hyperparameters and network architecture listed in Supplementary Tables S3 and S4. Wind speed data were collected from four target regions for training and validation; the geographical locations are listed in Supplementary Table S5. An auxiliary loss enforced alignment with key statistical features of the real data, including mean power and fluc-tuations (Supplementary Note 2.1). The resulting discriminative score remained below 0.05 across all four target sites, indicating the model’s ability to reproduce temporal dynamics with minimal discrepancy between real and synthetic data (Supplementary Note 2.3; Supplementary Table. S6). Distributional comparisons further confirmed that the generative model produces a broad range of scenarios that span both train-ing and validation datasets while preserving key feature distributions (Fig. 2, a). Full comparisons across the different target regions are provided in Supplementary Figs. S2 to S5 After training, the WGAN-GP was used to generate monthly operational problem instances under synthetic renewable scenario sets (Fig. 1 a). Each instance was paired with randomly sampled designs for BESS and CHT storage capacities, proton exchange membrane electrolysis cell (PEMEC) load capacity, and methanol production capacity. In addition, each instance was solved using an LP solver to maximize operational profit while satisfying net-negative emission constraints (Supplementary Note 1.2). The resulting optimal solutions were then postprocessed into an oracle dataset, defined as a collection of trajectories comprising state st, action at, cost ( ct; carbon emissions), and reward ( rt; profit), and future cumulative cost and return metrics (cost-to-go, 
+
+CT G t; return-to-go, RT G t) (Supplementary Note 3.1). Offline reinforcement learning (RL) was performed via supervised learning on the oracle dataset using a transformer-based agent within the MasCOR framework. This agent adopts an actor–critic architecture [33]: the actor selects the next action based on CT G t and RT G t target goals, while the critic predicts future CT G t and RT G t
+
+under the selected action and updates the actor’s goals. Conditional tokens that encode the system design ( D) and the renewable trend ( E) enable the agent to infer policies across varying design configurations and renewable scenarios (Supplementary Notes 3.2, 3.3). The proposed model offers three key advantages over conventional online RL. 4First, conventional online RL involves environment interaction, which is often unstable under operational constraints and inefficient when a wide design space is explored; learning directly from presolved LP solutions circumvents the need for such unstable interactions (Supplementary Table S7). Second, the transformer-based architecture learns complete operational trajectories rather than isolated state–action pairs [34, 35], enabling the recovery of globally optimal operational trajectories [36]. Furthermore, by tracking RT G t, CT G t, the critic helps prevent suboptimal actions and filters out actions that fail to satisfy net-negative carbon emissions constraints (Supplementary Algorithm. 1 and 2). Third, the conditional tokens D and E enable the use of a single generalized agent model to solve operational problems across different design configurations and renewable scenarios without fine-tuning. Ablation study confirmed that each component of the MasCOR agent contributes to reducing training loss (Supplementary Fig. S7). Benchmark comparisons against a deterministic LP solution and baseline RL models further demonstrated the supe-rior performance of MasCOR (Fig. 2 (b), (c)). Detailed model architectures for both the benchmark and the proposed model are provided in Supplementary Table S7). The proposed model achieved an average optimality gap of 42.5%, substantially lower than that achieved by benchmark RL models (128.2%) across diverse design settings. Specifically, in large ESS capacity settings–referred to as the buffered case–this gap narrowed to just 16.7%, compared with 58.7% for the benchmarks. In addition, owing to improved goal prediction and infeasibility filtering via the critic model (Supplemen-tary Table S8), the proposed model enabled superior net-negative carbon emission performance compared with the deterministic LP solution, with the system capturing 15.4 ton/month more carbon on average. By contrast, the benchmark RL models vio-lated constraints by an average of 1,362.1 ton/month (Supplementary Figs. S8 to S11). Overall, MasCOR delivers near-optimal dynamic operation while better satisfying net-negative emission constraints. For co-optimization, MasCOR adopts a scenario-based bilevel optimization approach [37, 38] (Fig. 1 (c)). For a given design candidate, the generative model pro-duces a set of renewable power scenarios and the agent model solves the second-stage operational problem for each scenario in parallel. The resulting distribution of pro-duction cost and net carbon emissions across these scenarios serves as the UQ of the candidate design. The UQ procedure requires solving a large set of second-stage prob-lems within limited computational time. The agent model of MasCOR accomplishes this through a single feed-forward inference step on a highly parallelized graphics processing unit (GPU). On a single NVIDIA H200 GPU, this yielded a 0.366–0.70 order-of-magnitude speed-up relative to the central processing unit (CPU)–based LP solver as the scenario size increased from 100 to 10,000 Fig. 2 (b). Specifically, the agent model solved 1,000 scenarios in 17.6 s, compared with 84.8 s clocked by the LP solver. It is this acceleration and scalability that enables co-optimization within limited computational time. Multi-objective Bayesian optimization (MOBO) then assesses these UQ results and searches the next batch of design candidates to minimize both expected production cost and net carbon emissions in the first-stage design optimiza-tion. A chance constraint on positive carbon emissions ( CT G 0 > 0) is imposed to ensure robustness under renewable uncertainty. 5Once a e-fuel system is installed under a chosen or co-optimized design, operating it requires online decision-making that can adapt to renewable uncertainty. MasCOR enables such online operation without retraining or modifying the model (Supplemen-tary Note 3.2; Supplementary Algorithm. 2). However, unlike co-optimization–during which full scenario data are available–real-time operation has only the current time step’s renewable power and grid price to rely on. The renewable-trend token E must therefore be inferred dynamically. As shown in Fig. 1 (d), at each time step t, the gen-erator ( G) and discriminator ( D) in generative model first forecasts a set of E tokens conditioned on the observed renewable data. Using these tokens, the actor proposes candidate actions, each of which the critic evaluates to estimate the distribution of 
+
+RT G t and CT G t under renewable uncertainty. Finally, an optimal action that max-imizes RT G t while satisfying negative CT G t constraints is selected and applied to the system. Across diverse design configurations, MasCOR achieved the lowest opti-mality gap (42.5%) while limiting carbon-emission constraint violations to only 37.1 ton/month, substantially outperforming benchmark RL models (128.2% and 269.5 ton/month) (Supplementary Fig. S10). Notably, under a large ESS capacity setting, despite relying only on hourly information–unlike LP solvers that use full-horizon scenarios–MasCOR achieved a low optimality gap of 10.28%. 6a c
+
+d
+
+b
+
+E-fuel system 
+
+with Initial 𝐷 
+
+> 〮〮〮
+
+Synthetic renewable set 
+
+𝐸 set 
+
+Critic  transformer 
+
+UQ of production cost & 𝐶𝑇 𝐺 0
+
+> 𝐶𝑇 𝐺 0 = 0
+
+Parallel solving of 
+
+operation problems 
+
+Explore 
+
+next 𝐷 
+
+Prob 𝐶𝑇𝐺 0 ≥ 0|𝐷 ∗ ≤ ℇ
+
+𝐺 
+
+z~𝒩 (0, I) LP 
+
+solver 
+
+Design space ( 𝐷 ∈ 𝒟 )
+
+> 〮〮〮
+> Time  𝑡
+> 𝑠 1:𝑇
+> 𝑎 1:𝑇
+> 𝑟 1:𝑇
+> 𝑐 1:𝑇
+
+Oracle -dataset 
+
+> 〮〮〮
+
+𝐷  𝑠 𝑡 
+
+Actor transformer 
+
+𝐷  𝑐 𝑡  𝑟 𝑡  𝑠 𝑡  𝑎 𝑡 
+
+Critic  transformer 
+
+𝐶𝑇𝐺 𝑡 
+
+ℒNLL  ℒNLL 
+
+𝑅𝑇𝐺 𝑡 
+
+Renewable trend 𝐸 
+
+Co -optimization loop Oracle dataset generation 
+
+Offline reinforcement learning of oracle -trajectory 
+
+Online -operation of optimized system 
+
+𝑡 
+
+𝑇 
+
+> 〮〮〮
+> +
+
+Actor transformer 
+
+> 〮〮〮
+> +
+
+𝐺  𝐷 
+
+> 𝑡
+> 〮〮〮
+
+𝐷 ∗
+
+Future -trend set 𝐸 
+
+> 〮〮〮
+> 〮〮〮
+> +
+
+Critic  transformer  
+
+> 〮〮〮 〮〮〮
+> 〮〮〮
+
+Actor transformer 
+
+> 〮〮〮
+
++
+
+E-fuel system 
+
+with optimal 𝐷 ∗
+
+𝐷 ∗
+
+Reset goal 
+
+𝑠 𝑡 
+
+Optimal 𝑎 𝑡 
+
+> ∗
+
+Action candidate 
+
+𝑎 𝑡  
+
+> ∗
+
+= argmax 𝑅𝑇 𝐺 𝑡 
+
+s. t. 𝐶𝑇 𝐺 𝑡 ≤ 0
+
+> Renewable
+> Time
+
+Fig. 1 MasCOR: ML-assisted stochastic co-optimization framework for renewable power management systems . a, Generation of an oracle dataset by combining a renewable sce-nario generative model with LP-based operational optimization across sampled designs. b, Training of transformer-based actor–critic agents to learn optimal operational policies and two future per-formance metrics, cumulative profit (return-to-go, RT G t) and net carbon emissions (carbon-to-go, 
+
+CT G t), conditioned on renewable trends E and system design D. c, MasCOR infers distributions of profit and net carbon emissions ( CT G 0) for each design using the generative model and trained agent, selecting the design–policy pair that minimizes production cost and net carbon emissions while sat-isfying a chance constraint on positive carbon emissions ( CT G 0 > 0). d, MasCOR generates future renewable trend sets E and performs online operation conditioned on these trends and the optimal design D∗, ensuring robust performance under uncertainty. Details of the architecture, algorithms, and benchmark comparisons of the two ML models are provided in Supplementary Notes 2, 3. 
+
+7Synthetic data 
+
+> Training data (2015 -2022)
+> Validation data (2023 -2024)
+> Principal component 2
+> Principal component 1
+
+b
+
+c      
+
+> Solution time (sec)
+> Number of problem
+> density wmax wmin
+> wavg wmax wmin dw avg dw max
+> dw max  dw avg
+> Buffered Responsive Max -product Base
+> Optimality gap (%)
+
+a
+
+> Constraint violation
+> (×10³ tonCO2/month)
+
+Fig. 2 Performance evaluation of the MasCOR framework for renewable data genera-tion and dynamic operational problem solving . a, T-SNE embedding of synthetic renewable profiles generated by the generative model, compared with training and validation wind datasets, along with distributions of key operational features. b, Computational efficiency of the proposed Mas-COR agent compared with the benchmark LP solver (Gurobi) for parallel LP problem solving. c,Dynamic operational performance comparison of benchmark data–driven models and the proposed MasCOR agent across different design categories. Details of computational efficiency and benchmark comparison experiments are provided in (Supplementary Notes 3.4) 
+
+8Power-to-methanol design and operation strategy in Europe regions 
+
+Co-optimization was conducted for four target regions—Dunkirk (France), Skive and Fredericia (Denmark), and Weener (Germany)–within the MasCOR framework (Fig. 1 (c)), with the objective of minimizing both the expected levelized cost of methanol production (LCOM, $/kg) and net carbon emissions (ton/month). A chance constraint with a probability of 0.5 was enforced to ensure that the co-optimized design achieves negative carbon emissions in at least half of all renewable generation scenarios. Fig. 3 shows the Pareto-optimal design patterns and expected system performance under uncertainty, revealing a clear trade-off between the LCOM and carbon emis-sions. As shown in Fig. 3 (a), Dunkirk is characterized by relatively low renewable power availability (18.9 MW on average) and the highest grid price (38.8 $/MWh), whereas other regions exhibit comparable renewable availability and grid price dis-tributions. Accordingly, MasCOR identified distinct optimal design strategies across regions. Specifically, except for Dunkirk, the Pareto fronts revealed two distinct design regimes for minimizing carbon emissions: storage expansion (SE) and production reduction (PR). Dunkirk, by contrast, exhibited only the SE regime across the entire Pareto front (Fig. 3 (c)). These regimes correspond to fundamentally different unit sizing, as further illustrated by their characteristic hourly operational patterns (Fig. 4). The SE regime is characterized by increased PEMEC capacity combined with large energy storage capability (BESS and CHT) (Fig. 3, (c), (d); red points), enabling surplus renewable power to be converted into hydrogen for market export. It exhibits a lower LCOM than the PR regime because market export of hydrogen provides a stable revenue stream that offsets operational costs incurred due to grid price fluctuations. For instance, as illustrated in Fig. 4 (b) (red box in top panel), in the case of Skive, surplus renewable power (5–25 MW) is converted into hydrogen, while only 1–2 MW is exported to the grid. However, operating an oversized PEMEC requires continuous power supply because it is the most energy-intensive unit (Supplementary Table S1). During periods of renewable shortfall, the system relies heavily on the BESS and CHT to bridge the gap, as illustrated in Fig. 4 (b) (red box in bottom panel). Expanding this storage capacity therefore becomes pivotal for further carbon reduction in the SE regime–a pattern observed consistently across all regions (Fig. 3 (c), (d)). In Skive, for example, expanding BESS and CHT capacities from 48.2 to 86.6 MWh and from 83.1 to 90.4 MWh, respectively, shifted the expected emissions from 25 to -75 ton/month and also reduced the probability of positive emissions from 0.44 to 0.35 (Supplementary Fig. 13 (a)). These reductions, however, came at increased capital cost for storage, raising the LCOM and establishing a clear trade-off between cost and emissions within the SE regime. Despite its effectiveness, the SE regime exhibits intrinsic limits in reducing carbon emissions. The oversized PEMEC increases the total system scale to beyond 150 MW (Fig. 4 (a)) under a renewable power capacity of only 50 MW. Therefore, when the system load remains this large, further storage expansion alone cannot eliminate the high probability of positive emissions, even at the extreme SE points in Skive, Fred-ericia, and Weener, where the chance probability exceeds 0.3 (Supplementary Fig. 13 9(a)). This limitation motivates MasCOR to transition to a distinct design regime at certain carbon emission levels. The PR regime is characterized by minimal PEMEC and storage capacities (Fig. 3 (c), (d); green points). This configuration does not permit surplus hydrogen produc-tion for market export and is strictly limited to methanol production. Thus, as shown in Fig. 4 (b) (green box in top and bottom panel), surplus renewable power is directly exported to the grid, with storage utilization being minimal—ranging from 0.2–0.4 MW in Skive, Fredericia, and Weener—during periods of renewable shortage. These minimal capacity settings also result in a sharp reduction in the system scale to below 50 MW as the design transitions to PR (Fig. 4 (a)). Because storage and PEMEC capacities are minimal in this regime, reducing methanol production capacity becomes the only viable option for further carbon emission reduction Fig. 3 (c). This strategy enabled additional carbon emission reduction at the tested sites, lowering expected emissions to below -170, -170, and -150 ton/month with production capacity reduc-tions of 10%, 20%, and 10% in Skive, Fredericia, and Weener, respectively. In addition to reducing the net carbon emissions, PR effectively shifted the emission distribution and lowered the probability of positive emissions to 17%, 8%, and 19% in Skive, Fred-ericia, and Weener, respectively (Supplementary Fig. 13 (a)). However, the reduced production capacity and limited power dispatch led to higher LCOM than in the SE regime. Overall, the discontinuous transition from SE to PR along the Pareto front reflects the intrinsic structure of the power-to-methanol system. At low LCOM, surplus hydro-gen production supported by expanded storage capacity is economically optimal. However, as carbon emission constraints tighten, the high energy intensity of hydro-gen production limits further emission reductions through storage expansion alone, necessitating a shift toward production downsizing. MasCOR identified this struc-ture, producing two distinct Pareto-optimal regimes rather than a continuous design evolution in Skive, Fredericia, and Weener. In contrast, Dunkirk exhibits only the SE regime across its Pareto front. This was driven by high grid electricity prices and strong fluctuations (20–60 $/MWh, with hourly fluctuations of 2–6 $/MWh), combined with limited renewable availability, as shown in Supplementary Fig. 12. Under these conditions, minimizing reliance on high-priced grid power becomes essential, particularly during periods of renewable shortfall. Oversized PEMEC capacity supported by expanded storage enables the system to convert both renewable power and low-priced grid power into hydrogen, providing a stable revenue stream while ensuring continuous hydrogen supply for methanol syn-thesis. Consequently, storage expansion simultaneously buffers grid price volatility and supports hydrogen export, making the SE strategy consistently optimal despite its high energy intensity. For example, expanding BESS capacity from 14.7 to 64.6 MWh, with an average CHT capacity of 79.8 MWh, resulted in expected emissions of -150 ton/month with only a 16.7% probability of positive emissions—comparable to PR-regime outcomes in the other tested regions. Moreover, Dunkirk exhibited a min-imum average LCOM of 0.2 $/kg along the Pareto front, substantially lower than the average (0.4 $/kg) observed in the other regions. 10 b
+
+> Grid price ($/MWh)
+> Renewable power (MW)
+
+Dunkirk 
+
+Skive 
+
+Fredericia 
+
+Weener 
+
+> 18.9
+> 38.8
+> 18.6
+> 32.8
+> 19.5
+> 24.2
+> 20.2
+> 23.8
+
+Dunkirk  Skive 
+
+Weener Fredericia 
+
+> MeOH
+> PEMEC
+> BESS
+> CHT
+
+SE 1   
+
+> 171MW 86MW
+> 175MW 146MW 179MW 40MW
+> 18MW 25MW
+
+PR N
+
+SE 1
+
+PR N SE 1
+
+PR N
+
+PR N
+
+SE 1    
+
+> 3%
+> 54%
+> 4%
+> 39% 44% 42%
+> 11%
+> 4%
+> 40%
+> 4%
+> 48%
+> 8%
+> 19%
+> 20% 57%
+> 4%
+> 58%
+> 4%
+> 34%
+> 4%
+> 49% 23%
+> 22%
+> 6%
+> 33%
+> 24%
+> 37%
+> 6%
+> 27% 33%
+> 8% 32%
+
+c
+
+> Storage (MWh) E[ CO 2 emission ] (ton/month)
+
+Dunkirk  
+
+> E[LCOM ]($/kg MeOH )
+
+SE 1
+
+SE N
+
+Skive 
+
+> E[LCOM] ($/kg MeOH )
+
+SE 1
+
+PR N
+
+SE N PR 1
+
+Fredericia 
+
+> E[LCOM] ($/kg MeOH )
+
+SE 1
+
+PR N
+
+SE N PR 1
+
+Weener  
+
+> E[LCOM] ($/kg MeOH )
+> Dominant point
+> Storage Expansion (SE)
+> Product Reduction (PR)
+> Pareto -point
+
+SE 1
+
+PR N
+
+SE N PR 1
+
+d
+
+a
+
+> MeOH (MW)  PEMEC (MW)
+
+Fig. 3 Regional design strategies and performance trade-offs in co-optimized power-to-methanol systems . a, Differences in the average renewable power availability and grid electricity prices across Dunkirk, Skive, Fredericia, and Weener (distributional details provided in Supplemen-tary Figs. S12). b, Capacity shares of methanol (MeOH) production, PEMEC units, and BESS and CHT installations in representative Pareto-optimal designs, together with overall system size. c,Pareto-optimal capacity progression of PEMEC units, storage units (BESS and CHT), and MeOH production. d, Pareto frontiers of co-optimization results showing the trade-offs between the expected LCOM and net carbon emissions. MasCOR identifies two distinct design strategies for reducing carbon emission among the Pareto-optimal solutions: (i) an SE regime, characterized by increasing storage capacity, and (ii) a PR regime, characterized by decreasing MeOH production capacity under minimum PEMEC and storage capacity conditions (below 10 MW). In most regions, Pareto-optimal points shift from SE to PR as the expected net carbon emissions decrease below –50 ton/month. UQ results and full design specifications of Pareto points are provided in Supplementary Fig. S13. 
+
+11 Dunkirk 
+
+> Skive
+> Fredericia
+> Weener
+
+b
+
+a                       
+
+> Whisker: 5% -95%
+> Box: 25% -75%
+> Mean
+> Weener Fredericia Dunkirk Skive
+> Grid import (MW) BESS utilization (MW) CH Tutilization (MW)
+> Dunkirk
+> Skive
+> Fredericia
+> Weener
+> Surplus renewable (MW) Power export (MW) H2export to marke t(MW)
+> SE 1
+> MeOH
+> MeOH
+> MeOH
+> MeOH
+> SE N
+> PR 1
+> PR N
+> MeOH
+> PEMEC
+> BESS
+> CHT
+> SE 1SE NSE 1SE NPR 1PR NSE 1SE NPR 1PR NSE 1SE NPR 1PR N
+> Percentage (%)
+> System scale  (MW)
+> System
+> scale
+> MeOH
+
+Fig. 4 Regional operating strategies under different optimal design regimes . a, Capac-ity shares (%) of MeOH synthesis and PEMEC, BESS, and CHT units for the four representative Pareto-optimal designs illustrated in Fig. 3. The dotted line indicates system scale. b, Hourly oper-ating strategies for optimal designs across regions. Distributions are obtained by averaging monthly operation profiles across 1,000 renewable scenarios using the MasCOR framework. The top panel illustrates how excess renewable power is used for either grid export or hydrogen export to the mar-ket. The bottom panel shows grid import, along with power charged to or discharged from the BESS and CHT units across the four locations. 
+
+12 Out-of-time validation of optimal design under real-time operation 
+
+The MasCOR framework uses a generative model to infer performance distribu-tions of candidate system designs under region-specific renewable uncertainty (Fig. 1 (c)). While Supplementary Note 2.3 confirms that the generative model accurately reproduces the temporal and statistical characteristics of both historical and future validation data, further validation is required to assess whether the inferred Pareto front and associated performance distributions hold under real-world operating con-ditions. To this end, we evaluated the dynamic operation of Pareto-optimal designs using a 2023–2024 validation renewable dataset excluded from both model training and co-optimization. This validation confirmed that designs identified by MasCOR exhibit robust and predictable performance under realistic renewable uncertainty. We first evaluated Pareto-optimal designs under offline operating conditions using Supplementary Algorithm 1, in which renewable trend data are assumed to be known during operation. This idealized setting enables direct comparison between Pareto-optimal and dominated designs in a dynamic operational setting under a fixed renewable trend. As shown in Fig. 5 (a), the Pareto-optimal designs consis-tently outperformed the dominated designs and preserved the inferred Pareto front under the validation dataset. Importantly, the two design regimes identified during co-optimization, SE and PR, remained clearly distinguishable across regions. The robustness of the inferred Pareto front is further supported by the close agree-ment between predicted and observed performance distributions at the two extreme Pareto designs. As shown in Fig. 5 (b), operational outcomes derived from the vali-dation dataset closely matched the MasCOR-inferred distributions across all regions. In alignment with MasCOR’s predictions, during validation operation, an increase in renewable power availability consistently led to a reduction in both LCOM and car-bon emissions, with net-negative carbon emissions achieved once average renewable power exceeded approximately 25 MW. This alignment extended to positive emis-sions as well: across 1,000 monthly validation operations, the observed frequency of positive carbon emissions aligned closely with the probabilities inferred by MasCOR and enforced as chance constraints during co-optimization. In Fredericia, for instance, positive emissions were recorded in 47% and 11% of cases for the SE1 and PRN designs, respectively, compared with inferred probabilities of 45% and 11%. Across all the regions, discrepancies remained below 6%, confirming the accuracy of the inferred performance distributions under synthetic renewable scenarios. Furthermore, consis-tency between predicted and observed performance distributions was confirmed at the hourly operational level. The policy maps derived from the validation dataset Fig. 5 (c)) closely matched those predicted during the co-optimization loop using synthetic renewable scenarios (Fig. 4). In Dunkirk, for instance, oversized PEMEC and stor-age capacities led to a strong positive correlation between renewable availability and hydrogen export, along with a negative correlation with grid price. These correla-tions between system state and operation are consistent with the inferred SE policy of converting surplus renewable electricity into hydrogen for market export (Fig. 4 (b), red box). Consistency between validation runs and the inferred SE policy was fur-ther demonstrated under high grid-price conditions; in line with MasCOR’s inference, 13 increasing BESS and CHT utilization under such conditions made energy-intensive hydrogen production and continuous methanol synthesis feasible. On the other hand, the regions where both SE and PR regimes were predicted showed a clear policy tran-sition from SE to PR during validation operations. Under PRN designs, hydrogen export became decoupled from renewable availability due to the minimum PEMEC capacity settings, while power export to the grid dominated. PEMEC operation was limited to producing only the hydrogen required for MeOH production (Fig. 4 (b), green box). Following offline validation, we evaluated online operation, where the MasCOR agent was made to operate under partial observability, receiving only hourly renew-able power and grid-price data (Fig. 1, (d)). Sets of renewable trends were dynamically forecast using the generative model and incorporated into the agent’s decision-making process using Supplementary Algorithm 2. Despite limited information guiding oper-ation, online operational outcomes remained consistent with the inferred performance distributions. As shown in Fig. 6 (b), the distributions of online operational results closely aligned with those predicted by MasCOR during co-optimization, particularly for Skive, Fredericia, and Weener. Moreover, the proportion of positive carbon emis-sion events observed during online operation matched the inferred probability–denoted as ‘risk’ in online operation–confirming that MasCOR accurately captures both the expected performance and the emission risk associated with real-time operation. A key advantage of the MasCOR framework is critic-based risk prediction, the prediction of the probability of positive carbon emissions. During online operation, the critic continuously predicts the expected cumulative profit ( RT G t) and carbon emissions ( CT G t). These predictions enable the MasCOR agent to prioritize actions with a higher probability of achieving profit maximization while satisfying carbon constraints. Because the co-optimization limits the probability of positive carbon emis-sions rather than enforce strict negativity at all times, early detection of this emission risk is critical. As shown in Fig. 6 (a), risk prediction accuracy exceeded 0.7 in early stages of online operation and converged toward unity as additional operational data accumulated. Notably, for PR N designs in Skive, Fredericia, and Weener, accuracy exceeded 0.9 within the first 24 hours of operation, enabling reliable early identification of positive emission risk even in the absence of full-horizon information. Finally, we benchmarked online operational performance against deterministic LP solutions that assume complete foresight of renewable power and grid prices over the full planning horizon. As shown in Fig. 6 (c), MasCOR achieved near-optimal performance while often delivering superior carbon reductions. For Skive, Fredericia, and Weener, SE 1 designs achieved optimality gaps of below 10% in relation to the LP benchmark while reducing emissions by approximately 500 ton/month. PR N designs achieved even smaller optimality gaps ( < 5%) with comparable emissions. In Dunkirk, the SE N design exhibited a larger optimality gap of approximately 20% but achieved the largest emission reduction—approximately 1,500 ton/month—relative to the LP benchmark. These results demonstrate that MasCOR enables near-optimal real-time operation while outperforming deterministic solutions in carbon mitigation despite the absence of complete foresight. 14 In summary, the Pareto-optimal designs and performance distributions identified by MasCOR were validated under real-time operation across diverse regions. The framework reliably preserved Pareto optimality, accurately predicted emission risk, and delivered near-optimal performance while enabling enhanced carbon reduction. This validation demonstrates that MasCOR effectively bridges system design and real-time operational decision-making under region-specific renewable uncertainty, which is not achievable with conventional deterministic optimization approaches. 15 a
+
+> E[CO 2 emission] (ton/month)
+
+Dunkirk  Fredericia Skive  Weener 
+
+Dominant point 
+
+Storage Expansion (SE) 
+
+Product Reduction (PR) 
+
+Validation -line (2023 -2024) 
+
+Dominant point 
+
+Storage Expansion (SE) 
+
+Product Reduction (PR) 
+
+Pareto -front 
+
+SE 1
+
+PR N
+
+SE N
+
+SE 1
+
+PR N
+
+SE 1
+
+PR N
+
+SE 1
+
+b
+
+SE 1 design  SE N design  SE 1 design  PR N design  SE 1 design  PR N design  SE 1 design  PR N design 
+
+Renewable power (MW) 
+
+MasCOR Inferred 
+
+distribution (SE 1)
+
+MasCOR Inferred 
+
+distribution (PR N)
+
+Validation (SE 1)
+
+Validation (PR N)
+
+Operational policy transition 
+
+Power export 
+
+H2 export 
+
+BESS utilization 
+
+CHT utilization 
+
+Net CO 2 emit 
+
+LCOM 
+
+> Renewable
+> ∆Renewable
+> Grid price
+> ∆Grid price
+
+Correlation 
+
+SE 1
+
+SE N
+
+> CO 2 emission (ton/month)
+
+LCOM ($/kg MeOH ) LCOM ($/kg MeOH ) LCOM ($/kg MeOH ) LCOM ($/kg MeOH )   
+
+> SE 1design:
+> Oversized PEMEC / Storage
+> SE Ndesign:
+> Oversized PEMEC / Storage
+> PR Ndesign:
+> Minimum PEMEC / Storage
+
+E[LCOM] ($/kg MeOH ) E[LCOM] ($/kg MeOH ) E[LCOM] ($/kg MeOH ) E[LCOM] ($/kg MeOH )
+
+cFig. 5 Validation of Pareto-optimal designs under dynamic operation . a, Comparison of the MasCOR-inferred Pareto front (nonbold points) with validation results (bold points) obtained from 1,000 monthly renewable generation datasets (2023–2024). b, Performance distributions at the two Pareto front endpoints: dotted areas indicate 85% confidence regions of MasCOR-inferred distri-butions; scatter points show validation results under varying monthly renewable power availability. Grid prices were held constant using historical data (2015–2022) to isolate renewable power uncer-tainty. c, Heat maps showing correlations between hourly renewable and grid variables and operational decisions for the two endpoint Pareto-optimal designs in each region. 
+
+16 Fredericia  
+
+> LCOM ($/kg MeOH )
+> CO 2emission (ton/month)
+> Time (hr)
+> Risk: 9% (10%)
+> Risk: 45% (44%)
+
+a
+
+b
+
+c      
+
+> Time (hr)
+> LCOM ($/kg MeOH )
+> CO 2emission (ton/month)
+> SE 1
+> SE N
+> SE 1
+> SE N
+> SE 1(Inferred)
+> SE N(Inferred)
+> Risk: 17% (18%)
+> Risk: 46% (43%)
+> SE 1SE NSE 1SE N
+
+Dunkirk        
+
+> SE 1PR NSE 1PR NSE 1PR NSE 1PR N
+> Profit ( ×10 6$) CO 2 emission (ton)
+> Risk prediction
+> accuracy
+> Density Cumulative probability Optimality gap
+> (%)
+> CO 2 reduction
+> (ton/month)
+> Risk: 19% (15%)
+> Risk: 55% (50%)
+
+Weener     
+
+> CO 2emission (ton/month)
+> Time (hr)
+> SE 1PR NSE 1PR N
+
+Skive     
+
+> LCOM ($/kg MeOH )
+> CO 2emission (ton/month)
+> Time (hr)
+> Risk: 17% (20%)
+> Risk: 44% (53%)
+> SE 1
+> PR N
+> SE 1
+> PR N
+> SE 1(Inferred)
+> PR N(Inferred)
+> LCOM ($/kg MeOH )
+> Real Inferred
+> Mean
+> Whisker: 5% -95%
+> Box: 25% -75%
+
+Fig. 6 Online operational performance of Pareto-optimal designs across regions . a, Tra-jectories of cumulative profit and net carbon emissions for the two extreme Pareto-optimal designs identified in Fig. 3. Shaded regions indicate the envelope of trajectories obtained under different validation datasets, while solid lines denote ensemble-averaged trajectories. The risk prediction accu-racy charts show the ability of MasCOR’s critic component to predict the occurrence of positive net carbon emissions. b, Distributions of online operational outcomes compared with those inferred by MasCOR. The agreement between inferred and realized risk curves indicates the accuracy of positive carbon emission risk prediction. Close agreement indicates accurate risk estimation under renewable uncertainty. c, Average optimality gaps in monthly operational profit and carbon emission reduction, obtained by comparing MasCOR-based online operation with globally optimal solutions obtained from a deterministic LP solver. 
+
+17 Discussion 
+
+Among various e-fuels, methanol is a particularly strong candidate for these sectors due to its high carbon utilization efficiency (1.4–1.8 kg CO 2 per kg methanol) [13] and compatibility with existing industry infrastructure [14, 15, 16]. However, the limited load flexibility of the methanol synthesis unit [18] prevents seamless production using intermittent renewable power alone. In practice, backup supply from an electricity grid is used to compensate for renewable power shortfalls, risking violation of net-negative carbon emission constraints in the process. Although previous studies have explored system sizing and operational optimization to mitigate renewable intermittency [27, 28], most rely on deterministic solutions that fail to capture temporal uncertainty across both system design and real-time operation. Here, we address this gap by co-optimizing system design and operational policies under region-specific renewable uncertainty. The proposed MasCOR framework integrates two ML models within a two-stage optimization process. In stage 1 (design optimization), MasCOR iteratively deter-mines the optimal capacities of the BESS, CHT, PEMEC, and methanol production units. In stage 2 (operational optimization), a trained agent solves dynamic operational problems for candidate designs in parallel across a full set of renewable scenarios. A generative ML model produces synthetic monthly renewable profiles, enabling UQ at the design stage. The agent is trained using offline RL using optimal operational tra-jectories generated by a presolved linear program, allowing it to learn a near-optimal operational policy. By leveraging GPU parallelization, the framework evaluates the economic and environmental performance of each design across thousands of scenar-ios, ultimately identifying Pareto-optimal designs and their corresponding real-time operational policies. The optimal trajectory-guided agent to solving dynamic operational problems offers two key advantages over a traditional LP-based and RL approach. First, it sub-stantially improves computational efficiency. The agent evaluates a large number of scenarios in parallel on GPUs, whereas an LP solver processes scenarios sequentially on CPUs. For example, in this study, the agent simulated approximately 1,000 scenarios in just 17.4 s, a task that took 84.8 s when using the LP solver. This speed-up enables MasCOR to efficiently explore the large combinatorial space of system designs and operational policies. Second, the agent achieves near-optimal performance, with an average optimality gap of 8% across diverse design and scenario sets, while strictly com-plying with the carbon emission constraint. Importantly, unlike LP-derived solutions, agent-derived policies can be directly deployed for real-time operation. In addition, the critic component of MasCOR’s agent can predict the occurrence of positive car-bon emissions early, without requiring simulation of the full operational horizon. For instance, in configurations with minimum storage and PEMEC capacities (PR N )across all regions, MasCOR predicted the risk of positive carbon emissions with over 80% accuracy within the first 24 h of operation, despite the full horizon spanning 576 h. These capabilities make the proposed approach not only computationally efficient but also readily applicable to real-world systems without further modification. We applied MasCOR to four European regions: Dunkirk (France), Skive and Fred-ericia (Denmark), and Weener (Germany). Our results revealed that in regions with 18 intermediate renewable availability and moderate grid prices (Skive, Fredericia, and Weener), the Pareto front exhibits a discontinuous transition between distinct optimal design regimes. Specifically, in the low-LCOM segment of the Pareto front, expanding storage capacities (BESS and CHT) together with an oversized PEMEC effectively reduced net carbon emissions. In this storage expansion (SE) regime (Fig. 3 (c)), sur-plus renewable electricity is converted into hydrogen for market export, mitigating the impact of grid-price fluctuations. Concurrently, increased storage utilization reduced grid dependence and associated emissions (Fig. 4 (b)). However, beyond a critical point on the Pareto front, further emission reduction could not be achieved through continued storage expansion alone. MasCOR instead identified a discontinuous shift to a production reduction (PR) regime, characterized by minimal PEMEC and stor-age capacities. In this regime, the limited PEMEC capacity restricts surplus hydrogen production for market export, thereby reducing overall system load and carbon emis-sions. Excess renewable power is primarily exported to the grid or stored in the BESS unit, and further emission reduction is achieved by decreasing methanol production capacity, which becomes the dominant controllable design variable. While this SE-to-PR transition was observed in most regions, Dunkirk exhibited distinct behavior. Its substantially higher average grid price ( $ 38.8/MWh) and larger hourly fluctua-tions (approximately $ 4/MWh) (Supplementary Fig. 12) made sustained SE with an oversized PEMEC optimal across the entire Pareto front. In this region, minimizing reliance on high-priced grid power while monetizing surplus power through hydrogen export yielded both the lowest LCOM (approximately $ 0.2/per kg) and net-negative carbon emissions (around -150 ton/month), without requiring a transition to the PR regime. Out-of-time validation of Pareto-optimal designs under both offline and online operating conditions demonstrated the robustness of MasCOR-inferred designs and performance distributions. For the two extreme Pareto-optimal designs in each region, real-time operation using validation datasets showed close agreement with the inferred distributions of LCOM and net carbon emissions (Figs. 5 and 6). This indicates that the synthetic scenario–based UQ in co-optimization effectively captures the full range of possible real-world operational outcomes. Furthermore, the MasCOR critic predicts future cumulative profit and carbon emissions based on observed renewable trends during operation. Monitoring these predictions enables early detection of positive car-bon emission risks, with accuracy approaching 90% across regions, without requiring full-horizon simulation. While the present work provides an end-to-end decision-making framework span-ning system design to real-time operation, several opportunities remain for future development. First, although renewable uncertainty is explicitly modeled using a gen-erative approach, grid price uncertainty is currently represented through random sampling from historical data. Unlike renewable generation, grid prices exhibit highly irregular behavior—including extreme spikes and negative prices—that is difficult to capture using standard generative models. Future work could incorporate explicit stochastic price models, such as Gaussian processes, to propagate price uncertainty jointly with renewable uncertainty. Second, the current framework focuses on a single 19 e-fuel product with fixed production capacity. Extending MasCOR to multi-fuel sys-tems—such as methanol, ammonia, synthetic methane, and hydrogen—would enable optimization of fuel portfolios and dispatch strategies under uncertainty. Such exten-sions could be achieved by expanding the LP formulation while retaining the existing ML architecture. These advancements would further enhance MasCOR’s applicabil-ity for guiding investment and operational decisions toward robust, carbon-negative energy systems aligned with net-zero targets. 20 Methods 
+
+Power-to-methanol system model 
+
+The power-to-methanol production system comprises a PEMEC, storage units (a BESS and a CHT), and a methanol synthesis unit that utilizes captured carbon. Sys-tem operation is formulated as a linear program with hourly resolution, subject to power balance constraints (Eq. (3)) and operating limits (Eqs. (4) to (6)) [31]. The objective Eq. (1) is to maximize total operating revenue while satisfying a net-negative carbon-emission constraint (Eq. (2)). max  
+
+> T−1
+
+X
+
+> t=0
+
+[gt · (P ex t − P gt ) + (1 − f st ) · Hsur  
+
+> t
+
+· Hprice − τC · εg · P gt ] (1) s.t. Cnet = 
+
+> T−1
+
+X
+
+> t=0
+
+(εg · P gt − γC · ˙mMeOH ) ≤ 0 (2) where T denotes the operating horizon, gt represents the time-dependent grid power price, Hprice is the hydrogen price, assumed constant at 5 $ /kg [39]. The grid emission factor and carbon tax are denoted by ϵg and τC , respectively. Cnet represents cumu-lative net carbon emissions, γC is the specific carbon consumption of the methanol synthesis unit, and ˙mMeOH is the methanol production capacity. The hourly deci-sion variables P ex t and P gt denote the power exported to and imported from the grid, respectively, and f st is the storage ratio of surplus hydrogen Hsur t .For given design variables ˙mMeOH , CPEM , CBESS , and CCHT , hourly operational constraints are enforced through system power balance and capacity constraints. 
+
+P rt + P gt − P ex t = P ct − P dt + P PEM  
+
+> t
+
++ P Ht + ˙ mMeOH · SP MeOH , ∀t (3) 0 ≤ P PEM  
+
+> t
+
+≤ CPEM (4) 0 ≤ Ht ≤ CCHT (5) 0 ≤ P c,d t ≤ α · CBESS (6) where P rt denotes the renewable power supplied to the system, P ct and P dt represent the BESS charging and discharging powers, respectively. P PEM  
+
+> t
+
+and P Ht denote the loads associated with hydrogen production in the PEMEC and hydrogen storage in the CHT, respectively. The methanol synthesis unit load is the product of methanol production rate ( ˙ mMeOH ) and the specific power consumption ( SP M eOH ). CPEM , CBESS , and 
+
+CCHT denote the capacities of the PEMEC, BESS, and CHT, respectively, while α
+
+denotes the maximum charge and discharge rate. Further details on the BESS and CHT constraints, including hourly storage level updates and technical parameters of the LP formulation, are described in Supplementary Note 1.2. 21 Co-optimization problem formulation 
+
+MasCOR’s primary task is stochastic co-optimization [40] under region-specific renew-able uncertainty, while constraining the probability of positive carbon emissions (Fig. 1 (b)). To enable reliable power-to-methanolsystem design and operation, MasCOR adopts a scenario-based bilevel optimization framework [37, 38]. The first stage deter-mines the system design, while the second stage solves dynamic operational problems under a given design. Let Ξ T denote a set of M scenarios over a time horizon of length T , where each scenario 
+
+ξi = {P (r,i ) 
+
+> t
+
+, g (i) 
+
+> t
+
+}T −1 
+
+> t=0
+
+∈ ΞT , i = 1 , . . . , M, 
+
+represents a realization of renewable power P (r,i ) 
+
+> t
+
+and grid price. The scenario set is sampled from a known continuous probability density function p(ξ). For a given design vector d = [ ˙ mMeOH , α PEM , C BESS , C CHT ] ∈ D (see Supplemen-tary Note 3.1 for definition), the second-stage problem solves a monthly operational optimization for each scenario ξ. The objective is to maximize operational profit (Eq. (1)) while minimizing net carbon emissions (Eq. (2)), subject to hourly opera-tional constraints (Eqs. (3), (5) and (6)), as detailed in Supplementary Note 1.2. The resulting operational decisions yield the LCOM, l(d, ξ ), and the net carbon emission, 
+
+e(d, ξ ). A sample-average approximation is used to estimate the expected LCOM and carbon emission, as well as the probability of positive carbon emissions. The first-stage problem then optimizes the system design by minimizing the expected LCOM and carbon emissions, subject to a constraint that limits the probability of positive carbon emissions to a prescribed threshold α.min 
+
+> d∈D
+
+
+
+Eξ∈ΞT [ l(d, ξ ) ] , Eξ∈ΞT [ e(d, ξ ) ] 
+
+
+
+, (7) s.t. P(d) ≤ α. (8) 
+
+P(d) := 
+
+Z
+
+> ΞT
+
+I{e(d, ξ ) ≥ 0} p(ξ) dξ, (9) Here, I{·} denotes the indicator function, defined as I{e} = 1 if e ≥ 0 and I{e} = 0 otherwise. For stochastic co-optimization, we developed two ML models within the MasCOR framework: (i) a renewable scenario generation model that captures region-specific uncertainty p(ξ), and (ii) an agent-based generalized operational policy model that solves the dynamic operational problem for a given a design d and a scenario ξ. The fol-lowing subsections describe the proposed approaches, while full methodological details, model architectures, and computational experiments are provided in Supplementary Note. 
+
+Renewable scenario generative model 
+
+Conventional approaches to sampling renewable scenarios—from historical datasets or by fitting empirical distributions (e.g., Weibull) [24, 25]–cannot capture the complex 22 temporal structure of renewable uncertainty. To address this, we employed a WGAN-GP to model region-specific temporal uncertainty, owing to its ability to map noise to complex time-series data [26, 41]. Synthetic wind speed scenario were generated using the WGAN-GP and converted into renewable power via turbine power curves. However, relying solely on Wasserstein distance does not ensure reproduction of the five key operational feature distributions that are critical for power dispatch: minimum wind speed wmin , maximum wind speed wmax , and average wind speed wavg , together with the maximum fluctuation dw max and its average dw avg [42], that are critical for power dispatch.To overcome this limitation, we incorporated a maximum mean discrepancy loss ( LM M D ) as a statistical feature for the regularization of the generator 
+
+G within the WGAN-GP [43]. min 
+
+> θ(G)
+
+max 
+
+> θ(D)
+
+V (G, D ) = E˜x∼Pg [D(˜ x)] − Ex∼Pr [D(x)] 
+
+| {z }
+
+> Wasserstein loss
+
++ λ Eˆx∼Pˆx
+
+h
+
+(∥∇ ˆxD(ˆ x)∥2 − 1) 2i| {z }
+
+> Gradient penalty loss
+
++LD(X, Y )(10) 
+
+LMMD (X, Y ) = EX∼P [k(X, X ′)] + EY ∼Q[k(Y, Y ′)] − 2 EX∼P, Y ∼Q[k(X, Y )] (11) In this equations, G and D denote the generator and discriminator, each with trainable parameters θ. Synthetic and real scenario distribution are denoted by ˜ x ∼ Pg and x P r ,respectively. ˆ x is drawn uniformly along the line between Pg and Pr for the gradient penalty with coefficient λ, X and Y are feature vector sets of synthetic and real data with densities P and Q, respectively, while k is the kernel function. Supplementary Note 2 provides details of the network structure, hyperparameters, and validation studies of trained generative model Eq. (30). 
+
+Oracle dataset construction 
+
+We employed an offline RL approach that directly learns the sequence of optimal operating decisions conditioned on a given design, eliminating the need for iterative LP solves. Accordingly, a large oracle dataset is constructed by solving the deterministic operational linear program (Eqs. (1) and (2)) over a horizon of T = 576 hours for 
+
+M = 50 ,000 sampled scenario–design pairs ( ξi, d i).The scenarios consist of synthetic renewable power generation data sampled from a pretrained generative model G grid prices sampled from historical data, while the design vectors di were randomly sampled from the search space defined in Supplementary Table S6. For each scenario–design pair, the optimal LP solution was postprocessed into a Markov decision process (MDP) representation, forming the oracle dataset for offline RL. Specifically, at each time step, the state ( st), action ( at), cost ( ct), and reward (rt) can be defined as follows: 
+
+st = ( P rt , g t, SOC t, H t) (12) 
+
+at = ( P c,d t , P PEM  
+
+> t
+
+, f ut , f st ) (13) 23 ct = P gt · εg (14) 
+
+rt = gt · (P ex t − P gt ) + (1 − f st ) · Hsur t · Hprice − ct · τc (15) where SOC t and Ht denote the state of charge of the BESS and the stored mass of the CHT, respectively, f ut is the utilization ratio of stored hydrogen within the CHT, 
+
+ct represents the carbon emissions from grid imports, and rt denotes the operational revenue at time t.Furthermore, in the formulated operational problem, the objective is to maximize net profit while ensuring net-negative carbon emissions by the end of the operating horizon ( T = 576), rather than prioritizing instantaneous profit or emission reductions. Thus, to train policies that reflect long-term objectives and constraints, we defined the future cumulative profit and cumulative carbon emissions. 
+
+RT G t =
+
+> T
+
+X
+
+> t′=t
+
+rt′ , CT G t =
+
+> T
+
+X
+
+> t′=t
+
+ct′ (16) The collected trajectories {(st, a t, c t, r t, CT G t, RT G t)}T −1 
+
+> t=0
+
+form an oracle dataset compatible with an MDP. Thus, learning an operational policy from this static dataset can be formulated as an offline RL problem, enabling recovery of near-optimal dynamic operation. Details of the offline RL approach are provided in the following section. 
+
+An actor-critic ML model for offline RL of oracle trajectories 
+
+We adopt a decision transformer (DT) [36] as the backbone and built an actor–critic structure [44, 33]: the actor πθ predict the next action at under a given historical tra-jectory (Eq. (48)), conditioned on two goal tokens ( RT G t, CT G t), while the critic 
+
+Qθ′ predicts next goals ( ˆCT G t+1 , ˆRT G t+1 ) under a given historical operational tra-jectory (Eq. (49)). By updating the goal with feedback received from the critic, the actor model tracks near-optimal trajectories over extended horizons. However, optimal trajectories vary drastically across system designs and renewable scenarios; therefore, conditioning the actor policy solely on RT G t and CT G t limits generalization, which is essential for co-optimization. To address this, we introduced two conditional tokens: a design token D and a renewable-trend token E. The design token D encodes the normalized design vector d, while the renewable-trend token E compresses the 576-hr time series into 24-hr averages. By combining these conditional tokens with the goal tokens ( CT G t, RT G t), the agent adapts its policy to diverse designs and renewable patterns, thereby improving generalization. Using this improved setup, we trained an offline actor–critic RL agent on the oracle dataset to learn distributions over actions and corresponding future cumulative profit and carbon emission goals. ˆat ∼ πθ
+
+ μθ, Σθ | { D ∪ { CT G i, RT G i, s i, a i}t−1 
+
+> t−K
+
+∪ { CT G t, RT G t, s t} (17) ˆRT G t, ˆCT G t ∼ Qθ′
+
+ μθ′ , Σθ′ | { D, E } ∪ { si, a i, r i, c i}tt−K
+
+ (18) 24 Here, πθ is the actor model with learnable parameters θ, while μθ and Σ θ denote the mean and covariance of the action distribution, respectively. Qθ′ is the critic model with parameters θ′
+
+, and μθ′ and Σ θ′ are the corresponding parameters of the goal distribution. Supplementary Note 3 provides details on training, network architecture, hyperparameters, and computational experiment studies. During dynamic operation, the design token D remains fixed for a given system, whereas the renewable-trend token E may vary depending on the operational setting. In offline operation (Supplementary Algorithm 1), E can be constructed either from historical renewable data reflecting seasonal trends or from synthetic scenarios. In contrast, real-time operation in practical deployments does not assume direct access to future renewable trajectories. To accommodate this constraint, generative models (G, D ) with Supplementary Algorithm 2 supports dynamic forecasting of the token E
+
+using only recently observed hourly renewable data, allowing the actor–critic agent to continuously adapt its operational policy under evolving renewable uncertainty. 
+
+MasCOR co-optimization loop 
+
+The MasCOR framework integrates two core ML models: a pre-trained renewable scenario generative model and an actor–critic agent. During co-optimization, these models enable the parallel solutioning of the second–stage dynamic operational prob-lem for a given design across an M set of scenarios Ξ T . Replacing the conventional second-stage LP approach to ML-assisted approach makes problem computationally intractable. Thus, a derivative-free approach is used for first-stage design, where can-didate designs are iteratively updated on the basis of empirical distributions of LCOM and net carbon emissions. In this study, multi-objective Bayesian optimization was adopted for the first-stage problem. The two pre-trained ML models, facukutated the direct integration of existing open-source Bayesian optimization algorithms [45] without modification. The full MasCOR co-optimization loop proceeds as follows: (i) An initial batch of N
+
+design candidates {di}Ni=1 is randomly sampled. (ii) For each di, M synthetic scenarios 
+
+{ξj }Mj=1 are generated using the generative model for renewable power and historical sampling for grid prices. (iii) The second-stage operational problems are solved in parallel using the actor-critic model in an offline operational setting (Supplementary Algorithm 1). (iv) UQ is performed, repeating stpes (ii) and (iii), after expected LCOM and carbon emissions (Eq. (7)), along with the probability of positive carbon emissions (Eq. (8)), are computed for each design. (v) The batch of designs {di}Ni=1 and their corresponding objectives and constraint violations are fed to the Gaussian process model, which propose the next batch of candidates. Steps (i)–(iv) are repeated until a predefined iteration count is reached. 25 Data availability 
+
+The curated dataset supporting this study—-including meteorological data, elec-tricity price data, and pretrained checkpoints for the generative model and the MasCOR agent—is publicly available on Kaggle at https://www.kaggle.com/datasets/ jeongdongkim/dataset-for-mascor-framework/data. The original meteorological data were obtained from the NASA POWER Project database (https://power.larc.nasa. gov/data-access-viewer/), and wholesale electricity price data were obtained from the Ember European wholesale electricity price database (https://ember-energy.org/data/ european-wholesale-electricity-price-data/). These raw datasets can also be manually accessed from the respective sources. The oracle dataset used for MasCOR agent train-ing was constructed using scripts available at https://github.com/PSEKJD/mascor/ tree/main/test/oracle-dataset-construct. Additional data supporting the findings of this study are available from the corresponding authors upon reasonable request. 
+
+# Code availability 
+
+The source code for MasCOR is available at https://github.com/PSEKJD/mascor. 
+
+# Acknowledgements 
+
+This work was supported by the National Research Foundation of Korea (NRF) grant funded by the Korea government (MSIT and MOE) (RS-2025-16063688). This research was also supported by the Global C.L.E.A.N.(CCU Large-scale Emission-reduction Associative Network) through the National Research Foundation of Korea (NRF) funded by the Ministry of Science and ICT (RS-2025-02373048). This research was also supported by Korea Basic Science Institute (National Research Facilities and Equip-ment Center) grant funded by the Ministry of Science and ICT (RS-2024-00404602). This research was also supported by Korea Institute for Advancement of Technol-ogy(KIAT) grant funded by the Ministry of Trade, Industry & Energy(MOTIE), Korea Government (RS-2024-00436106, Human Resource Development Program for Industrial Innovation). 
+
+# Author contributions 
+
+J.D.K. and J.G.N. conceptualized the study and the co-optimization framework. J.D.K. developed the machine-learning-assisted co-optimization framework, conducted regional case studies, and performed validation. J.D.K., M.S.K, and J.G.N. designed the computational experiments. J.G.N. and J.H.K. conceived and supervised the project. J.D.K. wrote and edited the paper. All authors discussed and commented on the manuscript. 
+
+# Competing interests 
+
+The authors declare no competing interests. 26 Supplementary Information Supplementary Note 1. Power-to-methanol system operation simulation 
+
+1.1 System Configuration 
+
+The power-to-methanol system is selected as the target system for conducting co-optimization. The system consists of a proton exchange membrane electrolyzer (PEMEC), an electrified methanol synthesis unit, and two storage units: battery energy storage system (BESS) and compressed hydrogen tank (CHT), as shown in Fig. S1 [46]. For a practical application, a generalized configuration of power flows among the system units, renewable power plant, and the grid is considered. The sys-tem is directly connected to a 50 MW wind power plant, with bidirectional power exchange through the grid. In this setting, surplus renewable power can either be curtailed or exported to the grid, while grid power can be imported or exported via BESS discharging. Within the system, hydrogen from both the PEMEC and CHT is supplied to the methanol synthesis unit together with captured carbon dioxide [31]. Surplus hydrogen can be exported to external markets, providing additional revenue to offset operating costs. The hourly operation of this configuration is formulated as a linear programming (LP) problem, as described in the following section. 
+
+1.2 Linear programming (LP) formulation 
+
+The objective of the system operation is to maximize net operational profit while sat-isfying net negative carbon emission. In this study, as listed in Table S1, the technical parameters are used to model the mass, power balance, and operating constraints in linear function. At time step t, power balance among the renewable power plant, the grid, and the system units is expressed as: 
+
+P rt + P gt − P ex t = P ct − P dt + P PEM  
+
+> t
+
++ P Ht + ˙ mMeOH · SP MeOH , ∀t (19) where P rt , P gt , and P ex t denote the renewable, grid power supplied to the system, and power exported from the system to grid, respectively. P ct and P dt represent the BESS charging and discharging powers, P PEM  
+
+> t
+
+and P Ht are the loads of the PEMEC and the CHT for hydrogen production and storage, respectively. The methanol synthesis unit load is given by the product of methanol production rate ˙ mMeOH and the specific power consumption SP M eOH .To produce ˙ mMeOH , the hydrogen supplied from both the PEMEC and CHT must satisfy the hydrogen demand of the methanol synthesis unit. Surplus hydrogen Hsur 
+
+> t
+
+can be stored in CHT with the ratio of f st or exporting to the market, and its storage level Ht is updated with the capacity constraints. 
+
+Hsur  
+
+> t
+
+= f ut · Ht + P PEM 
+
+> t
+
+SP H2
+
+− γH · ˙mMeOH (20) 27 Ht+1 = (1 − f ut ) · Ht + f st · Hsur  
+
+> t
+
+(21) 
+
+P Ht = f st · Hsur  
+
+> t
+
+· SP C H2 (22) 0 ≤ P PEM  
+
+> t
+
+≤ CPEM (23) 0 ≤ Ht ≤ CCHT (24) where f ut is the utilization ratio of stored hydrogen for methanol synthesis, SP H2
+
+is specific power consumption for hydrogen production of PEMEC, γH is specific hydrogen consumption for methanol production, f st is the storage ratio of surplus hydrogen, and SP C H2 is specific power consumption for hydrogen storage, CPEM is the capacity of PEMEC, and CCHT is the capacity of storage tank. In case of BESS, linear constraint of BESS operation is considered to prevent battery overload. The state of charge SOC t is updated with charging and discharg-ing efficiency and self-discharging rate, while practical limits of SOC t are applied to prevent degradation and ensure system reliability. 0 ≤ P c,d t ≤ α · CBESS (25) 
+
+SOC t+1 =
+
+
+
+SOC t + ηc · P ct
+
+CBESS 
+
+− P dt
+
+ηd · CBESS 
+
+
+
+(1 − ηl) (26) 0.1 ≤ SOC t ≤ 0.9 (27) where α denotes the maximum charge and discharge rate, ηc and ηd represent the charging and discharging efficiencies, ηl is the self-discharge rate, and CBESS is battery capacity. Built upon the above hourly operational constraints, the objective function is defined as the monthly operating revenue, while ensuring net-negative carbon emissions for carbon-neutral methanol production. max  
+
+> T−1
+
+X
+
+> t=0
+
+[gt · (P ex t − P gt ) + (1 − f st ) · Hsur  
+
+> t
+
+· Hprice − τC · εg · P gt ] (28) s.t. Cnet = 
+
+> T−1
+
+X
+
+> t=0
+
+(εg · P gt − γC · ˙mMeOH ) ≤ 0 (29) where T is operating horizon, gt is grid price, and and Hprice is hydrogen price, which is to be constant at 5 $ /kg [39], ϵg is emission factor, which is fixed at tonCO 2/MWh, consistent with worldwide carbon intensity for grid electricity in 2015 [47], and τC
+
+is carbon tax, listed in Table S2, Cnet is overall carbon emission, and γC is specific carbon consumption of methanol synthesis unit. 28 Supplementary Note 2. Renewable scenario generative model 
+
+2.1 Training procedures and model architecture 
+
+The generative adversarial network is trained with the Wasserstein distance and gra-dient penalty (WGAN-GP) [26, 32], while an additional maximum mean discrepancy (MMD) LD loss on key operational features is applied for training a generator to ensure realistic scenario distributions and operational characteristics [43]. min 
+
+> θ(G)
+
+max 
+
+> θ(D)
+
+V (G, D ) = E˜x∼Pg [D(˜ x)] − Ex∼Pr [D(x)] 
+
+| {z }
+
+> Wasserstein loss
+
++ λ Eˆx∼Pˆx
+
+h
+
+(∥∇ ˆxD(ˆ x)∥2 − 1) 2i| {z }
+
+> Gradient penalty loss
+
++LD(X, Y )(30) where G and D are generator and discriminator with trainable parameters θ, ˜ x ∼ Pg
+
+and x P r are synthetic and real scenario distribution, ˆ x is drawn uniformly along the line between Pg and Pr for the gradient penalty with coefficient λ, X and Y are feature vector set of synthetic and real scenarios. In this study, LD accounts for five key operational features—minimum wind speed 
+
+wmin , maximum wind speed wmax , and average wind speed wavg , together with the maximum fluctuation dw max and its average dw avg [42]. 
+
+wmin = min   
+
+> 0≤t≤T−1
+
+wrt , wmax = max   
+
+> 0≤t≤T−1
+
+wrt , wavg = 1
+
+T 
+
+> T−1
+
+X
+
+> t=0
+
+wrt (31) 
+
+dw max = max   
+
+> 1≤t≤T−1
+
+wrt − wrt−1 , dw avg = 1
+
+T − 1 
+
+> T−1
+
+X
+
+> t=1
+
+wrt − wrt−1 (32) Capturing the distributions of these features is essential to the robustness of co-optimization, as they directly govern power-to-methanol system performance. The MMD is then calculated on the feature vectors using a multi-scale Gaussian kernel: 
+
+X = {x1, . . . , x n}, Y = {y1, . . . , y m} (33) 
+
+k(x, y ) = X
+
+> σ∈Ω
+
+exp 
+
+
+
+− ∥x − y∥2
+
+2σ2
+
+
+
+(34) 
+
+LD(X, Y ) = 1
+
+n2
+
+> n
+
+X
+
+> i=1
+> n
+
+X
+
+> j=1
+
+k(xi, x j ) + 1
+
+m2
+
+> m
+
+X
+
+> i=1
+> m
+
+X
+
+> j=1
+
+k(yi, y j ) − 2
+
+nm 
+
+> n
+
+X
+
+> i=1
+> m
+
+X
+
+> j=1
+
+k(xi, y j ) (35) Here, x and y are feature vectors, and k is a multi-scale Gaussian kernel function with bandwidth σ ∈ Ω. Empirically, LD is defined as the discrepancy between the similarities within synthetic features, within real features, and across synthetic and real features. 29 Following adversarial loss of Eq. (30), the model is trained in an alternating man-ner: three updates’ steps of θ(D) are performed for every update step of the θ(G), where 
+
+θ(G) is additionally optimized with LD. Parameter updates are performed using the root mean square propagation, and hyperparameters are listed in Table S3. To capture temporal dynamics of renewable power, two-dimensional convolutional layers are employed. For G, the input noise is sampled from a standard normal distri-bution and converted into a synthetic scenario of length 576 hours. For D, a 576-length scenario is reshaped into a 24 by 24 single-channel image and passed through the net-work to compute a Wasserstein distance value. Detailed model structures are provided in Table S4. 
+
+2.2 Dataset collection 
+
+For training the WGAN-GP and validating the co-optimization results, a renewable dataset was collected from 1 January 2015 to 31 December 2024 at 1-h resolution. Four sites with ongoing power-to-fuel projects exceeding 10 MW were selected: Dunkirk (France), Skive and Fredericia (Denmark) and Weener (Germany) [7]. In this study, the wind-speed at 50 m as a renewable source was retrieved using the NASA POWER API [48] based on the site-specific latitude and longitude listed in Table S5. The wind-speed data retrieved from 2015 to 2022 were used for model training, while data from 2023 to 2024 were used for validation. 
+
+2.3 Model validation 
+
+For quantitative measure of similarity of synthetic wind speed data, we measured discriminative score using time-series classification model—a standard approach for evaluating the performance of data-driven generative models [49]. After training WGAN-GP, synthetic wind-speed data from generator was labeled as fake, while train-ing dataset was labeled as real. Then, a two-layer LSTM network as classification was trained for supervised classification task via binary cross entropy loss minimiza-tion. After training with 0.0001 learning rate and 100 epochs, the discriminative score—defined as the absolute deviation of the classifier’s accuracy from 0.5—was computed on the validation dataset of real and synthetic wind-speed data. A lower dis-criminative score (i.e., classification accuracy close to 0.5) indicates higher similarity between real and synthetic datasets, reflecting the generator’s capability to reproduce realistic temporal patterns of wind-speed. Table S6 lists the discriminative scores computed for the four target regions. All regions exhibited scores below 0.05, substantially lower than reported bench-marks dataset and other generative models, which typically show scores exceeding 0.10 [49]. These results indicate that the trained generator for all target regions successfully reproduces the temporal patterns of real wind speed data. Addition-ally, t-SNE analysis [50] and distributional comparison of five key operational features— pmin , w max , w avg , dw max , dw avg (Eqs. (31) and (32))—were performance for the training, validation, and synthetic datasets of each regions. Figs. S2 to S5 visualizes 30 the similarity between the real and synthetic data distributions in the 2-D embed-ding space, where the broader coverage of the synthetic data indicates the generator’s capability to produce a diverse set of wind-speed scenarios. 
+
+# Supplementary Note 3. Agent-based generalized operational policy model 
+
+3.1 Oracle dataset construction 
+
+The oracle dataset, defined as the monthly optimal operational trajectories, was con-structed from a linear programming (LP) problem instance (Section 1.2). This dataset was used for offline reinforcement learning of actor-critic agent model, enabling the inference of a generalized operational policy for the power-to-methanol system under given design vectors and renewable scenario trends. The problem instance set was generated by sampling M set of renewable power and grid price scenarios, together with system design vectors, collectively denoted as 
+
+{ξi, d i}Mi=1 , where ξi = {P (r,i ) 
+
+> t
+
+, g (i) 
+
+> t
+
+}T −1 
+
+> t=0
+
+. (36) Here {P (r,i ) 
+
+> t
+
+, g it}Tt=1 represents i-th scenario of renewable power and grid price over the horizon T , and di denotes the power-to-methanol design vector, defined in Eq. (39). In this study, the operational horizon was fixed at T = 575 hours for monthly operation. The synthetic wind-speed scenarios {wit}T −1 
+
+> t=0
+
+were first generated using the trained generator G (Section 2.1), and subsequently converted into renewable power 
+
+{P r,i t }T −1 
+
+> t=0
+
+through the turbine capacity-factor function, assuming an installed capacity of 50 MW. Separately, the grid price scenarios {git}Tt=0 were drawn from historical datasets of the four target regions covering the period from 2015 to 2022 [51]: 
+
+{w(r,i ) 
+
+> t
+
+}T −1 
+
+> t=0
+
+= Gθ (zi), zi ∼ N (0 , Σ) (37) 
+
+P (r,i ) 
+
+> t
+
+=
+
+
+
+0, w(i) 
+
+> t
+
+≤ wcut-in ,Pinstall 
+
+(wit)3 − w3cut-in 
+
+w3rate − w3cut-in 
+
+, wcut-in < w it ≤ wrate ,Pinstall , wrate < w (r,i ) 
+
+> t
+
+≤ wcut-off ,
+
+0, wit > w cut-off ,
+
+(38) where zi denotes the Gaussian noise vector, the cut-in wcut-in , rated wrated , and cut-off 
+
+wcut-off wind speeds are set to 1.5, 12, and 25 m/s, respectively [52], and the installed wind capacity Pinstall is assumed to be 50MW. The design vectors di defining the capacity constraints in Section 1.2 were gener-ated using Latin hypercube sampling [53] within the search space specified in Table S7. Specifically, the PEMEC capacity ( CPEM ) was determined based on the ratio αPEM 
+
+between the minimum load ( P min PEM ) required for methanol production rate ˙mMeOH and the maximum load ( P max 
+
+> PEM
+
+)) corresponding to concurrent methanol production 31 and full CHT charging, thereby ensuring operational feasibility across all sampled design vectors: 
+
+di = [ ˙ mi
+
+> MeOH
+
+, α i
+
+> PEM
+
+, C i
+
+> BESS
+
+, C i
+
+> CHT
+
+] (39) 
+
+P min PEM = γH · ˙mi 
+
+> MeOH
+
+· SP H2 , P max PEM = P min PEM + Ci 
+
+> CHT
+
+· SP H2
+
+Ci 
+
+> PEM
+
+= αi
+
+> PEM
+
+(P max PEM − P min PEM ) + P min PEM , (40) Given M = 50 ,000 sampled problem instance {ξi, d i}Mi=1 , the LP problem set was iteratively solved using the Gurobi optimizer with default setting [54]. Conditioned on ( ξi, d i), the trajectory of state st, action at, cost ct, and reward rt were defined as follows: 
+
+st = ( P rt , g t, SOC t, H t) (41) 
+
+at = ( P c,d t , P PEM  
+
+> t
+
+, f ut , f st ) (42) 
+
+ct = P gt · εg (43) 
+
+rt = gt · (P ex t − P gt ) + (1 − f st ) · Hsur t · Hprice − ct · τc (44) where the cost ct represents the carbon emission from grid power usage, and the reward 
+
+rt denotes the hourly operational revenue at time t.The carbon-to-go CT G t, reward-to-go RT G t were then defined as cumulative sums of ct and rt, respectively: 
+
+RT G t = 
+
+> T−1
+
+X
+
+> t′=t
+
+rt′ , CT G t = 
+
+> T−1
+
+X
+
+> t′=t
+
+ct′ (45) Finally, the oracle dataset Doracle , used for offline reinforcement learning of agent model in Section 3.2, is defined as the collection of optimal trajectories of tuples τi for all i = 1 , . . . , M :
+
+τi = (CT G t, RT G t, s t, a t, c t, r t) T −1 
+
+> t=0
+
+. (46) 
+
+Doracle = {(τi|ξi, d i)}Mi=1 . (47) 
+
+3.2 Offline reinforcement learning of oracle trajectory 
+
+We developed a generalized operational policy model conditioned on design vectors 
+
+di, adopting a Decision Transformer (DT) [36] as the backbone and employing an actor–critic architecture [33]. The trained generative model (Section 2.1) enabled the construction of the oracle dataset Doracle , which contains optimal operational trajec-tories τi across diverse design settings and renewable scenarios specified for the target regions. Oracle dataset from LP solution allowed offline reinforcement learning (RL) of the conditional policy directly from expert trajectories, removing the need for environ-ment interaction in online RL, which is often unstable under long-term constraints or varying design conditions. Moreover, the transformer-based architecture enables learn-ing optimal operational sequence itself and provides more reliable long-horizon policy 32 predictions, compared with conventional single-step models such as behavior cloning (BC) [34, 35]. The performance comparison with the online RL and BC-based policies is presented in Section 3.4.3 to support this statement. The actor transformer network πθ predicts the next action ˆ at given a K-length historical trajectory ( st, a t). To condition the policy on target future performance while maintaining negative carbon emissions, additional goal tokens— RT G t and 
+
+CT G t—defined in Eq. (45) are concatenated to the trajectory sequence. To further enable policy generalization across different design configurations, a design token D,normalized design vector di ∈ [0 , 1] within the predefined design space (Table S7), is embedded as conditional token: ˆat ∼ πθ
+
+ μθ , Σθ | { D ∪ { CT G i, RT G i, s i, a i}t−1 
+
+> t−K
+
+∪ { CT G t, RT G t, s t} (48) where μθ and Σ θ denote the learnable mean and covariance parameters of the action distribution. The critic transformer network Qθ′ predicts the goal tokens— RT G t and 
+
+CT G t—based on the given design and renewable scenarios. Unlike the actor, the critic additionally receives the renewable-trend token E as conditional token, which com-presses 576-hour renewable patterns {P (r,i ) 
+
+> t
+
+}Tt=1 into 24-hour averages, allowing the network to account for variability in renewable availability: ˆRT G t, ˆCT G t ∼ Qθ′
+
+ μθ′ , Σθ′ | { D, E } ∪ { si, a i, r i, c i}tt−K
+
+ (49) 
+
+E = [ Eh]Nh=0 , Eh = 124 
+
+> 23
+
+X
+
+> k=0
+
+P rk+24 h (50) where μθ′ and Σ θ′ denote the learnable mean and covariance parameters of the goal distribution, P rk represents hourly renewable power. 
+
+3.3 Training and operation 
+
+Model training Both the actor and critic networks are trained to model the proba-bilistic distributions of the target variables ˆ at, ˆRT G t, and ˆCT G t. This allows the actor to infer feasible actions for given goals, and the critic to predict future goals under renewable uncertainty. The network parameters θ (actor) and θ′ (critic) are optimized by minimizing a negative log-likelihood (NLL) loss: 
+
+Jπ (θ) = − 1
+
+K + 1 EBN
+
+> K
+
+X
+
+> k=0
+
+h
+
+log πθ
+
+ at−k | { D ∪ { CT G i, RT G i, s i, a i}t−1−kt−K
+
+∪ { CT G t−k, RT G t−k, s t−k}} i (51) 33 JQ(θ′) = − 1
+
+K + 1 EBN
+
+> K
+
+X
+
+> k=0
+
+h
+
+log Qθ′
+
+ RT G t−k | { D, E } ∪ { si, a i, c i, r i}t−kt−K
+
+
+
++ log Qθ′
+
+ CT G t−k | { D, E } ∪ { si, a i, c i, r i}t−kt−K
+
+i (52) where BN ⊂ D oracle is a mini-batch of N samples drawn from the oracle dataset, and 
+
+K is the sequence length. Details of the network architecture and hyperparameters are provided in Table S8. Fig. S6 illustrates the NLL loss curves for the actor and critic, trained on the Dunkirk region–oriented oracle dataset. (This oracle dataset was generated by the scenario generator G, which was trained on Dunkirk’s historical wind-speed data.) To evaluate the effect of conditional tokens D (design setting) and E (renewable trend), we trained each network under different combinations of these tokens. In Fig. S6 (a), incorporating the design token D in the actor network yields a lower NLL loss for action at, improving the accuracy of the actor’s inferred action distribution under varying design settings. However, adding the renewable-trend token E provides no noticeable improvement for the actor. By contrast, Fig. S6 (b) and (c) show that including both D and E tokens in the critic significantly reduces the NLL losses for the RT G t and CT G t predictions. This suggests that predictions of RT G t and CT G t
+
+depend strongly on both the design setting and the renewable trend. These results serve as a preliminary ablation study on the conditional tokens, indicating that the optimal configuration is to use token D for the actor πθ, while using both D and E
+
+for the critic Qθ′ (Further details ablation studies and quantitative analysis will be described in Section 3.4.) 
+
+Offline operation Given fixed design token D, the offline operation assumes the renewable trend token E is fixed during system operation. The token E can be obtained in two ways: either from historical renewable data reflecting seasonal trends, or from synthetic scenarios generated by the trained scenario generator Gθ. The for-mer approach supports region-specific operations across different seasons, while the latter enables parallelized operational problem solving under given design and syn-thetic scenario set for uncertainty quantification or second-stage problem solving in co-optimization loop. Given E and D, the offline operation proceeds as follows: 1. Sample candidate actions: The actor πθ samples N candidate actions {ˆait}Ni=1 
+
+from its inferred distribution, conditioned on the current trajectory, and the design token D.2. Evaluate action: For each candidate action ˆ ait, compute the resulting carbon emission cit and profit rit at time t
+
+3. Predict long-term goals: For each candidate tuples ( st, ˆait, c it, r it), the critic Qθ′
+
+predicts the long-term reward and carbon emission ( ˆRT G it, ˆCT G it). 34 4. Select the optimal action: The action maximizing the predicted return while satisfying the carbon constraint is selected: 
+
+a∗ 
+
+> t
+
+= arg max 
+
+> i=1 ,...,N
+
+ˆRT G (i) 
+
+> t
+
+s.t. ˆCT G (i) 
+
+> t
+
+≤ 05. Update next goals: Apply the selected action a∗ 
+
+> t
+
+to the system. Then update the goal tokens for the next time step: ˆRT G t+1 = RT G ∗ 
+
+> t
+
+− r∗ 
+
+> t
+
+, ˆCT G t+1 = CT G ∗ 
+
+> t
+
+− c∗
+
+> t
+
+Algorithm 1 provides a summarized pseudocode of this offline operation procedure for the proposed actor–critic model. 
+
+Online operation In the online setting, the renewable trend token E is not known a prior since we do not have access to a full-horizon renewable scenario in advance. Instead, the E must be inferred dynamically from recent renewable observations in real time. In this study, we proposed a forecasting-based policy update algorithm (inspired by the approach of Chen et al., 2018 [55]) in which the noise vector z (input to the trained generator Gθ) is optimized to produce future renewable scenario set that align with the latest observations. This allows the actor–critic model to adapt in real time by estimating E dynamically, without requiring complete historical or future renewable information. Thus, the proposed algorithm supports real-time operation under an optimized system design obtained via co-optimization. Given fixed design token D and vector of observed renewable wobs = [ w1 · · · wt]T
+
+up to current time t, the online operation proceeds as follows: 1. Sampled candidate tuples: The actor πθ samples N candidate tuples 
+
+{(st, ˆait, c it, r it)}Ni=1 following the same procedure as in offline operation step 1 and 2. 2. Infer the renewable trend token E: To estimate the E under uncertainty, sam-ple a M batch noise {zj }Mj=1 from a multivariate Gaussian distribution. Map each 
+
+zj through G(zj ) to produce a predicted renewable scenario wj 
+
+> pred
+
+= {w(r,j ) 
+
+> t
+
+}T −1 
+
+> t=0
+
+of length T . The {zj }Mj=1 are optimized to minimize the error between the wobs and the corresponding t segment of wj
+
+> pred
+
+. An adversarial loss term −D(G(zj )) is added to the optimization to ensure the predicted scenarios remain realistic. After opti-mization, use each predicted scenario wj 
+
+> pred
+
+to update the corresponding renewable trend token Ej
+
+3. Propagate uncertainty with critic: Given {(st, ˆait, c it, r it)}Ni=1 and {Ej }Mj=1 , the critic Qθ ′ evaluates each action candidate under inferred renewable trend set. It infers the distribution of the goal tokens for each pair (ˆ ait, {Ej }Mj=1 ), producing updated samples of ˆRT G t and ˆCT G t that incorporate the uncertainty in renewable trends. 4. Select action and update: Perform the action selection and goal token update as in offline operation steps 4–5. Algorithm 2 provides a pseudocode of this online operation procedure for the proposed actor-critic model. 35 3.4 Experiment 
+
+This section evaluates both the computational efficiency and the operational perfor-mance of the proposed actor–critic agent for generalized power-to-methanol operation. We begin by outlining the experimental setup, including the validation dataset, deter-ministic LP benchmark, the RL-based comparison model. We then present empirical results that demonstrate: (i) improved computational efficiency compared with the LP solver when solving large sets of scenarios in parallel, and (ii) superior operational per-formance—higher profit, improved carbon-emission constraint satisfaction, and more accurate long-term goal predictions ( RT G, CT G )—in both offline and online operation settings under varying design conditions and renewable scenarios. 
+
+3.4.1 Experiment setup 
+
+Dataset For benchmark comparison, we used the 2023–2024 year historical renewable-power and grid-price validation dataset for the Dunkirk region (details in Table S5), which is unseen by both the generator G and the actor-critic agent models. This provides an unbiased evaluation because all models were trained exclusively on the synthetic oracle dataset constructed from the 2015–2022 historical data. To assess generalizability across different design configurations, four representative design categories were defined from the full design space in Table S7. The percentage ranges specify the portion of each variable’s design range from which samples were drawn: 
+
+• Base : middle 40–60% of all design-variable ranges. 
+
+• Buffered : upper 40–80% for storage units ( CCHT , C BESS ) and lower 0–20% for production units ( αPEM , ˙mMeOH ). 
+
+• Responsive : lower 0–20% for storage units and middle 40–60% for production units. 
+
+• Max-product : middle 40–60% for storage units and upper 60–100% for production units. For offline evaluation, 25 designs were sampled using Latin hypercube sampling [53] within each category (100 total) and combined with 100 set of validattion scenarios of renewable power and grid price, resulting in 4 × 25 × 100 experiment instances. For online evaluation, where inference of the renewable-trend token E increases computa-tional cost, 250 designs per category (1,000 total) were paired with 1,000 validation scenarios set. s. 
+
+Benchmark We compared our proposed actor-critic model with the following four representative RL-based model: 
+
+• DRL : A deep reinforcement learning agent trained with Proximal Policy Optimiza-tion (PPO) [56], representing a state-of-the-art online RL method for continuous action space. The design vector is provided as an additional input to condition the policy network across different design settings. Due to the strong sensitivty in selec-tion of hyperparameter, especially under varying design configurations, we applied population-based hyperparameter optimization (PBT) [57] to ensure competitive performance. 36 • BC : A behavior cloning model [35] sharing the same network architecture as DRL, but trained purely via supervised learning on the state–action pairs ( s, a ) in the oracle dataset Doracle .
+
+• DRL+BC : A hierarchical approach where a DRL agent refines the action param-eters predicted by a pretrained BC model. The BC parameters are frozen, and the DRL component is trained via PPO to enable exploration while leveraging BC policy. Both components share the same neural architecture. 
+
+• DT : A decision transformer [36] conditioned on manually assigned initial goal values (RT G 0, CT G 0), set to the average target values computed from the Doracle .
+
+• ST : A vanilla actor-critic based Saformer [58] built upon DT without additional token embeddings of D and E.The network architecture and hyperparameters are listed in Table S8. In this study, actor-critic model architecture of ST and proposed PT share same architecture of DT except the additional embedding layers of D and E tokens. 
+
+3.4.2 Computational efficiency analysis 
+
+We first compare the computational cost of the proposed model against Gurobi [54], a CPU-based MILP solver, over problem sets of different sizes solved in parallel. For a fair comparison, while the proposed model runs on a single GPU, Gurobi solves the LP problem set (Section 1.2) varying CPU cores from 1 to 16, with each process restricted to single-thread. All computations were performed on a computing server equipped with an Intel Xeon Platinum 8480C CPU (56 cores, 112 threads, up to 3.8 GHz, 2.01 TB RAM) and a single NVIDIA H200 GPU (140 GB memory, 700 W TDP). Fig. S7 shows the solution time across problem-set sizes ranging from 10 to 10,000. The Gurobi solver benefits from increasing CPU cores when solving large problem sets in parallel. For instance, compared with single core, 16 core achieved speed-ups of 0.38, 0.71, and 0.91 orders of magnitude for problem set sizes of 10, 100, and 10,000. Despite these gains in MILP solver, the proposed model still attains lower solution times for most problem sizes, and its gap increased as the problem sizes grows. For example, for a problem size of 10, the proposed model requires 4.2 secs whereas 16-core Gurobi requires 2.9 secs, primarily due to the base computational overhead of transformer-network operations. However, for problem sizes over 20, the proposed model consistently shows lower solution times than the Gurobi. This is because the proposed model relies on single-feedforward inference of optimal action and goals (Algorithm 1) supported by highly parallelized GPU, whereas Gurobi must execute the full MILP procedure on CPU. Consequently, as the problem size increases from 100 to 10,000, the proposed model achieves speed-ups of 0.366 to 0.70 orders of mag-nitude, compared with MILP solver. For instance, for problem-set sizes of 1,000 and 10,000, the proposed model solves the problems in 17.6 and 160.7 secs, compared with 84.8 and 815.3 secs for the Gurobi solver. This improvement in solution time is critical for two stage scenario based design optimization, which requires solving large operational problem sets with scenario sets in limited computational times. 37 3.4.3 Offline operation performance compared with the benchmark model 
+
+The monthly operation problem defined in Section 1.2 aims to maximize monthly profit while enforcing a negative carbon emission constraint. Accordingly, we evaluate the optimality gap in profit maximization and the constraint violation of negative carbon emission between dynamic operational policy models and the deterministic MILP solution, using the four design categories and validation dataset described in Section 3.4.1. For offline operation settings, renewable trend token E is precomputed under given renewable scenario, and Algorithm 1 is applied to the PT critic models for goal ( RT G t, CT G t) predictions. As shown in Fig. S8, the proposed PT model consistently outperforms all bench-mark models across the four design categories, achieving the lowest optimality gap, the lowest constraint violation, and the smallest performance variation across diverse monthly scenarios. Furthermore, the progressive performance improvements from RL-based models to PT highlight how oracle-trajectory learning, the incorporation of critic model, and the embedding of design and trend tokens ( D, E ) collectively enhance generalized operational performance. For instance, in the base design case, BC and RL-based models (DRL, DRL+BC) yield an average optimality gap of 89.6% with average constraint violation of 2565.6 ton/month, where only two solution satisfy the negative-emission constraint. In contrast, DT and ST models improve the optimality gap to 79.8% and 42.4%, respectively, supporting the advantage of learning from oracle tra-jectories rather than from one-step state–action pairs. Moreover, unlike DT that relies on manually assigned goals, the ST critic dynamically predicts goals ( RT G t, CT G t)and conditions the actor’s action distribution on these goals. The sampled action is then fed back to the critic with the resulting reward and cost to update the goal distribution. This closed-loop actor–critic structure prevents the operational policy from deviating from learned oracle trajectory and maintains consistency between the predicted goals and the realized state–action evolution. Despite these improvements, ST still exhibits an average constraint violation of 844.9 ton/month and provides feasible solutions in only 47.81% of scenarios across the four design categories. In contrast, the proposed PT model achieves both lower optimality gaps and lower constraint violations than ST across all scenarios. Specifi-cally, in the base, responsive, and max-product design cases, the PT-based solutions capture more carbon than the MILP solution, yielding average 91.0, 0.2, and 80.9 ton/month higher carbon capture than that of the MILP solution, respectively. Since ST and PT share the same actor–critic architecture, these improvements are derived from PT critic model’s enhanced goal-prediction accuracy, enabled by the additional design and renewable trend token embeddings ( D, E ), which is consistent with the lower critic training losses shown in Fig. S6 (b) and (c). To further verify this, we com-puted the continuous ranked probability score (CRPS) for RT G t and CT G t, which measures the probabilistic error of goal predictions. As shown in Table S9, incorpo-rating D and E token to critic model improves long-term goal prediction across all design and scenario cases, and Fig. S9 visualizes this enhanced goal-prediction accu-racy during dynamic operation. In summary, improved goal inference allows the PT critic to generate more accurate goal trajectories and guide the actor accordingly, 38 leading to superior performance in both profit maximization and satisfaction of the negative-emission constraint. 
+
+3.4.4 Online operation performance compared with the benchmark model 
+
+In online operation settings, the renewable trend token E is not provided and must be dynamically inferred during system operation. Therefore, except for the bench-mark models that do not require the E token for system operation, Algorithm 2 is solely applied to the proposed PT model to dynamically forecast a potential set of 
+
+E tokens from the observed renewable data and infer potential action for long-term constraint satisfaction under renewable uncertainty. The benchmark model follows the same calculation procedure used in the offline operation setting. Fig. S10 demonstrates progressive performance improvements from the RL-based model to the proposed PT model, consistent with the offline operation results (Section 3.4.4). For example, compared with the BC and RL-based models, the oracle-trajectory-learning-based critic models of both ST and PT effectively adjust the actor’s action distribution to satisfy long-term constraints during operation trajectory evolv-ing. As a result, the ST and PT models achieve 76% and 75% feasible solutions, whereas the BC and RL-based models yield only 51% feasible solutions under negative carbon emission constraints. Although ST and PT exhibit similar levels of optimality gap and feasibility ratio, the constraint violation of the PT model is significantly lower at 28.1 ton/month, compared with 78.16 ton/month for the benchmark ST model across the four design categories. This improvement comes from the higher goal-prediction accuracy of the critic models, and the lower CRPS values for PT shown in Table S9 and the example goal-prediction profiles in Fig. S11 further support this finding. In summary, under online operation without access to historical renewable datasets, the results still show that the proposed PT with Algorithm 2 successfully enables dynamic inference of the E token, which is crucial information for accurate goal predic-tion, and maintains operational performance close to the deterministic global solution. It achieves the lowest optimality gap and more than 75% constraint satisfaction, outperforming all other dynamic policy models. 39 Supplementary Figures Wind power plant 
+
+Grid power 
+
+Export to Market BESS  PEMEC  CHT 
+
+Methanol 
+
+synthesis unit 
+
+CO 2 Methanol 
+
+Power flow 
+
+H2 flow 
+
+CO 2, Methanol flow 
+
+> Power (kW)
+
+Time (hr) 
+
+> Price ($/kWh)
+
+Time (hr) 
+
+Fig. S1 Schematic of power-to-methanol system 
+
+40 a b
+
+> Principal component 1
+
+Principal component 2 
+
+> density wmax wmin
+
+wavg  wmax  wmin  dw avg  dw max 
+
+> dw max  dw avg
+> Synthetic data (WGAN)
+> Training data (2015 -2022)
+> Validation data (2023 -2024)
+
+Fig. S2 Comparison of real and synthetic wind-speed data distribution in the Dunkirk (France) region: (a) t-SNE visualization and (b) key operational feature distributions a b
+
+> Principal component 1
+
+Principal component 2 
+
+> density wmax wmin
+
+wavg  wmax  wmin  dw avg  dw max 
+
+> dw max  dw avg
+> Synthetic data (WGAN)
+> Training data (2015 -2022)
+> Validation data (2023 -2024)
+
+Fig. S3 Comparison of real and synthetic wind-speed data distribution in the Skive (Denmark) region: (a) t-SNE visualization and (b) key operational feature distributions 
+
+41 a b
+
+> Principal component 1
+
+Principal component 2 
+
+> density wmax wmin
+
+wavg  wmax  wmin  dw avg  dw max 
+
+> dw max  dw avg
+> Synthetic data (WGAN)
+> Training data (2015 -2022)
+> Validation data (2023 -2024)
+
+Fig. S4 Comparison of real and synthetic wind-speed data distribution in the Fredericia (Denmark) region: (a) t-SNE visualization and (b) key operational feature distributions a b
+
+> Principal component 1
+
+Principal component 2 
+
+> density wmax wmin
+
+wavg  wmax  wmin  dw avg  dw max 
+
+> dw max  dw avg
+> Synthetic data (WGAN)
+> Training data (2015 -2022)
+> Validation data (2023 -2024)
+
+Fig. S5 Comparison of real and synthetic wind-speed data distribution in the Weener (Germany) region: (a) t-SNE visualization and (b) key operational feature distributions 
+
+42 2.0 
+
+1.8 
+
+1.6 
+
+1.4 
+
+1.2 
+
+1.0 
+
+0.8 
+
+0.6 
+
+> J ( )
+
+## a No-token baseline 
+
+D-token only 
+
+D+E tokens (Proposed) 
+
+1.25 
+
+1.00 
+
+0.75 
+
+0.50 
+
+0.25 
+
+0.00 
+
+0.25 
+
+0.50 
+
+> JQRTG ( ′)
+
+## b
+
+0 10 20 30 40 50 
+
+Epoch 
+
+2.00 
+
+1.75 
+
+1.50 
+
+1.25 
+
+1.00 
+
+0.75 
+
+0.50 
+
+0.25 
+
+> JQCTG ( ′)
+
+## cFig. S6 Training losses of the actor and critic networks under various combinations of design ( D)and environment ( E) tokens. (a) Actor loss Jπ (θ). (b,c) Separated critic losses of RT G t and CT G t.
+
+43 0 2000 4000 6000 8000 10000 
+
+Problem number 
+
+10 0
+
+10 1
+
+10 2
+
+10 3
+
+10 4
+
+> Solution time (s)
+
+Proposed model (GPU) 
+
+Gurobi (CPU core 1) 
+
+Gurobi (CPU core 4) 
+
+Gurobi (CPU core 8) 
+
+Gurobi (CPU core 12) 
+
+Gurobi (CPU core 16) Fig. S7 Solution time of the proposed model and the Gurobi benchmark across different problem sizes 
+
+44 Constraint violation 
+
+> (×10³ ton CO2 /month)
+
+b
+
+> Optimality gap (%)
+
+aFig. S8 Offline operation performance comparison of operational policy models across different design categories: (a) optimality gap from MILP solver (Gurobi), and (b) constraint violation of negative carbon emission. 
+
+> *Error bars represent 10% of the standard deviation
+
+45 a
+
+b
+
+c
+
+d      
+
+> Time step (hour) Time step (hour) Time step (hour) Time step (hour)
+> RTG CTG RTG CTG
+
+ST model  PT model (Proposed) Fig. S9 Comparison of goal prediction performance of the ST and PT critic models in offline oper-ation settings across the four design categories: (a) Base, (b) Buffered, (c) Responsive, and (d) Max-product. 
+
+46 Constraint violation 
+
+> (×10³ ton CO2 /month)
+
+b
+
+> Optimality gap (%)
+
+aFig. S10 Online operation performance comparison of operational policy models across different design categories: (a) optimality gap from MILP solver (Gurobi), and (b) constraint violation of negative carbon emission. 
+
+> *Error bars represent 10% of the standard deviation
+
+47 a
+
+b
+
+c
+
+d      
+
+> Time step (hour) Time step (hour) Time step (hour) Time step (hour)
+> RTG CTG RTG CTG
+
+ST model  PT model (Proposed) Fig. S11 Comparison of goal prediction performance of the ST and PT critic models in online operation settings across the four design categories: (a) Base, (b) Buffered, (c) Responsive, and (d) Max-product. 
+
+48 a
+
+b                  
+
+> Renewable fluctuation (MW)
+> Renewable power (MW)
+> Grid price ($/MWh) Grid  fluctuation  ($/MWh)
+> Renewable power (MW)
+> Renewable fluctuation (MW)
+> Renewable power (MW) Renewable power (MW)
+> Renewable fluctuation (MW) Renewable fluctuation (MW)
+
+Dunkirk  Skive  Fredericia  Weener 
+
+> Density level  Density level
+
+Fig. S12 Distributions of grid price and renewable power across the four target regions: (a) Distribu-tion of daily-averaged grid price and renewable power, (b) Distribution of daily-averaged fluctuations in grid price and renewable power. 
+
+49 LCOM ($/kg MeOH )CI (kg CO2 /kg MeOH ) Prob(CI>0) 
+
+a
+
+b
+
+c Mean 
+
+> Whisker: 5% -95%
+> Box: 25% -75%
+> MeOH
+> BESS
+> CHT
+> PEMEC
+
+d        
+
+> Dunkirk Skive Fredericia Weener
+> Pareto system size  Storage Expansion (SE) SE
+> Product
+> Reduction (PR) SE PR SE PR
+
+Fig. S13 Performance comparison of Pareto-optimal power-to-methanol designs across the target regions: (a) Probability of net-positive carbon emissions (CI > 0), (b) Distribution of levelized cost of methanol production (LCOM), (c) Distribution of carbon intensity (CI), (d) Normalized values of the Pareto-optimal system designs relative to their respective design space in Table S7. 
+
+50 Supplementary Tables 
+
+Table S1 Technical parameters of the Power-to-Methanol system 
+
+Unit process Parameter Value Unit Reference 
+
+BESS 
+
+ηC , ηD 0.95 – [59] 
+
+α 0.3 – [59] 
+
+ηl 6.94 × 10 −5 – [59] PEMEC and CHT SP H2 55.7 kW/(kg H2 ·h) [60] 
+
+SP C H2 3.003 kW/(kg H2 ·h) [60] Methanol synthesis unit 
+
+γH 0.196 kg H2 /kg MeOH [61] 
+
+γCO 2 1.436 kg CO 2 /kg MeOH [61] 
+
+SP MeOH 0.657 kW/(kg MeOH ·h) [61] 
+
+Table S2 Carbon tax of grid electricity in different regions [62] 
+
+Region Carbon tax ( $/tonCO 2)
+
+Dunkirk 47.96 Skive 28.10 Fredericia 28.10 Weener 48.39 
+
+Table S3 Hyperparameters used for WGAN-GP model training. 
+
+Parameter Value 
+
+Learning rate 0.0001 Gradient penalty weight λ 10 Batch size 64 Epoch 15,000 Bandwidth set σ {10 , 15 , 20 , 50 }
+
+51 Table S4 The network structure of WGAN-GP 
+
+Generator G
+
+Layer Filter size | Stride Activation size 
+
+Input – 205 Linear, BN, ReLU – 1024 Linear, BN, ReLU – 512 × 3 × 3ConvTrans, BN, ReLU 512 × 2 × 2 | 2 256 × 6 × 6ConvTrans, BN, ReLU 256 × 2 × 2 | 2 128 × 12 × 12 ConvTrans, BN, Sigmoid 1 × 2 × 2 | 2 1 × 24 × 24 
+
+Discriminator D
+
+Layer Filter size | Stride Activation size 
+
+Input – 1 × 24 × 24 Conv, LeakyReLU, Dropout 64 × 2 × 2 | 1 64 × 23 × 23 Conv, LeakyReLU, Dropout 128 × 2 × 2 | 2 128 × 11 × 11 Conv, LeakyReLU, Dropout 265 × 2 × 2 | 2 256 × 5 × 5Linear, LeakyReLU – 1024 Linear, LeakyReLU – 128 Linear – 1
+
+> * Conv: convolution layer, ConvTrans: convolutional transpose layer, BN: batch normalization.
+
+Table S5 Wind speed dataset information 
+
+Region Latitude range Longitude range 
+
+Dunkirk [50.78 ◦, 51.23 ◦] [2.08 ◦, 2.53 ◦]Skive [56.46 ◦, 56.66 ◦] [8.97 ◦, 9.07 ◦]Fredericia [55.46 ◦, 55.66 ◦] [9.64 ◦, 9.79 ◦]Weener [53.06 ◦, 53.26 ◦] [7.25 ◦, 7.40 ◦]
+
+> * Wind speed at 50 m is collected from NASA POWER API at a spatial resolution of 0.05 ◦.
+
+Table S6 Discriminative score of WGAN-generated renewable data 
+
+Region Discriminative score 
+
+Dunkirk 0.05 ± 0.09 Skive 0.04 ± 0.08 Fredericia 0.01 ± 0.08 Weener 0.01 ± 0.09 52 Table S7 Design space of the power-to-methanol system 
+
+Variable Symbol Unit Range (energy equivalent) 
+
+Methanol production rate ˙mMeOH kg h −1 [432.49, 2162.47] ([5,25MW]) PEM electrolyzer capacity ratio αPEM - [0, 1] Battery energy storage capacity CBESS MWh [5, 100] Compressed hydrogen storage tank capacity CCHT kg [89.77, 1795.33] ([5,100 MWh]) 
+
+* Energy equivalents are calculated based on the specific power consumption for methanol production (11.56 kJ kg −1) and hydrogen (55.70 kJ kg −1) derived from Table S1 
+
+Table S8 Hyperparameters of the proposed and benchmark models 
+
+Hyperparameters BC DRL(PPO) BC+DRL(PPO) DT ST & PT 
+
+Sequence length K - - - 24 24 Number of attention blocks - - - 4 4Embedding dimension - - - 256 256 Hidden layer (256,256,256,128) (256,256,256,128) (256,256,256,128) 256 256 Activation function ReLU ReLU ReLU ReLU ReLU Epochs 100 100 100 100 100 Training batch size 128 128 128 64 64 Learning rate 1×10 −5 1×10 −5 1×10 −5 1×10 −4 1×10 −4
+
+Weight decay 1×10 −4 1×10 −4 1×10 −4 1×10 −4 1×10 −4
+
+Warmup steps - - - 10,000 10,000 Optimizer Adam Adam Adam AdamW AdamW [63] Hyperparaemter tunning - PBT PBT [57] - -
+
+Detailed model architecture is available at https://github.com/PSEKJD/mascor/tree/main/mascor/models/agent, and training implementations are available at https://github.com/PSEKJD/mascor/tree/main/mascor/train. 
+
+Table S9 CRPS of goal prediction (RTG and CTG) for ST and PT critic model under four design categories in offline and online planning 
+
+ST PT (proposed) Design category RTG CTG RTG CTG Offline operation 
+
+Base 0.35 ±0.01 0.19 ±0.03 0.29 ±0.01 0.10 ±0.02 
+
+Buffered 0.44 ±0.02 0.04 ±0.01 0.38 ±0.04 0.03 ±0.01 
+
+Responsive 0.35 ±0.01 0.11 ±0.02 0.21 ±0.01 0.05 ±0.01 
+
+Max-product 0.41 ±0.03 0.34 ±0.07 0.31 ±0.01 0.23 ±0.05 Online operation 
+
+Base 0.36 ±0.20 0.11 ±0.07 0.30 ±0.17 0.08 ±0.04 
+
+Buffered 0.45 ±0.19 0.04 ±0.02 0.41 ±0.21 0.03 ±0.02 
+
+Responsive 0.40 ±0.25 0.12 ±0.09 0.32 ±0.19 0.09 ±0.05 
+
+Max-product 0.37 ±0.24 0.18 ±0.12 0.34 ±0.19 0.14 ±0.06 
+
+* Lower CRPS values indicate higher goal-prediction accuracy of the critic models. Bold scores denote design categories where the proposed PT achieves better stochastic goal-forecasting performance across diverse scenario. 
+
+53 Algorithms 
+
+Algorithm 1 Actor–Critic offline operation 
+
+Require: Actor πθ , Critic Q′
+
+> θ
+
+, system model ENV 
+
+Require: Design token D, Renewable trend token E, Operation horizon T = 576, initial state sinit , number of action samples N
+
+Require: Trajectory buffer τ = {(sk, a k, c k, r k, CT G k, RT G k)}Kk=1 , buffer size K =24  
+
+> 1:
+
+Initialize τ : set s1 = sinit , and sk, a k, c k, r k, CT G k, RT G k ← 0 for k > 1 
+
+> 2:
+
+for t = 1 to T do  
+
+> 3:
+
+Sample N candidate actions {ˆait}Ni=1 ∼ πθ(· | { D ∪ τ }) 
+
+> 4:
+
+Collect candidate tuple ( sit+1 , r it, c it) = ENV( st, ˆait) 
+
+> 5:
+
+Sample long-term goal ( ˆRT G it, ˆCT G it) = Qθ′ (· | {{ D, E } ∪ τ ∪ { st, ˆait, c it, r it}} ) 
+
+> 6:
+
+if any feasible i with ˆCT G it ≤ 0 exists then  
+
+> 7:
+
+a∗ 
+
+> t
+
+= arg max i=1 ,...,N ˆRT G it s.t. ˆCT G it ≤ 0 
+
+> 8:
+
+else  
+
+> 9:
+
+a∗ 
+
+> t
+
+= arg max i=1 ,...,N ˆRT G it 
+
+> 10:
+
+end if  
+
+> 11:
+
+Apply action a∗ 
+
+> t
+
+and compute next state, reward, and carbon emission: (s∗
+
+> t+1
+
+, r ∗ 
+
+> t
+
+, c ∗ 
+
+> t
+
+) = ENV( st, a ∗ 
+
+> t
+
+) 
+
+> 12:
+
+Update RT G t+1 ← RT G ∗ 
+
+> t
+
+− r∗ 
+
+> t
+
+, CT G t+1 ← CT G ∗ 
+
+> t
+
+− c∗ 
+
+> t
+> 13:
+
+Update trajectory τ ← τ ∪ { (a∗ 
+
+> t
+
+, c ∗ 
+
+> t
+
+, r ∗ 
+
+> t
+
+, CT G t+1 , RT G t+1 )} 
+
+> 14:
+
+end for      
+
+> Detailed implementation is available at https://github.com/PSEKJD/mascor/blob/main/mascor/ optimization/uq problem.py.
+
+54 Algorithm 2 Actor–Critic online operation 
+
+Require: Actor πθ, Critic Q′
+
+> θ
+
+, system model ENV 
+
+Require: Scenario generator G, discriminator D
+
+Require: Scenario forecasting frequency fupdate , projection operator Phist 
+
+ f (w) =[w1, . . . , w h]T with observation length h, optimization iteration number Nz
+
+Require: Design token D, Operation horizon T = 576, initial state sinit , number of action samples N , number of scenario samples M
+
+Require: Trajectory buffer τ = {(sk, a k, c k, r k, CT G k, RT G k)}Kk=1 , buffer size K =24  
+
+> 1:
+
+Initialize τ : set s1 = sinit , and sk, a k, c k, r k, CT G k, RT G k ← 0 for k > 1 
+
+> 2:
+
+Initialize noise batch {zj }Mj=1 ∼ N (0 , Σ)  
+
+> 3:
+
+for t = 1 to T do  
+
+> 4:
+
+Sample N candidate actions {ˆait}Ni=1 ∼ πθ (· | { D ∪ τ }) 
+
+> 5:
+
+Collect candidate tuple ( sit+1 , r it, c it) = ENV( st, ˆait) 
+
+> 6:
+
+if t mod fupdate = 0 then  
+
+> 7:
+
+Optimize batch noise to align with wobs = [ w1 · · · wt]⊤ 
+
+> 8:
+
+for nz = 1 to Nz do  
+
+> 9:
+
+Compute noise batch loss: 
+
+Lz = 1
+
+M
+
+> M
+
+X
+
+> j=1
+
+"
+
+1
+
+t wobs − Phist 
+
+ G(zj ) 22 − D G(zj )# 
+
+> 10:
+
+Update noise batch using gradient descent: 
+
+zj ← zj − η ∇zj Lz 
+
+> 11:
+
+if Lz < 10 −3 then  
+
+> 12:
+
+break  
+
+> 13:
+
+end if  
+
+> 14:
+
+end for  
+
+> 15:
+
+end if  
+
+> 16:
+
+Generate predicted renewable scenarios wj 
+
+> pred
+
+= G(zj ) 
+
+> 17:
+
+Compute renewable trend token batch {Ej }Mj=1  
+
+> 18:
+
+Propagate uncertainty of {Ej }Mj=1 :ˆRT G it, ˆCT G it = Q′
+
+> θ
+
+(· | { D ∪ { Ej }Mj=1 ∪ τ ∪ { st, ˆait, c it, r it}} ) 
+
+> 19:
+
+Perform a∗ 
+
+> t
+
+screening, RT G t+1 , CT G t+1 ,and τ update as defined in Algorithm 1  
+
+> 20:
+
+end for      
+
+> Detailed implementation is available at https://github.com/PSEKJD/mascor/blob/main/mascor/ solvers/PT solver.py.
+
+55 References 
+
+[1] IEA, H. & Change, C. International energy agency (iea) (2022). [2] Li, M. et al. Renewable energy quality trilemma and coincident wind and solar droughts. Communications Earth & Environment 5, 661 (2024). [3] Nijsse, F. J. et al. The momentum of the solar energy transition. Nature Communications 14 , 6542 (2023). [4] Smith, C. & Torrente-Murciano, L. Cost efficiency versus energy utilization in green ammonia production from intermittent renewable energy. Nature Chemical Engineering 1–12 (2025). [5] Millinger, M. et al. Electrofuels from excess renewable electricity at high variable renewable shares: cost, greenhouse gas abatement, carbon use and competition. 
+
+Sustainable Energy & Fuels 5, 828–843 (2021). [6] Sherwin, E. D. Electrofuel synthesis from variable renewable electricity: An optimization-based techno-economic analysis. Environmental science & technol-ogy 55 , 7583–7594 (2021). [7] Wulf, C., Zapp, P. & Schreiber, A. Review of power-to-x demonstration projects in europe. front energy res 2020; 8 (2020). [8] Kanchiralla, F. M., Brynolf, S. & Mjelde, A. Role of biofuels, electro-fuels, and blue fuels for shipping: environmental and economic life cycle considerations. 
+
+Energy & Environmental Science 17 , 6393–6418 (2024). [9] on Climate Change), I. I. P. Climate change 2014: Mitigation of climate change (2014). [10] Daiyan, R., MacGill, I. & Amal, R. Opportunities and challenges for renewable power-to-x (2020). [11] Daggash, H. A. et al. Closing the carbon cycle to maximise climate change mitigation: power-to-methanol vs. power-to-direct air capture. Sustainable Energy & Fuels 2, 1153–1169 (2018). [12] Li, S. et al. Solar thermal energy-assisted direct capture of co2 from ambient air for methanol synthesis. npj Materials Sustainability 2, 11 (2024). [13] Pakdel, A. & Eslamloueyan, R. Techno-economic and sustainability assessment of the power to meoh processes: The present and future perspective. Heliyon 10 
+
+(2024). [14] Faber, J. et al. Fourth imo greenhouse gas study. London, UK: IMO. Available at https://www. imo. org/en/OurWork/Environment/Pages/Fourth-IMO-Greenhouse-Gas-Study-2020. aspx. Accessed September 5, 2022 (2020). [15] Otto, A., Grube, T., Schiebahn, S. & Stolten, D. Closing the loop: captured co 2 as a feedstock in the chemical industry. Energy & environmental science 8,3283–3297 (2015). [16] Lopez, G., Keiner, D., Fasihi, M., Koiranen, T. & Breyer, C. From fossil to green chemicals: sustainable pathways and new carbon feedstocks for the global chemical industry. Energy & Environmental Science 16 , 2879–2909 (2023). [17] Zhang, X., Bauer, C., Mutel, C. L. & Volkart, K. Life cycle assessment of power-to-gas: Approaches, system variations and their environmental implications. Applied Energy 190 , 326–338 (2017). [18] Sternberg, A. & Bardow, A. Power-to-what?–environmental assessment of energy 56 storage systems. Energy & Environmental Science 8, 389–400 (2015). [19] Fulham, G. J., Mendoza-Moreno, P. V. & Marek, E. J. Managing intermittency of renewable power in sustainable production of methanol, coupled with direct air capture. Energy & Environmental Science 17 , 4594–4621 (2024). [20] Qi, M. et al. Strategies for flexible operation of power-to-x processes coupled with renewables. Renewable and Sustainable Energy Reviews 179 , 113282 (2023). [21] Mucci, S., Mitsos, A. & Bongartz, D. Cost-optimal power-to-methanol: Flexible operation or intermediate storage? Journal of Energy Storage 72 , 108614 (2023). [22] Nizami, M., Purwanto, W. W. et al. Solar pv based power-to-methanol via direct co2 hydrogenation and h2o electrolysis: Techno-economic and environmental assessment. Journal of CO2 Utilization 65 , 102253 (2022). [23] Fasihi, M. & Breyer, C. Global production potential of green methanol based on variable renewable electricity. Energy & Environmental Science 17 , 3503–3522 (2024). [24] Ma, X.-Y., Sun, Y.-Z. & Fang, H.-L. Scenario generation of wind power based on statistical uncertainty and variability. IEEE Transactions on Sustainable Energy 
+
+4, 894–904 (2013). [25] Bludszuweit, H., Dom´ ınguez-Navarro, J. A. & Llombart, A. Statistical analysis of wind power forecast error. IEEE Transactions on power systems 23 , 983–991 (2008). [26] Chen, Y., Wang, Y., Kirschen, D. & Zhang, B. Model-free renewable scenario generation using generative adversarial networks. IEEE Transactions on Power Systems 33 , 3265–3275 (2018). [27] Liu, H., Clausen, L. R., Wang, L. & Chen, M. Pathway toward cost-effective green hydrogen production by solid oxide electrolyzer. Energy & Environmental Science 16 , 2090–2111 (2023). [28] Guo, J., Wu, D., Wang, Y., Wang, L. & Guo, H. Co-optimization method research and comprehensive benefits analysis of regional integrated energy system. Applied Energy 340 , 121034 (2023). [29] Heitsch, H. & R¨ omisch, W. Scenario tree modeling for multistage stochastic programs. Mathematical Programming 118 , 371–406 (2009). [30] Zhang, B. et al. Deep reinforcement learning–based approach for optimizing energy conversion in integrated electrical and heating system with renewable energy. Energy conversion and management 202 , 112199 (2019). [31] Kim, J. et al. Assessing grid penalized reinforcement learning for renewable energy management of power-to-x integrated with intermediate storage. IEEE Transactions on Sustainable Energy (2025). [32] Gulrajani, I., Ahmed, F., Arjovsky, M., Dumoulin, V. & Courville, A. C. Improved training of wasserstein gans. Advances in neural information processing systems 
+
+30 (2017). [33] Konda, V. & Tsitsiklis, J. Actor-critic algorithms. Advances in neural information processing systems 12 (1999). [34] Wang, K. et al. Bootstrapped transformer for offline reinforcement learning. 
+
+Advances in Neural Information Processing Systems 35 , 34748–34761 (2022). [35] Torabi, F., Warnell, G. & Stone, P. Behavioral cloning from observation. arXiv 
+
+57 preprint arXiv:1805.01954 (2018). [36] Chen, L. et al. Decision transformer: reinforcement learning via sequence modeling, 2 june 2021. URL http://arxiv. org/abs/2106.01345 (2021). [37] Sinha, A., Malo, P. & Deb, K. A review on bilevel optimization: From classical to evolutionary approaches and applications. IEEE transactions on evolutionary computation 22 , 276–295 (2017). [38] Dempe, S. Foundations of bilevel programming (Springer, 2002). [39] Vimmerstedt, L. et al. Annual technology baseline: The 2020 transportation update. Tech. Rep., National Renewable Energy Lab.(NREL), Golden, CO (United States) (2020). [40] Xi, X., Sioshansi, R. & Marano, V. A stochastic dynamic programming model for co-optimization of distributed energy storage. Energy Systems 5, 475–505 (2014). [41] Goodfellow, I. et al. Generative adversarial networks. Communications of the ACM 63 , 139–144 (2020). [42] Dong, W., Chen, X. & Yang, Q. Data-driven scenario generation of renewable energy production based on controllable generative adversarial networks with interpretability. Applied Energy 308 , 118387 (2022). [43] Bi´ nkowski, M., Sutherland, D. J., Arbel, M. & Gretton, A. Demystifying mmd gans. arXiv preprint arXiv:1801.01401 (2018). [44] Barto, A. G., Sutton, R. S. & Anderson, C. W. Neuronlike adaptive elements that can solve difficult learning control problems. IEEE transactions on systems, man, and cybernetics 834–846 (2012). [45] Balandat, M. et al. Botorch: A framework for efficient monte-carlo bayesian optimization. Advances in neural information processing systems 33 , 21524– 21538 (2020). [46] Du, Y., Shen, X., Kammen, D. M. & Ding, X. Cost-competitive offshore wind-powered green methanol production for maritime transport decarbonization. 
+
+Nature Communications 16 , 5453 (2025). [47] International Energy Agency. Electricity 2025: Emissions (2025). URL https: //www.iea.org/reports/electricity-2025/emissions. Accessed 2025. [48] Sparks, A. H. nasapower: a nasa power global meteorology, surface solar energy and climatology data client for r. Journal of Open Source Software 3, 1035 (2018). [49] Yoon, J., Jarrett, D. & Van der Schaar, M. Time-series generative adversarial networks. Advances in neural information processing systems 32 (2019). [50] Maaten, L. v. d. & Hinton, G. Visualizing data using t-sne. Journal of machine learning research 9, 2579–2605 (2008). [51] EMBER. Energy & climate think tank. https://ember-climate.org/about/. Accessed: January 23, 2025. [52] Kim, J., Qi, M., Park, J. & Moon, I. Revealing the impact of renewable uncertainty on grid-assisted power-to-x: A data-driven reliability-based design optimization approach. Applied Energy 339 , 121015 (2023). [53] Loh, W.-L. On latin hypercube sampling. The annals of statistics 24 , 2058–2080 (1996). [54] Gurobi Optimization, LLC. Gurobi Optimizer Reference Manual (2024). URL https://www.gurobi.com. 58 [55] Chen, Y., Wang, X. & Zhang, B. An unsupervised deep learning approach for sce-nario forecasts (2018). URL https://arxiv.org/abs/1711.02247. arXiv:1711.02247. [56] Schulman, J., Wolski, F., Dhariwal, P., Radford, A. & Klimov, O. Proximal policy optimization algorithms. arXiv preprint arXiv:1707.06347 (2017). [57] Jaderberg, M. et al. Population based training of neural networks. arXiv preprint arXiv:1711.09846 (2017). [58] Zhang, Q. et al. Saformer: A conditional sequence modeling approach to offline safe reinforcement learning. arXiv preprint arXiv:2301.12203 (2023). [59] Kang, D. et al. Optimal planning of hybrid energy storage systems using cur-tailed renewable energy through deep reinforcement learning. Energy 284 , 128623 (2023). [60] Chen, C. & Yang, A. Power-to-methanol: The role of process flexibility in the inte-gration of variable renewable energy into chemical production. Energy Conversion and Management 228 , 113673 (2021). [61] Vo, N. D., Oh, M. & Lee, C.-H. Design guideline for co2 to methanol conversion process supported by generic model of various bed reactors. Energy Conversion and Management 269 , 116079 (2022). [62] Tax Foundation. Carbon taxes in europe. https://taxfoundation.org/data/all/ eu/carbon-taxes-europe-2024/ (2024). Accessed 2024. [63] Loshchilov, I. & Hutter, F. Decoupled weight decay regularization. arXiv preprint arXiv:1711.05101 (2017). 59

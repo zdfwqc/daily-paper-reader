@@ -1,0 +1,281 @@
+Title: CACTO-BIC: Scalable Actor-Critic Learning via Biased Sampling and GPU-Accelerated Trajectory Optimization
+
+URL Source: https://arxiv.org/pdf/2602.19699v1
+
+Published Time: Tue, 24 Feb 2026 03:04:36 GMT
+
+Number of Pages: 8
+
+Markdown Content:
+# CACTO-BIC: Scalable Actor-Critic Learning via Biased Sampling and GPU-Accelerated Trajectory Optimization 
+
+Elisa Alboni 1, Pietro Noah Crestaz 1,2, Elias Fontanari 1, Andrea Del Prete 1
+
+Abstract — Trajectory Optimization (TO) and Re-inforcement Learning (RL) offer complementary strengths for solving optimal control problems. TO efficiently computes locally optimal solutions but can struggle with non-convexity, while RL is more robust to non-convexity at the cost of significantly higher computational demands. CACTO (Continuous Actor-Critic with Trajectory Optimization) was introduced to combine these advantages by learning a warm-start policy that guides the TO solver towards low-cost trajectories. However, scalability remains a key lim-itation, as increasing system complexity significantly raises the computational cost of TO. This work introduces CACTO-BIC to address these challenges. CACTO-BIC improves data efficiency by biasing initial-state sampling leveraging a property of the value function associated with locally optimal policies; moreover, it reduces computation time by exploiting GPU acceleration. Empirical evaluations show improved sample efficiency and faster com-putation compared to CACTO. Comparisons with PPO demonstrate that our approach can achieve similar solutions in less time. Finally, experiments on the AlienGO quadruped robot demonstrate that CACTO-BIC can scale to high-dimensional systems and is suitable for real-time applications. 
+
+I. INTRODUCTION 
+
+Trajectory Optimization (TO) is a widely used and flexible technique for solving robotic control problems. In TO, the high-level task is formulated as a constrained Optimal Control Problem (OCP), where the optimiza-tion variables are the system’s state and control trajec-tories. Constraints enforce compliance with system dy-namics and kinematics, actuator limits, and task-specific requirements. However, OCPs are typically highly non-convex, making gradient-based solvers prone to converge to poor local minima. While global methods based on the Hamilton–Jacobi–Bellman equation or Dynamic Pro-gramming [1] exist, their applicability is limited by the curse of dimensionality. Deep Reinforcement Learning (RL) emerged as an alternative framework, particularly for continuous state and action spaces. Algorithms such as DDPG [2], SAC [3], and PPO [4] have demonstrated strong performance in robotic control tasks. Due to their exploratory nature, RL methods are generally less sensitive to local minima              
+
+> 1are with the Dept. of Industrial En-gineering, University of Trento, Italy [elisa.alboni ,pietronoah.crestaz ,andrea.delprete ]@unitn.it
+> 2is with LAAS-CNRS, Universit´ e de Toulouse, CNRS, Toulouse, France. pncrestaz@laas.fr
+
+but they typically suffer from high sample complexity and long training times. To overcome the complementary limitations of TO and RL, hybrid approaches combining the two have recently gained significant research attention. A popular choice is to rely on TO imitation : policies are trained to mimic TO or model predictive control (MPC) solutions—through value-based or action-based imitation—to reduce online computational costs and to leverage sensor feedback [5], [6]. However, these methods neither improve TO solution’s quality, nor guarantee constraint satisfaction. Accounting for policy approximation errors in the TO problem can lead to better results [7], [8], but it inherits the same limitations. Other methods use learned policies or value functions to warm-start TO or to define terminal costs, thereby accelerating optimization and guiding the solver toward improved solutions [9], [10]. While effective for TO, these approaches provide no benefits for RL training. An increasingly prominent class of approaches embeds TO directly within the RL framework to improve training efficiency. These methods can be classified based on where TO is included: post-policy , pre-policy ,or as a residual policy. Post-policy methods evaluate TO after the policy. Some methods learn cost or constraint parameters [11], [12], leveraging MPC’s safety and stability guarantees, but require solving TO online and face convergence challenges. Others use TO as actor and learn its terminal cost [13], [14], accelerating training and improving constraint handling, yet potentially yielding suboptimal solutions or neglecting sensor feedback. Another variant initializes TO with an RL policy [15], [16], improving convergence speed and solution quality, yet still does not exploit sensor feedback. In pre-policy methods, TO generates reference trajectories or auxiliary information that are inputted to the RL policy, effectively speeding up training [17]. Residual methods instead learn a residual policy to improve TO-generated control inputs with learned corrections [18].While both 
+
+pre-policy and residual methods accelerate training, they require online TO and depend on its ability to find high-quality solutions; moreover, learned policies may violate constraints even when TO does not. In this work, we extend CACTO [15], [19], a post-policy 
+
+algorithm that exploits the interplay between TO and RL to accelerate training. The actor policy generates the initial guess for TO, leveraging the exploratory nature of 
+
+> arXiv:2602.19699v1 [cs.RO] 23 Feb 2026
+
+RL to avoid convergence to poor local minima, while TO guides the learning process of the RL agent. The primary limitation of CACTO is scalability. As the system complexity increases, TO becomes more ex-pensive, and actor–critic training requires more itera-tions to converge. We investigate strategies to reduce the computational burden in both TO and RL phases. Our main contributions are:  
+
+> •
+
+A method to identify state-space regions where an improvement of the actor policy is more likely.  
+
+> •
+
+A new version of CACTO’s algorithm, called CACTO-BIC, that exploits biased initial conditions (BIC) and GPU-based computation to achieve im-proved sample and time efficiency.  
+
+> •
+
+A JAX-based [20] open-source implementation of CACTO-BIC that exploits GPUs to solve TO prob-lems and train neural networks.  
+
+> •
+
+The first validation of CACTO on real hardware through experiments on a quadruped robot. 
+
+II. BACKGROUND 
+
+This section summarizes the latest formulation of CACTO (originally called CACTO-SL [19]), an algo-rithm for solving finite-horizon discrete-time optimal control problems such as: minimize  
+
+> X,U
+
+L(X, U ) ≜ 
+
+> T−1
+
+∑
+
+> k=0
+
+lk(xk, u k) + lT (xT )subject to xk+1 = fk(xk, u k), k = 0 , . . . , T − 1,
+
+|uk| ≤ umax , k = 0 , . . . , T − 1,x0 = xinit ,
+
+where X = {x0, . . . , x T } and U = {u0, . . . , u T −1} are the state and control sequences, with xk ∈ Rn and uk ∈ Rm.The cost L(·) combines running costs lk and a terminal cost lT , while the constraints enforce system dynamics, control bounds, and initial conditions. CACTO begins by solving N TO problems from randomly sampled initial states, using standard warm-starting (e.g., setting all states to xinit and controls to zero). As the OCP horizon is finite, the actor policy and the critic value are time dependent, so also the initial time is randomized in each TO instance and the time is appended to the state vector, ˜ x = [x, t ]. For each state of each optimized trajectory, CACTO computes the partial K-step cost-to-go ¯V , where K is a user-defined parameter representing the Temporal Difference lookahead horizon. The value function’s gradient ¯Vx is also computed, using the backward pass of Differen-tial Dynamic Programming (DDP) [21]. These values ( ¯V , ¯Vx), together with the associated state, control, and state after K steps, are stored in a replay buffer. Afterwards, the critic and actor neural networks are trained for M iterations using mini-batches sampled from the replay buffer. The critic approximates the value function and its gradient by matching ¯V and ¯Vx:minimize 
+
+> θV
+
+( ¯V − V (˜ x|θV )) 2 + ks( ¯Vx − SxV˜x(˜ x|θV )) 2
+
+(1a) where V (·), V˜x(·) and θV are the critic network, its gradient (with respect to ˜ x) and its parameters, ks is the weight of the gradient term, and Sx the selection matrix to exclude the partial derivative of V with respect to time. The actor is updated by minimizing the Q-value: minimize  
+
+> θμ
+
+l(˜ x, μ (˜ x|θμ)) + VθV (f (˜ x, μ (˜ x|θμ))) (2a) where μ(·) and θμ are the actor network and its param-eters. The improved actor policy then generates rollouts that warm-start the subsequent TO problems, closing the loop between TO and RL. In [15], CACTO was shown to outperform other RL algorithms such as DDPG [2] and PPO [4] as warm-start provider in terms of training time. 
+
+III. BIASED INITIAL STATES SAMPLING 
+
+Identifying regions of the state space with high poten-tial for policy improvement is a challenging problem. Exploration strategies in RL can be broadly categorized into undirected and directed approaches. Undirected exploration relies on stochastic action selection, such as ϵ-greedy policies, to explore the state space without explicitly accounting for uncertainty or novelty. Directed exploration, in contrast, uses signals derived from the agent’s learning process or auxiliary models to guide behavior toward less familiar or more uncertain regions. A common class of directed methods employs intrinsic rewards or exploration bonuses, including count-based or approximate count methods [22], uncertainty metrics [13], and curiosity-driven approaches such as prediction-error bonuses and random network distillation [23], [24]. Several works have also explored initial-state or restart-based exploration. These approaches often assign scores to states to prioritize which ones to explore further. Criteria for scoring include the system’s sensitivity [25], the familiarity [26], the uncertainty [27], or the TD error [28]. [29], proposes a structured replay buffer that groups states by task relevance and prioritizes sampling from unmastered sub-tasks. When available, prior or expert knowledge can also be leveraged to further guide exploration. We address the exploration problem by leveraging the insight that the value function ¯V (x) associated with lo-cally optimal solutions is generally piecewise continuous .
+
+A. Motivating Example: Discontinuous Value Function 
+
+Let us illustrate how the structure of the value function associated with a locally optimal policy can help us tackle the exploration problem. We focus on a toy problem with a 1D state, single integrator dynamics, and a cost with two local minima (see Fig. 1). Solving TO problems Fig. 1. Cost and Value obtained with TO using a naive initial guess. The critic smooths the Value’s discontinuities. 
+
+with a naive initial guess, highlights the presence of two basins of attraction, R1, and R2, each corresponding to a different local minimum (see Fig. 1). Within each basin, the real Value ¯V is continuous, but it is discontinuous at the shared boundary R1 ∩R 2 ≜ ∂R. In the neighborhood of ∂R, ¯V is lower (i.e. better) in R1 than in R2.After training the critic with the first batch of TO episodes, the network smooths out the discontinuity (see Fig. 1) in a region N around ∂R, where the critic either underestimates or overestimates the true value ¯V :
+
+V (¯ x|θV ) > ¯V (¯ x) ∀¯x ∈ N ∩ R 1 (3) 
+
+V (¯ x|θV ) < ¯V (¯ x) ∀¯x ∈ N ∩ R 2 (4) Therefore in N the critic’s gradient will point towards 
+
+R2. Due to this gradient, during the policy improvement phase the actor can improve in N ∩ R 2, learning to steer the state toward R1 rather than R2. This example reveals that the regions near value function’s discontinu-ities hold great potential for policy improvement. 
+
+B. General case: Discontinuous Value Function 
+
+The phenomenon shown in Section III-A frequently occurs in problems with multiple local minima. Each local minimum defines a basin of attraction where the value function is continuous, while discontinuities typ-ically appear at the boundaries between basins. These discontinuities highlight regions with great potential for policy improvement. In contrast, sampling initial states far from such discontinuities likely leads the actor to simply imitate TO. 
+
+C. Detecting Informative Regions via Critic Uncertainty 
+
+Approximating the value function close to the disconti-nuities is particularly challenging for the critic network, which cannot accurately represent abrupt changes due to its continuous activation functions. As a result, the critic tends to incur larger errors near these boundaries. We suggest leveraging the uncertainty estimation of the critic’s output to identify the value’s discontinuities. An additional neural network, referred to as std-critic , is introduced to predict the standard deviation of the critic. Following [30], this network is trained at the end of each actor–critic update phase by minimizing the negative log-likelihood of a normal distribution: minimize 
+
+> θstd
+
+ln( V std (˜ x|θstd )) + 12( ¯V − V (˜ x|θV )) 2
+
+V std (˜ x|θstd )2 (5a) where V std (·) and θstd are the std-critic network and its parameters. The first term of this loss pushes V std 
+
+to be small everywhere, while the second term pushes 
+
+V std to increase when the critic’s error is large. We train this network after the critic to avoid issues during the early stages of learning. The initial states with the high-est potential for policy improvement are then selected according to their predicted uncertainty V std (˜ x). 
+
+D. Algorithm Overview 
+
+An overview of the CACTO-BIC (Biased Initial Con-ditions) algorithm is illustrated in Fig. 2. During the first iteration, as in the original CACTO framework [15], initial states for the TO problems are sampled uniformly at random. From the second iteration onward, a set of 10 N candidate initial states is sampled and ranked based on V std . The top N samples are then selected for the next TO batch. Moreover, since trajectories starting from these initial states provide more information, we can reduce the number of problems solved from the second iteration (see Section V-A for details). 
+
+IV. GPU-based computation 
+
+To reduce the computation time of the algorithm by leveraging GPUs, the entire framework was migrated to JAX, a Python library for accelerator-oriented array computation and program transformation [20]. The mi-gration is beneficial in two ways: first, migrating to GPU the neural network training—accounting for about 90% of CACTO’s total computation time— yields significant speedups; second, performing TO directly on GPU elimi-nates any CPU-GPU data-transfer overhead, in addition to reducing TO’s computation time, which significantly grows with the complexity of the system. Migrating to GPU-based computation required some adaptations to meet the constraints of parallel process-ing: GPUs require fixed-size arrays and uniform com-putation across batches to enable efficient vectorization, leading to the following two key challenges. 
+
+A. Fixed number of iterations 
+
+Because GPUs execute batched computations in par-allel, all TO problems in a batch must undergo the same number of optimization iterations. Consequently, the maximum number of iterations, max iter , becomes a crucial hyperparameter. Setting this value too low may lead to premature termination, and hence to collect too few or insufficiently informative samples. In contrast, setting it too large can cause longer runtimes, since hard-to-converge problems dominate the batch’s overall computation time, slowing the entire pipeline. Moreover, the ideal number of iterations may vary as the policy Fig. 2. Overview of CACTO-BIC with biased initial-state sampling. 
+
+improves, as better initial guesses generally lead to faster convergence. To determine the maximum number of iterations, we suggest to solve a large set of problems using a naive warm-start and a high iteration limit ( max iter = 1000), generating a dataset of the iterations needed to converge. The maximum number of iterations can then be set to the 99th percentile of iteration counts for the first iteration of CACTO (where the naive warm-start is used) and to the 50th percentile for subsequent iterations (where CACTO’s actor provides the warm-start). 
+
+B. Regularization for matrix inversion 
+
+In iLQR [21], it is crucial to regularize the Hessian of the value function so that it is positive definite. The standard regularizationconsists in increasing the local control-cost Hessian with a diagonal term: ˜Quu =
+
+Q + μI m, where μ plays the role of a Levenberg-Marquardt parameter. During the backward pass, if the line search fails, μ is increased and the backward pass is retried, otherwise, μ is decreased. This approach is computationally efficient when solv-ing problems sequentially on a CPU. However, it becomes impractical when solving multiple problems in parallel on a GPU, where such iterative tuning can significantly slow down the batched computation. This issue is addressed through regularization based on the eigenvalue decomposition. The eigenvalues S and cor-responding eigenvectors W of the state-cost Hessian and the control-cost Hessian are computed, the eigenvalues are clipped from below by a user-defined constant ϵ > 0, 
+
+S′ = max( S, ϵ ), and the matrices are reconstructed: 
+
+Q+ = W diag( S′) W T , Qpsd = 12 (Q+ + QT
+
+> +
+
+) (6) This procedure handles poorly-conditioned Hessians, while avoiding additional iterative steps. As a result, it is better suited for large-batch processing on GPUs. 
+
+C. Implementation Details 
+
+The system dynamics and cost functions, implemented using the CasADi library [31] in CACTO-SL [19], were converted into JAX-compatible functions through the Jaxadi library [32]. For TO, we replaced the previous solver with an iLQR implementation from the Trajax library [33], which provides the additional benefit of computing the gradient of the value function (used for training the critic network) while solving the optimal control problem. The neural networks were implemented using the Flax library [34], allowing the entire pipeline to remain on the GPU. Our new implementation is open-source and available on the GitHub page of the project. 
+
+V. RESULTS 
+
+This section presents our evaluation of CACTO-BIC. First, we assess the impact of the biased initial-state sam-pling on data efficiency (Section V-A). Second, we ana-lyze the computational benefits of the GPU-based imple-mentation (Section V-B). Third, we compare CACTO-BIC with a state-of-the-art RL algorithm (Section V-C). Finally, we demonstrate the scalability of the approach through experiments on a high-dimensional quadruped robot, AlienGO [35] (Section V-D). 
+
+A. Biased Initial State Sampling 
+
+We evaluate the proposed exploration method on the same benchmark scenarios used in [15], [19]. The task consists in minimizing the distance between the robot’s end-effector and a target, while avoiding three elliptical obstacles (encoded with large penalties) and minimizing control effort. An additional reward is provided in the neighborhood of the target, as shown in Fig. 3. When the system starts from the Hard Region (highlighted in Fig. 3), it becomes challenging for a gradient-based solver to converge to the globally optimal solution. We consider three systems of increasing complexity: a point mass with state ( x, y, v x, v y , t ) ∈ R5 and control (ax, a y ) ∈ R2, a jerk-controlled version of the Dubins car model [36] with state ( x, y, θ, v, a, t ) ∈ R6 and control (ω, j ) ∈ R2, and a 3-degree-of-freedom (DoF) planar manipulator with a 7-dimensional state space and a 3-dimensional control input. We compare three algorithms: 1) CACTO as presented in [19]; 2) CACTO-BIC: CACTO with biased initial-state sampling and a reduced number of TO episodes (25%) from the 2nd iteration onward; Fig. 3. Cost function excluding the control effort term, with target set at [ −7, 0]. 
+
+3) CACTO with reduced TO episodes (as CACTO-BIC), but without biased initial-state sampling. All algorithms run for the same number of learning iterations (i.e. updates of the neural networks). Fig. 4 shows the median (across 5 runs) of the mean cost (across initial conditions) as a function of the number of TO episodes. The results show that CACTO-BIC achieves comparable performance using 30 − 40% of the number of TO episodes. However, this improvement comes with increased training time due to the additional std-critic network. With CACTO-BIC, the percentage of compu-tation time devoted to training the networks rises to 93 − 94%. This motivates moving to the GPU. 
+
+B. Computational Efficiency of GPU Computation 
+
+First, we assessed the speedup achievable when solving a batch of TO problems on a GPU for different batch sizes: [10 , 50 , 100 , 250 , 500 , 1000 , 5000 , 10000]. Fig. 5 shows that while the CPU computation time scales approximately linearly with batch size, the GPU benefits from parallelization: the time per problem de-creases as the batch size increases, eventually saturating, demonstrating the advantage of GPU-based TO. We now analyze the speedup achieved through the new GPU-accelerated implementation of CACTO-BIC. The number of TO problems solved in parallel was 300, 500, and 550 in the first iteration for the point mass, Dubins car and manipulator, respectively. From the second iteration onward, the batch size was reduced to 25%. The initial time is set to 0 in each TO instance. Table I reports the computation times to perform the same updates using three versions of CACTO-BIC: a single-thread CPU version, a multi-thread CPU version, and the novel GPU version. This test was performed on a workstation equipped with an AMD Ryzen 9 7950X CPU, 192 GB of RAM, and an NVIDIA RTX 6000 GPU with 48 GB VRAM, running on Ubuntu 22.04. The results show that using 10 cores to parallelize the TO problems has little effect on the total computation 0 0.2 0.4 0.6 0.8 1 1.2 1.4·10 3
+
+050 Mean cost CACTO CACTO w. BIC (0.25 TO) CACTO (0.25 TO) 0 2 4 6 8 ·10 3
+
+−10 010 Mean cost 0 0.2 0.4 0.6 0.8 1 1.2 1.4·10 4
+
+020 40 # TO episodes Mean cost           
+
+> Fig. 4. Median (across 5 runs) of the mean cost (across initial conditions) starting from the Hard Region for the point mass (top), the Dubins car ,and the manipulator (bottom). Shaded areas represent first and third quartiles. Data are sampled every
+> nupdates. When multiple measurements occur at the same TO episode count, the last one is plotted.
+
+time as most time is spent for training the neural net-works. The novel GPU version of CACTO-BIC achieves instead remarkable speedups ( ≈30x for the point mass and Dubins car, and ≈56x for the manipulator). Although GPUs have far more cores than CPUs, the resulting speedups are smaller than this hardware differ-ence suggests. Several factors contribute to this limita-tion. First, the TO problems are solved in batches on the GPU. Therefore a few hard instances may dominate the total computation time and cap the achievable speedup. Second, computations rely on reduced numerical pre-cision. Although this improves raw throughput, it can introduce numerical instability and increase the number of required iterations. By analyzing the time spent in the TO phase (creating the warm-start and solving TO problems) and in the RL phase (training networks), we observe that their relative contribution varies across systems, but remains comparatively balanced. Specifically, the TO and RL phases account for approximately 42% and 53% of the total time in the point mass, 61% and 37% in the Dubins 1 1.5 2 2.5 3 3.5 4
+
+0
+
+10 
+
+20 
+
+Log TO batch size 
+
+> Speedup:  tCPU
+> tGPU
+
+Point Mass 
+
+Dubin Car 
+
+Manipulator 
+
+Speedup = 1                           
+
+> Fig. 5. Speedups for TO on GPU (w.r.t. CPU) for the point mass, the Dubins car , and the manipulator. Dashed lines represent speedups with random initial states and maximum number of iterations, selected as described in Section IV-A, while solid lines represent speedups with initial conditions selected using CACTO-BIC and maximum number of iterations set as in the two versions. TABLE I
+> Comparison between CPU and GPU versions of CACTO-BIC. GPU runtimes do not include the warm-up phase required for the JIT compilation of the TO solver.
+> System (nb. of updates) CPU GPU
+> 1 core 10 cores
+> Point Mass (30k) 23 min 22 min 44 s
+> Dubins Car (200k) 3 h 44 min 3 h 34 min 7 min
+> Manipulator (330k) 5 h 35 min 5 h 15 min 6 min
+
+car, and 22% and 75% in the manipulator. It follows that the speedup comes mainly from training the networks on the GPU, which is 51-85 × faster than on the CPU in our tests.In contrast, the speedup in the TO phase is modest (3-5 ×) for the Dubins car and point mass, but it becomes significant (19 ×) for the most complex system. 
+
+C. Comparison with PPO 
+
+To evaluate CACTO-BIC w.r.t. state-of-the-art RL, we selected Proximal Policy Optimization (PPO) [4] as a benchmark. For a fair comparison, we employed the fully GPU-based implementation of PPO provided by BRAX [37]. Our analysis focuses on two aspects: first, learning a warm-start policy for a problem that exhibits local minima; second, learning a control policy for a classic benchmark problem, a customized version of the Reacher 
+
+environment. Fig. 6 reports the mean cost obtained using CACTO-BIC’s and PPO’s policies as warm-start for TO in the Point Mass and Manipulator environments. CACTO-BIC converged in one-third of the time in the first environment and in just 7% in the second one. In Fig. 7 we compare CACTO-BIC and PPO in the Reacher Environment. Also in this case, CACTO-BIC achieves a similar cost in ≈10% of the computation time. 0 20 40 60 80 100 
+
+−40 
+
+−20 0Mean cost  CACTO-BIC PPO (Brax) 0 0.5 1 1.5 2 2.5
+
+·10 4
+
+010 20 30 Computation time [s] Mean cost  CACTO-BIC PPO (Brax)  
+
+> Fig. 6. Warm-start provider comparison: Median (across 5 runs) of the mean cost (across initial conditions) starting from the Hard Region for the point mass (top), and the manipulator (bottom). Shaded areas represent first and third quartiles.
+
+0 100 200 300 400 
+
+4
+
+5
+
+6
+
+7
+
+Computation time [s] 
+
+> Mean cost
+
+CACTO-BIC 
+
+PPO (Brax)    
+
+> Fig. 7. Policy comparison: Median (across 5 runs) of the mean cost (across initial conditions) for a customized Reacher environment. Shaded areas represent first and third quartiles.
+
+D. Hardware experiments 
+
+To evaluate CACTO’s scalability and its potential for real-time applications we tested it on AlienGO, a quadrupedal robot featuring 12 degrees of freedom [35]. We address the problem of navigation in confined envi-ronments, with even terrain, and the presence of a mov-ing obstacle. The robot must reach a moving target (see Fig. 8) while avoiding collisions with both the moving obstacle (a sphere of radius 0.5 m) and the walls of the room (a rectangle with sides ranging from 2 m to 10 m). We consider a fixed trotting gait with alternating diagonal leg pairs making contact with the ground. Since legged robots have non-differentiable dynam-ics [38], which are not compatible with gradient-based TO, we adopt a hierarchical approach. We combine a high-level policy relying on a simplified differentiable model, with a low-level policy using the complete robot dynamics. The high-level policy is trained with CACTO-BIC, while the low-level policy is trained with the RL algorithm CAT [39], which can handle non-differentiable dynamics. In practice, CACTO-BIC’s actor is used as a standalone policy to provide reference trajectories to the low-level policy. 1) High-level policy: To train this policy, we employed a nonlinear version of the Linear Inverted Pendulum Model [40]. The state x ∈ R15 comprises the 2D offsets of the front and rear support feet relative to the associated shoulders ∆ pf and ∆ pr , the Center of Mass (CoM) position c ∈ R2 and velocity ˙ c ∈ R2 on the horizontal plane, the step index sidx ∈ N, which encodes both the current contact phase and time, the obstacle position 
+
+cobs ∈ R2 and the location of the four walls, expressed as offsets with respect to the global reference frame ∆walls ∈ R4.
+
+x ≜ (∆ pf , ∆pr , c, ˙c, s idx , c obs , ∆walls ) ∈ R15 . (7) The target position is assumed to be the origin. Assuming a trotting gait and constant Center of Pres-sure (CoP) during each contact phase, the control vector 
+
+u ∈ R6 includes the offsets of front and rear support feet w.r.t. the associated shoulder in the next contact phase, ∆ p+ 
+
+> f
+
+, ∆p+ 
+
+> r
+
+∈ R2, a scalar α ∈ [0 , 1] that expresses the CoP as a convex combination of the support foot positions, and the contact phase duration δt :
+
+u ≜ (∆ p+ 
+
+> f
+
+, ∆p+ 
+
+> r
+
+, α, δt ) ∈ R6 (8) The cost function penalizes the CoM-target distance, the CoM velocities, and a barrier-like cost penalizes CoM velocities beyond prescribed bounds. A smooth logarith-mic reward is used to encourage reaching a narrow region around the target. Control regularization discourages deviations from nominal values: zero foot displacements, centered CoP ( α = 0.5), and nominal contact-phase duration ( δt = 0 .375 s). Obstacle avoidance is enforced through smooth logarithmic penalties. The algorithm took ≈109 s to converge. In this scenario, leveraging the GPU for solving the TO problems yields a substantial speedup, roughly 345 ×.
+
+2) Low-level policy: The low-level policy is trained using a constrained RL algorithm [39], which builds upon PPO [4], employing Isaac Gym for GPU simulation. The goal of this policy is to track the references generated by the high-level policy. During training, the high-level policy is rolled out in open loop, and updated only at the beginning of each new contact phase to enhance stability and robustness [41]. The low-level policy receives as observations: the base state (position and orientation, linear and angular veloc-ity, and projected gravity), the target base position and linear velocity, yaw orientation error, foot placement er-rors, a binary flag indicating the active diagonal contact pair, the remaining time in the current gait phase, joint positions, velocities and the previous action. The reward function encourages accurate tracking of base position and orientation, linear and angular velocity, and the desired foot contact locations. Regularization terms are included to improve smoothness. All safety and style-related constraints are divided into soft constraints (which define a termination probability as a function    
+
+> Fig. 8. Experimental setup: The lines define a 4 m ×4 m operational area.
+
+of the constraint violation) and hard constraints (which cause immediate termination of the episode). 
+
+3) Aliengo Simulation and Hardware results: The ex-periments are conducted in an indoor area of 4 m ×4m (see Fig. 8). The obstacle and the target are ei-ther stationary or manually actuated, depending on the experiment. State feedback is obtained from a motion capture system, which measures position and orientation of the robot, the obstacle and the target. Velocities are estimated by finite differencing and low-pass filtering. Results are shown in the accompanying video. 
+
+VI. CONCLUSIONS 
+
+This paper presented CACTO-BIC, an extension of CACTO designed to improve scalability and compu-tational efficiency in combined TO-RL framework by biasing the initial-state sampling using value function properties and leveraging GPU acceleration. Experimental results demonstrate that the proposed sampling strategy effectively identifies state-space re-gions where actor policy improvement is more likely, leading to a 2 .5 − 3.5× increase in sample efficiency. In addition, GPU-based computation achieves 30-250 ×
+
+speedup compared to CACTO, with increasing benefits as system complexity grows. When compared to PPO, CACTO-BIC achieves similar final costs requiring only 7 − 30% of the training time. Finally, experiments on the AlienGO quadruped robot show that CACTO-BIC scales to high-dimensional robotic systems and can be effectively used for real robot control. Future works will focus on extending the proposed approach to handle constraints using augmented La-grangian formulations [42]. In addition, we will explore the integration of sampling-based optimization tech-niques, such as MPPI [43], to tackle non-differentiable dynamics. Finally, applying domain randomization may improve robustness to uncertain dynamics enhancing generalization to real-world systems [44]. 
+
+References                  
+
+> [1] R. Bellman, “The theory of dynamic programming,” Bulletin of the American Mathematical Society , vol. 60, no. 6, 1954. [2] T. P. Lillicrap, J. J. Hunt, A. Pritzel, N. Heess, T. Erez, Y. Tassa, D. Silver, and D. Wierstra, “Continuous con-trol with deep reinforcement learning,” arXiv preprint arXiv:1509.02971 , 2015.
+
+[3] T. Haarnoja, A. Zhou, P. Abbeel, and S. Levine, “Soft actor-critic: Off-policy maximum entropy deep reinforcement learn-ing with a stochastic actor,” in International conference on machine learning . Pmlr, 2018. [4] J. Schulman, F. Wolski, P. Dhariwal, A. Radford, and O. Klimov, “Proximal policy optimization algorithms,” arXiv preprint arXiv:1707.06347 , 2017. [5] J. Carius, F. Farshidian, and M. Hutter, “Mpc-net: A first principles guided policy search,” IEEE Robotics and Automa-tion Letters , vol. 5, no. 2, 2020. [6] A. Ghezzi, J. Hoffman, J. Frey, J. Boedecker, and M. Diehl, “Imitation learning from nonlinear mpc via the exact q-loss and its gauss-newton approximation,” in 2023 62nd IEEE Conference on Decision and Control (CDC) . IEEE, 2023. [7] S. Levine and V. Koltun, “Guided policy search,” in Interna-tional conference on machine learning . PMLR, 2013. [8] Q. L. Lidec, W. Jallet, I. Laptev, C. Schmid, and J. Carpen-tier, “Enforcing the consensus between trajectory optimization and policy learning for precise robot control,” arXiv preprint arXiv:2209.09006 , 2022. [9] R. Reiter, A. Ghezzi, K. Baumg ˜A¯Irtner, J. Hoffmann, R. D. McAllister, and M. Diehl, “Ac4mpc: Actor-critic reinforce-ment learning for nonlinear model predictive control,” arXiv preprint arXiv:2406.03995 , 2024. [10] K. Ceder, Z. Zhang, A. Burman, I. Kuangaliyev, K. Mattsson, G. Nyman, A. Peters´ en, L. Wisell, and K. ˚ Akesson, “Bird’s-eye-view trajectory planning of multiple robots using continu-ous deep reinforcement learning and model predictive control,” in 2024 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS) . IEEE, 2024. [11] A. Romero, Y. Song, and D. Scaramuzza, “Actor-critic model predictive control,” in 2024 IEEE International Conference on Robotics and Automation (ICRA) . IEEE, 2024. [12] B. Zarrouki, M. Spanakakis, and J. Betz, “A safe reinforce-ment learning driven weights-varying model predictive control for autonomous vehicle motion control,” in 2024 IEEE Intel-ligent Vehicles Symposium (IV) . IEEE, 2024. [13] K. Lowrey, A. Rajeswaran, S. Kakade, E. Todorov, and I. Mordatch, “Plan online, learn offline: Efficient learning and exploration via model-based control,” arXiv preprint arXiv:1811.01848 , 2018. [14] A. Jordana, S. Kleff, A. Haffemayer, J. Ortiz-Haro, J. Car-pentier, N. Mansard, and L. Righetti, “Infinite-horizon value function approximation for model predictive control,” IEEE Robotics and Automation Letters , 2025. [15] G. Grandesso, E. Alboni, G. P. R. Papini, P. M. Wensing, and A. Del Prete, “Cacto: Continuous actor-critic with trajectory optimization—towards global optimality,” IEEE Robotics and Automation Letters , vol. 8, no. 6, 2023. [16] A. S. Morgan, D. Nandha, G. Chalvatzaki, C. D’Eramo, A. M. Dollar, and J. Peters, “Model predictive actor-critic: Accelerating robot skill acquisition with deep reinforcement learning,” in 2021 IEEE International Conference on Robotics and Automation (ICRA) . IEEE, 2021. [17] F. Jenelten, J. He, F. Farshidian, and M. Hutter, “Dtc: Deep tracking control,” Science Robotics , vol. 9, no. 86, 2024. [18] T. Silver, K. Allen, J. Tenenbaum, and L. Kaelbling, “Residual policy learning,” arXiv preprint arXiv:1812.06298 , 2018. [19] E. Alboni, G. Grandesso, G. P. R. Papini, J. Carpentier, and A. Del Prete, “Cacto-sl: Using sobolev learning to im-prove continuous actor-critic with trajectory optimization,” in 6th Annual Learning for Dynamics & Control Conference .PMLR, 2024. [20] J. Bradbury, R. Frostig, P. Hawkins, M. J. Johnson, C. Leary, D. Maclaurin, G. Necula, A. Paszke, J. VanderPlas, S. Wanderman-Milne, and Q. Zhang, “JAX: composable trans-formations of Python+NumPy programs,” 2018. [21] D. H. Jacobson and D. Q. Mayne, “Differential dynamic programming,” (No Title) , 1970. [22] M. Bellemare, S. Srinivasan, G. Ostrovski, T. Schaul, D. Sax-ton, and R. Munos, “Unifying count-based exploration and in-trinsic motivation,” Advances in neural information processing systems , vol. 29, 2016. [23] D. Pathak, P. Agrawal, A. A. Efros, and T. Darrell, “Curiosity-driven exploration by self-supervised prediction,” in Interna-tional conference on machine learning . PMLR, 2017. [24] Y. Burda, H. Edwards, A. Storkey, and O. Klimov, “Ex-ploration by random network distillation,” arXiv preprint arXiv:1810.12894 , 2018. [25] P. Parsa, R. Z. Moayedi, M. Bornosi, and M. M. Be-jani, “Where2start: Leveraging initial states for robust and sample-efficient reinforcement learning,” arXiv preprint arXiv:2311.15089 , 2023. [26] M. Schenke and O. Wallscheid, “Improved exploring starts by kernel density estimation-based state-space coverage acceleration in reinforcement learning,” arXiv preprint arXiv:2105.08990 , 2021. [27] D. Yin, S. Thiagarajan, N. Lazic, N. Rajaraman, B. Hao, and C. Szepesvari, “Sample efficient deep reinforcement learning via local planning,” arXiv preprint arXiv:2301.12579 , 2023. [28] A. Tavakoli, V. Levdik, R. Islam, C. M. Smith, and P. Ko-rmushev, “Exploring restart distributions,” arXiv preprint arXiv:1811.11298 , 2018. [29] N. Messikommer, Y. Song, and D. Scaramuzza, “Contrastive initial state buffer for reinforcement learning,” in 2024 IEEE International Conference on Robotics and Automation (ICRA) . IEEE, 2024. [30] L. Sluijterman, E. Cator, and T. Heskes, “Optimal training of mean variance estimation neural networks,” Neurocomputing ,vol. 597, 2024. [31] J. A. E. Andersson, J. Gillis, G. Horn, J. B. Rawlings, and M. Diehl, “CasADi – A software framework for nonlinear op-timization and optimal control,” Mathematical Programming Computation , vol. 11, no. 1, 2019. [32] I. Alentev, L. Kozlov, and S. Nedelchev, “Jaxadi: Bridging casadi and jax for efficient numerical computing,” 2024. [33] R. Frostig, V. Sindhwani, S. Singh, and S. Tu, “trajax: differ-entiable optimal control on accelerators,” 2021. [34] J. Heek, A. Levskaya, A. Oliver, M. Ritter, B. Rondepierre, A. Steiner, and M. van Zee, “Flax: A neural network library and ecosystem for JAX,” 2024. [35] Unitree Robotics, “Aliengo,” https://www.unitree.com/cn/ products/aliengo. [36] L. E. Dubins, “On curves of minimal length with a constraint on average curvature, and with prescribed initial and terminal positions and tangents,” American Journal of mathematics ,vol. 79, no. 3, 1957. [37] C. D. Freeman, E. Frey, A. Raichuk, S. Girgin, I. Mordatch, and O. Bachem, “Brax - a differentiable physics engine for large scale rigid body simulation,” 2021. [38] P. M. Wensing, M. Posa, Y. Hu, A. Escande, N. Mansard, and A. Del Prete, “Optimization-based control for dynamic legged robots,” IEEE Transactions on Robotics , vol. 40, 2023. [39] E. Chane-Sane, P.-A. Leziart, T. Flayols, O. Stasse, P. Sou` eres, and N. Mansard, “Cat: Constraints as terminations for legged locomotion reinforcement learning,” in 2024 IEEE/RSJ In-ternational Conference on Intelligent Robots and Systems (IROS) . IEEE, 2024. [40] S. Kajita, F. Kanehiro, K. Kaneko, K. Fujiwara, K. Harada, K. Yokoi, and H. Hirukawa, “Biped walking pattern generation by using preview control of zero-moment point,” in 2003 IEEE international conference on robotics and automation (Cat. No. 03CH37422) , vol. 2. IEEE, 2003. [41] N. A. Villa and P.-B. Wieber, “Model predictive control of biped walking with bounded uncertainties,” in 2017 IEEE-RAS 17th International Conference on Humanoid Robotics (Humanoids) . IEEE, 2017. [42] J. Li, D. Fridovich-Keil, S. Sojoudi, and C. J. Tomlin, “Aug-mented lagrangian method for instantaneously constrained reinforcement learning problems,” in 2021 60th IEEE Con-ference on Decision and Control (CDC) , 2021. [43] G. Williams, A. Aldrich, and E. Theodorou, “Model predictive path integral control using covariance variable importance sampling,” arXiv preprint arXiv:1509.01149 , 2015. [44] X. B. Peng, M. Andrychowicz, W. Zaremba, and P. Abbeel, “Sim-to-real transfer of robotic control with dynamics ran-domization,” in 2018 IEEE international conference on robotics and automation (ICRA) . IEEE, 2018, pp. 3803–3810.

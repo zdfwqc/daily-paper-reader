@@ -1,0 +1,502 @@
+Title: Learning to Score: Tuning Cluster Schedulers through Reinforcement Learning
+
+URL Source: https://arxiv.org/pdf/2603.10545v1
+
+Published Time: Thu, 12 Mar 2026 00:42:08 GMT
+
+Number of Pages: 8
+
+Markdown Content:
+# Learning to Score: Tuning Cluster Schedulers through Reinforcement Learning 
+
+Martin Asenov 
+
+Edinburgh Research Centre Central Software Institute, Huawei 
+
+0000-0003-4610-3112 
+
+Qiwen Deng 
+
+Edinburgh Research Centre Central Software Institute, Huawei 
+
+0009-0005-3663-0914 
+
+Gingfung Yeung 
+
+Edinburgh Research Centre Central Software Institute, Huawei 
+
+0000-0002-3845-0686 
+
+Adam Barker 
+
+Edinburgh Research Centre Central Software Institute, Huawei 
+
+School of Computer Science University of St Andrews 0000-0002-0463-7207 
+
+Abstract —Efficiently allocating incoming jobs to nodes in large-scale clusters can lead to substantial improvements in both cluster utilization and job performance. In order to allocate incoming jobs, cluster schedulers usually rely on a set of scoring functions to rank feasible nodes. Results from individual scoring functions are usually weighted equally, which could lead to sub-optimal deployments as the one-size-fits-all solution does not take into account the characteristics of each workload. Tuning the weights of scoring functions, however, requires expert knowledge and is computationally expensive. This paper proposes a reinforcement learning approach for learning the weights in scheduler scoring algorithms with the overall objective of improving the end-to-end performance of jobs for a given cluster. Our approach is based on percentage improve-ment reward, frame-stacking, and limiting domain information. We propose a percentage improvement reward to address the objective of multi-step parameter tuning. The inclusion of frame-stacking allows for carrying information across an optimization experiment. Limiting domain information prevents overfitting and improves performance in unseen clusters and workloads. The policy is trained on different combinations of workloads and cluster setups. We demonstrate the proposed approach improves performance on average by 33% compared to fixed weights and 12% compared to the best-performing baseline in a lab-based serverless scenario. 
+
+Index Terms —scheduling, scoring functions, reinforcement learning, tuning 
+
+I. I NTRODUCTION 
+
+Cluster orchestration systems like Kubernetes [1] are de-signed to run multiple workload types, including user-facing services, batch-processing tasks, and machine learning ap-plications. They must carefully balance a set of competing requirements, such as ensuring high utilization at the cluster level whilst maintaining the quality of service for the under-lying applications [2], [3]. One of the key tasks for the scheduler, in order to meet these requirements, is to schedule jobs (or pods in the case of Kubernetes) to nodes in the cluster. Modern cluster orchestra-tion systems such as Kubernetes [1], Azure VM Allocator [4] 
+
+Correspondence email: sirlab@huawei.com 
+
+and Borg [5], [6] employ a two-step approach for assigning pods to nodes [7], which is illustrated in Figure 1. The first step involves selecting feasible nodes for every pod through a set of filtering functions, which are hard constraints such as node resource capacity checks (CPU, memory, GPU) and network topology requirements, e.g., if the pod requires being in a specific region [4], [8]. The second step involves calculating scores for all feasible nodes using scoring func-tions [4], [9], [10]. A final score is computed by summing up the individual scores and the pod is allocated to the node with the highest normalized score. Despite having to schedule different types of workloads with different optimization targets, scheduler scoring functions are typically weighted equally. Specific clusters can be config-ured to assign different weights to prioritize certain scoring functions over others, e.g., prioritizing tighter bin packing on the cluster. This process is, however, manual and requires knowledge of the specifics of the typical workloads, cluster configuration, and expert know-how [11]. Black box optimization approaches such as random search, or Bayesian Optimization [11], [12] can be adopted. However, tuning the weights of scoring functions is particularly difficult due to the computational cost of evaluating a new configura-tion. Additional challenges include the high dimensionality of workload-cluster specifications, the large number of scoring functions to be tuned and generalization to unseen configura-tions. In this paper, we propose a reinforcement learning approach to automate tuning the weights of the scoring functions to dif-ferent workloads and cluster configurations. With the proposed approach, we are able to learn stronger bias for the weights sampling strategy compared to standard heuristics-based ap-proaches. This allows us to use existing infrastructure for job scheduling while dynamically tuning the system depending on the type of workload and cluster configuration. Our reinforcement learning approach is based on three main ideas. First, we formulate multi-step parameter tuning as a                                 
+
+> arXiv:2603.10545v1 [cs.LG] 11 Mar 2026 overall score for ( ;): node 4 pod 1
+> node 0 node 1 node 2
+> node 3 node 4 node 5
+> node 6 node 7 node 8
+> node 9 node 10 node 11
+> 9
+> 7
+> 3node 5
+> node 4 Scheduler
+> pod 1
+> pod 3 pod 2 pod 1
+> ...
+> node 0 node 1 node 2
+> node 3 node 4 node 5
+> node 6 node 7 node 8
+> node 9 node 10 node 11
+> 1
+> filtering
+> PodFitsResources
+> NoDiskConflict
+> CheckNodeCondition incoming
+> pods
+> scoring
+> allocation
+> cluster cluster
+> w1MostAllocated ( ;)
+> w2ImageLocality ( ;)
+> w3Capability ( ;)
+> wkResourceBalance ( ;)
+> node 1 node 4 pod 1
+> node 1 node 4 pod 1
+> node 1 node 4 pod 1
+> node 1 node 4 pod 1
+
+## ₊
+
+> 9
+> 3
+
+Fig. 1: Filtering and scoring steps in a job scheduler. Assigning pods to nodes in a cluster job scheduler is typically a two-step process of filtering feasible nodes, followed by scoring functions. In this work, we focus on optimizing the relative weighting ( w1, w2, w3, ... , wk) of the different scoring functions in different cluster and workload scenarios, with the goal of optimizing a given metric. reinforcement learning problem through the use of methods like frame stacking and techniques for balancing exploration-exploitation like entropy regularization. Second, we propose using a percentage improvement reward as the optimization target to encourage exploration. Third, we implement a simple technique to prevent overfitting and improve generalization by limiting domain information. We implement these features in a framework leveraging state-of-the-art reinforcement learning models with the option to easily add new multi-step optimiza-tion problems. The presented approach in this paper is general, but our workloads focus primarily on serverless applications in the context of a Function as a Service (FaaS) environment, and our cluster configurations consist of heterogeneous devices ranging from powerful cloud CPU and cloud GPU machines to less powerful edge devices, which can be highly distributed. This paper makes the following key contributions:  
+
+> •
+
+Formulation of multi-step parameter tuning of weights of scoring functions as a reinforcement learning problem.  
+
+> •
+
+Reinforcement learning approach based on percentage improvement reward, frame stacking and limiting domain information.  
+
+> •
+
+Extensive evaluation on tuning weights of scoring func-tions in a FaaS system, improving performance by 33% over constant weights, and 12% over the best-performing optimization baseline. The remainder of this paper is structured as follows: Sec-tion II discusses related work. Section III describes our tuning approach. Section IV presents the system implementation and evaluation of the effectiveness of the proposed approach in a heterogeneous FaaS system. Section V contains conclusions and future work. II. R ELATED WORK 
+
+A. Scheduling and scoring functions 
+
+Many cluster orchestration systems employ a two-step ap-proach of filtering and scoring for scheduling as referenced in Figure 1. Scoring functions implement different objectives for pod-to-node allocation. For example, most-allocated and least-allocated scoring functions in Kubernetes aim for tighter packing and spreading of workloads, respectively. Alterna-tively, schedulers can define mathematical functions such as the piece-wise linear function that maps utilization values onto a set of defined scores to allow for more fine-grained control. In Kubernetes, this is referred to as requested-to-capacity-ratio [13]. To implement specific preferences for allocation between nodes and pods, affinity and taints scoring functions are often implemented, that attract or repel a pod to a specific node [14]. To effectively manage nodes spread around the cluster, based on region, zones, etc., topology scoring functions are implemented [4], [5], [15]. With the introduction of new scoring functions coupled with the increasing number of different workloads, weighting different scoring functions becomes an increasingly important problem. 
+
+B. Optimizing weights of scoring functions 
+
+Different scheduling objectives are desirable, depending on the workload and cluster configurations. For example, in deep learning scenarios, we might want to pack pods in co-located nodes within the same cluster in order to achieve reduced network latency and higher throughput. Similarly, for MapReduce tasks, these tasks read data from multiple machines and have high network requirements [16]. On the contrary, for critical online user-facing services, we might want to spread out pods to increase redundancy due to single cluster failure. Regardless of the high-level objective pursued, the choice of scoring functions’ weights is often non-trivial. For example, within Kubernetes, efficient packing can be achieved with both MostAllocated and RequestedToCapac-ityRatio (RTCRatio) strategies. Moreover, scheduling them with the goal of packing can cause interference for the network and disk resources [17]. Therefore, it is useful to carefully balance the trade-off between pack and spread. Automatically tuning the weights of the individual scor-ing functions is desirable to optimize for a specific target, such as application performance or bin packing of pods to nodes. This can improve the targeted metric, e.g. reducing function execution time or network traffic [18]. Moreover, the optimized weights show not just a binary selection of important/insignificant scoring functions but significant rela-tive differences, e.g. in a homogeneous cloud scenario image locality is more important than data locality [18]. 
+
+C. Blackbox optimization methods 
+
+Many blackbox optimization algorithms for parameter tun-ing have been proposed, from simple methods like grid and random search to more sophisticated methods that impose cluster config 3   
+
+> cluster config 2
+> cluster config 1
+> node 1 node 2
+> node 3 node 4
+
+9workload 3   
+
+> workload 2
+> pod
+> func 1 pod
+> func 3
+> pod
+> func 2
+> pod
+> func 4 pod
+> func 6
+> pod
+> func 5
+> workload 1 workload 1
+
+10 
+
+> Scheduler
+> +
+> scoring functions
+
+8Policy Parallel   
+
+> Environments Gym wrapper FaaS
+> Benchmark
+> past
+> weights
+> samples
+> percentage
+> improvement reward
+> (domain)
+> metrics
+> (domain)
+> metrics
+> (domain)
+> metrics
+
+5
+
+4 73 2 
+
+> weights of scoring functions weights
+> w1,w2,... ,wk
+> weights
+> w1,w2,... ,wk
+
+36
+
+1
+
+> w1,w2,... ,wk
+
+Fig. 2: Reinforcement learning for tuning weights of scoring functions. We pose the optimization of weights of scoring functions as a parameter tuning problem and propose a reinforcement learning based solution. In this work, we propose using percentage improvement reward 4 , encoding past samples information through the use of frame stacking or recurrent policies 5 , and limiting domain information to prevent overfitting 6 . We develop an extensive gym wrapper 2 , including the option for parallel environments 7 , and demonstrate the capability of our approach in an example FaaS benchmark scenario 1 . a different bias on the type of optimization problem that is subsequently exploited. Some of the more traditional methods include genetic algorithms (GA) [19], where based on an initial population crossover and mutation and repeated until a satisfactory result. While GA is easy to implement, it tends to scale poorly for high-dimensional problems and has no convergence guarantees. A surrogate model over the target metric could be introduced and optimized - commonly in the form of Gaussian Processes and Bayesian Optimization respectively [20]. Bayesian optimizations have been applied to many aspects of systems optimization, from tuning database systems [12] to jobs collocation [11]. Alternatively, optimiza-tion can be structured over the domain of parameters of interest, split below and above a certain threshold - commonly in the form of Tree-of-parzen-estimators [21]. While those approaches impose useful biases via different kernel functions or sampling strategies via generative models of the domain variables, they tend not to take full advantage of the domain information of the targeted optimization problem. Tuning weights of scoring functions is particularly challenging due to the following:  
+
+> •
+
+Computational cost of evaluating a new configuration  
+
+> •
+
+High dimensionality of workload-cluster specification  
+
+> •
+
+High dimensionality of weights of the scoring functions As such traditional methods are ill-suited as it would take an unreasonable amount of time to converge on a desirable so-lution. Reinforcement learning has been presented as a viable alternative for parameter tuning in the context of parameter tuning of cluster management frameworks [22], while also showing that it can outperform conventional approaches [23], [24]. In this work, we expand on those approaches and address specific challenges in the context of tuning weights of scoring functions. 
+
+D. Reinforcement learning for scheduling 
+
+Reinforcement learning is defined as an optimization prob-lem, where an agent interacts with an environment through a set of actions that change its state, with the goal of optimizing a reward [25]. Reinforcement learning has been applied to many diverse domains, from robot control [26] to tuning large language models based on human preferences [27]. Similarly, there has been an increasing interest from the cloud community as a viable alternative to traditional scheduling al-gorithms [28], [29]. While substituting decision-making based on heuristics with an end-to-end reinforcement learning agent could lead to an impressive gain in performance, another aspect to consider is the safety aspect of a reinforcement learning agent deployed in production [30]. Alternatively, reinforcement learning can be used in combination with ex-isting infrastructure by instead tuning parameters of already deployed algorithms, such as in database systems [31] [32]. In this work, we take the latter approach and focus on tuning weights of scoring functions within job schedulers. III. A PPROACH 
+
+In this work, we focus on tuning scoring functions’ weights in job schedulers in FaaS. We pose multi-step parameter tuning as a reinforcement learning problem, where we aim to achieve better sampling efficiency by learning a stronger bias from past experience. We develop a software framework for parameter tuning based on state-of-the-art reinforcement learning approaches and perform experiments with an example FaaS system. As seen in Figure 2, the tuning approach comprises three main components: the FaaS Benchmark 1 , Gym wrapper 2 , and the Reinforcement learning (RL) agent 3 . The FaaS benchmark encapsulates the underlying FaaS platform for Function executions and emits metrics on how they perform. The Gym wrapper allows the FaaS benchmark to be repre-sented as an interactive environment that takes action and emits observation, similar to OpenNetLab [33]. The agent is respon-sible for interacting with the FaaS environment and assigning the appropriate weights to available scoring functions. 
+
+A. Deep Reinforcement Learning Agent 
+
+Reinforcement Learning is a machine learning approach where an agent learns how to make decisions that will lead to optimal outcomes over time. A reinforcement learning problem is defined by a: state space - a representation of the environment at any given time; action space - a set of all possible actions the agent can take; and a reward function - a set of all possible rewards the agent can receive from the environment. Reinforcement learning typically uses one of two approaches: value-based or policy-based. In the value-based approach, the agent learns to estimate the value of each state-action pair and selects actions that maximize this value. In the policy-based approach, the agent learns a policy directly without explicitly estimating the value of state-action pairs. There is also a hybrid approach called actor-critic, which combines elements of both value-based and policy-based methods. Deep reinforcement learning refers to approaches using neural networks to represent the policy or value functions respectively. In this work, we leverage state-of-the-art approaches, like soft actor-critic (SAC), which evolved from max entropy rein-forcement learning and the actor-critic, key idea behind is to not just maximize cumulative rewards but also make the policy more random [34] and RecurrentPPO where the PPO [35] incorporating the recurrent neuron networks (RNN, LSTM, GRU) will enable the agent to handle partially observable environments better [36]. We present the training parameters in Section IV-B. We formulate multi-step parameter tuning as a reinforcement learning problem. We then use this formulation to address the problem of tuning weights of scoring functions within job schedulers, with the following definition:  
+
+> •
+
+State: 
+
+– Static: cluster and workload information, such as number and types of machines, workload type, etc. 
+
+– Dynamic: encodings of action-reward pairs of ex-plored actions so far.  
+
+> •
+
+Action: weights of the scoring functions.  
+
+> •
+
+Reward: improvement over a defined metric (percentage improvement reward). 
+
+1) Percentage Improvement Reward Function: To encap-sulate multi-step parameter tuning as a reinforcement learn-ing objective, we propose using a percentage improvement reward 4 function defined as follows: 
+
+ri =
+
+( max (r1,,r 2,..,r n)−r0 
+
+> r0
+
+if i = n,
+
+0, otherwise. (1) where n is the number of allowed samples per experiment. This is motivated by an exploration objective, as we want the maximum percentage of improvement over a default action (e.g. same weights for all scoring functions) in one of the chosen actions across the experiment. The proposed reward has the benefits of normalization across experiments, as it is agnostic to the initial metric value from the initial action but instead optimizes the rate of improvement. 
+
+2) Multi-step Parameter Tuning: The state space of the reinforcement learning agent should encapsulate information about the environment. In the context of scoring functions’ weights tuning, this includes static variables such as cluster setup and workload characteristics, but also dynamic informa-tion of the performed experiments so far - pairs of explored weights and the corresponding reward. To encode the action-reward pairs information in addition to the static characteristics we consider two approaches 5 . The first is to present the information explicitly using frame-stacking [37] where the number of stacks is equal to the num-ber of maximum samples to be acquired. A second alternative is to instead use a recurrent policy such that information is encoded within the hidden state of the network. Balancing exploration-exploitation in a systematic way is a desirable property of any parameter-tuning algorithm. Within reinforcement learning this can be achieved through simple approaches such as adding a percentage for random access, or more sophisticated approaches such as adding entropy regularization [34]. TABLE I: Skippy Scheduler Scoring Functions. A total of eight scoring functions are used as part of scheduling. For fixed weights baseline, and initial weights selection for optimization algorithms, all weights are set to 1, except LeastAllocated and RTCRatio which are set to 0.          
+
+> Scoring Func. Description
+> LeastAllocated Favors nodes with the lowest utilization
+> MostAllocated Favors nodes with the highest utilization
+> RTCRatio Piecewise linear function of utilization
+> LocalityType Tag for the type of machine, e.g. edge vs cloud
+> DataLocality Estimated time to download necessary data
+> Capability Tag for capability of the machine, e.g. GPU
+> Balanced Favors nodes with least stddev. across resources
+> Resource LatencyAware Estimated time to download the container image
+> ImageLocality
+
+3) Limiting Domain Information: Generalization to unseen environments is another important property for tuning scoring functions’ weights. It is desirable that once an algorithm is trained, it is able to perform well within scenarios different from the original training domain. Reinforcement learning is known for exploiting the training environment by often finding unintended shortcuts for achieving high rewards [38]. To mit-igate the problem, we propose a simple technique of limiting static domain information to prevent overfitting and achieve better generalization 6 . This can range from including only part of the known domain information to excluding it all. This allows the algorithm to learn a good general policy for exploration and exploitation while preventing overfitting. In our experiments, we opt for the second option of limiting domain information, e.g. including only coarse description variables for workload and cluster information. 
+
+B. Gym Wrapper 
+
+The above-described contributions are implemented as a software framework for parameter tuning using reinforcement learning algorithms by developing a general environment wrapper 2 . An environment is defined by the following spaces:  
+
+> •
+
+Static: static parameters throughout an experiment.  
+
+> •
+
+Domain train: parameters during training.  
+
+> •
+
+Domain test: parameters for extrapolation experiments.  
+
+> •
+
+Initial action: action taken at the beginning of an exper-iment.  
+
+> •
+
+Reward: optimization metric of choice.  
+
+> •
+
+Actions: parameters to be optimized. Each space described above consists of one or multiple [variable name, min, max] used for normalization purposes. The spaces, in addition to other options (e.g. hiding part of the static variables, adding noise, etc.), are then used to construct the environment. IV. I MPLEMENTATION AND EVALUATION 
+
+To evaluate the proposed approach, we perform large-scale experiments with a high-fidelity simulator, faas-sim [18], that primarily targets the FaaS platform 1 on a set of different workloads 10 and cluster setups 9 . It captures both network topology delays, implemented with Ether [39], and heteroge-nous hardware execution time, making it suitable to evaluate scheduler placement performance in larger cluster setup [18]. Skippy is the implemented scheduling system [18] 8 , con-taining a set of scoring functions described in detail below. 
+
+A. Experimental setup a) Scoring Functions: The Skippy scheduling system comes with a default scheduler. We extend the default scoring functions of Skippy with MostAllocated, LeastAllocated and RequestedToCapacityRatio inspired by their equivalents in Kubernetes as shown in Table I TABLE II: Cluster and workload configuration across experiments. To evaluate how well the proposed approach generalizes to novel scenarios, we test the trained agent on novel scenarios with different cluster setups, novel workload functions, and different scheduling options.                   
+
+> Configuration Train environment Test environment
+> Cluster setups 38Workload functions 58Requests per second 10 5-30 % of nodes to score 100 10-100 Min # nodes per func 11-10 Max # nodes per func 100 50-100 Scale factor 11-5 # of nodes 30-180 200-400
+
+b) Cluster Setup: Each cluster setup consists of a variety of heterogenous hardware and network topologies. We use a total of 8 different cluster setups as defined in Figure 3.  
+
+> •
+
+Cloud_CPU : configuration mainly consists of Xeon CPUs, with 71% of total devices.  
+
+> •
+
+Cloud_GPU : configuration mainly consists of Xeon GPUs, with 70% of total devices.  
+
+> •
+
+Edge_Cloudlet : configuration consists of a higher number of Intel NUC (mini desktop with dedicated GPU), a medium number of Raspberry PI (RPI) 3 and 4, and a lower number of NVIDIA Nano.  
+
+> •
+
+Edge_GPU : configuration mainly consists of NVIDIA Nano, and a low number of Xeon GPU.  
+
+> •
+
+Edge_SBC : configuration mainly consists of RPI 3 and 4, and without any NVIDIA TX2 devices.  
+
+> •
+
+Edge_TPU : configuration consists of a higher number of coral devboard and NVIDIA Nano.  
+
+> •
+
+Hybrid_balanced : configuration consists of a similar number across devices except for NVIDIA Xavier NX and TX2.  
+
+> •
+
+Hybrid_balanced_jetson : have similar setup as hybrid balanced with higher number of NVIDIA Nano. We use two network typologies, as shown in Figure 4.  
+
+> •
+
+All connected, internet topology : where individual devices have uniform bandwidth, ensuring fast access connectiv-ity.  
+
+> •
+
+Limited, urban topology : where the network is layered and has bandwidth limitation to simulate delays in con-nectivity. For more extensive evaluation, we allow the disconnect be-tween compute units and their usual network topology, i.e. we don’t assume that a cloud_cpu cluster configuration would necessarily have an all-connected topology. Instead, we treat cluster configurations and topology as separate factors across experiments. 
+
+c) Workload: We use a random combination of up to 8 different functions to form a workload. Each function follows a Poisson distribution with a constant rate of arrival. We evaluate the performance of each experiment by three metrics weighted equally - mean function execution time, mean function queue time, and the number of successful requests executed within a specified time window. Each benchmark run lasts for 100 sec-onds, excluding the time for the initial allocation of function pods. 
+
+d) Optimization metric: To quantify the performance of different workloads across approaches, we use the following set of three metrics:  
+
+> •
+
+mean function execution time: μf et  
+
+> •
+
+mean function queue time: μwait  
+
+> •
+
+number of successful requests executed: Nsuccess /N total 
+
+The overall score for optimization and evaluation we define as: 
+
+score (workload ) = 
+
+X 
+
+> f∈workload
+
+(avg (μf et (f ) + μwait (f ) + Nsuccess /N total )) 
+
+(2) We normalize the three metrics between 0 and 1, so the final score is also normalized. 
+
+B. Training 
+
+For training the reinforcement learning agent, we use SAC [34] with frame stacking to account for multi-parameter tuning. Due to the explicit entropy regularization, we find that SAC achieves more robust exploration and tends not to get stuck in premature local minima during optimization. We use stable baselines [40] with an 512x512x512 MLP network, with ReLU activations, for both QNet and policy networks. We normalize the state and action spaces and train with multiple environments in parallel. To evaluate how well the proposed method generalizes, we use just 3 out of the 8 cluster setups for training - cloud cpu , cloud gpu 
+
+and edge cloudlet . Different workload is generated Coral  DevBoard 
+
+> Nvidia  Nano
+> Intel NUC
+> Nvidia  Xavier NX
+> RockPi
+> RPI 3
+> RPI 4
+> Nvidia  TX2
+> XeonCpu
+> XeonGpu
+> 0
+> 20
+> 40
+> 60
+> 80
+> # devices
+> cloud_cpu
+> Coral  DevBoard
+> Nvidia  Nano
+> Intel NUC
+> Nvidia  Xavier NX
+> RockPi
+> RPI 3
+> RPI 4
+> Nvidia  TX2
+> XeonCpu
+> XeonGpu
+> cloud_gpu
+> Coral  DevBoard
+> Nvidia  Nano
+> Intel NUC
+> Nvidia  Xavier NX
+> RockPi
+> RPI 3
+> RPI 4
+> Nvidia  TX2
+> XeonCpu
+> XeonGpu
+> edge_cloudlet
+> Coral  DevBoard
+> Nvidia  Nano
+> Intel NUC
+> Nvidia  Xavier NX
+> RockPi
+> RPI 3
+> RPI 4
+> Nvidia  TX2
+> XeonCpu
+> XeonGpu
+> edge_gpu
+> Coral  DevBoard
+> Nvidia  Nano
+> Intel NUC
+> Nvidia  Xavier NX
+> RockPi
+> RPI 3
+> RPI 4
+> Nvidia  TX2
+> XeonCpu
+> XeonGpu
+> edge_sbc
+> Coral  DevBoard
+> Nvidia  Nano
+> Intel NUC
+> Nvidia  Xavier NX
+> RockPi
+> RPI 3
+> RPI 4
+> Nvidia  TX2
+> XeonCpu
+> XeonGpu
+> edge_tpu
+> Coral  DevBoard
+> Nvidia  Nano
+> Intel NUC
+> Nvidia  Xavier NX
+> RockPi
+> RPI 3
+> RPI 4
+> Nvidia  TX2
+> XeonCpu
+> XeonGpu
+> hybrid_balanced
+> Coral  DevBoard
+> Nvidia  Nano
+> Intel NUC
+> Nvidia  Xavier NX
+> RockPi
+> RPI 3
+> RPI 4
+> Nvidia  TX2
+> XeonCpu
+> XeonGpu
+> hybrid_balanced_jetson
+
+Fig. 3: Different heterogeneous cluster configurations used for training and evaluation. Distributions of the types of machines used for benchmark experiments. Only cloud_cpu , cloud_gpu and edge_cloudlet cluster configurations are used during training. We use additional cluster configurations to evaluate how well the proposed approach is able to adapt to unseen machines‘ distributions. 
+
+(a) Internet topology (b) Urban topology 
+
+Fig. 4: Example network configurations within the cluster setup. We use two types of cluster connectivity across bench-mark experiments. in each experiment, using a random set of 5 functions 
+
+resnet50_training , resnet50_preprocessing ,
+
+resnet50_inference , mobilenet_inference and 
+
+speech_inference . More details about training options can be seen in Table II. 
+
+C. Baselines 
+
+To compare the proposed approach against standard meth-ods in the literature, namely fixed scoring function weights (Fixed), random search (RS), Bayesian Optimization (BO), and Tree-Structured Parzen Estimator (TPE). Fixed weights employ a similar configuration to Kubernetes by assigning the same constant weight for all scoring functions (except LeastAllocated and RTCRatio, which have a weight of 0). Random search is one of the simplest heuristics for parameter optimization, which randomly and independently samples val-ues for each parameter across the domain of interest. Bayesian Optimization uses a surrogate model for the underlying op-timization metric, often Gaussian processes. Different biases and assumptions can then be imposed through the choice of kernel, e.g. smoothness of the underlying optimization landscapes, or in other words, similar parameter configurations lead to similar outcomes. This can then be formally posed as an optimization process through a choice of acquisition function, most of which balance between exploration and ex-ploitation. Our experiments use a standard squared exponential kernel and an upper confidence bound acquisition function with a weight of 0.5. TPE is based on sequential model-based optimization, similar to Bayesian optimization. However, TPE utilizes a non-parametric approach called Parzen estimators, instead of using Gaussian processes as the surrogate model. Each optimization method uses the fixed weights as an initial sample, followed by an additional four samples. 
+
+D. Results and evaluation 1) Tuning scoring functions: In the first set of experiments, we evaluate how well the proposed approach can tune the weights of the scoring functions in benchmark experiments with similar configurations, workloads, and machine distri-butions during training. We compare the proposed approach against baselines, as defined in Section IV-C. For evaluation, we use ten different benchmark experiments and compare the best-obtained score (as defined in eq.2) during optimization. The best-obtained score, weights selection, and information about cluster and workload configuration in each experiment are visualized in Figure 5. Optimizing the weights of scoring functions leads to a major increase in the above-defined metric compared to default fixed weights. The proposed approach also outperforms standard baseline approaches. We observe that in simpler experiments where the cluster has homogeneous connectivity and workload with just a few functions, tuning the weights of scoring func-tions does not lead to significant benefits (Exp0). However, as the number of functions in the workload grows and the cluster has heterogeneous compute units and connectivity, then optimizing the weights yields higher benefits (Exp1). We observe that the reinforcement learning agent learns a set of significant and insignificant weights - e.g. the locality has a low weights value and standard deviation across experiments, in contrast to other scoring functions such as capability. The proposed approach improves performance by 33% over fixed weights for the scoring functions and by 20% over the next best-performing baseline. 
+
+2) Generalisation to other scenarios: In this set of ex-periments, we evaluate how well the proposed approach can extrapolate to unseen cluster setups, workloads, and scheduling framework options. We again sample ten different configura-tions for evaluation but with extended workloads, additional cluster setups, and scheduling options. Details of the differ-ences can be seen in Table II. Despite very different configurations for testing, in terms of cluster, workload, and scheduling options, we observe that the proposed method again outperforms baselines as seen in Figure 6. We observe that the reinforcement learning agent is able to adapt the sampling strategy in terms of the importance of scoring functions. For example, locality weight is explored as part of the optimization in multiple experiments and has a relatively high value in Exp2 - unlike any of the experiments in Figure 5. Moreover, the overall distribution of the selected weights is often different, e.g. in Exp0 and Exp4. In novel scenarios, the proposed approach improves performance by 20% over fixed weights and by 6% over the best-performing baseline. The mean score across experiments in similar and other scenarios is visualized in Figure 7. Fix RS BO TPE RL 0.4 0.6 0.8 1.0 score 
+
+> 0510 weights
+
+Explored weights (RL)    
+
+> Fix RS BO TPE RL
+> Exp 1 Exp 2 Exp 3 Exp 4
+
+Optimized best score Fix RS BO TPE RL Fix RS BO TPE RL Fix RS BO TPE RL Fix RS BO TPE RL      
+
+> 1 2 3 4 5 6 7 8 1 2 3 4 5 6 7 8 1 2 3 4 5 6 7 8 Scoring functions: 1- balanced 2 - capability 3 - locality 4 - image locality 5 - data locality 6 - rtc ratio 7 - most allocated 8 - least allocated 1 2 3 4 5 6 7 8 1 2 3 4 5 6 7 8 1 2 3 4 5 6 7 8 Exp 5 Exp 6
+> mean samples best sample 143 nodes; cloudcpu; internet topology resnet_inf mobilenet speech resnet_train resnet_pre 148 nodes; cloudgpu; urban topology resnet_inf speech resnet_train resnet_pre 103 nodes; edgegpu; internet topology mobilenet speech resnet_train resnet_pre 151 nodes; edgecloudlet; urban topology resnet_inf mobilenet speech resnet_train 102 nodes; edgecloudlet; internet topology resnet_inf mobilenet resnet_train 77 nodes; edgecloudlet; urban topology resnet_inf mobilenet speech resnet_train
+
+Fig. 5: Tuning weights of scoring functions on similar cluster and workload configurations. Example results for six experiments visualized across two columns. For each experiment the following three characteristics are described (from left to right): best score (as defined in eq. 2) from the set of explored weights’ configurations; mean and standard deviation, best weights selection from the reinforcement learning algorithm; short description of the experiment. We compare the proposed approach against four baselines, including fixed weights (Fix), random search (RS), Bayesian Optimization (BO), and Tree-structured Parzen Estimator (TPE). In each experiment, the fixed weight configuration was used as an initial sample (same as Fix), followed by four optimization steps. A total of eight scoring functions were used. Fix RS BO TPE RL 0.4 0.6 0.8 1.0 score 0510 weights Explored weights (RL) Fix RS BO TPE RL    
+
+> Exp 1 Exp 2 Exp 3 Exp 4
+
+Optimized best score Fix RS BO TPE RL Fix RS BO TPE RL Fix RS BO TPE RL Fix RS BO TPE RL      
+
+> 1 2 3 4 5 6 7 8 1 2 3 4 5 6 7 8 1 2 3 4 5 6 7 8 Scoring functions: 1- balanced 2 - capability 3 - locality 4 - image locality 5 - data locality 6 - rtc ratio 7 - most allocated 8 - least allocated 1 2 3 4 5 6 7 8 1 2 3 4 5 6 7 8 1 2 3 4 5 6 7 8 Exp 5 Exp 6
+> 337 nodes; hybrid-balanced; urban topology resnet_inf mobilenet speech resnet_train tf_gpu f o pi 379 nodes; edgegpu; urban topology resnet_inf speech resnet50_pre tf_gpu pi 287 nodes; cloudcpu; internet topology resnet_inf mobilenet tf_gpu f o pi 374 nodes; hybrid-balanced-jetson; internet topology mobilenet resnet_pre tf_gpu pi 362 nodes; cloudcpu; internet topology resnet_inf resnet_train resnet_pre tf_gpu pi 342 nodes; edgecloudlet internet topology resnet_inf mobilenet speech resnet_train resnet_pre tf_gpu f o
+> mean samples best sample 7.5 2.5
+
+Fig. 6: Example results on novel cluster and workload configurations. Follows the same notation as Figure 5. Results of unseen cluster and workload configurations as described in Table II Fixed RS BO TPE RL 0.4 0.6 0.8 1.0 score 
+
+(a) Similar configurations Fixed RS BO TPE RL 0.4 0.6 0.8 1.0 score (b) Novel configurations 
+
+Fig. 7: Summary results for the proposed method. Mean of the best-achieved score (as defined in eq. 2) across ten experiments. A total of five samples of weights were used per method, with the exception of Fixed, which uses the default weights. The initial weights sample in every experiment is the same as Fixed. Configurations of the experiments in (a) and (b) are uniformly sampled from Table II. V. C ONCLUSIONS AND FUTURE WORK 
+
+Job scheduling in the context of ever-expanding demand for deploying heterogeneous workloads across various cluster environments remains an important consideration for maxi-mizing efficiency. Different scoring functions often drive that process by evaluating pod-to-node allocation through desired characteristics. Yet, despite increased heterogeneity across both workloads and compute units, the scheduling process is often not tailored toward those specific needs. In this work, we presented an approach for tuning weights of scoring functions in job schedulers using reinforcement learn-ing. We benchmark the proposed approach on a representative FaaS scheduling system with various cluster setups and work-loads. We demonstrate that the proposed approach achieves better performance in comparison to standard parameter tuning algorithms, including in scenarios that are not covered during the model training, with an improvement of up to 33% over default static weight and up to 12% over the best-performing baseline. The proposed approach is well suited from an engineering standpoint as it requires minimal modification to an existing scheduling infrastructure. The proposed approach is agnostic to the number and type of scoring functions the scheduler uses. Once trained, the reinforcement learning agent can be deployed on top of an existing scheduling infrastructure with the task of tuning weights of scoring functions. Importantly, we demonstrate that the proposed method is able to generalize to unseen configurations, including different cluster setups, workloads, and scheduling options. In future work, we will be exploring the transferability of learned policy between different scheduling systems, expand-ing the set of scoring functions, and using additional metrics for improved optimization. REFERENCES [1] B. Burns, B. Grant, D. Oppenheimer, E. Brewer, and J. Wilkes, “Borg, omega, and kubernetes,” Communications of the ACM , vol. 59, no. 5, pp. 50–57, 2016. [2] Y. Feng, Z. Liu, Y. Zhao, T. Jin, Y. Wu, Y. Zhang, J. Cheng, C. Li, and T. Guan, “Scaling large production clusters with partitioned synchro-nization.,” in USENIX Annual Technical Conference , pp. 81–97, 2021. [3] Q. Weng, W. Xiao, Y. Yu, W. Wang, C. Wang, J. He, Y. Li, L. Zhang, W. Lin, and Y. Ding, “Mlaas in the wild: Workload analysis and scheduling in large-scale heterogeneous gpu clusters,” in 19th USENIX Symposium on Networked Systems Design and Implementation , pp. 945– 960, 2022. [4] O. Hadary, L. Marshall, I. Menache, A. Pan, E. E. Greeff, D. Dion, S. Dorminey, S. Joshi, Y. Chen, M. Russinovich, et al. , “Protean: Vm allocation service at scale,” in Proceedings of the 14th USENIX Conference on Operating Systems Design and Implementation , pp. 845– 861, 2020. [5] A. Verma, L. Pedrosa, M. Korupolu, D. Oppenheimer, E. Tune, and J. Wilkes, “Large-scale cluster management at google with borg,” in 
+
+Proceedings of the 10th European Conference on Computer Systems ,pp. 1–17, 2015. [6] M. Tirmazi, A. Barker, N. Deng, M. E. Haque, Z. G. Qin, S. Hand, M. Harchol-Balter, and J. Wilkes, “Borg: the next generation,” in 
+
+Proceedings of the 15th European Conference on Computer Systems ,pp. 1–14, 2020. [7] Z. Wei-guo, M. Xi-lin, and Z. Jin-zhong, “Research on kubernetes’ resource scheduling scheme,” in Proceedings of the 8th International Conference on Communication and Network Security , pp. 144–148, 2018. [8] J. Shi, K. Fu, Q. Chen, C. Yang, P. Huang, M. Zhou, J. Zhao, C. Chen, and M. Guo, “Characterizing and orchestrating vm reservation in geo-distributed clouds to improve the resource efficiency,” in Proceedings of the 13th Symposium on Cloud Computing , pp. 94–109, 2022. [9] J. W. Park, A. Tumanov, A. Jiang, M. A. Kozuch, and G. R. Ganger, “3sigma: distribution-based cluster scheduling for runtime uncertainty,” in Proceedings of the 13th European Conference on Computer Systems ,pp. 1–17, 2018. [10] E. Cortez, A. Bonde, A. Muzio, M. Russinovich, M. Fontoura, and R. Bianchini, “Resource central: Understanding and predicting work-loads for improved resource management in large cloud platforms,” in 
+
+Proceedings of the 26th Symposium on Operating Systems Principles ,pp. 153–167, 2017. [11] S. Alabed and E. Yoneki, “High-dimensional bayesian optimization with multi-task learning for rocksdb,” in Proceedings of the 1st Workshop on Machine Learning and Systems , pp. 111–119, 2021. [12] T. Patel and D. Tiwari, “Clite: Efficient and qos-aware co-location of multiple latency-critical jobs for warehouse scale computers,” in 
+
+2020 IEEE International Symposium on High Performance Computer Architecture (HPCA) , pp. 193–206, IEEE, 2020. [13] Y. Lee, J.-H. An, and Y. Kim, “Scheduler for distributed and collabora-tive container clusters based on multi-resource metric,” in Proceedings of the International Conference on Research in Adaptive and Convergent Systems , pp. 279–281, 2020. [14] J. Santos, T. Wauters, B. Volckaert, and F. De Turck, “Towards network-aware resource provisioning in kubernetes for fog computing applica-tions,” in 2019 IEEE Conference on Network Softwarization (NetSoft) ,pp. 351–359, IEEE, 2019. [15] P. Garefalakis, K. Karanasos, P. Pietzuch, A. Suresh, and S. Rao, “Medea: scheduling of long running applications in shared production clusters,” in Proceedings of the 13th European Conference on Computer Systems , pp. 1–13, 2018. [16] M. Zaharia, D. Borthakur, J. Sen Sarma, K. Elmeleegy, S. Shenker, and I. Stoica, “Delay scheduling: A simple technique for achieving locality and fairness in cluster scheduling,” in Proceedings of the 5th European Conference on Computer Systems , 10th European Conference on Computer Systems, (New York, NY, USA), p. 265–278, Association for Computing Machinery, 2010. [17] Y. Cheng, Z. Chai, and A. Anwar, “Characterizing co-located datacenter workloads: An alibaba case study,” in Proceedings of the 9th Asia-Pacific Workshop on Systems , pp. 1–3, 2018. [18] T. Rausch, A. Rashed, and S. Dustdar, “Optimized container schedul-ing for data-intensive serverless edge computing,” Future Generation Computer Systems , vol. 114, pp. 259–271, 2021. [19] D. Whitley, “A genetic algorithm tutorial,” Statistics and computing ,vol. 4, pp. 65–85, 1994. [20] B. Shahriari, K. Swersky, Z. Wang, R. P. Adams, and N. De Freitas, “Taking the human out of the loop: A review of bayesian optimization,” 
+
+Proceedings of the IEEE , vol. 104, no. 1, pp. 148–175, 2015. [21] J. Bergstra, R. Bardenet, Y. Bengio, and B. K´ egl, “Algorithms for hyper-parameter optimization,” Advances in Neural Information Processing Systems , vol. 24, 2011. [22] A. Karthikeyan, N. Natarajan, G. Somashekar, L. Zhao, R. Bhagwan, R. Fonseca, T. Racheva, and Y. Bansal, “Selftune: Tuning cluster managers,” in 2023 Networked Systems Design and Implementation ,USENIX, USENIX, April 2023. [23] H. S. Jomaa, J. Grabocka, and L. Schmidt-Thieme, “Hyp-rl: Hy-perparameter optimization by reinforcement learning,” arXiv preprint arXiv:1906.11527 , 2019. [24] F. B. Mismar, J. Choi, and B. L. Evans, “A framework for automated cellular network tuning with reinforcement learning,” IEEE Transactions on Communications , vol. 67, no. 10, pp. 7152–7167, 2019. [25] R. S. Sutton and A. G. Barto, Reinforcement learning: An introduction .MIT press, 2018. [26] B. Recht, “A tour of reinforcement learning: The view from continuous control,” Annual Review of Control, Robotics, and Autonomous Systems ,vol. 2, pp. 253–279, 2019. [27] OpenAI, “Gpt-4 technical report,” 2023. [28] H. Mao, M. Schwarzkopf, S. B. Venkatakrishnan, Z. Meng, and M. Al-izadeh, “Learning scheduling algorithms for data processing clusters,” in 
+
+Proceedings of the ACM special interest group on data communication ,pp. 270–288, 2019. [29] Y. Fan, Z. Lan, T. Childers, P. Rich, W. Allcock, and M. E. Papka, “Deep reinforcement agent for scheduling in hpc,” in 2021 IEEE International Parallel and Distributed Processing Symposium (IPDPS) , pp. 807–816, IEEE, 2021. [30] D. Amodei, C. Olah, J. Steinhardt, P. Christiano, J. Schulman, and D. Man´ e, “Concrete problems in ai safety,” arXiv preprint arXiv:1606.06565 , 2016. [31] J. Zhang, Y. Liu, K. Zhou, G. Li, Z. Xiao, B. Cheng, J. Xing, Y. Wang, T. Cheng, L. Liu, et al. , “An end-to-end automatic cloud database tuning system using deep reinforcement learning,” in Proceedings of the 2019 International Conference on Management of Data , pp. 415–432, 2019. [32] H. Zhu, D. Scheinert, L. Thamsen, K. Gontarska, and O. Kao, “Magpie: Automatically tuning static parameters for distributed file systems using deep reinforcement learning,” in 2022 IEEE International Conference on Cloud Engineering (IC2E) , pp. 150–159, IEEE, 2022. [33] J. Eo, Z. Niu, W. Cheng, F. Y. Yan, R. Gao, J. Kardhashi, S. Inglis, M. Revow, B.-G. Chun, P. Cheng, and Y. Xiong, “Opennetlab: Open platform for rl-based congestion control for real-time communications,” in 6th Asia-Pacific Workshop on Networking , July 2022. [34] T. Haarnoja, A. Zhou, P. Abbeel, and S. Levine, “Soft actor-critic: Off-policy maximum entropy deep reinforcement learning with a stochastic actor,” in International conference on machine learning , pp. 1861–1870, PMLR, 2018. [35] J. Schulman, F. Wolski, P. Dhariwal, A. Radford, and O. Klimov, “Prox-imal policy optimization algorithms,” arXiv preprint arXiv:1707.06347 ,2017. [36] M. Pleines, M. Pallasch, F. Zimmer, and M. Preuss, “Generalization, mayhems and limits in recurrent proximal policy optimization,” 2022. [37] V. Mnih, K. Kavukcuoglu, D. Silver, A. A. Rusu, J. Veness, M. G. Bellemare, A. Graves, M. A. Riedmiller, A. K. Fidjeland, G. Ostrovski, S. Petersen, C. Beattie, A. Sadik, I. Antonoglou, H. King, D. Kumaran, D. Wierstra, S. Legg, and D. Hassabis, “Human-level control through deep reinforcement learning,” Nature , vol. 518, pp. 529–533, 2015. [38] J. Leike, D. Krueger, T. Everitt, M. Martic, V. Maini, and S. Legg, “Scalable agent alignment via reward modeling: a research direction,” 2018. [39] T. Rausch, C. Lachner, P. A. Frangoudis, P. Raith, and S. Dustdar, “Synthesizing plausible infrastructure configurations for evaluating edge computing systems.,” in HotEdge , 2020. [40] A. Raffin, A. Hill, A. Gleave, A. Kanervisto, M. Ernestus, and N. Dor-mann, “Stable-baselines3: Reliable reinforcement learning implemen-tations,” The Journal of Machine Learning Research , vol. 22, no. 1, pp. 12348–12355, 2021.

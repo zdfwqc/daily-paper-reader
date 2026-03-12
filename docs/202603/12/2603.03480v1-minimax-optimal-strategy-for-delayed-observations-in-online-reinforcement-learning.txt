@@ -1,0 +1,6298 @@
+Title: Minimax Optimal Strategy for Delayed Observations in Online Reinforcement Learning
+
+URL Source: https://arxiv.org/pdf/2603.03480v1
+
+Published Time: Thu, 05 Mar 2026 01:15:31 GMT
+
+Number of Pages: 38
+
+Markdown Content:
+# Minimax Optimal Strategy for Delayed Observations in Online Reinforcement Learning 
+
+Harin Lee 1 Kevin Jamieson 1
+
+## Abstract 
+
+We study reinforcement learning with delayed state observation, where the agent observes the current state after some random number of time steps. We propose an algorithm that combines the augmentation method and the upper confidence bound approach. For tabular Markov decision processes (MDPs), we derive a regret bound of 
+
+eO(H√Dmax SAK ), where S and A are the car-dinalities of the state and action spaces, H is the time horizon, K is the number of episodes, and 
+
+Dmax is the maximum length of the delay. We also provide a matching lower bound up to log-arithmic factors, showing the optimality of our approach. Our analytical framework formulates this problem as a special case of a broader class of MDPs, where their transition dynamics decom-pose into a known component and an unknown but structured component. We establish general results for this abstract setting, which may be of independent interest. 
+
+## 1. Introduction 
+
+Reinforcement learning (RL) is a framework where ma-chines learn to make optimal decisions under the guidance of rewards (Sutton & Barto, 2018). The learning process involves interaction between the agent and the environment. The agent observes the state of the environment and makes an action, which affects the reward the agent receives and the transition probability of the next state. While there have been extensive theoretical advances and empirical successes in RL, one barrier to applying RL to real-world tasks is the delayed accessibility of the current state. For instance, domains like robotics and autonomous driving encounter inevitable delays in observations due to sensor processing, data transmission, or computational overhead. In online advertising, a sequence of ads must be planned without ob-
+
+> 1
+
+Paul G. Allen School of Computer Science & Engineering, University of Washington, Seattle, Washington. Correspondence to: Harin Lee <leeharin@cs.washington.edu >.
+
+Preprint. March 5, 2026. 
+
+serving the users’ internal orientation toward the products. This is problematic because standard methods in RL assume and heavily rely on observing the current state of the en-vironment. With delays in state observation, the agent is forced to plan a sequence of actions in advance. As the number of possible action sequences increases exponen-tially with the length of the delay, even a minor delay may substantially complicate the problem. While various empirical methods have been proposed to overcome this challenge (Agarwal & Aggarwal, 2021; Kim et al., 2023; Wu et al., 2024; 2025), there is currently a large gap in the theoretical understanding of this setting. Walsh et al. (2009); Chen et al. (2023) show that obtaining polyno-mial sample complexity is possible despite the exponential growth of action sequences, but their bounds appear quite loose, and it is not clear what the optimal dependency is. Moreover, it has not yet been established whether the length of the delay should affect the sample complexity. In this work, we close these gaps by providing matching upper and lower regret bounds for this setup, providing a better understanding of learning MDPs with delayed observations. We summarize our main contributions as follows: • We propose an algorithm for learning delayed MDPs that constructs an equivalent augmented MDP without delays and then applies an upper confidence bound (UCB) method. Several key distinctions in the aug-mentation process from previous works enable a better algorithmic design and a clear explanation of the theo-retical guarantees. • Under the tabular MDP setting, we derive a regret bound of eO(H√Dmax SAK ). This result improves upon the previously best known bound by Chen et al. (2023) by a factor of H1/2D2max .• We provide a matching lower bound of 
+
+eO(H√Dmax SAK ), highlighting the optimality of our algorithm and analysis. To the best of our knowledge, this is the first result that rigorously shows that shorter delays (relative to the horizon H) decrease the statistical complexity of the problem. • We identify the core properties of delayed MDPs and 1
+
+> arXiv:2603.03480v1 [cs.LG] 3 Mar 2026 Minimax Optimal Strategy for Delayed Observations in Online Reinforcement Learning
+
+abstract them to define a more general setting of MDPs whose transition dynamics decompose into a fully known part and an unknown but structured part. We provide theoretical results for this setting, which nat-urally extends to the delayed observation setting as a special case. We emphasize that our results apply to any problem domain that fits this abstraction. 
+
+1.1. Related Work RL under Tabular MDPs. A variety of theoretically guar-anteed methods for learning tabular MDPs have been de-veloped and analyzed (Azar et al., 2017; Jin et al., 2018; Zanette & Brunskill, 2019; Dann et al., 2019; Zhang et al., 2021; Tiapkin et al., 2022; Zhang et al., 2024; Lee & Oh, 2025). These works achieve the minimax optimal regret bound of eO(H√SAK ) for the time-homogeneous setting or eO(H3/2√SAK ) for the time-inhomogeneous setting, where the lower bound is provided by Jaksch et al. (2010); Domingues et al. (2021). 
+
+MDPs with Delayed Observations. Attention on MDPs with delayed observations dates back more than twenty years (Bander & White III, 1999; Katsikopoulos & En-gelbrecht, 2003; Walsh et al., 2009), with a heavier focus on characterizing the properties of delayed MDPs, such as defining the equivalent augmented MDP and computa-tional hardness, rather than learning optimal policies. Walsh et al. (2009) describe a polynomial (ε, δ )-PAC bound of 
+
+eO( S2Aε3(1 −γ)6 ) for γ-discounted MDPs with constant delay. A recent work by Chen et al. (2023) study the learning problem of delayed MDPs using modern techniques. They assume stochastic delays with unknown distribution, im-posing that the delay distribution must be learned along with the transition distribution. They achieve a regret bound of eO(H3/2D5/2max 
+
+√SAK ) for the time-homogeneous finite-horizon setting. They also provide a regret lower bound of 
+
+Ω( √HD max SAK ), leaving a gap of eO(HD 2max ) between the two bounds. 
+
+Delayed feedback in bandits and RL. A related yet dis-tinct line of work studies efficient learning under delayed feedback in bandits (Zhou et al., 2019; Vernade et al., 2020; Gael et al., 2020; Lancewicki et al., 2021; Masoudian et al., 2022; Howson et al., 2023a) and RL (Howson et al., 2023b; Lancewicki et al., 2023; Mondal & Aggarwal, 2023; Kuang et al., 2023; Yang et al., 2023). These works assume that the data generated by a policy reach the learner with a delay, but the executor of the policy has access to the current state. This fact constitutes a clear distinction from our setting where the delay occurs in the execution process. 
+
+## 2. Preliminaries 
+
+2.1. Notations 
+
+For a measurable set Z, we denote the set of all probability distributions over Z by △(Z). For a function of the form 
+
+P : X → △ (Z), we frequently write Px as shorthand nota-tion for P (x). For a distribution P ∈ △ (Z) and a function 
+
+V : Z → R over the same space, we denote the expectation of V under P by P V := P 
+
+> z∈Z
+
+P (z)V (z), and the vari-ance of V under P by V(P, V ) := P 
+
+> z∈Z
+
+P (z)( V (z) −
+
+P V )2.For two integers m ≤ n, let [m : n] := {m, . . . , n }, and if n ≥ 1, we further define [n] := [1 : n]. For real num-bers x, a, b , let a ∧ b := min {a, b } and clip( x; a, b ) := min {max {x, a }, b }.We frequently deal with a queue of actions, which we denote by a = ( ai, a i+1 , . . . , a j ) ∈ ∪ nAn. For an action queue 
+
+a = ( a1, a 2, . . . , a n) ∈ A n, we denote the first element by a1 := a1, the queue starting from the second element by a2: = ( a2, . . . , a n), its length by len (a) := n, and concatenation by a+a := ( a1, . . . , a n, a ) for a ∈ A .
+
+2.2. Markov Decision Process 
+
+We consider a finite-horizon episodic MDP M =(S, A, P, r, H ) with a time-homogeneous transition kernel. 
+
+S is the state space, A is the action space, P : S × A → △(S) is the transition kernel, r : S × A → R is the re-ward function, and H is the time horizon of an episode. We assume that the state and action spaces have finite car-dinalities S and A, respectively. We also assume that the reward function satisfies r(s, a ) ∈ [0 , 1] and is known to the agent 1. An agent interacts with the MDP for K episodes. At the k-th episode, through time steps h = 1 , . . . , H , the agent observes a state skh ∈ S , takes an action akh ∈ A ,receives a reward r(skh, a kh), and the next state is sampled as skh+1 ∼ P (skh, a kh). A policy π = {πh}Hh=1 is a se-quence of functions πh : S → A that determines the ac-tion given the current state. The value function of a policy is defined as V πh (s) := Eπ(·| sh=s)[PHj=h r(sj , a j )] . The optimal policy is defined as the policy π∗ that satisfies 
+
+V π∗ 
+
+> h
+
+(s) = V ∗ 
+
+> h
+
+(s) := max π V πh (s) for all h and s. The goal of the agent is to minimize the cumulative regret over 
+
+K episodes, which is defined as PKk=1 (V ∗ 
+
+> 1
+
+(sk 
+
+> 1
+
+)−V πk 
+
+> 1
+
+(sk 
+
+> 1
+
+)) .We define the branching factor B as an upper bound on the support sizes of P (s, a ), that is, the number of candidate states one can reach by taking the state-action pair. Formally, we have |{ s′ ∈ S | Ps,a (s′) > 0}| ≤ B ≤ S for all (s, a ).              
+
+> 1The analysis in this paper remains valid when the assumption
+> r(s, a )∈[0 ,1] is relaxed to 0≤Vπh(s)≤Hfor all h, s , and
+> π, which is a generalization noted in Lee & Oh (2025). Also, an unknown reward function can be learned by standard meth-ods (Zanette & Brunskill, 2019; Zhang et al., 2024), which are applicable to the delayed observation setting.
+
+2Minimax Optimal Strategy for Delayed Observations in Online Reinforcement Learning 
+
+We assume B is known to the agent. 
+
+## 3. Problem Setting 
+
+We consider stochastic delayed MDPs (SDMDPs) (Kat-sikopoulos & Engelbrecht, 2003), which are MDPs with delayed state observation. An SDMDP consists of an MDP 
+
+M, a delay distribution Pdelay : S ×A → △ ([ −1 : ∆ max ]) ,and an upper bound on the delay length Dmax . The main difference in this setting is that the current state is revealed to the agent after some time steps. As a result, the agent must take an action while the current state is still hidden, then observes the effect of the action after the delay. Specif-ically, after taking the h-th action ah, the following next state sh+1 is revealed to the agent after Dh time steps, that is, at the beginning of the h + 1 + Dh-th time step. If 
+
+h + 1 + Dh ≥ H + 1 , the state is revealed after the end of the episode. We assume that the delay Dh is determined in the following way. 
+
+Assumption 1. For each time step h, an inter-arrival time 
+
+∆h is sampled from the distribution Pdelay (sh, a h) inde-pendently of all other randomness including the sampling of sh+1 . Starting from D0 = 0 , which implies that the initial state s1 is always immediately observed, the delay 
+
+Dh is determined incrementally as Dh = clip( Dh−1 +∆h; 0 , D max ), where Dmax is a known constant that upper-bounds Dh.
+
+Remark 1. In the previous work (Katsikopoulos & Engel-brecht, 2003; Chen et al., 2023), the inter-arrival time ∆h
+
+is assumed to be distributed over [0 : ∆ max ], implying that at most one state is revealed per time step. Generalizing their assumption, we allow an inter-arrival time of −1, in which case multiple consequent states are revealed at the same time step. 
+
+Constant Delayed MDP (CDMDP). The case where the length of the delay Dh is equal to Dmax for all h ∈ [H] is called the constant delayed MDP (CDMDP) (Walsh et al., 2009). Assumption 1 recovers this setting by adding an aux-iliary initial state sstart with a fixed inter-arrival time Dmax 
+
+and setting all the other inter-arrival times to 0, making the total length of the delay Dh = Phj=1 ∆j equal to Dmax .We consider both cases of SDMDPs where Pdelay is known and Pdelay is unknown. When unknown, following Chen et al. (2023), we allow the agent to learn the distribution by assuming that the original values of ∆1, . . . , ∆H are revealed at the end of the episode, which is necessary since their values may not be observable when the delay is clipped or the episode terminates. We emphasize that access to ∆h
+
+during the episode is not allowed. With observational delays, the policy can no longer be a mapping from a state to an action since the current state 
+
+Table 1. Example trajectory of a CDMDP with H = 6 and constant delay 2. Each column denotes the time step h, the last observed state sth , the action queue a, the inter-arrival time counter e∆h, the inter-arrival time ∆th , and the total delay Dth . Note that a new state is observed when e∆h is equal to ∆th , or equivalently, when the length of the queue len (a) is equal to Dth .
+
+h sth a e∆h ∆th Dth
+
+1 s1 ∅ 0 2 22 s1 (a1) 1 - -3 s1 (a1, a 2) 2 - -4 s2 (a2, a 3) 0 0 25 s3 (a3, a 4) 0 0 26 s4 (a4, a 5) 0 0 2End s7 ∅ - - -
+
+Table 2. Example trajectory of an SDMDP with H = 6 with one possible realization of delays. Refer to Table 1 for the description of each column. States s3 and s4 are revealed at the same time step h = 6 because ∆3 = −1.
+
+h sth a e∆h ∆th Dth
+
+1 s1 ∅ 0 1 12 s1 (a1) 1 - -3 s2 (a2) 0 2 34 s2 (a2, a 3) 1 - -5 s2 (a2, a 3, a 4) 2 - -6 s3 (a3, a 4, a 5) (-1) -1 2
+
+s4 (a4, a 5) 0 1 3End s7 ∅ - - -is not observable. Instead, the policy must consider three elements. First, we let th be the time index of the last state observable at time step h. If a state is revealed at time h, it is state sth , otherwise we have th = th−1. Next, let a =(ath , a th+1 , . . . , a h−1) be the queue of unresolved actions. It is straightforward that the policy must consider sth and a.In addition, the policy must take the time step that revealed 
+
+sth into account, since it affects when the next state sth+1 
+
+is revealed under Assumption 1. We let e∆h = h − (th +
+
+Dth−1) be the number of time steps elapsed since a state was revealed; recall that th + Dth−1 is the time step at which sth
+
+is revealed. For example, in the constant Dmax delay setting we have e∆1 = 0 , e∆2 = 1 , e∆3 = 2 , . . . , e∆Dmax +1 = Dmax ,and e∆Dmax +i = 0 for all i > 1 since we observe a new state at each time step, just delayed by Dmax . It can be shown that the information of these three elements is sufficient to make optimal actions in an SDMDP (Katsikopoulos & Engelbrecht, 2003). Consider the following policy class: 
+
+Πdelay =
+
+n
+
+{πh}Hh=1 : S × ∪ Dmax  
+
+> D=0
+
+AD × [0 : ∆ max ] → A 
+
+o
+
+.
+
+3Minimax Optimal Strategy for Delayed Observations in Online Reinforcement Learning 
+
+A policy π ∈ Πdelay chooses an action ah = πh(sth , a, e∆) 
+
+at time step h. For a given SDMDP (M, P delay , D max ), we can also define the value function of a policy as V π 
+
+> 1
+
+(s) = 
+
+Eπ(·| s1=s)[PHh=1 r(sh, a h)] , and the optimal policy π∗
+
+> delay
+
+that satisfies V π∗ 
+
+> delay
+> 1
+
+(s) = max π∈Πdelay V π 
+
+> 1
+
+(s) for all s ∈S. The cumulative regret that the agent must minimize is redefined as PKk=1 (V π∗ 
+
+> delay
+> 1
+
+(sk 
+
+> 1
+
+) − V πk 
+
+> 1
+
+(sk 
+
+> 1
+
+)) .
+
+## 4. Algorithm 
+
+In this section, we describe our algorithm for learning SD-MDPs. There are two main steps. First, we construct an augmented MDP that is equivalent to the given SDMDP. Then, we learn the augmented MDP by applying standard techniques with certain modifications that exploit the prop-erties of the augmented MDP. Each step is explained in the following subsections. 
+
+4.1. Augmented Markov Decision Process 
+
+Given an SDMDP (M, P delay , D max ), we construct the following equivalent augmented MDP (without delay) 
+
+Maug = ( Saug , A, P aug , r aug , H ). The intuition is to treat the tuple of the last observed state sth , the action queue 
+
+ah = ( ath , . . . , a h−1), and the number of time steps with-out new observation e∆h as an augmented state. We note that this construction is, in principle, equivalent to the ones in Katsikopoulos & Engelbrecht (2003); Chen et al. (2023), but we introduce two types of intermediate states that allow us to better explain the algorithm and the analysis. We define the augmented state space as Saug := S × ∪Dmax  
+
+> D=0
+
+AD × D × [H + 1] , where D := [ −1 : ∆ max ] ∪{tran }. We note that Saug is of size exponential in Dmax ,and that any computational implications of this blow-up are apparently unavoidable (see Section 7 for a discussion). Consider an augmented state saug = ( sth , a, e∆h, h ) ∈Saug . This state corresponds to the case where the last ob-served state is sth , the unresolved action queue is a, the last action in the queue is ah−1 (or possibly empty if th = h), and e∆h time steps have elapsed since sth was revealed, but the cases e∆h = −1 and e∆h = tran convey different meanings. If the initial state of the SDMDP is s1, then the initial state of the augmented MDP is (s1, ∅, 0, 1) . Depend-ing on e∆, the properties and the transitions of the state are determined. We explain them using three categories. 
+
+Category 1: e∆h ∈ [0 : ∆ max ]. These augmented states are standard ones where e∆h corresponds to the number of time steps elapsed since sth was revealed. The augmented-state transition at this state determines whether there will be a new observation or not. When the agent makes an action, the next augmented state is either one of the two: 
+
+(sth , a+a, tran , h +1) , which corresponds to the case where                         
+
+> sth,a
+> e∆, h
+> sth,a+a
+> e∆+1 , h +1
+> sth,a+a
+> tran , h +1
+> sth+1 ,(a+a)2:
+> −1, h +1
+> sth+1 ,(a+a)2:
+> tran , h +1
+> sth+1 ,(a+a)2:
+> 0, h +1
+> Last observation
+> th
+> Last observation
+> th+1
+> Last observation
+> th+2
+> Time step
+> h
+> Time step
+> h+1
+> action ah
+> New observation
+> pth,e∆
+> No new observation
+> 1−pth,e∆
+> State transition
+> sth+1 ∼P(sth, a th)More observation
+> pth+1 ,−1
+> No more observation
+> 1−pth+1 ,−1
+> · · ·
+
+Figure 1. Illustration of the transition of the augmented MDP after taking one action. Gray states indicates intermediate states that have no actions. Straight lines represents the agent’s action and dotted lines represents augmented state transitions. pth, e∆
+
+is shorthand for Ptran (sth , a th , e∆) , pth+1 ,−1 is shorthand for 
+
+Ptran (sth+1 , a th+1 , −1) .
+
+the next state will be revealed, and (sth , a+a, e∆h +1 , h +1) ,which corresponds to not having a new observation. We note that even if a new observation is determined to be revealed, it is not yet revealed at this stage. We define 
+
+Ptran : S × A × [−1 : Dmax ] → [0 , 1] as Ptran (s, a, e∆) := 
+
+P∆∼Pdelay (s,a )(∆ = e∆ | ∆ ≥ e∆) = Pdelay s,a ( e∆)     
+
+> P
+> ∆≥e∆Pdelay s,a (∆)
+
+,which represents the probability of transitioning to the first case. Although Ptran requires additional information of whether the delay is clipped or the episode has terminated, we omit it here for simplicity. 
+
+Category 2: e∆h = tran . An augmented state with 
+
+e∆h = tran is an intermediate state that has no actions, but only state transition. The agent enters this state when the next state is determined to be revealed, and the transition of this augmented state samples the next state. Denoting 
+
+ath = a1, the next augmented state is (s′, a2: , −1, h ) with 
+
+s′ ∼ Psth ,a th . A reward of r(sth , a th ) is received together with this transition. 
+
+Category 3: e∆h = −1. An augmented state with e∆h = −1
+
+is another type of intermediate state. The agent enters this state immediately after sth is revealed, and whether there will be further observations within the same time step is determined at this augmented state. The next aug-mented state is either (sth , a, tran , h ) with probability 
+
+Ptran (sth , a th , −1) , which corresponds to the case where another state will be revealed, or (sth , a, 0, h ) with the re-maining probability. 
+
+4.2. Algorithm 
+
+4Minimax Optimal Strategy for Delayed Observations in Online Reinforcement Learning 
+
+Algorithm 1 MVP-Delayed (Informal) 
+
+1: Construct augmented MDP Maug as in Section 4.1 
+
+2: Define ℓ∗(D, b ) := ( D log A + log 64 H(D+1) 2∆max SAK δ ) ∧ (b log 32 Hb ∆max SAK δ )
+
+3: for k = 1 , 2, . . . , K do 
+
+4: Compute value estimates as follows for all s ∈ S , a ∈ ∪ Dmax  
+
+> D=0
+
+AD , e∆ ∈ [−1 : ∆ max ], h = H, . . . , 1:
+
+5: V k(s, a, tran , h ) ← MVP-Est 
+
+
+
+r(s, a1), ˆPs, a1 , V k(·, a2: , −1, h ), N k(s, a1), ℓ ∗(len (a), B )
+
+
+
+6: Qk(( s, a, e∆, h ), a ) ←
+
+((Ptran )s, a′ 
+
+> 1,e∆
+
+Vtran + (1 − (Ptran )s, a′ 
+
+> 1,e∆
+
+)Vdelay (known Pdelay )
+
+MVP-Est (0 , ( ˆP k
+
+> tran
+
+)s, a′ 
+
+> 1,e∆
+
+, (Vtran , V delay ), N k(s, a′
+
+> 1
+
+, e∆) , ℓ ∗(len (a), 2)) (unknown Pdelay )
+
+7: where a′ = a+a, (Vtran , V delay ) = ( V k(s, a′, tran , h + 1) , V k(s, a′, e∆ + 1 , h + 1)) 
+
+8: V k(s, a, e∆, h ) ← max a∈A Qk(( s, a, e∆, h ), a )
+
+9: πkh(s, a, e∆, h ) ← argmax a∈A Qk(( s, a, e∆, h ), a )
+
+10: Execute πk and collect data {skh, a kh, ∆kh}h
+
+11: end for Algorithm 2 MVP-Est 
+
+1: Input: r ∈ R, ˆP ∈ △ (S), V ∈ RS , N ∈ N, ℓ ∈ R
+
+2: Set constants c1 ← 20 3 , c2 ← 400 9
+
+3: if N ≤ 1 then 
+
+4: Return H
+
+5: else 
+
+6: Return 
+
+
+
+r + ˆP V + c1
+
+q V( ˆP ,V )ℓN + c2 Hℓ N
+
+
+
+∧ H
+
+7: end if 
+
+After constructing the augmented MDP, we apply standard techniques for common MDPs with an extension using cer-tain structure of the augmented MDP. For the tabular case, we choose MVP (Zhang et al., 2021) as a base algorithm, which is a standard UCBVI-based algorithm with Bernstein-type bonuses. See Algorithm 2 for its optimistic estimation rule. We note that any other UCBVI-based algorithm also works. As the augmented state space has exponential size in Dmax ,directly applying MVP would lead to exponential regret. The augmented MDP can be learned much faster by not-ing that many of the transition probabilities are shared based on P or Pdelay . For example, an observed transi-tion of (s, a, tran , h ) to (s′, a2: , −1, h ) gives information about Ps,a (s′) that can be used to estimate the transition of 
+
+(s, a′, tran , h ) for different a′ with a′ 
+
+> 1
+
+= a1. The core idea is to estimate P and Pdelay instead of Paug . Hence, instead of storing visit counts of augmented state-action pairs, it is sufficient to store the visit counts of the original state-action pairs as N k(s, a ) = Pk−1
+
+> i=1
+
+PHh=1 1{(sih, a ih) = ( s, a )}
+
+and store an estimate ˆP ks,a of Ps,a . In the case where 
+
+Pdelay is unknown, we additionally store N k(s, a, e∆) = 
+
+Pk−1
+
+> i=1
+
+PHh=1 1{(sih, a ih) = (s, a ), ∆ih ≥ e∆}, which is the number of times that any augmented state of the form 
+
+(s, a + a, e∆, h ) is visited. Note that this number is differ-ent from the number of (s, a, e∆) in the dataset. We also estimate Ptran by ˆP k
+
+> tran
+
+, defined as 
+
+ˆP k
+
+> tran
+
+(s, a, e∆) := N k(s, a, e∆) − N k(s, a, e∆ + 1) 
+
+N k(s, a, e∆) ,
+
+where the numerator is the number of times the e∆ is sampled from Pdelay (s, a ), and the denominator is the number of samples from Pdelay (s, a ) that are greater than or equal to 
+
+e∆. Using these estimates, we run MVP under a correct update order. Another difference from the standard MVP is that the log factor is increased to a roughly D ∧ b factor, where D
+
+is the length of the current action queue, and b is an upper bound on the branching factor of the current augmented state-action pair. An informal description of the algorithm is shown in Algorithm 1. We present the full algorithm that includes the update order and exception handling in Appendix A. 
+
+## 5. Theoretical Guarantees 
+
+In this section, we provide regret upper bound results for Algorithm 1. We define ι := log HSAK δ for logarithmic factors. 
+
+Theorem 1. Suppose the delay distribution Pdelay is known. With probability at least 1 − δ, Algorithm 1 achieves the regret bound of O(Hp(Dmax ∧ B)SAKι + HBSAι 2).
+
+Theorem 2. Suppose the delay distribution Pdelay is un-known. With probability at least 1 − δ, Algorithm 1 achieves the regret bound of 
+
+O Hp(Dmax ∧ B)SAKι + Hp∆max SAKι 
+
++ H(B + ∆ max )SAι 2 .
+
+Discussion of Theorems 1 and 2. In both known and unknown delay distribution cases, we derive the regret upper 5Minimax Optimal Strategy for Delayed Observations in Online Reinforcement Learning 
+
+bound of eO(H√Dmax SAK ). Compared to the previous bound of eO(H3/2D5/2max 
+
+√SAK ) by Chen et al. (2023), we improve the bound by a factor of H1/2D2max , significantly improving the Dmax -dependency. While the H1/2 factor improvement comes from using variance-dependent bonus terms, the D2max factor improvement comes from our novel analysis. Theorems 1 and 2 demonstrate that Dmax -dependency can be replaced by a known branching factor B when it is smaller. This fact implies that the performance degrada-tion caused by lengthening the delay is not indefinite. This is due to that the Dmax -dependency comes from taking the union bound over exponentially many states in Dmax , but it can be replaced by taking the union bound over all bounded functions with domain size B.In the unknown Pdelay case, we note the second term may be larger than the first term only when B < ∆max ≤ Dmax 
+
+holds since ∆max ≤ Dmax . In this case, we incur a slightly larger regret as there are ∆max SA many values of Ptran (s, a, e∆) to learn. 
+
+Remark 2. The Dmax dependency in Theorems 1 and 2 can be improved when the actual lengths of the delays are shorter than Dmax . Defining Dmax (s, a ) as the maximum possible length of delay Dh starting from the state-action pair (sh, a h) = ( s, a ), the (Dmax ∧ B)SA factor can be reduced to P
+
+> (s,a )∈S×A
+
+(Dmax (s, a ) ∧ B), even if the agent is not aware of individual Dmax (s, a ) values. In the same way, the ∆max SA factor in Theorem 2 may be reduced to P 
+
+> (s,a )
+
+∆max (s, a ), where ∆max (s, a ) is the unknown maximum inter-arrival time of (s, a ). As a result, even if the agent only knows crude upper bounds of Dmax and ∆max ,the regret bound remains the same. 
+
+## 6. Regret Lower Bound 
+
+In this section, we provide a regret lower bound result for SDMDPs, showing that our approach is minimax optimal up to logarithmic factors. 
+
+Theorem 3 (Lower bound result) . Let eD := min {Dmax , H 
+
+> 4
+
+, B 
+
+> 2
+
+, S 
+
+> 4
+
+− 1} = O(Dmax ∧ B). Suppose 
+
+eD ≥ c for some absolute constant c, H ≥ 8 + 4 log A S,and K ≥ 124 eDSA log eD. Then, for any algorithm, there exists a CDMDP instance with S states, A actions, time horizon H, and delay length Dmax with branching factor at most B such that the expected regret of the algorithm for 
+
+K episodes is at least Ω H
+
+qeDSAK (log eD)−1.
+
+As CDMDPs (constant delay) are special cases of SDMDPs (stochastic delay), the theorem applies to SDMDPs as well. The hard instance and the analysis for the standard MDP set-ting by Domingues et al. (2021) naturally apply to SDMDPs, which yield a lower bound of Ω( H√SAK ) for the time-homogeneous setting. From this bound, we show that an additional factor of D1/2max is necessary in the delayed setting, implying that as the delay becomes longer, the problem be-comes statistically harder. Together with Theorem 1, these results establish a tight minimax regret bound up to loga-rithmic factors, characterizing that the optimal dependence on delay is D1/2max . Theorem 2 also meets this lower bound when ∆max ≤ B. We note that the regret lower bound of 
+
+Ω( √HD max SAK ) by Chen et al. (2023) 2 is worse than the standard bound since Dmax ≤ H.In the proof, we utilize the following lower bound for esti-mating the ℓ1-norm of a vector, which may be of indepen-dent interest. 
+
+Proposition 1. Let θ ∈ [−1, 1] d. At each time step t, sup-pose an index It ∼ Unif ([ d]) and a Bernoulli random vari-able Xt ∼ B( 1+ θIt 
+
+> 2
+
+) are revealed. Then, the sample com-plexity for estimating 1 
+
+> d
+
+∥θ∥1 up to some additive error ε is at least Ω
+
+ dε2 log d
+
+
+
+.
+
+The detailed proof of Theorem 3, including the relationship between the problem setting of Proposition 1 and CDMDPs, is discussed in Appendix D. 
+
+## 7. Computational Hardness 
+
+One obstacle in deploying Algorithm 1 is its exponential time complexity in Dmax . In this section, we provide a neg-ative result regarding the computational hardness of solving delayed MDPs that implies that a polynomial time algorithm is unlikely to exist. An unobservable MDP (UMDP) is an MDP that the agent cannot observe intermediate states and has to plan H ac-tions in advance. It coincides with CDMDPs with delay 
+
+D = H. More generally, CDMDPs with delay D can be considered as embedding UMDPs with a time horizon D.Assuming that the transition probabilities are given, one method of computing the optimal value of a given UMDP is to compute the values of all possible AH many sequences of actions. There are several results regarding the compu-tational hardness of UMDPs showing that the exponential time complexity is unlikely to be avoidable, and we intro-duce a result in Burago et al. (1996). 
+
+Theorem 4 (Restatement of Theorem 6 in Burago et al. (1996)) . Suppose a UMDP M = ( S, A, P, r, H ) with H =
+
+|S| = n is given. The problem of distinguishing whether the optimal value of the given UMDP is 1 or less than 
+
+exp( −√n) is NP-hard.      
+
+> 2Proposition 4.3 in Chen et al. (2023) states a regret lower bound of Ω( H√Dmax SAK )for the time-inhomogeneous set-ting, which is translated to Ω( √HD max SAK )for the time-homogeneous setting we consider.
+
+6Minimax Optimal Strategy for Delayed Observations in Online Reinforcement Learning 
+
+Theorem 4 states that approximating the optimal value of a UMDP is NP-hard, even if its transition probabilities are fully known. The theorem is proved by reducing a 3-SAT problem, making the problem of approximating the opti-mal value of SDMDPs strictly harder than 3-SAT problems. Therefore, the exponential time complexity of Algorithm 1 is the best we can hope for. 
+
+## 8. Proof Sketch: Generalization to MDPs with Partially Known Dynamics 
+
+In this section, we provide a sketch of how the regret bounds in Section 5 are obtained. Instead of directly proving the results, we first define a more general model which we call MDPs with partially known dynamics. This model cap-tures and generalizes the core properties of the augmented MDPs we utilize. We provide an algorithm and theoretical guarantees for this setting, and then the results for solving SDMDPs follow as specific cases of the theorem. 
+
+8.1. MDPs with Partially Known Dynamics 
+
+We first explain the motivation of defining MDPs with par-tially known dynamics. There are two properties of the augmented MDP that lead to a polynomial regret bound despite its exponential state space. For simpler exposition, assume the constant delay setting, and suppose the aug-mented state consists only of the last observed state sth and the action queue a = ( ath , . . . , a h−1). The first property of the augmented MDP is that the agent has perfect knowledge about the transition of the action queue — the first action is popped and the current action is pushed — and hence there is nothing to learn. The unknown part of the augmented state transition is the distribution of the next state sth+1 . The second property of the augmented MDP is that the unknown part of the transition is determined by a relatively small part of the augmented state-action pair. Specifically, the distri-bution of the next state sth+1 depends only on (sth , a th ),and the other part of the augmented state-action pair has no effect on it. In other words, the function class for the unknown part of the transition has a certain structure. Motivated by these properties, we define an abstract model that has these properties by definition, which may be of independent interest. We formalize the condition we impose on the MDP as follows. 
+
+Definition 1 (MDPs with partially known dynamics) . We call an MDP M = ( S, A, P, r, H ) an MDP with partially known dynamics if the following conditions are satisfied. The state space decomposes as S = X × Y . The marginal transition kernel for Y is known, that is, there exists a known function PY : S × A → △ (Y) such that P 
+
+> x∈X
+
+P (( x, y ) |
+
+s, a ) = PY (y | s, a ). We denote the conditional transition kernel of X by PX : S × A × Y → △ (X ), which satisfies                     
+
+> sth,ath,ath+1 , . . . , ah−1
+> sth+1,ath+1,. . . , ah
+> +ah
+> XY
+> Figure 2. Illustration of core properties of the augmented MDP’s state transition. Consider a transition accompanied by an aug-mented state-action pair of (( sth;ath, . . . , a h−1), a h).The orange-shaded part indicates that the transition dynamics for the action queue are known, which is simply shifting from the previous action queue. The blue-shaded part indicates that the unknown part of the state transition is determined only by (sth, a th)and is irrelevant of the other part of the augmented state-action pair.
+
+P (( x, y ) | s, a ) = PX (x | s, a, y )PY (y | s, a ). The condi-tional transition kernel PX is unknown to the agent but lies in a known function class PX ⊂ { P : S ×A×Y → △ (X )}.
+
+We consider the case where the functions in the function class PX depend only on a finite number of features. 
+
+Assumption 2 (Tabular structure) . PX in Definition 1 satis-fies the following. There exist a finite set Zeff and a known feature map ϕZ : S × A × Y → Z eff such that PX ∈ P X
+
+only if there exists a distribution Peff : Zeff → △ (X ) with 
+
+PX (s, a, y ) = Peff (ϕZ (s, a, y )) .
+
+Remark 3. It is important to note that Assumption 2 is not 
+
+equivalent to MDPs with Zeff as a feature space. Zeff only represents partial information about the state that governs the unknown part of the state transition. It is possible that multiple state-action pairs are mapped to the same element of Zeff , but their transition dynamics for the second argu-ment Y may differ, possibly resulting in drastically different action values for those state-action pairs. 
+
+8.2. Algorithm and Theoretical Guarantees 
+
+We propose a general algorithm that can run under Assump-tion 2, using MVP as a base algorithm. Let B(z) ≤ |X | 
+
+be a known upper bound on the support size of Peff (z).Algorithm 3 shows the specific procedure. Algorithm 3 has two main differences from learning standard tabular MDPs. First, instead of directly learning the transition dis-tribution P , the algorithm learns Peff , storing the visit count of z ∈ Z eff instead of the actual state-action pairs. Secondly, the logarithmic term is increased by log |Y|∧ B(z) log B(z),which results from the union bound. We present the following theorem for Algorithm 3. 
+
+Theorem 5. Under Assumption 2, Algorithm 3 achieves the 
+
+7Minimax Optimal Strategy for Delayed Observations in Online Reinforcement Learning 
+
+Algorithm 3 Optimistic Algorithm for Partially Known Dynamics 
+
+1: Define ℓ∗(z) := log 32 H|Y||Z eff |Kδ ∧ B(z) log 32 HB (z)|Z eff |Kδ
+
+2: for k = 1 , 2, . . . do 
+
+3: V kH+1 (s) ← 0 for all s ∈ S 
+
+4: for h = H, H − 1, . . . , 1 do 
+
+5: for all s ∈ S do 
+
+6: Qkh(s, a ) ← E  
+
+> y∼(PY)(s,a ),z←ϕZ(s,a,y )
+
+[MVP-Est (r(s, a ), ( ˆP k 
+
+> eff
+
+)z , V kh+1 (·, y ), N k(z), ℓ ∗(z))] for all a ∈ A 
+
+7: V kh (s) ← max a∈A Qkh(s, a )
+
+8: πkh(s) ← argmax a∈A Qkh(s, a )
+
+9: end for 
+
+10: end for 
+
+11: Execute πk and collect data {skh = ( xkh, y kh), a kh}h
+
+12: Store zkh ← ϕZ (skh, a kh, y kh+1 ) for h ∈ [H], update N k+1 (z) and ( ˆP k+1 eff )z accordingly 
+
+13: end for 
+
+regret bound of 
+
+eO H
+
+s
+
+K X
+
+> z∈Z eff
+
+((log |Y| ) ∧ B(z)) + H X
+
+> z∈Z eff
+
+B(z)
+
+!
+
+.
+
+When B(z) = B is a constant, the leading term of The-orem 5 becomes eO(Hp|Z eff |K((log |Y| ) ∧ B)) . Com-pared to the eO(H√SAK ) regret bound of standard MDPs, the cost of learning SA many transition distributions is reduced to |Z eff |, but the increased logarithmic factor is re-flected in the (log |Y| ) ∧ B factor. The proof of Theorem 5 is largely based on the standard optimism-based analysis adapted to this setting. The complete proof is presented in Appendix B. 
+
+8.3. Application to SDMDPs 
+
+In this section, we explain that Theorems 1 and 2 are corol-laries of Theorem 5, where rigorous proofs are presented in Appendix B.4. We mainly focus on the unknown Pdelay 
+
+case (Theorem 2) in this section. We first explain how the augmented MDP constructed in Section 4.1 satisfies Assumption 2. Recall that the aug-mented state space for a given SDMDP is constructed as 
+
+Saug = S × ∪ Dmax  
+
+> D=0
+
+AD × D × [H + 1] . We take X = S × D 
+
+and Y = ∪Dmax  
+
+> D=0
+
+AD × [H + 1] . The space Y consists of the action queue and the time step, and the agent is fully aware of their dynamics. We take Zeff = S × A × D 
+
+with ϕZ (( s, a, e∆, h ), a, y ) = (s, (a + a)1, e∆) . Strictly speaking, we need additional information in the elements of Zeff to handle exceptional cases such as the termina-tion of an episode or the truncation of the delay. How-ever, as it only increases the size of Zeff by a constant factor, we omit this detail for brevity. Peff is defined as 
+
+Peff (s, a, tran ) = P (s, a ) × 1 e∆= −1 and Peff (s, a, e∆) = 
+
+Ptran (s, a, e∆) 1(s, tran ) + (1 − Ptran (s, a, e∆)) 1(s, e∆+1) for 
+
+e∆ ∈ [−1 : ∆ max ], where 1x denotes the point mass dis-tribution at x. In this way, the augmented MDP satisfies Assumption 2. Now, we explain how Theorem 2 is derived from Theorem 5. There are SA elements of the form z = ( s, a, tran ). Each of them adds log |Y|∧ B(z) ≲ Dmax ∧B to the regret bound inside the square root. Therefore, they contribute to the re-gret bound by eO(Hp(Dmax ∧ B)SAK + HBSA ). There are O(SA ∆max ) remaining elements in Zeff of the form 
+
+z = ( s, a, e∆) with e∆ ∈ [−1 : ∆ max ]. We note that they only have a branching factor of two, as they transition to either (s, tran ) or (s, e∆ + 1) in X . Consequently, these el-ements contribute to the eO(H√∆max SAK + H∆max SA )
+
+terms. Taking the sum over the two bounds yields the bound of Theorem 2. Theorem 1 is proved by decomposing the state space as 
+
+X = S and Y = ∪Dmax  
+
+> D=0
+
+AD × D × [H + 1] , where D
+
+moved from X to Y to reflect that the delay distribution is known, and then following the first half of the argument for Theorem 2. 
+
+## 9. Conclusion 
+
+We study an efficient method of learning MDPs with de-layed state observation. Under the tabular setting, we pro-pose an augmentation-based algorithm and provide a regret bound of eO(H√Dmax SAK ), together with a matching re-gret lower bound result, showing that our result is optimal up to logarithmic factors. Our techniques for constructing the augmented MDP and decomposing the known and unknown parts of the transition naturally apply beyond the tabular case and we believe they provide a general framework for addressing observational delays in RL. 8Minimax Optimal Strategy for Delayed Observations in Online Reinforcement Learning 
+
+## Impact Statement 
+
+This paper presents work whose goal is to advance the field of Machine Learning. There are many potential societal consequences of our work, none which we feel must be specifically highlighted here. 
+
+## Acknowledgements 
+
+KJ and HL were supported in part by NSF 2141511, 2023239, and a Singapore AI Visiting Professorship award. 
+
+## References 
+
+Agarwal, M. and Aggarwal, V. Blind decision making: Re-inforcement learning with delayed observations. Pattern Recognition Letters , 150:176–182, 2021. Azar, M. G., Osband, I., and Munos, R. Minimax regret bounds for reinforcement learning. In International con-ference on machine learning , pp. 263–272. PMLR, 2017. Bander, J. L. and White III, C. C. Markov decision processes with noise-corrupted and delayed state observations. Jour-nal of the Operational Research Society , 50(6):660–668, 1999. Burago, D., De Rougemont, M., and Slissenko, A. On the complexity of partially observed markov decision processes. Theoretical Computer Science , 157(2):161– 183, 1996. Cai, T. T. and Low, M. G. Testing composite hypotheses, her-mite polynomials and optimal estimation of a nonsmooth functional. The Annals of Statistics , pp. 1012–1041, 2011. Chen, M., Bai, Y., Poor, H. V., and Wang, M. Efficient rl with impaired observability: Learning to act with de-layed and missing state observations. Advances in Neural Information Processing Systems , 36:46390–46418, 2023. Dann, C., Li, L., Wei, W., and Brunskill, E. Policy cer-tificates: Towards accountable reinforcement learning. In International Conference on Machine Learning , pp. 1507–1516. PMLR, 2019. Domingues, O. D., M ´enard, P., Kaufmann, E., and Valko, M. Episodic reinforcement learning in finite mdps: Minimax lower bounds revisited. In Algorithmic Learning Theory ,pp. 578–598. PMLR, 2021. Gael, M. A., Vernade, C., Carpentier, A., and Valko, M. Stochastic bandits with arm-dependent delays. In Interna-tional Conference on Machine Learning , pp. 3348–3356. PMLR, 2020. Hoeffding, W. Probability inequalities for sums of bounded random variables. Journal of the American Statistical As-sociation , 58(301):13–30, 1963. doi: 10.1080/01621459. 1963.10500830. Howson, B., Pike-Burke, C., and Filippi, S. Delayed feed-back in generalised linear bandits revisited. In Interna-tional Conference on Artificial Intelligence and Statistics ,pp. 6095–6119. PMLR, 2023a. Howson, B., Pike-Burke, C., and Filippi, S. Optimism and delays in episodic reinforcement learning. In Interna-tional Conference on Artificial Intelligence and Statistics ,pp. 6061–6094. PMLR, 2023b. Jaksch, T., Ortner, R., and Auer, P. Near-optimal regret bounds for reinforcement learning. Journal of Machine Learning Research , 11:1563–1600, 2010. Jin, C., Allen-Zhu, Z., Bubeck, S., and Jordan, M. I. Is q-learning provably efficient? Advances in neural infor-mation processing systems , 31, 2018. Katsikopoulos, K. V. and Engelbrecht, S. E. Markov de-cision processes with delays and asynchronous cost col-lection. IEEE transactions on automatic control , 48(4): 568–574, 2003. Kim, J., Kim, H., Kang, J., Baek, J., and Han, S. Belief projection-based reinforcement learning for environments with delayed feedback. Advances in Neural Information Processing Systems , 36:678–696, 2023. Kuang, N. L., Yin, M., Wang, M., Wang, Y.-X., and Ma, Y. Posterior sampling with delayed feedback for rein-forcement learning with linear function approximation. 
+
+Advances in neural information processing systems , 36: 6782–6824, 2023. Lancewicki, T., Segal, S., Koren, T., and Mansour, Y. Stochastic multi-armed bandits with unrestricted delay distributions. In International Conference on Machine Learning , pp. 5969–5978. PMLR, 2021. Lancewicki, T., Rosenberg, A., and Sotnikov, D. Delay-adapted policy optimization and improved regret for ad-versarial mdp with delayed bandit feedback. In Inter-national Conference on Machine Learning , pp. 18482– 18534. PMLR, 2023. Lee, H. and Oh, M. Minimax optimal reinforcement learn-ing with quasi-optimism. In The Thirteenth International Conference on Learning Representations , 2025. URL 
+
+https://openreview.net/forum?id=i8LCUpKvAz .Masoudian, S., Zimmert, J., and Seldin, Y. A best-of-both-worlds algorithm for bandits with delayed feedback. Ad-vances in Neural Information Processing Systems , 35: 11752–11762, 2022. 9Minimax Optimal Strategy for Delayed Observations in Online Reinforcement Learning 
+
+Maurer, A. and Pontil, M. Empirical bernstein bounds and sample variance penalization. arXiv preprint arXiv:0907.3740 , 2009. Mondal, W. U. and Aggarwal, V. Reinforcement learning with delayed, composite, and partially anonymous reward. 
+
+Transactions on Machine Learning Research , 2023. ISSN 2835-8856. URL https://openreview.net/forum? id=ubCoTAynPp .Sutton, R. S. and Barto, A. G. Reinforcement Learn-ing: An Introduction . The MIT Press, second edition, 2018. URL http://incompleteideas.net/book/ the-book-2nd.html .Tiapkin, D., Belomestny, D., Moulines, E., Naumov, A., Samsonov, S., Tang, Y., Valko, M., and M ´enard, P. From dirichlet to rubin: Optimistic exploration in rl without bonuses. In International Conference on Machine Learn-ing , pp. 21380–21431. PMLR, 2022. Tsybakov, A. Introduction to Nonparametric Estimation .Springer Series in Statistics. Springer New York, 2008. ISBN 9780387790527. URL https://books.google. com/books?id=mwB8rUBsbqoC .Vernade, C., Carpentier, A., Lattimore, T., Zappella, G., Er-mis, B., and Brueckner, M. Linear bandits with stochastic delayed feedback. In International Conference on Ma-chine Learning , pp. 9712–9721. PMLR, 2020. Walsh, T. J., Nouri, A., Li, L., and Littman, M. L. Learning and planning in environments with delayed feedback. 
+
+Autonomous Agents and Multi-Agent Systems , 18(1):83– 105, 2009. Wu, Q., Zhan, S. S., Wang, Y., Wang, Y., Lin, C.-W., Lv, C., Zhu, Q., Schmidhuber, J., and Huang, C. Boosting reinforcement learning with strongly delayed feedback through auxiliary short delays. In International Confer-ence on Machine Learning , pp. 53973–53998. PMLR, 2024. Wu, Q., Wang, Y., Zhan, S. S., Wang, Y., Lin, C.-W., Lv, C., Zhu, Q., Schmidhuber, J., and Huang, C. Di-rectly forecasting belief for reinforcement learning with delays. In Forty-second International Conference on Machine Learning , 2025. URL https://openreview. net/forum?id=S9unJQditt .Yang, Y., Zhong, H., Wu, T., Liu, B., Wang, L., and Du, S. S. A reduction-based framework for sequential deci-sion making with delayed feedback. Advances in Neural Information Processing Systems , 36:46362–46389, 2023. Zanette, A. and Brunskill, E. Tighter problem-dependent regret bounds in reinforcement learning without domain knowledge using value function bounds. In Interna-tional Conference on Machine Learning , pp. 7304–7312. PMLR, 2019. Zhang, Z., Ji, X., and Du, S. Is reinforcement learning more difficult than bandits? a near-optimal algorithm escaping the curse of horizon. In Conference on Learning Theory ,pp. 4528–4531. PMLR, 2021. Zhang, Z., Chen, Y., Lee, J. D., and Du, S. S. Settling the sample complexity of online reinforcement learning. In The Thirty Seventh Annual Conference on Learning Theory , pp. 5213–5219. PMLR, 2024. Zhou, Z., Xu, R., and Blanchet, J. Learning in generalized linear contextual bandits with stochastic delays. Advances in Neural Information Processing Systems , 32, 2019. 10 Minimax Optimal Strategy for Delayed Observations in Online Reinforcement Learning 
+
+## Table of Contents 
+
+A Full Algorithms 12 B Proof of Theorem 5 13 
+
+B.1 High-probability Events . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 13 B.2 Optimism . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 14 B.3 Bounding Cumulative Regret . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 16 B.4 Proof of Theorems 1 and 2 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 17 
+
+C Proofs of Technical Lemmas in Appendix B 18 
+
+C.1 Proof of Lemma 2 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 18 C.2 Proof of Lemma 10 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 19 C.3 Proof of Lemma 11 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 21 C.4 Proof of Lemma 13 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 21 C.5 Additional Technical Lemmas . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 24 
+
+D Proof of Theorem 3 25 
+
+D.1 Hard Structure for Delayed Observation: CodeMDP . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 25 D.2 Construction of Hard Instances . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 26 D.3 Proof of Theorem 3 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 27 
+
+E Proof of Proposition 1 30 
+
+E.1 Proof of Proposition 3 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 32 
+
+F Proofs of Technical Lemmas in Appendices D and E 35 
+
+F.1 Proof of Lemma 19 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 35 F.2 Proof of Lemma 20 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 35 F.3 Proof of Lemma 22 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 36 F.4 Proof of Lemma 23 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 38 
+
+G Auxiliary Lemmas 38 
+
+11 Minimax Optimal Strategy for Delayed Observations in Online Reinforcement Learning 
+
+## A. Full Algorithms 
+
+In this section, we present the full procedure of Algorithm 1 introduced in Section 4.2. Algorithm 4 is the full version of Algorithm 1 that specifies the update order and exception handling. As explained in Section 4.2, instead of storing the visit counts of the augmented state-action pairs, it stores the visit counts of the original MDP’s state-action pairs and the tuple of state, action, and inter-arrival time. Specifically, it maintains the information of 
+
+N k(s, a ) := 
+
+> k−1
+
+X
+
+> i=1
+> H
+
+X
+
+> h=1
+
+1{(sih, a ih) = ( s, a )}
+
+N k(s, a, e∆) := 
+
+> k−1
+
+X
+
+> i=1
+> H
+
+X
+
+> h=1
+
+1{(sih, a ih) = ( s, a ), ∆ih ≥ e∆}
+
+( ˆP k)s,a (s′) := 1
+
+N k(s, a )
+
+> k−1
+
+X
+
+> i=1
+> H
+
+X
+
+> h=1
+
+1{(sih, a ih, s ih+1 ) = ( s, a, s ′)}
+
+( ˆP k
+
+> tran
+
+)s,a ( e∆) := N k(s, a, e∆) − N k(s, a, e∆ + 1) 
+
+N k(s, a, e∆) .
+
+(1) As a subroutine of Algorithm 4, we have Algorithm 5 ( Q-Estimate ) that handles the computation of Q-values for augmented states with e∆ ∈ [−1 : ∆ max ]. Recall that these augmented states transition to one of the two augmented states depending on whether a new state is revealed or not. When Pdelay is known, Q-Estimate takes the expectation of the next augmented states’ values. When Pdelay is unknown, MVP-Est is called to compute the UCB value instead. It also handles the case where the next state is trivially revealed due to clipping or the termination of the episode. 
+
+Algorithm 4 MVP-Delayed 
+
+1: Input: Per time step delay ∆max , Maximum delay Dmax 
+
+2: Define ℓ∗(D, b ) := ( D log A + log 64 H(D+1) 2∆max SAK δ ) ∧ (b log 32 Hb ∆max SAK δ )
+
+3: for k = 1 , 2, . . . do 
+
+4: Initialize N k(s, a ), N k(s, a, e∆) , ˆP k(s, a ), ˆP k
+
+> tran
+
+(s, a, e∆) as Eq. (1) 
+
+5: Initialize V k(s, ∅, tran , H + 1) ← 0, V k(s, ∅, −1, H + 1) ← 0 for all s ∈ S 
+
+6: for all s ∈ S , a ∈ ∪ Dmax  
+
+> D=1
+
+AD do 
+
+7: V k(s, a, tran , H + 1) ← MVP-Est (r(s, a1), ˆP ks, a1 , V k(·, a2: , −1, H + 1) , N k(s, a1), ℓ ∗(D, B )) 
+
+8: V k(s, a, −1, H + 1) ← V k(s, a, tran , H + 1) 
+
+9: end for 
+
+10: for h = H, . . . , 1 do 
+
+11: // Update Category 1 states ( e∆ ∈ [0 : ∆ max ])
+
+12: for all s ∈ S , a ∈ ∪ Dmax  
+
+> D=0
+
+AD , e∆ ∈ [0 : ∆ max ] do 
+
+13: Qk(( s, a, e∆, h ), a ) ← Q-Estimate (s, a+a, e∆, h + 1) for all a ∈ A 
+
+14: V k(s, a, e∆, h ) ← max a∈A Q(( s, a, e∆, h ), a )
+
+15: πkh(s, a, e∆, h ) ← argmax a∈A Q(( s, a, e∆, h ), a )
+
+16: end for 
+
+17: // Update Category 2 and 3 states ( e∆ = tran or −1)
+
+18: V k(s, ∅, −1, h ) ← V k(s, ∅, 0, h ) for all s ∈ S 
+
+19: for D = 1 , . . . , D max do 
+
+20: for all s ∈ S , a ∈ A D do 
+
+21: V k(s, a, tran , h ) ← MVP-Est (r(s, a1), ˆP ks, a1 , V k(·, a2: , −1, h ), N k(s, a1), ℓ ∗(D, B )) 
+
+22: V k(s, a, −1, h ) ← Q-Estimate (s, a, −1, h )
+
+23: end for 
+
+24: end for 
+
+25: end for 
+
+26: Execute πk and collect data {skh, a kh, ∆kh}Hh=1 ∪ { skH+1 }
+
+27: end for 
+
+12 Minimax Optimal Strategy for Delayed Observations in Online Reinforcement Learning 
+
+Algorithm 5 Q-Estimate 
+
+1: Input: (s, a, e∆, h )
+
+2: Vtran ← V k(s, a, tran , h )
+
+3: Vdelay ← V k(s, a, e∆ + 1 , h )
+
+4: if len (a) = Dmax + 1 or e∆ = ∆ max or h = H + 1 then 
+
+5: Return Vtran 
+
+6: else if Pdelay is known then 
+
+7: Get p ← Ptran (s, a1, e∆) 
+
+8: Return pV tran + (1 − p)Vdelay 
+
+9: else 
+
+10: Return MVP-Est (0 , ˆP k
+
+> tran
+
+(s, a1, e∆) , (Vtran , V delay ), N k(s, a1, e∆) , ℓ ∗(len (a), 2) 
+
+11: end if 
+
+## B. Proof of Theorem 5 
+
+In this section, we present the full proof of Theorem 5. We define several notations for the analysis. Define ℓ1 = log 32 H2|Y||Z eff |Kδ , ℓ2(z) = log 32 HB (z)|Z eff |Kδ , and ℓ∗(z) = min {ℓ1, B (z)ℓ2(z)}. For z ∈ Z eff , let X (z) := {x ∈ X | (Peff )z (x) > 0} be the support of (Peff )z . Let N kh (z)
+
+be the number of time steps z ∈ Z eff appeared in the trajectory up to the h-th time step of the k-th episode, that is, 
+
+N kh (z) := N k(z) + Phj=1 1{zkj = z}. For h ∈ [H + 1] , s ∈ S , and k ∈ [K], we define U kh (s) and eU kh (s) iteratively starting from U kH+1 (s) = eU kH+1 (s) := 0 and 
+
+U kh (s) := E 
+
+> s′=( x′,y ′)∼Ps,a
+> z=ϕZ(s,a,y ′)
+
+ ℓ∗(z)
+
+N k(z) + U kh+1 (s′)
+
+
+
+∧ 1 ,
+
+eU kh (s) := E 
+
+> s′=( x′,y ′)∼Ps,a
+> z=ϕZ(s,a,y ′)
+
+ B(z)ℓ2(z)
+
+N k(z) + eU kh+1 (s′)
+
+
+
+∧ 1 ,
+
+for h ∈ [H], where a = πkh(s).
+
+B.1. High-probability Events 
+
+In this section, we define the high-probability events that constitute the event E under which Theorem 5 holds. 
+
+Lemma 1. The following inequality holds for all z ∈ Z eff , y ∈ Y , h ∈ [H], and k ∈ [K] that satisfies N k(z) ≥ 1 with probability at least 1 − δ 
+
+> 8
+
+:
+
+(( Peff )z − ( ˆPeff )z )V ∗
+
+> h+1
+
+(·, y ) ≤
+
+s
+
+2V(( Peff )z , V ∗
+
+> h+1
+
+(·, y )) ℓ1
+
+N k(z) + Hℓ 1
+
+3N k(z) .
+
+Proof. Apply Lemma 25 to Z = V ∗
+
+> h+1
+
+(x, y ) with x ∼ Peff (z) and the probability of failure as δ 
+
+> 8
+
+, then take the union bound over y ∈ Y , z ∈ Z eff , h ∈ [H], and 1 ≤ N k(s, a ) ≤ KH .The following is a useful corollary of Lemma 12, whose proof is deferred to Appendix C.1. 
+
+Lemma 2. There exists an event with probability at least 1 − δ 
+
+> 8
+
+such that for all z ∈ Z eff and for any constants a ≤ b, the following inequality holds for any function V : X (z) → [a, b ]:
+
+(( Peff )z − ( ˆP k 
+
+> eff
+
+)z )V ≤
+
+s
+
+2V(( Peff )z , V )B(z)ℓ2(z)
+
+N k(z) + (b − a)B(z)ℓ2(z)3N k(z) .
+
+The following Lemmas 3 and 4 are empirical versions of Lemmas 1 and 2, respectively. The proofs of these lemmas are nearly identical to their counterparts, only that the uses of Lemma 25 are replaced by Lemma 26. 13 Minimax Optimal Strategy for Delayed Observations in Online Reinforcement Learning 
+
+Lemma 3. The following inequality holds for all z ∈ Z eff , y ∈ Y , h ∈ [H], and k ∈ [K] that satisfies N k(s, a ) ≥ 1 with probability at least 1 − δ 
+
+> 8
+
+:
+
+(( Peff )z − ( ˆPeff )z )V ∗
+
+> h+1
+
+(·, y ) ≤ 2
+
+s
+
+V(( ˆPeff )z , V ∗
+
+> h+1
+
+(·, y )) ℓ1
+
+N k(z) + 14 Hℓ 1
+
+3N k(z) .
+
+Lemma 4. There exists an event with probability at least 1 − δ 
+
+> 8
+
+such that for all z ∈ Z eff and for any constants a ≤ b, the following inequality holds for any function V : X (z) → [a, b ]:
+
+(( Peff )z − ( ˆP k 
+
+> eff
+
+)z )V ≤ 2
+
+s
+
+V(( ˆPeff )z , V )B(z)ℓ2(z)
+
+N k(z) + 14( b − a)B(z)ℓ2(z)3N k(z) .
+
+We additionally require two lemmas regarding the concentration of U k 
+
+> 1
+
+(sk 
+
+> 1
+
+) and eU k 
+
+> 1
+
+(sk 
+
+> 1
+
+) between the sum of 1   
+
+> Nk(z)
+
+over the actual trajectory. The following lemma is an application of Lemma 15 in Lee & Oh (2025), and the proof is identical to it. 
+
+Lemma 5. With probability at least 1 − δ 
+
+> 2
+
+, we have 
+
+> K
+
+X
+
+> k=1
+
+U k 
+
+> 1
+
+≤ 2
+
+> K
+
+X
+
+> k=1
+> H
+
+X
+
+> h=1
+
+1{2N k(zkh) > N kh (zkh)} · ℓ∗(zkh)
+
+N k(zkh) + 3 |Z eff | log 8Hδ
+
+and 
+
+> K
+
+X
+
+> k=1
+
+eU k 
+
+> 1
+
+≤ 2
+
+> K
+
+X
+
+> k=1
+> H
+
+X
+
+> h=1
+
+1{2N k(zkh) > N kh (zkh)} · B(zkh)ℓ2(zkh)
+
+N k(zkh) + 3 |Z eff | log 8Hδ .
+
+We let E be the intersection of the events of Lemmas 1-5. By the union bound, we have P(E) ≥ 1 − δ.
+
+B.2. Optimism 
+
+In this section, we prove the following optimism lemma for Algorithm 3. 
+
+Lemma 6 (Optimism) . The estimated value V kh (s) in Algorithm 3 satisfies V kh (s) ≥ V ∗ 
+
+> h
+
+(s) for all s ∈ S under E.
+
+To prove the lemma, we require the following lemmas from Zhang et al. (2021). 
+
+Lemma 7 (Lemma 14 in Zhang et al. (2021)) . Let f : △([ S]) × RS × R × R → R with f (p, V, n, ℓ ) := pV +max { 20 3
+
+q V(p,V )ℓn , 400 9 
+
+> ℓn
+
+}, where V(p, V ) = P 
+
+> s∈[S]
+
+p(s)( V (s) − pV )2. Then, f satisfies 1. f (p, V, n, ℓ ) is non-decreasing in V (s) for all p ∈ △ ([ S]) , ∥V ∥∞ ≤ 1, n, ℓ > 0.2. f (p, V, n, ℓ ) ≥ pV + 2 
+
+q V(p,V )ℓn + 14 ℓ 
+
+> 3n
+
+.
+
+The following lemma guarantees that MVP-Est outputs an optimistic estimate in Line 8 of Algorithm 3. It follows the same reasoning as Lemma 4 in Zhang et al. (2021). 
+
+Lemma 8. Fix s ∈ S , a ∈ A , y ∈ Y , h ∈ [H], and k ∈ [K], and let z = ϕZ (s, a, y ). Define the conditional optimal action value (conditioned on y) as Q∗
+
+> h
+
+(s, a, y ) = r(s, a ) + P 
+
+> x∈X
+
+(PX )s,a,y (x)V ∗
+
+> h+1
+
+(x, y ) and the conditional optimistic estimate as Qkh(s, a, y ) := MVP-Est (r(s, a ), ( ˆPeff )z , V kh+1 (·, y ), N k(z), ℓ ∗(z)) . Suppose V kh+1 (x, y ) ≥ V ∗
+
+> h+1
+
+(x, y ) holds for all x ∈ X . Then, we have Qkh(s, a, y ) ≥ Q∗
+
+> h
+
+(s, a, y ) under the event E.Proof. For simplicity, denote P (·) := ( Peff )z (·), ˆP (·) := ( ˆP k 
+
+> eff
+
+)z (·), r := r(s, a ), V ∗
+
+> h+1
+
+(·) := V ∗
+
+> h+1
+
+(·, y ), V kh+1 (·) := 
+
+V kh+1 (·, y ), N := N k(z), and ℓ∗ := ℓ∗(z). If Qkh(s, a, y ) = H, then the lemma becomes trivial. Suppose Qkh(s, a, y ) < H ,which implies N ≥ 2. Under the event of Lemma 3, we have 
+
+(P − ˆP )V ∗ 
+
+> h+1
+
+≤ 2
+
+s
+
+V( ˆP , V ∗
+
+> h+1
+
+)ℓ1
+
+N + 14 Hℓ 1
+
+3N .
+
+14 Minimax Optimal Strategy for Delayed Observations in Online Reinforcement Learning 
+
+Under the event of Lemma 4, we have 
+
+(P − ˆP )V ∗ 
+
+> h+1
+
+≤ 2
+
+s
+
+V( ˆP , V ∗
+
+> h+1
+
+)B(z)ℓ2(z)
+
+N + 14 HB (z)ℓ2(z)3N .
+
+Taking the minimum over the two bounds, we have 
+
+(P − ˆP )V ∗ 
+
+> h+1
+
+≤ 2
+
+s
+
+V( ˆP , V ∗
+
+> h+1
+
+)ℓ∗
+
+N + 14 Hℓ ∗
+
+3N ,
+
+where we use that ℓ∗ = ℓ∗(z) = ℓ1 ∧ B(z)ℓ2(z). Then, Q∗
+
+> h
+
+(s, a, y ) is upper bounded as 
+
+Q∗
+
+> h
+
+(s, a, y ) = r + P V ∗
+
+> h+1
+
+= r + ˆP V ∗ 
+
+> h+1
+
++ ( P − ˆP )V ∗
+
+> h+1
+
+≤ r + ˆP V ∗ 
+
+> h+1
+
++ 2 
+
+s
+
+V( ˆP , V ∗
+
+> h+1
+
+)ℓ∗
+
+N + 14 Hℓ ∗
+
+3N .
+
+By Lemma 7, we have 
+
+ˆP V ∗ 
+
+> h+1
+
++ 2 
+
+s
+
+V( ˆP , V ∗
+
+> h+1
+
+)ℓ∗
+
+N + 14 Hℓ ∗
+
+3N ≤ ˆP V ∗ 
+
+> h+1
+
++ max 
+
+
+
+20 3
+
+s
+
+V( ˆP , V ∗
+
+> h+1
+
+)ℓ∗
+
+N , 400 Hℓ ∗
+
+9N
+
+
+
+≤ ˆP V kh+1 + max 
+
+
+
+20 3
+
+s
+
+V( ˆP , V kh+1 )ℓ∗
+
+N , 400 Hℓ ∗
+
+9N
+
+
+
+≤ ˆP V kh+1 + 20 3
+
+s
+
+V( ˆP , V kh+1 )ℓ∗
+
+N + 400 Hℓ ∗
+
+9N ,
+
+where we use the condition V kh+1 ≥ V ∗ 
+
+> h+1
+
+for the second inequality. Therefore, we conclude that 
+
+Q∗
+
+> h
+
+(s, a, y ) ≤ r + ˆP V ∗ 
+
+> h+1
+
++ 2 
+
+s
+
+V( ˆP , V ∗
+
+> h+1
+
+)ℓ∗
+
+N + 14 Hℓ ∗
+
+3N
+
+≤ r + ˆP V kh+1 + 20 3
+
+s
+
+V( ˆP , V kh+1 )ℓ∗
+
+N + 400 Hℓ ∗
+
+9N
+
+= Qkh(s, a, y ) .
+
+We now prove Lemma 6. 
+
+Proof of Lemma 6. We prove the lemma by backward induction on h. The inequality is trivial for h = H + 1 . Suppose the inequality holds for h + 1 . Then, by Lemma 8, we have Qkh(s, a, y ) ≥ Q∗
+
+> h
+
+(s, a, y ). It implies that 
+
+Qkh(s, a ) = X
+
+> y∈Y
+
+PY (y | s, a )Qkh(s, a, y )
+
+≥ X
+
+> y∈Y
+
+PY (y | s, a )Q∗
+
+> h
+
+(s, a, y )= Q∗
+
+> h
+
+(s, a ) .
+
+Since V kh (s) is the maximum of Qkh(s, a ) over a ∈ A , we have 
+
+V kh (s) = max  
+
+> a∈A
+
+Qkh(s, a ) ≥ max  
+
+> a∈A
+
+Q∗
+
+> h
+
+(s, a ) = V ∗ 
+
+> h
+
+(s) .
+
+This completes the induction step. 15 Minimax Optimal Strategy for Delayed Observations in Online Reinforcement Learning 
+
+B.3. Bounding Cumulative Regret 
+
+For the remaining of the analysis, we combine techniques developed in Zhang et al. (2024); Lee & Oh (2025) for simpler analysis, although we derive the same result with Zhang et al. (2021). We complete the proof of Theorem 5 by proving the following lemma: 
+
+Lemma 9. Under E, the following inequality holds for all k ∈ [K]:
+
+> K
+
+X
+
+> k=1
+
+
+
+V k 
+
+> 1
+
+(sk 
+
+> 1
+
+) − V πk 
+
+> 1
+
+(sk 
+
+> 1
+
+)
+
+
+
+≤ 56 H
+
+s
+
+K(log eKH ) X
+
+> z∈Z eff
+
+ℓ∗(z) + 2640 H(log eKH ) X
+
+> z∈Z eff
+
+B(z)ℓ2(z) .
+
+Proof of Lemma 9. Recall that U kh and eU kh are functions defined as 
+
+U kh (s) := E 
+
+> s′=( x′,y ′)∼Ps,a
+> z=ϕZ(s,a,y ′)
+
+ ℓ∗(z)
+
+N k(z) + U kh+1 (s′)
+
+
+
+∧ 1 ,
+
+eU kh (s) := E 
+
+> s′=( x′,y ′)∼Ps,a
+> z=ϕZ(s,a,y ′)
+
+ B(z)ℓ2(z)
+
+N k(z) + eU kh+1 (s′)
+
+
+
+∧ 1 ,
+
+for h ∈ [H], where a = πkh(s), starting from U kH+1 (s) = eU kH+1 (s) := 0 . The following lemma shows that the instantaneous regret is upper bounded by U k 
+
+> 1
+
+and eU k 
+
+> 1
+
+.
+
+Lemma 10. Under E, we have 
+
+V k 
+
+> 1
+
+(sk 
+
+> 1
+
+) − V πk 
+
+> 1
+
+(sk 
+
+> 1
+
+) ≤ 28 H
+
+q
+
+U k 
+
+> 1
+
+(sk 
+
+> 1
+
+) + 660 H eU k 
+
+> 1
+
+(sk 
+
+> 1
+
+)
+
+for all k ∈ [K].
+
+We provide a high level proof sketch of Lemma 10 here. We express the instantaneous regret as the sum of the bonus terms and some extra terms as 
+
+V k 
+
+> 1
+
+(sk 
+
+> 1
+
+) − V πk 
+
+> 1
+
+(sk 
+
+> 1
+
+) ≲ E
+
+> πk
+
+
+
+> H
+
+X
+
+> h=1
+
+s
+
+V(( Peff )zkh , V ∗
+
+> h+1
+
+(·, y kh+1 )ℓ∗(zkh)
+
+N k(zkh) + HB (zkh)ℓ2(zkh)
+
+N k(zkh)
+
+ .
+
+By applying the Cauchy-Schwarz inequality twice on the first term, we obtain that 
+
+> H
+
+X
+
+> h=1
+
+s
+
+V(( Peff )zkh , V ∗
+
+> h+1
+
+(·, y kh+1 )ℓ∗(zkh)
+
+N k(zkh) ≤
+
+vuut E
+
+> πk
+
+" HX
+
+> h=1
+
+V(( Peff )zkh , V ∗
+
+> h+1
+
+(·, y kh+1 )
+
+#
+
+E
+
+> πk
+
+" HX
+
+> h=1
+
+ℓ∗(zkh)
+
+N k(zkh)
+
+#
+
+.
+
+We show that the expected sum of the variances are upper bounded by H2. The sum of the ℓ∗(z)  
+
+> N(z)
+
+-type terms are expressed as 
+
+U k 
+
+> 1
+
+and eU k 
+
+> 1
+
+, which yields Lemma 10. The full proof of Lemma 10 is deferred to Appendix C.2. Taking the sum over k ∈ [K] and applying Lemma 10, we obtain that 
+
+> K
+
+X
+
+> k=1
+
+
+
+V k 
+
+> 1
+
+(sk 
+
+> 1
+
+) − V πk 
+
+> 1
+
+(sk 
+
+> 1
+
+)
+
+
+
+≤
+
+> K
+
+X
+
+> k=1
+
+
+
+28 H
+
+q
+
+U k 
+
+> 1
+
+(sk 
+
+> 1
+
+) + 660 H eU k 
+
+> 1
+
+(sk 
+
+> 1
+
+)
+
+
+
+≤ 28 H
+
+vuutK
+
+> K
+
+X
+
+> k=1
+
+U k 
+
+> 1
+
+(sk 
+
+> 1
+
+) + 660 H
+
+> K
+
+X
+
+> k=1
+
+eU k 
+
+> 1
+
+(sk 
+
+> 1
+
+) ,
+
+where we use the Cauchy-Schwarz inequality for the second inequality. The sums of U k 
+
+> 1
+
+(sk 
+
+> 1
+
+) and eU k 
+
+> 1
+
+(sk 
+
+> 1
+
+), which are the expected sums of 1  
+
+> N(z)
+
+-type of terms, are bounded by the following lemma, whose proof is deferred to Appendix C.3. 16 Minimax Optimal Strategy for Delayed Observations in Online Reinforcement Learning 
+
+Lemma 11. Under E, we have 
+
+> K
+
+X
+
+> k=1
+
+U k 
+
+> 1
+
+(sk 
+
+> 1
+
+) ≤ 4(log eKH ) X
+
+> z∈Z eff
+
+ℓ∗(z)
+
+and 
+
+> K
+
+X
+
+> k=1
+
+eU k 
+
+> 1
+
+(sk 
+
+> 1
+
+) ≤ 4(log eKH ) X
+
+> z∈Z eff
+
+B(z)ℓ2(z) .
+
+By applying Lemma 11, we have 
+
+> K
+
+X
+
+> k=1
+
+
+
+V k 
+
+> 1
+
+(sk 
+
+> 1
+
+) − V πk 
+
+> 1
+
+(sk 
+
+> 1
+
+)
+
+
+
+≤ 28 H
+
+vuutK
+
+> K
+
+X
+
+> k=1
+
+U k 
+
+> 1
+
+(sk 
+
+> 1
+
+) + 660 H
+
+> K
+
+X
+
+> k=1
+
+eU k 
+
+> 1
+
+(sk 
+
+> 1
+
+)
+
+≤ 56 H
+
+s
+
+K(log eKH ) X
+
+> z∈Z eff
+
+ℓ∗(z) + 2640 H(log eKH ) X
+
+> z∈Z eff
+
+B(z)ℓ2(z) ,
+
+completing the proof. 
+
+Proof of Theorem 5. By Lemma 6 and Lemma 9, we have 
+
+> K
+
+X
+
+> k=1
+
+
+
+V ∗ 
+
+> 1
+
+(sk 
+
+> 1
+
+) − V πk 
+
+> 1
+
+(sk 
+
+> 1
+
+)
+
+
+
+≤
+
+> K
+
+X
+
+> k=1
+
+
+
+V k 
+
+> 1
+
+(sk 
+
+> 1
+
+) − V πk 
+
+> 1
+
+(sk 
+
+> 1
+
+)
+
+
+
+= O
+
+H
+
+s
+
+K(log KH ) X
+
+> z∈Z eff
+
+ℓ∗(z) + H(log KH ) X
+
+> z∈Z eff
+
+B(z)ℓ2(z)
+
+ . (2) Recall that ℓ∗(z) = log 32 H2|Y||Z eff |Kδ ∧ B(z) log 32 HB (z)|Z eff |Kδ and ℓ2(z) = log 32 HB (z)|Z eff |Kδ . Omitting logarithmic factors on H, K, δ, B (z), and |Z eff |, we conclude that the regret bound is in the order of 
+
+eO
+
+H
+
+s
+
+K X
+
+> z∈Z eff
+
+(log |Y| ) ∧ B(z) + H X
+
+> z∈Z eff
+
+B(z)
+
+ .
+
+B.4. Proof of Theorems 1 and 2 
+
+Proof of Theorem 1. We first show that the augmented MDP constructed in Section 4.1 satisfies Assumption 2. Recall that the augmented state space is defined as Saug = S × ∪ Dmax  
+
+> D=0
+
+A × D × [H + 1] . We decompose it as X = S and 
+
+Y = ∪Dmax  
+
+> D=0
+
+A × D × [H + 1] . Since the agent knows the dynamics of the action queue, the delay distribution, and the time step, the agent is fully aware of the dynamics of Y. We take Zeff = S × (A ∪ {∅} ), where the feature map is defined as 
+
+ϕZ (( s, a, tran , h ), a, y ) = ( s, a1) and ϕZ (( s, a, e∆, h ), a, y ) = ( s, ∅) for e∆̸ = tran . The effective transition distribution becomes Peff (s, a ) = P (s, a ) for a ∈ A and Peff (s, ∅) = 1s. In this way, we have shown that the augmented MDP satisfies Assumption 2. Now, we show that Theorem 1 is a corollary of Theorem 5. We have |Y| ≤ (A + 1) Dmax (∆ max + 2)( H + 1) , and hence 
+
+log |Y| ≲ Dmax , omitting the logarithmic factors. For z ∈ Z eff , we have B(z) ≤ B. We also have |Z eff | ≤ S(A + 1) .Applying Theorem 5, where we may refer to Eq. (2) for logarithmic dependence, we conclude that the regret bound is at most 
+
+O
+
+
+
+Hp(( Dmax log A + ι) ∧ (Bι )) SAK (log KH ) + HBSA (log KH )ι
+
+
+
+,
+
+17 Minimax Optimal Strategy for Delayed Observations in Online Reinforcement Learning 
+
+where ι = log HSAK δ .In order to achieve a tighter problem-dependent bound that scales with the actual length of the delay as mentioned in Remark 2, we take the union bound in a specially designed way. Instead of taking the uniform union bound over Y, we assign probabilities depending on the length of a. Specifically, while we previously took the union bound by assigning the same probability of δ′ 
+
+> (A+1) Dmax
+
+to all a ∈ ∪ Dmax  
+
+> D=0
+
+AD , instead, we assign probability δ′ 
+
+> 2( D+1) 2AD
+
+to action queues a in AD .By doing so, the Dmax log A factor reduces to D log A for such elements. In the analysis, only the reachable states affect the regret bound. Hence, defining Dmax (s, a ) as the maximum possible delay length of Dh followed by (sh, a h) = ( s, a ) for any h ∈ [H], we achieve the regret bound whose (Dmax ∧ B)SA factor is replaced by P
+
+> (s,a )∈S×A
+
+(Dmax (s, a ) ∧ B).
+
+Proof of Theorem 2. Section 8.3 largely explains the main processes, and we fill in some missing details. To show that the augmented MDP satisfies Assumption 2, we decompose the state space as X = S × D and Y = ∪Dmax  
+
+> D=0
+
+AD × [H + 1] . We take Zeff = S × A × D × {∅ , 0, 1}, where we need the last component to handle exceptional cases such as truncation of the delay or the termination of the episode. For most augmented states, we have ϕZ (( s, a, e∆, h ), a, y ) = ( s, a1, e∆, ∅). The last component is set to 0 when we have len (a) = 0 and e∆ = −1, meaning that there is no state to reveal and the delay must be set to 0. The last component is set to 1 when we have either len (a) = Dmax and e∆ ∈ [0 : ∆ max ], which corresponds to case that the delay is truncated by Dmax , or h = H + 1 , which corresponds to the termination of the episode. The effective transition distribution is defined as Peff (s, a, tran , ·) = Ps,a × 1 e∆= −1 and Peff (s, a, e∆, ∅) =
+
+Ptran (s, a, e∆) 1s,a, tran + (1 − Ptran (s, a, e∆)) 1s,a, e∆+1 for e∆̸ = tran . If the last variable is 0 or 1 in the latter case, then Ptran is replaced by 0 or 1, respectively. In this way, we can correctly classify the augmented MDP as a special case of Assumption 2. Showing that Theorem 2 follows from Theorem 5 is exactly as explained in Section 8.3, where we obtain the regret bound of 
+
+O
+
+
+
+Hp(( Dmax log A + ι) ∧ (Bι ) + ∆ max ι)SAK (log KH )+ H(B + ∆ max )SA (log KH )ι
+
+
+
+.
+
+Achieving the improved problem-dependent bound described in Remark 2 is done in the same with Theorem 1. 
+
+## C. Proofs of Technical Lemmas in Appendix B 
+
+C.1. Proof of Lemma 2 
+
+We first prove the following lemma. 
+
+Lemma 12. The following inequality holds for all x ∈ X , z ∈ Z eff , and k ∈ [K] that satisfies N k(z) ≥ 2 with probability at least 1 − δ 
+
+> 8
+
+:
+
+(Peff )z (x) − ( ˆP k 
+
+> eff
+
+)z (x) ≤
+
+s
+
+2( Peff )z (x)ℓ2(z)
+
+N k(z) + ℓ2(z)3N k(z) .
+
+Proof. Fix x ∈ X , z ∈ Z eff , and n ≥ 2. If (Peff )z (x) = 0 , then the inequality is trivial. Suppose x ∈ X (z). Apply Lemma 25 to Z = 1{x′ = x} with x′ ∼ Peff (z). Note that in this case, we have Var( Z) = ( Peff )z (x)(1 − (Peff )z (x)) ≤
+
+(Peff )z (x). Then, we obtain that the following inequality holds with probability at least 1 − δ 
+
+> 8
+
+:
+
+(Peff )z (x) − ( ˆP k 
+
+> eff
+
+)z (x) ≤
+
+s
+
+2( Peff )z (x) log 32 
+
+> δ
+
+N k(z) + log 32 
+
+> δ
+
+3N k(z) .
+
+The proof is completed by taking the union bound over z ∈ Z eff , corresponding x ∈ X (z), and 2 ≤ n ≤ KH , where we use that |X (z)| ≤ B(z) by the definition of B(z).
+
+Proof of Lemma 2. Fix z ∈ Z eff and k ∈ [K] with N k(z) ≥ 1. Since P 
+
+> x∈X (z)
+
+(Peff )z (x) = P 
+
+> x∈X (z)
+
+( ˆP k 
+
+> eff
+
+)z (x) = 1 , we have 
+
+(Peff )z − ( ˆP k 
+
+> eff
+
+)z
+
+
+
+V =
+
+
+
+(Peff )z − ( ˆP k 
+
+> eff
+
+)z
+
+
+
+(V − (Peff )z V ) ,
+
+18 Minimax Optimal Strategy for Delayed Observations in Online Reinforcement Learning 
+
+and by the triangle inequality, 
+
+
+
+(Peff )z − ( ˆP k 
+
+> eff
+
+)z
+
+
+
+(V − (Peff )z V ) ≤ X 
+
+> x∈X (z)
+
+
+
+(Peff )z (x) − ( ˆP k 
+
+> eff
+
+)z (x)
+
+
+
+(V (x) − (Peff )z V ) .
+
+Under the event of Lemma 12, for all x ∈ X , we have 
+
+(Peff )z (x) − ( ˆP k 
+
+> eff
+
+)z (x) ≤
+
+s
+
+2( Peff )z (x)ℓ2(z)
+
+N k(z) + ℓ2(z)3N k(z) .
+
+Multiplying both sides by |V (x) − (Peff )z V | and summing over x ∈ X (z) gives 
+
+X 
+
+> x∈X (z)
+
+
+
+(Peff )z (x) − ( ˆP k 
+
+> eff
+
+)z (x)
+
+
+
+(V (x) − (Peff )z V )
+
+≤ X 
+
+> x∈X (z)
+
+s
+
+2( Peff )z (x)ℓ2(z)
+
+N k(z) |V (x) − (Peff )z V | + ℓ2(z)3N k(z) |V (x) − (Peff )z V |
+
+!
+
+≤ X 
+
+> x∈X (z)
+
+s
+
+2( Peff )z (x) ( V (x) − (Peff )z V )2 ℓ2(z)
+
+N k(z) + ℓ2(z)3N k(z)
+
+X 
+
+> x∈X (z)
+
+|V (x) − (Peff )z V |≤
+
+vuut 2Bℓ 2(z)
+
+N k(z)
+
+X 
+
+> x∈X (z)
+
+(Peff )z (x) ( V (x) − (Peff )z V )2 + ℓ2(z)3N k(z) · B(b − a)=
+
+s
+
+2V (( Peff )z , V ) B(z)ℓ2(z)
+
+N k(z) + (b − a)B(z)ℓ2(z)3N k(z) ,
+
+where we use the Cauchy-Schwarz inequality and that |V (x) − (Peff )z V | ≤ b − a in the third inequality. 
+
+C.2. Proof of Lemma 10 
+
+For the proof of Lemma 10, we require the following lemmas. 
+
+Lemma 13. Fix s ∈ S , h ∈ [H], and a = πkh(s). Under E, we have 
+
+V kh (s) − r(s, a ) − Ps,a V kh+1 ≤ 12H
+
+ Ps,a (V kh+1 − V ∗
+
+> h+1
+
+)2 − (V kh (s) − V ∗ 
+
+> h
+
+(s)) 2
+
++ E  
+
+> y′∼PY(s,a )
+> z=ϕZ(s,a,y ′)
+
+28 
+
+s
+
+V(( Peff )z , V ∗
+
+> h+1
+
+(·, y ′)) ℓ∗(z)
+
+N k(z) + 660 HB (z)ℓ2(z)
+
+N k(z)
+
+ .
+
+The proof of Lemma 13 is quite technical, and it is deferred to Appendix C.4. Using Lemma 13, we can prove the following bound for the per-episode regret. 
+
+Lemma 14. Under E, we have 
+
+V k 
+
+> 1
+
+(sk 
+
+> 1
+
+) − V πk 
+
+> 1
+
+(sk 
+
+> 1
+
+) ≤ 28 
+
+vuut E
+
+> πk
+
+" HX
+
+> h=1
+
+V(( Peff )zkh , V ∗
+
+> h+1
+
+(·, y kh+1 )) 
+
+#
+
+U k 
+
+> 1
+
+(sk 
+
+> 1
+
+) + 660 H eU k 
+
+> 1
+
+(sk 
+
+> 1
+
+)
+
+for all k ∈ [K].Proof. We define 
+
+W kh (s) := E 
+
+> πk(·| sh=s)
+
+
+
+> H
+
+X
+
+> j=h
+
+V(( Peff )zkj , V ∗
+
+> j+1
+
+(·, y kj+1 )) 
+
+ ,
+
+19 Minimax Optimal Strategy for Delayed Observations in Online Reinforcement Learning 
+
+which is the expectation of the sum of variances. Note that we have W kh (s) = Es′=( x′,y ′)∼Ps,a  
+
+> z=ϕZ(s,a,y ′)
+
+[V(( Peff )z , V ∗
+
+> h+1
+
+(·, y ′) + 
+
+W kh+1 (s′)] . We prove that the following inequality holds for all h ∈ [H] and s ∈ S by backward induction on h:
+
+V kh (s) − V πk 
+
+> h
+
+(s) ≤ 28 
+
+q
+
+W kh (s)U kh (s) + 660 H eU kh (s)
+
+− 12H
+
+ V kh (s) − V ∗ 
+
+> h
+
+(s)2 .
+
+The inequality is trivial for h = H + 1 . Suppose the inequality holds for h + 1 . We note that the inequality is also trivial when eU kh (s) = 1 , as the left-hand side is at most H while the right-hand side becomes larger than H. Suppose eU kh (s) < 1.We note that we have U kh (s) ≤ eU kh , hence we also have U kh (s) < 1. We perform the following decomposition: 
+
+V kh (s) − V πk 
+
+> h
+
+(s) = V kh (s) − r(s, a ) − Ps,a V kh+1 
+
+| {z }
+
+> I1
+
++ Ps,a (V kh+1 − V πk
+
+> h+1
+
+)
+
+| {z }
+
+> I2
+
+.I1 is bounded by Lemma 13 as 
+
+I1 ≤ 12H
+
+ Ps,a (V kh+1 − V ∗
+
+> h+1
+
+)2 − (V kh (s) − V ∗ 
+
+> h
+
+(s)) 2| {z }
+
+> I3
+
++ E  
+
+> y′∼PY(s,a )
+> z=ϕZ(s,a,y ′)
+
+28 
+
+s
+
+V(( Peff )z , V ∗
+
+> h+1
+
+(·, y ′)) ℓ∗(z)
+
+N k(z)
+
+| {z }
+
+> I4
+
++ E  
+
+> y′∼PY(s,a )
+> z=ϕZ(s,a,y ′)
+
+ 660 HB (z)ℓ2(z)
+
+N k(z)
+
+| {z }
+
+> I5
+
+.I2 is bounded by the induction hypothesis as 
+
+I2 ≤ E
+
+> s′∼Ps,a
+
+
+
+28 
+
+q
+
+W kh+1 (s′)U kh+1 (s′)
+
+| {z }
+
+> I6
+
++ 660 HP s,a eU kh+1 
+
+| {z }
+
+> I7
+
+− 12H Ps,a (V kh+1 − V ∗
+
+> h+1
+
+)2
+
+| {z }
+
+> I8
+
+.
+
+We have I3 − I8 = − 12H (V kh (s) − V ∗ 
+
+> h
+
+(s)) 2 and I5 + I7 = 660 H eU kh (s). It remains to bound I4 + I6. Using the Cauchy-Schwarz inequality, we obtain 
+
+s
+
+V(( Peff )z , V ∗
+
+> h+1
+
+(·, y ′)) ℓ∗(z)
+
+N k(z) +
+
+q
+
+W kh+1 (s′)U kh+1 (s′)
+
+≤
+
+q
+
+V(( Peff )z , V ∗
+
+> h+1
+
+(·, y ′)) + W kh+1 (s′)
+
+s
+
+ℓ∗(z)
+
+N k(z) + U kh+1 (s′) .
+
+By the Cauchy-Schwarz inequality for expectation and the law of total expectation, we obtain that 
+
+I4 + I6 ≤ 28 E 
+
+> s′=( x′,y ′)∼Ps,a
+> z=ϕZ(s,a,y ′)
+
+"q
+
+V(( Peff )z , V ∗
+
+> h+1
+
+(·, y ′)) + W kh+1 (s′)
+
+s
+
+ℓ∗(z)
+
+N k(z) + U kh+1 (s′)
+
+#
+
+≤ 28 
+
+vuut E 
+
+> s′=( x′,y ′)∼Ps,a
+> z=ϕZ(s,a,y ′)
+
+V(( Peff )z , V ∗
+
+> h+1
+
+(·, y ′)) + W kh+1 (s′)
+
+×
+
+vuuut E 
+
+> s′=( x′,y ′)∼Ps,a
+> z=ϕZ(s,a,y ′)
+
+ ℓ∗(z)
+
+N k(z) + U kh+1 (s′)
+
+
+
+= 28 
+
+q
+
+W kh (s)U kh (s) .
+
+Combining the bounds for I3 − I8 and I5 + I7, we obtain the desired bound for V kh (s) − V πk 
+
+> h
+
+(s), completing the induction step. 20 Minimax Optimal Strategy for Delayed Observations in Online Reinforcement Learning 
+
+Proof of Lemma 10. Given Lemma 14, it suffices to prove that Eπk
+
+hPHh=1 V(( Peff )zkh , V ∗
+
+> h+1
+
+(·, y kh+1 )) 
+
+i
+
+≤ H2. By Lemma 17, we have 
+
+E 
+
+> ykh+1 ∼PY(skh,a kh)
+
+h
+
+V(( Peff )zkh , V ∗
+
+> h+1
+
+(·, y kh+1 )) 
+
+i
+
+≤ Pskh,a kh (V ∗
+
+> h+1
+
+)2 − (V ∗ 
+
+> h
+
+(skh)) 2 + 2 H max {V ∗ 
+
+> h
+
+(skh) − Pskh,a kh V ∗
+
+> h+1
+
+, 0}
+
+= Pskh,a kh (V ∗
+
+> h+1
+
+)2 − (V ∗ 
+
+> h
+
+(skh)) 2 + 2 H
+
+
+
+V ∗ 
+
+> h
+
+(skh) − Pskh,a kh V ∗
+
+> h+1
+
+
+
+,
+
+where we use that V ∗ 
+
+> h
+
+(skh) − Pskh,a kh V ∗ 
+
+> h+1
+
+≥ Q∗
+
+> h
+
+(skh) − Pskh,a kh V ∗ 
+
+> h+1
+
+= r(skh, a kh) ≥ 0 for the last equality. Taking the sum over h ∈ [H] and taking the expectation, the terms are telescoped and we derive 
+
+E
+
+> πk
+
+" HX
+
+> h=1
+
+V(( Peff )zkh , V ∗
+
+> h+1
+
+(·, y kh+1 )) 
+
+#
+
+≤ − (V ∗ 
+
+> 1
+
+(sk 
+
+> 1
+
+)) 2 + 2 HV ∗ 
+
+> 1
+
+(sk 
+
+> 1
+
+)= H2 − (V ∗ 
+
+> 1
+
+(sk 
+
+> 1
+
+) − H)2
+
+≤ H2 .
+
+Plugging this bound into Lemma 14, we obtain Lemma 10. 
+
+C.3. Proof of Lemma 11 
+
+Proof of Lemma 11. Under the event of Lemma 5, we have 
+
+> K
+
+X
+
+> k=1
+
+U k 
+
+> 1
+
+(sk 
+
+> 1
+
+) ≤ 2
+
+> K
+
+X
+
+> k=1
+> H
+
+X
+
+> h=1
+
+1{2N k(zkh) > N kh (zkh)} ℓ∗(zkh)
+
+N k(zkh) + 3 |Z eff | log 8Hδ .
+
+Under 2N k(zkh) > N kh (zkh), we have 1    
+
+> Nk(zkh)
+
+≤ 2    
+
+> Nkh(zkh)
+
+, and we also have N kh (zkh) ≥ 2, and hence the first sum is bounded as follows: 
+
+2
+
+> K
+
+X
+
+> k=1
+> H
+
+X
+
+> h=1
+
+1{2N k(zkh) > N kh (zkh)} ℓ∗(zkh)
+
+N k(zkh) ≤
+
+> K
+
+X
+
+> k=1
+> H
+
+X
+
+> h=1
+
+41{N kh (zkh) ≥ 2}ℓ∗(zkh)
+
+N kh (zkh)= 4 X
+
+> z∈Z eff
+
+ℓ∗(z) 
+
+> NK+1 (z)
+
+X
+
+> n=2
+
+1
+
+n
+
+= 4 X
+
+> z∈Z eff
+
+ℓ∗(z)(log KH ) .
+
+We add 3|Z eff | log 8Hδ and using that log 8Hδ ≤ ℓ∗(z), we derive that 
+
+> K
+
+X
+
+> k=1
+
+U k 
+
+> 1
+
+(sk 
+
+> 1
+
+) ≤ 4 X
+
+> z∈Z eff
+
+ℓ∗(z)(log KH ) + 3 |Z eff | log 8Hδ
+
+≤ 4 X
+
+> z∈Z eff
+
+(ℓ∗(z)(log KH ) + 1) = 4(log eKH ) X
+
+> z∈Z eff
+
+ℓ∗(z) ,
+
+proving the first inequality. The second inequality is proved in the exact same way. 
+
+C.4. Proof of Lemma 13 
+
+We require two additional lemmas to prove Lemma 13. 21 Minimax Optimal Strategy for Delayed Observations in Online Reinforcement Learning 
+
+Lemma 15. Under E, the following inequality holds for all z ∈ Z eff , y ∈ Y , h ∈ [H], and k ∈ [K] with N k(z) ≥ 2:
+
+20 3
+
+s
+
+V(( ˆPeff )z V kh+1 (·, y )) ℓ∗(z)
+
+N k(z) + 400 Hℓ ∗(z)9N k(z)
+
+≤ 12 
+
+s
+
+V(( Peff )z , V ∗
+
+> h+1
+
+(·, y )) ℓ∗(z)
+
+N k(z) + 18H V(( Peff )z , (V kh+1 − V ∗
+
+> h+1
+
+)( ·, y )) + 325 HB (z)ℓ2(z)
+
+N k(z) .
+
+Proof. We fix z ∈ Z eff , y ∈ Y , h ∈ [H], and k ∈ [K]. Denote P := ( Peff )z , ˆP := ( ˆPeff )z , V ∗ 
+
+> h+1
+
+:= V ∗
+
+> h+1
+
+(·, y ),
+
+V kh+1 := V kh+1 (·, y ), N := N k(z), and ℓ∗ := ℓ∗(z) for simplicity. Under the event of Lemma 2, by applying the lemma to 
+
+V (·) = ( V kh+1 (·) − P V kh+1 )2 we have 
+
+( ˆP − P )( V kh+1 − P V kh+1 )2 ≤
+
+s
+
+2V(P, (V kh+1 − P V kh+1 )2)B(z)ℓ2(z)
+
+N + H2B(z)ℓ2(z)3N
+
+≤ 12H2 V(P, (V kh+1 − P V kh+1 )2) + 4H2B(z)ℓ2(z)3N
+
+≤ 12 P (V kh+1 − P V kh+1 )2 + 4H2B(z)ℓ2(z)3N , (3) where we use the AM-GM inequality for the second inequality and that Var( Z) ≤ E[Z2] ≤ cE[Z] for random variables 
+
+Z ∈ [0 , c ] for the third inequality. Then, we bound the empirical variance of V kh+1 as follows: 
+
+V( ˆP , V kh+1 ) = ˆP
+
+
+
+V kh+1 − ˆP V kh+1 
+
+2
+
+≤ ˆP  V kh+1 − P V kh+1 
+
+2
+
+≤ 32 P  V kh+1 − P V kh+1 
+
+2 + 4H2B(z)ℓ2(z)3N
+
+= 32 V(P, V kh+1 ) + 4H2B(z)ℓ2(z)3N
+
+≤ 3V(P, V ∗
+
+> h+1
+
+) + 3 V(P, V kh+1 − V ∗
+
+> h+1
+
+) + 4H2B(z)ℓ2(z)3N ,
+
+where the second inequality uses inequality (3) , and the last inequality uses that Var( X + Y ) ≤ 2 Var( X) + 2 Var( Y ) for any random variables X and Y . Applying this bound, we have 
+
+s
+
+V( ˆP , V kh+1 )ℓ∗
+
+N
+
+≤
+
+vuut
+
+3V(P, V ∗
+
+> h+1
+
+) + 3 V(P, V kh+1 − V ∗
+
+> h+1
+
+) + 4H2B(z)ℓ2(z)3N
+
+
+
+ℓ∗
+
+N
+
+≤
+
+r 3V(P, V ∗
+
+> h+1
+
+)ℓ∗
+
+N +
+
+s
+
+3V(P, V kh+1 − V ∗
+
+> h+1
+
+)ℓ∗
+
+N + 2HB (z)ℓ2(z)
+
+√3N ,
+
+where the last inequality uses that √a + b + c ≤ √a + √b + √c, and ℓ∗(z) ≤ B(z)ℓ2(z) for the last term. For the second term, we apply the AM-GM inequality and obtain 
+
+s
+
+3V(P, V kh+1 − V ∗
+
+> h+1
+
+)ℓ∗
+
+N ≤ 3V(P, V kh+1 − V ∗
+
+> h+1
+
+)160 H + 40 Hℓ ∗
+
+N
+
+≤ 3V(P, V kh+1 − V ∗
+
+> h+1
+
+)160 H + 40 HB (z)ℓ2(z)
+
+N .
+
+22 Minimax Optimal Strategy for Delayed Observations in Online Reinforcement Learning 
+
+Combining the inequalities, we have 
+
+s
+
+V( ˆP , V kh+1 )ℓ∗
+
+N ≤
+
+r 3V(P, V ∗
+
+> h+1
+
+)ℓ∗
+
+N + 3V(P, V kh+1 − V ∗
+
+> h+1
+
+)160 H + 42 HB (z)ℓ2(z)
+
+N .
+
+Finally, we obtain that 
+
+20 3
+
+s
+
+V( ˆP V kh+1 )ℓ∗
+
+N + 400 Hℓ ∗
+
+9N ≤ 12 
+
+r V(P, V ∗
+
+> h+1
+
+)ℓ∗
+
+N + 18H V(P, V kh+1 − V ∗
+
+> h+1
+
+) + 280 HB (z)ℓ2(z)
+
+N + 400 Hℓ ∗
+
+9N
+
+≤ 12 
+
+r V(P, V ∗
+
+> h+1
+
+)ℓ∗
+
+N + 18H V(P, V kh+1 − V ∗
+
+> h+1
+
+) + 325 HB (z)ℓ2(z)
+
+N .
+
+Lemma 16. Under E, we have that for all z ∈ Z eff , y ∈ Y , h ∈ [H], and k ∈ [K] with N k(z) ≥ 1, we have 
+
+(( ˆP k 
+
+> eff
+
+)z − (Peff )z )V kh+1 (·, y ) ≤
+
+s
+
+2V(( Peff )z , V ∗
+
+> h+1
+
+(·, y )) ℓ∗(z)
+
+N k(z) + 18H V(( Peff )z , (V kh+1 − V ∗
+
+> h+1
+
+)( ·, y ) + 14 HB (z)ℓ2(z)3N k(z) .
+
+Proof. Denote P := ( Peff )z , ˆP := ( ˆPeff )z , V ∗ 
+
+> h+1
+
+:= V ∗
+
+> h+1
+
+(·, y ), V kh+1 := V kh+1 (·, y ), N := N k(z), and ℓ∗ := ℓ∗(z). We begin by adding and subtracting ( ˆP − P )V ∗
+
+> h+1
+
+.
+
+( ˆP − P )V kh+1 = ( ˆP − P )V ∗ 
+
+> h+1
+
++ ( ˆP − P )( V kh+1 − V ∗
+
+> h+1
+
+) . (4) By Lemmas 1 and 2, we have 
+
+( ˆP − P )V ∗ 
+
+> h+1
+
+≤
+
+r 2V(P, V ∗
+
+> h+1
+
+)ℓ∗
+
+N + Hℓ ∗
+
+3N , (5) where we use that ℓ∗ := ℓ∗(z) = ℓ1 ∧ B(z)ℓ2(z). By Lemma 2, and using that 0 ≤ V kh+1 (x) − V ∗
+
+> h+1
+
+(x) ≤ H for all x ∈ X 
+
+by Lemma 6, we have 
+
+( ˆP − P )( V kh+1 − V ∗
+
+> h+1
+
+) ≤
+
+s
+
+2V(P, V kh+1 − V ∗
+
+> h+1
+
+)B(z)ℓ2(z)
+
+N + HB (z)ℓ2(z)3N
+
+≤ 18H V(P, V kh+1 − V ∗
+
+> h+1
+
+) + 13 HB (z)ℓ2(z)3N , (6) where we use the AM-GM inequality for the last inequality. Plugging inequalities (5) and (6) into inequality (4) , we obtain that 
+
+( ˆP − P )V kh+1 ≤
+
+r 2V(P, V ∗
+
+> h+1
+
+)ℓ∗
+
+N + Hℓ ∗
+
+3N + 18H V(P, V kh+1 − V ∗
+
+> h+1
+
+) + 13 HB (z)ℓ2(z)3N
+
+≤
+
+r 2V(P, V ∗
+
+> h+1
+
+)ℓ∗
+
+N + 18H V(P, V kh+1 − V ∗
+
+> h+1
+
+) + 14 HB (z)ℓ2(z)3N ,
+
+where we use that ℓ∗ ≤ B(z)ℓ2(z) by definition for the last inequality. 
+
+Proof of Lemma 13. We let bkh(s, a, y ′) := 20 3
+
+r V(( ˆPeff )z ,V kh+1 (·,y ′)ℓ∗(z)   
+
+> Nk(z)
+
++ 400 Hℓ ∗(z)   
+
+> Nk(z)
+
+, where z = ϕZ (s, a, y ′). The value of 
+
+bkh(s, a, y ′) corresponds to the optimistic bonus term added by MVP-Est . We first expand V kh (s) as follows: 
+
+V kh (s) = E 
+
+> y′∼PY(s,a )
+
+[Qkh(s, a, y ′)] 
+
+≤ E 
+
+> y′∼PY(s,a )
+
+h
+
+r(s, a ) + ( ˆP k 
+
+> eff
+
+)z V kh+1 (·, y ′) + bkh(s, a, y ′)
+
+i
+
+= r(s, a ) + E 
+
+> y′∼PY(s,a )
+
+h
+
+( ˆP k 
+
+> eff
+
+)z V kh+1 (·, y ′) + bkh(s, a, y ′)
+
+i
+
+.
+
+23 Minimax Optimal Strategy for Delayed Observations in Online Reinforcement Learning 
+
+Then, we obtain that 
+
+V kh (s) − r(s, a ) − Ps,a V kh+1 ≤ E 
+
+> y′∼PY(s,a )
+
+h
+
+bkh(s, a, y ′) + (( ˆP k 
+
+> eff
+
+)z − (Peff )z )V kh+1 (·, y ′)
+
+i
+
+.
+
+By Lemmas 15 and 16, we have 
+
+bkh(s, a, y ′) + (( ˆP k 
+
+> eff
+
+)z − (Peff )z )V kh+1 (·, y ′)
+
+≤ 14 
+
+s
+
+V(( Peff )z , V ∗
+
+> h+1
+
+(·, y ′)) ℓ∗(z)
+
+N k(z) + 14H V(( Peff )z , (V kh+1 − V ∗
+
+> h+1
+
+)( ·, y ′)) + 330 HB (z)ℓ2(z)
+
+N k(z) .
+
+Let I1 := max {V kh (s) − r(s, a ) − Ps,a V kh+1 , 0}. Then, we obtain 
+
+I1 ≤ E 
+
+> y′∼PY(s,a )
+
+14 
+
+s
+
+V(( Peff )z , V ∗
+
+> h+1
+
+(·, y ′)) ℓ∗(z)
+
+N k(z) + 14H V(( Peff )z , (V kh+1 − V ∗
+
+> h+1
+
+)( ·, y ′)) + 330 HB (z)ℓ2(z)
+
+N k(z)
+
+ . (7) Now, we focus on the second term in the expectation. Denoting eV kh (s) := V kh (s) − V ∗ 
+
+> h
+
+(s), we know that 0 ≤ eV kh (s) ≤ H
+
+by Lemma 6 and bounds on V kh (s) ≤ H and V ∗ 
+
+> h
+
+(s) ≥ 0. By Lemma 17, we have 
+
+V(( Peff )z , eV kh+1 (·, y ′)) ≤ Ps,a ( eV kh+1 )2 − ( eVh(s)) 2 + 2 H max 
+
+n eV kh (s) − Ps,a eV kh+1 , 0
+
+o
+
+.
+
+Note that we have 
+
+eV kh (s) − Ps,a eV kh+1 = V kh (s) − V ∗ 
+
+> h
+
+(s) − Ps,a (V kh+1 − V ∗
+
+> h+1
+
+)
+
+≤ V kh (s) − Q∗
+
+> h
+
+(s, a ) − Ps,a V kh+1 − V ∗
+
+> h+1
+
+= V kh (s) − r(s, a ) − Ps,a V kh+1 ,
+
+and hence 
+
+V(( Peff )z , eV kh+1 (·, y ′)) ≤ Ps,a ( eV kh+1 )2 − ( eV kh (s)) 2 + 2 HI 1 .
+
+Plugging this bound into inequality (7), we obtain 
+
+I1 ≤ 12 I1 + 14H
+
+ Ps,a (V kh+1 − V ∗
+
+> h+1
+
+)2 − (V kh (s) − V ∗ 
+
+> h
+
+(s)) 2
+
++ E 
+
+> y′∼PY(s,a )
+
+14 
+
+s
+
+V(( Peff )z , V ∗
+
+> h+1
+
+(·, y ′)) ℓ∗
+
+N k(z) + 330 HB (z)ℓ2(z)
+
+N k(z)
+
+ .
+
+Solving the inequality with respect to I1, we conclude that 
+
+I1 ≤ 12H
+
+ Ps,a (V kh+1 − V ∗
+
+> h+1
+
+)2 − (V kh (s) − V ∗ 
+
+> h
+
+(s)) 2
+
++ E 
+
+> y′∼PY(s,a )
+
+28 
+
+s
+
+V(( Peff )z , V ∗
+
+> h+1
+
+(·, y ′)) ℓ∗
+
+N k(z) + 660 HB (z)ℓ2(z)
+
+N k(z)
+
+ .
+
+C.5. Additional Technical Lemmas Lemma 17. Let c ≥ 0 be a constant. Let {Vh}H+1  
+
+> h=1
+
+be a sequence of functions with Vh : S → [0 , c ]. Then, for any 
+
+(s, a ) ∈ S × A and h ∈ [H], we have 
+
+E 
+
+> y′∼PY(s,a )
+
+V(( Peff )ϕZ (s,a,y ′), V h+1 (·, y ′)) ≤ Ps,a (Vh+1 )2 − (Vh(s)) 2 + 2 c max {Vh(s) − Ps,a Vh+1 , 0} .
+
+24 Minimax Optimal Strategy for Delayed Observations in Online Reinforcement Learning 
+
+Proof. By the law of total variance, we have 
+
+E 
+
+> y′∼PY(s,a )
+
+V(( Peff )ϕZ (s,a,y ′), V h+1 (·, y ′)) = V(Ps,a , V h+1 ) − V(( PY )s,a , (Peff )ϕZ (s,a,y ′)Vh+1 (·, y ′)) 
+
+≤ V(Ps,a , V h+1 ) .
+
+Applying Lemma 18 to V(Ps,a , V h+1 ) completes the proof. 
+
+Lemma 18 (Lemma 27 in Lee & Oh (2025)) . Let c ≥ 0 be a constant. Let {Vh}H+1  
+
+> h=1
+
+sequences of functions with 
+
+Vh : S → [0 , c ]. Then, for any (s, a ) ∈ S × A , we have 
+
+V(Ps,a , V h+1 ) ≤ Ps,a (Vh+1 )2 − (Vh(s)) 2 + 2 c max {Vh(s) − Ps,a Vh+1 , 0} .
+
+## D. Proof of Theorem 3 
+
+In this section, we prove the lower bound result. 
+
+D.1. Hard Structure for Delayed Observation: CodeMDP 
+
+In this section, we describe a specially designed MDP with delayed observation, whose learning complexity increases with the length of the delay. This structure serves as one component of the hard instances for the regret lower bound. Given D, a CodeMDP is an MDP with a state space Scode = ([ D] × { 0, 1}) ∪ { ssucc , s fail } and an action space A = {0, 1}.The transition of the CodeMDP is deterministic and is as follows: • For states (i, b ) with i = 2 , . . . , D and b = 0 , 1, any action takes the agent to state (i − 1, b ).• For states (1 , b ) with b = 0 , 1, taking action b leads to ssucc , and taking the other action leads to sfail .• For state ssucc , taking any action yields a reward of 1 and returns to ssucc .• For state sfail , taking any action yields a reward of 0 and returns to sfail .Due to the delay, the agent cannot observe the intermediate states. The result is only revealed after the episode, or at least after entering either ssuc or sfail , so the agent must plan a sequence of actions a1, . . . , a D in advance. The mechanism of CodeMDP is as follows. The agent randomly arrives at an initial state, say (i, b ), but it is not observable to the agent. The agent takes the planned sequence of actions a1, . . . , a D . After taking i − 1 actions, the agent arrives at (1 , b ), which is unobservable, and then takes the action ai. If ai = b, then the agent transitions to ssucc and receives the reward, otherwise fails. The randomness of the CodeMDP that the agent must learn is the initial state distribution. For instance, suppose the initial state is distributed uniformly over states {(i, 0) }Di=1 , then the agent receives the reward if and only if ai = 0 , so the optimal sequence of actions is (0 , . . . , 0) . In general, suppose the initial state is sampled from a fixed distribution P over 
+
+Scode , where P (ssucc ) = P (sfail ) = 0 . For the sake of brevity, we momentarily assume that ssucc transitions to sfail after receiving a reward, so that the total reward is always 0 or 1. Then, the expected reward, or the Q-value of an action sequence 
+
+a = ( a1, . . . , a D ) under P is QP (a) = PDi=1 
+
+P 
+
+> b∈{ 0,1}
+
+P (i, b )1{ai = b} = PDi=1 P (i, a i). It follows that the optimal actions are a∗ 
+
+> i
+
+= argmax b∈{ 0,1} P (i, b ) for i = 1 , . . . , D and the optimal value function is 
+
+V ∗(P ) := 
+
+> D
+
+X
+
+> i=1
+
+max {P (i, 0) , P (i, 1) } .
+
+In this sense, P encodes a correct “codeword” (a∗
+
+> 1
+
+, . . . , a ∗ 
+
+> D
+
+) that yields the maximum reward of V ∗(P ).Now, we consider a certain parameterization of P . For θ ∈ [−1, 1] D , let P (θ) assign probability 1−θi 
+
+> 2D
+
+to state (i, 0) and 25 Minimax Optimal Strategy for Delayed Observations in Online Reinforcement Learning  
+
+> 1+ θi
+> 2D
+
+to state (i, 1) . The codeword for this distribution is (1{θ1 ≥ 0}, . . . , 1{θD ≥ 0}) with the optimal value being 
+
+V ∗(P (θ)) = 
+
+> D
+
+X
+
+> i=1
+
+max 
+
+ 1 + θi
+
+2D , 1 − θi
+
+2D
+
+
+
+= 12 + 12D
+
+> D
+
+X
+
+> i=1
+
+|θi|
+
+= 12 + 12D ∥θ∥1 .
+
+Suppose there is an additional initial state s0 with A actions. Suppose there are A vectors {θa}a∈A such that Ps0,a = P (θa).Then, the optimal action from s0 is the action a∗ with the largest ∥θa∥1, and taking any other action incurs instantaneous regret of at least 12D (∥θa∗ ∥1 − ∥ θa∥1), let alone taking the correct codeword actions of P (θa). Then, the agent must find the optimal arm by finding the vector θa with the largest ℓ1-norm. This problem can be reduced to the following problem formulation, which is also the one described in Proposition 1. 
+
+ℓ1-norm estimation problem. Let θ ∈ [−1, 1] d. For t = 1 , . . . , n , an index It ∼ Unif([ d]) is sampled, and then 
+
+Xt ∼ Ber( 1+ θIt 
+
+> 2
+
+) is sampled. Based on the observations {(It, X t)}nt=1 , what is the minimum number of n required to estimate 1 
+
+> d
+
+∥θ∥1 up to an additive error of ε?The observation (It, X t) in the ℓ1-norm estimation problem corresponds to the state (It, X t) ∈ S code being sampled as the first state of the CodeMDP. Although the agent cannot observe that state immediately, it is observed after the end of the episode, which is why we can identify the observation types of the ℓ1-norm estimation and the CodeMDP. Note that the ℓ1-norm estimation problem only models the learning of V ∗(P (θa)) and disregards the learning of the optimal action sequence. We later show that the hardness of learning V ∗(P (θ)) is enough to prove Theorem 3. We restate Proposition 1, which states a lower bound for the sample complexity of the ℓ1-norm estimation problem. 
+
+Proposition 2 (Formal statement of Proposition 1) . Suppose d is larger than some absolute constant and 0 < ε < 148 log d is given. Let n = ⌊ d   
+
+> 1152 ε2log d
+
+⌋. Suppose ˆLn is an estimator for 1 
+
+> d
+
+∥θ∥1 based on n observations {(It, X t)}nt=1 . Then, we have 
+
+inf 
+
+> ˆLn
+
+sup 
+
+> θ∈[−1,1] d
+
+Pθ
+
+
+
+ˆLn − 1
+
+d ∥θ∥1 ≥ ε
+
+
+
+≥ 18 ,
+
+meaning that every estimator based on only n samples incurs the error of at least ε for some θ with probability at least 18 .
+
+The proposition is closely related to Theorem 3 in Cai & Low (2011). The theorem also considers the problem of estimating 
+
+∥θ∥1, but the observation is just a single d-dimensional vector sampled from a Gaussian distribution N (θ, I d), and the measurement of risk is different. The proof of Proposition 2 follows the high-level roadmap of Theorem 3 in Cai & Low (2011), but the intermediate steps require a significantly different type of computation due to this difference. The proof of Proposition 2 is presented in Appendix E. 
+
+D.2. Construction of Hard Instances 
+
+Recall the structure where there is an initial state s0 with A actions that transition to a CodeMDP, whose transition probabilities are parameterized by θa. Suppose exactly one of the ∥θa∥1 is larger than the others by ε. Proposition 2 implies that the agent must take each action at least Ω( Dε2 log D ) times to specify the optimal action, and failing to do so will incur 
+
+Ω( εK ) regret. Tuning ε leads to a (non-rigorous) lower bound of Ω( 
+
+q DAK   
+
+> log D
+
+). We inflate this bound by a √S factor by using the tree structure considered in Domingues et al. (2021). Hence, the final structure of the hard instances will be a combination of the tree structure and the CodeMDP, where the initial state of the whole MDP will be the root of the tree. We explain the structure of the tree in more detail. The tree part of the MDP is a A-ary tree of states with Θ( S) leaves. Specifically, we choose a set of leaves L ⊂ S with |L| 
+
+equal to the power of 2 that satisfies S 
+
+> 8
+
+≤ |L| < S 
+
+> 4
+
+. Then, we construct the tree bottom-up, adding parent states, one for at most A children. It can be shown that the height of the tree is at most Htree ≤ 1 + ⌈log A S 
+
+> 4
+
+⌉ and the total number of states 26 Minimax Optimal Strategy for Delayed Observations in Online Reinforcement Learning 
+
+sroot 
+
+# ... ...
+
+l1 l2 l3 l4
+
+( eD, 0) . . . (2 , 0) (1 , 0) 
+
+( eD, 1) . . . (2 , 1) (1 , 1) 
+
+ssucc 
+
+sfail       
+
+> r= 1
+> r= 0
+> a= 0
+> a= 1
+> a= 0
+> a= 1
+
+Figure 3. Illustration of hard instances for Theorem 3. The structure consists of a tree structure (top) and a CodeMDP (bottom). The leaf states are labeled l1, l 2, l 3, l 4. Each leaf state and action pair has its own probability distribution over the states in the CodeMDP. Once the agent takes an action from the leaf state, it must make eD actions without observing which state it has landed in. The agent enters the success state ssucc if it landed at state (i, b ) and the i-th out of eD actions is b, and it receives the reward. The agent enters the fail state 
+
+sfail if it landed at state (i, b ) and the i-th out of eD actions is not b, and it cannot receive any reward. 
+
+in the tree is at most S 
+
+> 2
+
+. For a state in the tree that is not a leaf, each action corresponds to one of its children, where the action transitions to that child. Then, the path from the root to a leaf corresponds to a sequence of Htree − 1 actions that takes the agent deterministically from the root to the leaf state. Then, we add a CodeMDP structure with D = eD := min {Dmax , H 
+
+> 4
+
+, B 
+
+> 2
+
+, S 
+
+> 4
+
+− 1}. For each leaf-action pair (l, a ) ∈ L , A, we assign a vector θl,a ∈ [−1, 1] d so that Pl,a = P (θl,a ), which is a distribution over Scode defined in Appendix D.1. One of the goals of the agent becomes to find the pair that has the largest 1 
+
+> eD
+
+∥θl,a ∥1 based on the observation. Figure 3 illustrates the structure of the whole MDP. We assume H ≥ 4Htree ≥ 8 + 4 log A S, so that taking Htree actions to reach a leaf state and then taking eD ≤ H 
+
+> 4
+
+many actions for the CodeMDP takes at most H 
+
+> 2
+
+time steps. We note that the total number of states required to construct this structure is at most S 
+
+> 2
+
++ 2 eD + 2 ≤ S, and the branching factor is 2 eD ≤ B.
+
+D.3. Proof of Theorem 3 
+
+In this section, we prove Theorem 3 using the tools we developed. We assumed that ssucc transitions to sfail in Appendix D.1. We revert the assumption and assume that ssucc returns to itself. By doing so, the total reward the agent receives per episode scales with H. However, we must additionally address that the total reward may vary depending on when the agent enters the state. For instance, if the initial state of the CodeMDP is 
+
+(1 , b ), then the agent enters ssucc after one action, whereas starting from the state ( eD, b ) takes eD time steps to enter ssucc .Let eH = H − Htree . Then, if the agent enters the state (i, b ) in the CodeMDP through one of the leaf states, the agent receives the reward of eH − i, assuming it successfully enters ssucc . Then, the optimal value function of a given distribution 
+
+P over Scode changes to 
+
+V ∗(P ) := 
+
+> eD
+
+X
+
+> i=1
+
+( eH − i) max {P (i, 0) , P (i, 1) } .
+
+27 Minimax Optimal Strategy for Delayed Observations in Online Reinforcement Learning 
+
+Considering P (θ) parameterized by θ ∈ [−1, 1] eD , we have 
+
+V ∗(P (θ)) = 
+
+> eD
+
+X
+
+> i=1
+
+( eH − i) 1 + |θi|
+
+2 eD
+
+= 12
+
+> eD
+
+X
+
+> i=1
+
+( eH − i) + 12 eD
+
+> eD
+
+X
+
+> i=1
+
+( eH − i)|θi| .
+
+We denote the part that depends on θ by eV ∗(θ), defined as 
+
+eV ∗(θ) := 12 eD
+
+> eD
+
+X
+
+> i=1
+
+( eH − i)|θi| .
+
+Although the optimal value function is no longer a function of ∥θ∥1, we note that this modification does not change the observation type, so the proof of Proposition 2 is still valid, where a slightly modified concentration result for this weighted norm is required. By translating Proposition 2 to the CodeMDP setting, we obtain the following lemma. 
+
+Lemma 19. Suppose ε ∈ (0 , 12 ], eD, and eH are given. Assume that eD is larger than some absolute constant, eH ≥ H 
+
+> 2
+
+, and 
+
+eD ≤ eH − 1. Then, there exist two probability distributions P1 and P2 over θ that satisfy the following: 1. For all n ≤ eD log eD 
+
+> 2ε2
+
+, we have KL( Pn 
+
+> 1
+
+∥ P n 
+
+> 2
+
+) ≤ 18 , where Pn 
+
+> 1
+
+, Pn 
+
+> 2
+
+denotes the distribution over n samples of P1 and 
+
+P2, respectively. 2. There exists a threshold value α such that Pθ∼P 1 ( eV ∗(θ) ≥ α) ≤ 14 and Pθ∼P 2 ( eV ∗(θ) ≤ α + εH   
+
+> 192 log eD
+
+) ≤ 14 .
+
+The proof of Lemma 19 uses the same technical tools as the proof of Proposition 2. The full proof is deferred to Appendix F.1 As we work with parameterized MDPs with randomized parameters, we need a lemma that bounds the KL-divergence of two mixture distributions over the trajectories induced by random MDPs. We define the sample space Ω to be the space of trajectories {(sk 
+
+> 1
+
+, a k 
+
+> 1
+
+, . . . , s kH , a kH , s kH+1 )}k. Assuming a fixed algorithm is given, we denote the probability distribution over Ω induced by an MDP M over K episodes by PK
+
+> M
+
+. We also define Pτ 
+
+> M
+
+for a stopping time τ in the same way. 
+
+Lemma 20. Let M(θ) be an MDP parameterized by θ ∈ Θ, where θ only affects the transition distribution of a single state-action pair (s0, a 0) ∈ S × A . Let P1 and P2 be two distributions over Θ with P1 ≪ P 2. Suppose n and K are given positive integers. Let τ ∈ [K + 1] be the index of the episode k at which N k(s0, a 0) reaches n, where τ = K + 1 if there is no such episode. For simplicity, assume that s0 can be visited at most once per episode for all θ. Assuming the algorithm is fixed, define Pτ 
+
+> 1
+
+as the mixture distribution of Pτ 
+
+> M(θ)
+
+with θ ∼ P 1, and define Pτ 
+
+> 2
+
+in the same way with θ ∼ P 2. Then, we have 
+
+KL( Pτ 
+
+> 1
+
+∥ Pτ 
+
+> 2
+
+) ≤ KL( Pn 
+
+> 1
+
+∥ P n 
+
+> 2
+
+) ,
+
+where Pni is the distribution over n samples of Ps0,a 0 (θ) with θ ∼ P i for i = 1 , 2.
+
+The proof of Lemma 20 is deferred to Appendix F.2. Now, we prove Theorem 3. 
+
+Proof of Theorem 3. Create a combination of a tree-structured MDP and a CodeMDP as described in Appendix D.2. Fix 
+
+ε ∈ (0 , 12 ], whose value is assigned later. Let n = eD log eD 
+
+> 2ε2
+
+.For the distribution P1 defined in Lemma 19, we define P′ 
+
+> 1
+
+to be its conditional distribution, conditioned on the event 
+
+V ∗(θ) < α , which is well-defined by the same lemma. We set the transition distributions of the leaf-action pairs as 
+
+P (l, a ) = P (θl,a ) with θl,a iid 
+
+∼ P ′ 
+
+> 1
+
+for all (l, a ) ∈ L × A . Let P0 be the mixture distribution over K trajectories induced by the sampling of an MDP in the described way and then interacting with the given algorithm for K episodes. We denote E0
+
+as the corresponding expectation. 28 Minimax Optimal Strategy for Delayed Observations in Online Reinforcement Learning 
+
+As we have E0[P 
+
+> (l,a )∈L×A
+
+N K+1 (l, a )] = K, there exists a leaf-action pair (l0, a 0) such that E1[N K+1 (l0, a 0)] ≤ KLA ,where L := |L| . By the Markov inequality, we have P0(N K+1 (l0, a 0) ≥ n) ≤ KLAn .Let P1 and P2 be mixture distributions that are similar to P0 except for one difference: the distribution P1 samples P (l0, a 0)
+
+from P1, and P2 samples P (l0, a 0) from P2. In addition, we let τ be the index of the episode where N τ (l0, a 0) reaches n
+
+for the first time, where τ = K + 1 if there is no such episode. Defining Pτ 
+
+> 1
+
+and Pτ 
+
+> 2
+
+as distributions over the first τ episodes under P1 and P2 respectively, the KL-divergence between the two distributions is bounded as 
+
+KL( Pτ 
+
+> 1
+
+∥ Pτ 
+
+> 2
+
+) ≤ E
+
+> θl,a ∼P ′
+> 1
+> ∀(l,a )∈L×A\{ (l0,a 0)}
+
+[KL( Pτ 
+
+> 1
+
+(· | { θl,a }l,a ) ∥ Pτ 
+
+> 2
+
+(· | { θl,a }l,a ))] 
+
+≤ E
+
+> θl,a ∼P ′
+> 1
+> ∀(l,a )∈L×A\{ (l0,a 0)}
+
+[KL( Pn 
+
+> 1
+
+∥ P n 
+
+> 2
+
+)] 
+
+≤ 18 ,
+
+where the first inequality is due to the convexity of KL-divergence, the second inequality comes from Lemma 20, and the last inequality applies Lemma 19. Then, by Pinsker’s inequality (Lemma 28), we derive that 
+
+Pτ 
+
+> 1
+
+(N τ (l0, a 0) ≥ n) + Pτ 
+
+> 2
+
+(N τ (l0, a 0) < n ) ≥ 1 −
+
+r 12 KL( Pτ 
+
+> 1
+
+∥ Pτ 
+
+> 2
+
+) ≥ 34 .
+
+We note that Pτ 
+
+> 1
+
+(N τ (l0, a 0) ≥ n) = P1(N K+1 (l0, a 0) ≥ n) holds by the stopping rule for τ . Pτ 
+
+> 2
+
+(N τ (l0, a 0) < n ) = 
+
+P2(N K+1 (l0, a 0) < n ) holds by the same reason. Using that P(A ∩ B) ≥ P(A) − P(Bc) for any events A and B, we obtain that 
+
+P1
+
+
+
+N K+1 (l0, a 0) ≥ n, eV ∗(θl0,a 0 ) < α 
+
+
+
++ P2
+
+
+
+N K+1 (l0, a 0) < n, eV ∗(θl0,a 0 ) > α + εH 
+
+192 log eD
+
+
+
+≥ P1
+
+ N K+1 (l0, a 0) ≥ n − P1
+
+ eV ∗(θl0,a 0 ) ≥ α
+
+
+
++ P2
+
+ N K+1 (l0, a 0) < n  − P2
+
+eV ∗(θl0,a 0 ) ≤ α + εH 
+
+192 log eD
+
+
+
+≥ P1
+
+ N K+1 (l0, a 0) ≥ n + P2
+
+ N K+1 (l0, a 0) < n  − 12
+
+≥ 14 ,
+
+where we apply Lemma 19 for the second inequality. Rearranging the inequality, we have 
+
+P2
+
+
+
+N K+1 (l0, a 0) < n, eV ∗(θl0,a 0 ) > α + εH 
+
+192 log eD
+
+
+
+≥ 14 − P1
+
+
+
+N K+1 (l0, a 0) ≥ n, eV ∗(θl0,a 0 ) < α 
+
+
+
+. (8) We modify the probability on the right-hand side as follows: 
+
+P1
+
+
+
+N K+1 (l0, a 0) ≥ n, eV ∗(θl0,a 0 ) < α 
+
+
+
+= P1
+
+
+
+N K+1 (l0, a 0) ≥ n eV ∗(θl0,a 0 ) < α 
+
+
+
+P1
+
+ eV ∗(θl0,a 0 ) < α 
+
+
+
+≤ 34 P1
+
+
+
+N K+1 (l0, a 0) ≥ n eV ∗(θl0,a 0 ) < α 
+
+
+
+= 34 P0
+
+ N K+1 (l0, a 0) ≥ n
+
+≤ 3K
+
+4LAn ,
+
+where we use Lemma 19 for the first inequality, and the following equality is due to that P0 is the conditional distribution of 
+
+P1 conditioned on the event eV ∗(θl0,a 0 ) < α . Now, we choose ε =
+
+q eDSA log eD 
+
+> 96 K
+
+so that n = eD log eD 
+
+> 2ε2
+
+= 48 KSA ≥ 6KLA , where 29 Minimax Optimal Strategy for Delayed Observations in Online Reinforcement Learning 
+
+we use that L ≥ S 
+
+> 8
+
+by construction. We note that ε < 12 is guaranteed by K ≥ 124 eDSA log eD. With this choice of ε, we have 3K 
+
+> 4LAn
+
+≤ 18 . Then, from inequality (8), we obtain that 
+
+P2
+
+
+
+N K+1 (l0, a 0) < n, eV ∗(θl0,a 0 ) > α + εH 
+
+192 log eD
+
+
+
+≥ 18 .
+
+It implies that there exists an MDP instance M∗ such that eV ∗(θl0,a 0 ) > α + εH   
+
+> 192 log eD
+
+holds for (l0, a 0), and eV ∗(θl,a ) < α 
+
+holds for all (l, a ) ∈ L × A \ { l0, a 0}, while PM∗ (N K+1 (l0, a 0) < n ) ≥ 18 simultaneously holds. For this MDP, taking any leaf-action pair (l, a ) other than (l0, a 0) yields an instantaneous regret of at least εH   
+
+> 192 log eD
+
+. Then, the cumulative regret is bounded below by εH   
+
+> 192 log eD
+
+EM∗ [K − N K+1 (l0, a 0)] . We lower bound the expected number of sub-optimal leaf-action pair selections as follows: 
+
+E
+
+> M∗
+
+[K − N K+1 (l0, a 0)] ≥ K
+
+2 PM∗
+
+
+
+K − N K+1 (l0, a 0) ≥ K
+
+2
+
+
+
+= K
+
+2 PM∗
+
+ K
+
+2 ≥ N K+1 (l0, a 0)
+
+
+
+≥ K
+
+2 PM∗
+
+ n ≥ N K+1 (l0, a 0)
+
+≥ K
+
+16 ,
+
+where the first inequality uses Markov’s inequality, and the third line uses that n = K 
+
+> 4SA
+
+< K 
+
+> 2
+
+. Therefore, the cumulative regret for M∗ is lower bounded by 
+
+εH 
+
+192 log eD E
+
+> M∗
+
+[K − N K+1 (l0, a 0)] ≥ εHK 
+
+3072 log eD
+
+= H
+
+3072 
+
+s eDSAK 
+
+96 log eD .
+
+The proof is complete. 
+
+## E. Proof of Proposition 1 
+
+In this section, we focus on the ℓ1-estimation problem introduced in Appendix D.1. Proposition 2, which is the formal version of Proposition 1, states that the lower bound for the sample complexity is Ω( dε2 log d ). The main ideas presented in this section to prove Proposition 2 also apply to the proof of Lemma 19, which is a core lemma in proving Theorem 3. The proof of Proposition 2 is based on the method of two fuzzy hypotheses (Tsybakov, 2008). The two distributions over θ
+
+are based on the distributions introduced in Cai & Low (2011). 
+
+Lemma 21 (Lemma 1 in Cai & Low (2011)) . For given even integer k > 0, there exist two probability measures ν1 and ν2
+
+on [−1, 1] that satisfy the following conditions: 
+
+• ν1 and ν2 are symmetric around 0. 
+
+• R tl dν 1 = R tldν 2 for l = 0 , . . . , k .
+
+• R |t| dν 2 − R |t| dν 1 = 2 δk, where δk := inf p∈P k sup x∈[−1,1] || x| − p(x)| ≥ 14k .
+
+We denote μ1 := R |t| dν 1 and μ2 := R |t| dν 2. By Lemma 21, we have μ2 − μ1 ≥ 12k . Additionally, for a real number 
+
+ε > 0, we denote the distribution of εZ i with Zi ∼ ρ by ερ for simplicity. With this distribution, we can prove the following KL-divergence bound on the two fuzzy hypotheses. 30 Minimax Optimal Strategy for Delayed Observations in Online Reinforcement Learning 
+
+Proposition 3. For a given even integer k > 0, let ν1 and ν2 be defined as in Lemma 21. For a given ε ∈ (0 , 12 ], suppose a prior distribution P1 on {θi}di=1 is given as θi
+
+> i.i.d.
+
+∼ εν 1, and P2 in the same way with ν2. Let Pn 
+
+> 1
+
+and Pn 
+
+> 2
+
+be the probability measures on n observed samples of {(It, X t)}nt=1 with given priors. Then, 
+
+KL( Pn 
+
+> 1
+
+∥ P n 
+
+> 2
+
+) ≤ d log 1 + 
+
+ 4nε 2
+
+d(k + 1) 
+
+k+1 
+
+1 + 2ε2
+
+d
+
+n!
+
+.
+
+In particular, when n ≤ d log d 
+
+> 2ε2
+
+and k ≥ 4 log d + 2 , one has KL( Pn 
+
+> 1
+
+∥ P n 
+
+> 2
+
+) ≤ 18 .
+
+Proof of Proposition 3 is deferred to Appendix E.1. 
+
+Proof of Proposition 2. We assume that d is larger than some absolute constant which we specify later, and ε ≤ 148 log d . Let 
+
+n = d   
+
+> 1152 ε2log d
+
+. We show that for any estimator ˆLn, there exists an instance θ that satisfies Pθ (| ˆLn − 1 
+
+> d
+
+∥θ∥1| ≥ ε) ≥ 18 .Let P1 := Pn 
+
+> 1
+
+and P2 = Pn 
+
+> 2
+
+be probability distributions defined in Proposition 3 with k, ε′, and n. We plug in k = 6 log d ≥
+
+4 log d + 2 , ε′ = 4 kε , where we assume that d ≥ 3. Note that n = d   
+
+> 1152 ε2log d
+
+≤ d log d 
+
+> 2( ε′)2
+
+, so by Proposition 3 we have we have KL( P1 ∥ P2) ≤ 18 .Let ψ = 1{ ˆLn ≤ ε′(μ1+μ2)2 }, where μ1 and μ2 are defined after Lemma 21. By Pinsker’s inequality (Lemma 28), we have 
+
+P1(ψ = 0) + P2(ψ = 1) ≥ 1 −
+
+r 12 KL( P1 ∥ P2) ≥ 34 . (9) Using Hoeffding’s inequality (Lemma 27), we have 
+
+P1
+
+ 1
+
+d ∥θ∥1 > ε ′
+
+
+
+μ1 + 148 log d
+
+ 
+
+= P1
+
+1
+
+d
+
+> d
+
+X
+
+> i=1
+
+(|θi| − ε′μ1) > ε′
+
+48 log d
+
+!
+
+≤ exp 
+
+
+
+− d
+
+1152(log d)2
+
+
+
+.
+
+We assume that the value of d is larger than some absolute constant, so that P1
+
+ 1 
+
+> d
+
+∥θ∥1 > ε ′
+
+
+
+μ1 + 148 log d
+
+ 
+
+≤ 14 . We note that Lemma 21 implies that μ2 − μ1 ≥ 12k ≥ 112 log d , so 
+
+ε′
+
+
+
+μ1 + 148 log d
+
+
+
+≤ ε′
+
+
+
+μ1 + μ2 − μ1
+
+2 − 148 log d
+
+
+
+= ε′(μ1 + μ2)2 − ε , 
+
+which implies that P1( 1 
+
+> d
+
+∥θ∥1 > ε′(μ1+μ2)2 − ε) ≤ 14 . In the same way, we obtain that P2( 1 
+
+> d
+
+∥θ∥1 < ε′(μ1+μ2)2 + ε) ≤ 14 .Using these bounds and inequality (9), we have 
+
+P1
+
+
+
+ψ = 0 , 1
+
+d ∥θ∥1 ≤ ε′(μ1 + μ2)2 − ε
+
+
+
++ P2
+
+
+
+ψ = 1 , 1
+
+d ∥θ∥1 ≥ ε′(μ1 + μ2)2 + ε
+
+
+
+≥ P1(ψ = 0) − P1
+
+ 1
+
+d ∥θ∥1 > ε′(μ1 + μ2)2 − ε
+
+
+
++ P2(ψ = 1) − P2
+
+ 1
+
+d ∥θ∥1 < ε′(μ1 + μ2)2 + ε
+
+
+
+≥ 14 . (10) Note that the events in the first line are subsets of the event that the estimator ˆLn is wrong by a difference of at least ε.Therefore, inequality (10) shows that there must exists an instance θ where Pθ (| ˆLn − 1 
+
+> d
+
+∥θ∥1|) ≥ 18 .31 Minimax Optimal Strategy for Delayed Observations in Online Reinforcement Learning 
+
+E.1. Proof of Proposition 3 
+
+Proof of Proposition 3. Let Ω be the sample space of all possible sequence of {(It, X t)}nt=1 . Let ω = {It, X t}nt=1 . Then, we have that 
+
+Pn 
+
+> 1
+
+(ω) = E 
+
+> θi
+> i.i.d.
+> ∼εν 1
+
+" nY
+
+> t=1
+
+ 1 + ( −1) Xt+1 θIt
+
+2d
+
+#
+
+=
+
+ 12d
+
+n
+
+E 
+
+> θi
+> i.i.d.
+> ∼εν 1
+
+" dY
+
+> i=1
+
+(1 − θi)N (i, 0) (1 + θi)N (i, 1) 
+
+#
+
+,
+
+where we define N (i, 0) := N (i, 0, ω ) = Pnt=1 1{It = i, X t = 0 } and N (i, 1) in the same way for Xt = 1 . For x ∈ R
+
+and a, b ∈ N ∪ { 0}, define f (x, a, b ) := (1 − x)a(1 + x)b. Then, the probability law is expressed as 
+
+Pn 
+
+> 1
+
+(ω) = 
+
+ 12d
+
+n dY
+
+> i=1
+
+E 
+
+> θi
+> i.i.d.
+> ∼εν 1
+
+[f (θi, N (i, 0) , N (i, 1))] ,
+
+where we use the fact that θi are mutually independent of one another. The expression holds for Pn 
+
+> 2
+
+with ν2 instead of ν1.The KL divergence between Pn 
+
+> 1
+
+and Pn 
+
+> 2
+
+becomes 
+
+KL( Pn 
+
+> 1
+
+∥ P n 
+
+> 2
+
+) = EPn
+
+> 1
+
+
+
+log dPn
+
+> 1
+
+dPn
+
+> 2
+
+
+
+= EPn
+
+> 1
+
+log 
+
+> d
+
+Y
+
+> i=1
+
+Eθ′ 
+
+> i
+> i.i.d.
+> ∼εν 1
+
+[f (θ′
+
+> i
+
+, N (i, 0) , N (i, 1)) 
+
+Eθ′ 
+
+> i
+> i.i.d.
+> ∼εν 2
+
+[f (θ′
+
+> i
+
+, N (i, 0) , N (i, 1)) 
+
+
+
+= EPn
+
+> 1
+
+
+
+> d
+
+X
+
+> i=1
+
+log 
+
+Eθ′ 
+
+> i
+> i.i.d.
+> ∼εν 1
+
+[f (θ′
+
+> i
+
+, N (i, 0) , N (i, 1)) 
+
+Eθ′ 
+
+> i
+> i.i.d.
+> ∼εν 2
+
+[f (θ′
+
+> i
+
+, N (i, 0) , N (i, 1)) 
+
+
+
+= EPn
+
+> 1
+
+" dX
+
+> i=1
+
+log Eθ′∼εν 1 [f (θ′, N (i, 0) , N (i, 1)) 
+
+Eθ′∼εν 2 [f (θ′, N (i, 0) , N (i, 1)) 
+
+#
+
+.
+
+Note that (N (i, 0) , N (i, 1)) have the same distribution across indices i = 1 , . . . , d . We define random variables N0 and 
+
+N1 that have the same distribution as N (i, 0) and N (i, 1) , respectively. Under Pn 
+
+> 1
+
+, the distributions of N0 and N1 follow 
+
+B(n, 1−θ 
+
+> 2d
+
+) and B(n, 1+ θ 
+
+> 2d
+
+), respectively, where θ ∼ εν 1. Then, we can express the likelihood ratio for each index in the same form and obtain 
+
+KL( Pn 
+
+> 1
+
+∥ P n 
+
+> 2
+
+) = dEPn
+
+> 1
+
+
+
+log Eθ′∼εν 1 [f (θ′, N 0, N 1) | N0, N 1]
+
+Eθ′∼εν 2 [f (θ′, N 0, N 1) | N0, N 1]
+
+
+
+.
+
+This can be understood as that the KL divergence between Pn 
+
+> 1
+
+and Pn 
+
+> 2
+
+is d times the KL divergence between the probability measures restricted on one index. Using that KL( P || Q) ≤ log(1+ χ2(P ; Q)) , where χ2(P ; Q) is the chi-squared divergence, we have 
+
+E
+
+> (N0,N 1)∼P n
+> 1
+
+
+
+log Eθ′∼εν 1 [f (θ′, N 0, N 1)] 
+
+Eθ′∼εν 2 [f (θ′, N 0, N 1)] 
+
+
+
+≤ log 1 + E
+
+> (N0,N 1)∼P n
+> 2
+
+" Eθ′∼εν 1 [f (θ′, N 0, N 1)] − Eθ′∼εν 2 [f (θ′, N 0, N 1)] 
+
+Eθ′∼εν 2 [f (θ′, N 0, N 1)] 
+
+2#! 
+
+,
+
+where we omit conditioning on N0, N 1 for the inner expectations for simplicity. For the ease of presentation, let Pn 
+
+> 0
+
+be the probability distribution over N0 and N1 when θ = 0 deterministically. Then, we have dPn
+
+> 2
+> dPn
+> 0
+
+= Eθ′∼εν 2 [f (θ′,N 0,N 1)]   
+
+> f(0 ,N 0,N 1)
+
+=
+
+32 Minimax Optimal Strategy for Delayed Observations in Online Reinforcement Learning 
+
+Eθ′∼εν 2 [f (θ′, N 0, N 1)] . Then, the chi-squared divergence can be expressed as 
+
+χ2 := E
+
+> (N0,N 1)∼P n
+> 2
+
+" Eθ′∼εν 1 [f (θ′, N 0, N 1)] − Eθ′∼εν 2 [f (θ′, N 0, N 1)] 
+
+Eθ′∼εν 2 [f (θ′, N 0, N 1)] 
+
+2#
+
+= E
+
+> (N0,N 1)∼P n
+> 0
+
+"
+
+dPn
+
+> 2
+
+dPn
+
+> 0
+
+ Eθ′∼εν 1 [f (θ′, N 0, N 1)] − Eθ′∼εν 2 [f (θ′, N 0, N 1)] 
+
+Eθ′∼εν 2 [f (θ′, N 0, N 1)] 
+
+2#
+
+= E
+
+> (N0,N 1)∼P n
+> 0
+
+"
+
+(Eθ′∼εν 1 [f (θ′, N 0, N 1)] − Eθ′∼εν 2 [f (θ′, N 0, N 1)]) 2
+
+Eθ′∼εν 2 [f (θ′, N 0, N 1)] 
+
+#
+
+We first lower bound the denominator. Since ν2 is symmetric, we have 
+
+E
+
+> θ′∼εν 2
+
+[f (θ′, N 0, N 1)] = E
+
+> θ′∼εν 2
+
+[f (−θ′, N 0, N 1)] = 12 E
+
+> θ′∼εν 2
+
+[f (θ′, N 0, N 1) + f (−θ′, N 0, N 1)] .
+
+Using the AM-GM inequality, we obtain that 
+
+12 (f (θ′, N 0, N 1) + f (−θ′, N 0, N 1)) = 12
+
+ (1 − θ′)N0 (1 + θ′)N1 + (1 + θ′)N0 (1 − θ′)N1 
+
+≥  (1 + θ′)N0+N1 (1 − θ′)N0+N1  12
+
+= (1 − θ′2) N0+N12
+
+≥ (1 − ε2) N0+N12 ,
+
+where the last inequality uses that θ′ ∈ [−ε, ε ]. Therefore, denoting N := N0 + N1, the chi-squared divergence is upper bounded by 
+
+χ2 ≤ E
+
+> (N0,N 1)∼P n
+> 0
+
+"
+
+(1 − ε2)− N
+
+> 2
+
+
+
+E
+
+> θ′∼εν 1
+
+[f (θ′, N 0, N 1)] − E
+
+> θ′∼εν 2
+
+[f (θ′, N 0, N 1)] 
+
+2#
+
+.
+
+Conditioned on N , the conditional distribution of N0 under Pn 
+
+> 0
+
+follows B(N, 12 ). Hence, using the law of total expectation, we can rewrite the bound as 
+
+χ2 ≤ E 
+
+> N∼P n
+> 0
+
+(1 − ε2)− N 
+
+> 2
+
+E   
+
+> N0∼B(N, 12)
+> N1=N−N0
+
+"
+
+E
+
+> θ′∼εν 1
+
+[f (θ′, N 0, N 1)] − E
+
+> θ′∼εν 2
+
+[f (θ′, N 0, N 1)] 
+
+2
+
+N
+
+# . (11) We transform the inner expectation using the following lemma: 
+
+Lemma 22. For N ∈ N, let N0 ∼ B(N, 12 ) and N1 = N − N0. Recall that f (x; a, b ) := (1 − x)a(1 + x)b. For any two distributions ρ1 and ρ2 independent of N0, we have 
+
+E
+
+> N0,N 1
+
+"
+
+E 
+
+> Y∼ρ1
+
+[f (Y, N 0, N 1)] − E 
+
+> Y∼ρ2
+
+[f (Y, N 0, N 1)] 
+
+2#
+
+=
+
+> N
+
+X
+
+> l=0
+
+Nl
+
+  
+
+E 
+
+> Y∼ρ1
+
+[Y l] − E 
+
+> Y∼ρ2
+
+[Y l]
+
+2
+
+.
+
+The proof of Lemma 22 is provided in Appendix F.3 By applying Lemma 22, we have 
+
+E   
+
+> N0∼B(N, 12)
+> N1=N−N0
+
+"
+
+E
+
+> θ′∼εν 1
+
+[f (θ′, N 0, N 1)] − E
+
+> θ′∼εν 2
+
+[f (θ′, N 0, N 1)] 
+
+2
+
+N
+
+#
+
+=
+
+> N
+
+X
+
+> l=0
+
+Nl
+
+  
+
+E
+
+> θ′∼εν 1
+
+[( θ′)l] − E
+
+> θ′∼εν 2
+
+[( θ′)l]
+
+2
+
+=
+
+> N
+
+X
+
+> l=k+1
+
+Nl
+
+  
+
+E
+
+> θ′∼εν 1
+
+[( θ′)l] − E
+
+> θ′∼εν 2
+
+[( θ′)l]
+
+2
+
+≤
+
+> N
+
+X
+
+> l=k+1
+
+Nl
+
+
+
+ε2l ,
+
+33 Minimax Optimal Strategy for Delayed Observations in Online Reinforcement Learning 
+
+where we use the property Eθ′∼εν 1 [( θ′)l] = Eθ′∼εν 2 [( θ′)l] for l = 0 , . . . , k by Lemma 21 for the second equality, and the last inequality uses that |θ′| ≤ ε and that Eθ′∼εν 1 [( θ′)l] = Eθ′∼εν 2 [( θ′)l] = 0 for odd l by the symmetry guaranteed by Lemma 21. Plugging this result into Eq. (11), we obtain that 
+
+χ2 ≤ E 
+
+> N∼P n
+> 0
+
+"
+
+(1 − ε2)− N
+
+> 2
+> N
+
+X
+
+> l=k+1
+
+Nl
+
+
+
+ε2l
+
+#
+
+.
+
+Then, we apply the Taylor theorem, whose result is encapsulated by the following lemma: 
+
+Lemma 23. For n ∈ N, p ∈ [0 , 1] , and a, x ∈ R, there exists τ ∈ [0 , 1] such that 
+
+E 
+
+> N∼B(n,p )
+
+"
+
+aNNX
+
+> l=k+1
+
+Nl
+
+
+
+xl
+
+#
+
+=
+
+ nk + 1 
+
+
+
+(apx )k+1 (ap (1 + τ x ) + 1 − p)n−k−1 .
+
+The proof of Lemma 23 is provided in Appendix F.4. Recall that N ∼ B(n, 1 
+
+> d
+
+) under Pn 
+
+> 0
+
+. Plugging in x = ε2, a = 1√1−ε2 ,and p = 1 
+
+> d
+
+, we obtain that 
+
+χ2 ≤
+
+ nk + 1 
+
+  ε2
+
+d√1 − ε2
+
+k+1  1
+
+d√1 − ε2
+
+ 1 + τ ε 2 + 1 − 1
+
+d
+
+n−k−1
+
+≤
+
+ enε 2
+
+d(k + 1) √1 − ε2
+
+k+1  1
+
+d√1 − ε2
+
+ 1 + τ ε 2 + 1 − 1
+
+d
+
+n−k−1
+
+≤
+
+ enε 2
+
+d(k + 1) √1 − ε2
+
+k+1 
+
+1 + 1
+
+d
+
+ 1 + ε2
+
+√1 − ε2 − 1
+
+ n−k−1
+
+,
+
+where we use   nk+1 
+
+ ≤ ( en k+1 )k+1 for the second inequality. From 0 ≤ ε ≤ 12 , we bound e√1−ε2 in the first term by 4, and  
+
+> 1+ ε2
+> √1−ε2
+
+=
+
+q 1+2 ε2+ε4 
+
+> 1−ε2
+
+=
+
+q
+
+1 + 3ε2+ε4 
+
+> 1−ε2
+
+≤
+
+q
+
+1 + 4 ε2 + 43 ε4 ≤ 1 + 2 ε2. Then, we have 
+
+χ2 ≤
+
+ 4nε 2
+
+d(k + 1) 
+
+k+1 
+
+1 + 2ε2
+
+d
+
+n
+
+,
+
+and the KL divergence is bounded by 
+
+KL( Pn 
+
+> 1
+
+∥ P n 
+
+> 2
+
+) ≤ d log(1 + χ2)
+
+≤ d log 1 + 
+
+ 4nε 2
+
+d(k + 1) 
+
+k+1 
+
+1 + 2ε2
+
+d
+
+n!
+
+.
+
+The first part of the lemma is proved. Suppose n ≤ d log d 
+
+> 2ε2
+
+. Then, we have 
+
+χ2 ≤
+
+ 2 log dk + 1 
+
+k+1 
+
+1 + 2ε2
+
+d
+
+ d log d
+
+> 2ε2
+
+≤
+
+ 2 log dk + 1 
+
+k+1 
+
+elog d
+
+=
+
+ 2 log dk + 1 
+
+k+1 
+
+d . 
+
+By setting k ≥ 4 log d + 2 , we have 
+
+ 2 log dk + 1 
+
+k+1 
+
+≤
+
+ 12
+
+4 log d+3 
+
+≤ 18 e(log 12 )·(4 log d) ≤ 18 e−2 log d ≤ 18d2 .
+
+Therefore, we have χ2 ≤ 18d , and KL( Pn 
+
+> 1
+
+∥ P n 
+
+> 2
+
+) ≤ log(1 + χ2)d ≤ log(1 + 18d )d ≤ log e1/8 = 18 .34 Minimax Optimal Strategy for Delayed Observations in Online Reinforcement Learning 
+
+## F. Proofs of Technical Lemmas in Appendices D and E 
+
+F.1. Proof of Lemma 19 
+
+Proof of Lemma 19. We set P1 and P2 to be distributions defined in Proposition 3 with d = eD and k = 6 log eD. Then, Proposition 3 immediately yields that KL( Pn 
+
+> 1
+
+∥ P n 
+
+> 2
+
+) ≤ 18 for n ≤ eD log eD 
+
+> 2ε2
+
+.Now, we prove the second part of the lemma. We define μ1 and μ2 as defined after Lemma 21. Specifically, they satisfy 
+
+εμ 1 = Eθ∼P 1 [|θi|] and εμ 2 = Eθ∼P 2 [|θi|] for all i ∈ [ eD]. In addition, Lemma 21 states that μ2 − μ1 ≥ 12k = 112 log eD . We set α := ε(μ1 + 148 log eD ) 2 eH−1− eD 
+
+> 4
+
+. Applying Hoeffding’s inequality (Lemma 27), we have 
+
+Pθ∼P 1
+
+ eV ∗(θ) ≥ α
+
+
+
+= Pθ∼P 1
+
+ 12 eD
+
+> eD
+
+X
+
+> i=1
+
+( eH − i)|θi| ≥ ε
+
+
+
+μ1 + 148 log eD
+
+ 2 eH − 1 − eD
+
+4
+
+
+
+= Pθ∼P 1
+
+ 12 eD
+
+> eD
+
+X
+
+> i=1
+
+( eH − i)( |θi| − εμ 1) ≥ ε
+
+48 log eD · 2 eH − 1 − eD
+
+4
+
+
+
+≤ exp 
+
+− ε
+
+48 log eD · 2 eH − 1 − eD
+
+4
+
+!2
+
+·
+
+
+
+> eD
+
+X
+
+> i=1
+
+ε( eH − i)2 eD
+
+!2
+
+> −1
+
+
+
+≤ exp 
+
+− 148 log eD · eH
+
+4
+
+!2
+
+· eH2
+
+4 eD
+
+!−1
+
+= exp − eD
+
+(96 log eD)2
+
+!
+
+,
+
+where we use that eH ≥ eD + 1 in the fifth line. We note that for large enough eD, we have exp( − eD/ (96 log eD)2) ≤ 14 . Then we obtain that Pθ∼P 1 ( eV ∗(θ) ≥ α) ≤ 14 .It remains to show that Pθ∼P 2 ( eV ∗(θ) ≤ α + εH   
+
+> 128 log eD
+
+) ≤ 14 . We define α2 := ε(μ2 − 148 log eD ) 2 eH−1− eD 
+
+> 4
+
+, and in the exact same way, we can prove Pθ∼P 2 ( eV ∗(θ) ≤ α2) ≤ 14 . We have 
+
+α2 − α = ε
+
+
+
+μ2 − μ1 − 124 log eD
+
+ 2 eH − 1 − eD
+
+4
+
+≥ ε
+
+24 log eD · 2 eH − 1 − eD
+
+4
+
+≥ ε
+
+24 log eD · eH
+
+4
+
+≥ εH 
+
+192 log eD ,
+
+where we use μ2 − μ1 ≥ 112 log eD for the first inequality, the eD + 1 ≤ eH for the second inequality, and eH ≥ H 
+
+> 2
+
+for the last inequality. Therefore, we deduce that Pθ∼P 2 ( eV ∗(θ) ≤ α + εH   
+
+> 192 log eD
+
+) ≤ Pθ∼P 2 ( eV ∗(θ) ≤ α2) ≤ 14 .
+
+F.2. Proof of Lemma 20 
+
+Proof of Lemma 20. We denote P1 := Pτ 
+
+> 1
+
+and P2 := Pτ 
+
+> 2
+
+for simplicity. 35 Minimax Optimal Strategy for Delayed Observations in Online Reinforcement Learning 
+
+For ω = {(sk 
+
+> 1
+
+, a k 
+
+> 1
+
+, . . . , s kH+1 )}τk=1 ∈ Ω, we have 
+
+Pi(ω) = E
+
+> M(θ)
+> θ∼P i
+
+" τY
+
+> k=1
+> H
+
+Y
+
+> h=1
+
+Pskh,a kh (skh+1 )
+
+#
+
+for i = 1 and i = 2 . Denote the state sampled from the j-th selection of (s0, a 0) in the trajectory ω by sj (ω). Then, we have that 
+
+P1(ω)
+
+P2(ω) =
+
+EP1
+
+"Q (k,h )∈[τ ]×[H](skh,a kh)=( s0,a 0)
+
+Ps0,a 0 (skh+1 )
+
+#
+
+EP2
+
+"Q (k,h )∈[τ ]×[H](skh,a kh)=( s0,a 0)
+
+Ps0,a 0 (skh+1 )
+
+#
+
+= EP1
+
+hQN τ +1 (s0,a 0) 
+
+> j=1
+
+Ps0,a 0 (sj (ω)) 
+
+i
+
+EP2
+
+hQN τ +1 (s0,a 0) 
+
+> j=1
+
+Ps0,a 0 (sj (ω)) 
+
+i
+
+= PN τ +1  
+
+> 1
+
+({sj (ω)}N τ +1 (s0,a 0) 
+
+> j=1
+
+)
+
+PN τ +1  
+
+> 2
+
+({sj (ω)}N τ +1 (s0,a 0) 
+
+> j=1
+
+) .
+
+The likelihood ratio only depends on the sequence of states that the state-action pair (s0, a 0) transitioned into, and it is the ratio between PN τ +1 (s0,a 0)1 and PN τ +1 (s0,a 0)2 . Then, the KL-divergence is expressed as the following: 
+
+KL( P1 ∥ P2) = E
+
+> ω∼P1
+
+
+
+log P1(ω)
+
+P2(ω)
+
+
+
+= E
+
+> ω∼P1
+
+log PN τ +1  
+
+> 1
+
+({sj (ω)}N τ +1 (s0,a 0) 
+
+> j=1
+
+)
+
+PN τ +1  
+
+> 2
+
+({sj (ω)}N τ +1 (s0,a 0) 
+
+> j=1
+
+)
+
+
+
+= E  
+
+> Nτ+1 (s0,a 0)∼P1
+
+ E  
+
+> {sj(ω)}N τ+1 (s0,a 0)
+> j=1
+
+log PN τ +1  
+
+> 1
+
+({sj (ω)}N τ +1 (s0,a 0) 
+
+> j=1
+
+)
+
+PN τ +1  
+
+> 2
+
+({sj (ω)}N τ +1 (s0,a 0) 
+
+> j=1
+
+) N τ +1 (s0, a 0)
+
+
+
+= E  
+
+> Nτ+1 (s0,a 0)∼P1
+
+h
+
+KL( PN τ +1 (s0,a 0)1 (· | N τ +1 (s0, a 0)) ∥ P N τ +1 (s0,a 0)2 (· | N τ +1 (s0, a 0))) 
+
+i
+
+.
+
+By the data processing inequality, we have 
+
+KL( PN τ +1 (s0,a 0)1 (· | N τ +1 (s0, a 0)) ∥ P N τ +1 (s0,a 0)2 (· | N τ +1 (s0, a 0))) ≤ KL( Pn 
+
+> 1
+
+∥ P n 
+
+> 2
+
+) ,
+
+where we use that N τ +1 (s0, a 0) ≤ n by the stopping rule of τ . The proof is complete. 
+
+F.3. Proof of Lemma 22 
+
+Proof of Lemma 22. Let c(a, b, l ) be the coefficients of f (x, a, b ) so that f (x, a, b ) = (1 − x)a(1 + x)b = Pa+bl=0 c(a, b, l )xl.Then, for given N0, N 1, the squared term becomes 
+
+
+
+E 
+
+> Y∼ρ1
+
+[f (Y, N 0, N 1)] − E 
+
+> Y∼ρ2
+
+[f (Y, N 0, N 1)] 
+
+2
+
+=
+
+> N
+
+X
+
+> l=0
+
+c(N0, N 1, l ) E 
+
+> Y∼ρ1
+
+[Y l] −
+
+> N
+
+X
+
+> l=0
+
+c(N0, N 1, l ) E 
+
+> Y∼ρ2
+
+[Y l]
+
+!2
+
+=
+
+> N
+
+X
+
+> l=0
+
+c(N0, N 1, l )
+
+
+
+E 
+
+> Y∼ρ1
+
+[Y l] − E 
+
+> Y∼ρ2
+
+[Y l]
+
+!2
+
+=
+
+> N
+
+X
+
+> l=0
+> N
+
+X
+
+> l′=0
+
+c(N0, N 1, l )c(N0, N 1, l ′)
+
+
+
+E 
+
+> Y∼ρ1
+
+[Y l] − E 
+
+> Y∼ρ2
+
+[Y l]
+
+  
+
+E 
+
+> Y∼ρ1
+
+[Y l′
+
+] − E 
+
+> Y∼ρ2
+
+[Y l′
+
+]
+
+
+
+.
+
+36 Minimax Optimal Strategy for Delayed Observations in Online Reinforcement Learning 
+
+For the ease of notation, let ml := EY ∼ρ1 [Y l] − EY ∼ρ2 [Y l]. Then, we obtain that 
+
+
+
+E 
+
+> Y∼ρ1
+
+[f (Y, N 0, N 1)] − E 
+
+> Y∼ρ2
+
+[f (Y, N 0, N 1)] 
+
+2
+
+=
+
+> N
+
+X
+
+> l=0
+> N
+
+X
+
+> l′=0
+
+c(N0, N 1, l )c(N0, N 1, l ′)mlml′ .
+
+Then, it holds that 
+
+E  
+
+> N0∼B(N, 12)
+
+" NX
+
+> l=0
+> N
+
+X
+
+> l′=0
+
+c(N0, N 1, l )c(N0, N 1, l ′)mlml′
+
+#
+
+=
+
+> N
+
+X
+
+> N0=0
+
+ NN0
+
+  12
+
+N NX
+
+> l=0
+> N
+
+X
+
+> l′=0
+
+c(N0, N 1, l )c(N0, N 1, l ′)mlml′
+
+=
+
+ 12
+
+N NX
+
+> l=0
+> N
+
+X
+
+> l′=0
+
+mlml′
+
+> N
+
+X
+
+> N0=0
+
+ NN0
+
+
+
+c(N0, N 1, l )c(N0, N 1, l ′) .
+
+We need the following lemma, whose proof is provided at the end of this subsection. 
+
+Lemma 24. For nonnegative integers l, l ′, and N , we have the following equality: 
+
+> N
+
+X
+
+> a=0
+
+Na
+
+
+
+c(a, N − a, l )c(a, N − a, l ′) = 
+
+(
+
+2N  Nl
+
+ (l = l′)0 (l̸ = l′) . (12) By this lemma, we conclude that 
+
+E
+
+> N0,N 1
+
+" NX
+
+> l=0
+> N
+
+X
+
+> l′=0
+
+c(N0, N 1, l )c(N0, N 1, l ′)mlml′
+
+#
+
+=
+
+> N
+
+X
+
+> l=0
+
+Nl
+
+
+
+m2 
+
+> l
+
+.
+
+Proof of Lemma 24. We prove the lemma using generating functions. Consider the polynomial ((1 − x)(1 − y) + (1 + 
+
+x)(1 + y)) N . First, we have 
+
+((1 − x)(1 − y) + (1 + x)(1 + y)) N =
+
+> N
+
+X
+
+> a=0
+
+Na
+
+
+
+((1 − x)(1 − y)) a ((1 + x)(1 + y)) N −a
+
+=
+
+> N
+
+X
+
+> a=0
+
+Na
+
+  (1 − x)a(1 + x)N −a   (1 − y)a(1 + y)N −a
+
+=
+
+> N
+
+X
+
+> a=0
+
+Na
+
+ NX
+
+> l=0
+
+c(a, N − a, l )xl
+
+! NX
+
+> l′=0
+
+c(a, N − a, l ′)yl′
+
+!
+
+=
+
+> N
+
+X
+
+> l=0
+> N
+
+X
+
+> l′=0
+> N
+
+X
+
+> a=0
+
+Na
+
+
+
+c(a, N − a, l )c(a, N − a, l ′)xlyl′
+
+.
+
+Hence, the left-hand side of Eq. (12) is the coefficient of xlyl′
+
+in ((1 − x)(1 − y) + (1 + x)(1 + y)) N . On the other hand, noting that (1 − x)(1 − y) + (1 + x)(1 + y) = 2 + 2 xy , we have 
+
+((1 − x)(1 − y) + (1 + x)(1 + y)) N = (2(1 + xy )) N
+
+= 2 NNX
+
+> l=0
+
+Nl
+
+
+
+(xy )l .
+
+In this expression, the coefficient of xlyl′
+
+is the right-hand side of Eq. (12), proving the equality between the two. 37 Minimax Optimal Strategy for Delayed Observations in Online Reinforcement Learning 
+
+F.4. Proof of Lemma 23 
+
+Proof of Lemma 23. Expanding the expectation using the pmf of binomial distribution, we derive that 
+
+E 
+
+> N∼B(n,p )
+
+"
+
+aNNX
+
+> l=k+1
+
+Nl
+
+
+
+xl
+
+#
+
+=
+
+> n
+
+X 
+
+> N=0
+
+ nN
+
+
+
+pN (1 − p)n−N aNNX
+
+> l=k+1
+
+Nl
+
+
+
+xl
+
+=
+
+> n
+
+X
+
+> l=k+1
+> n
+
+X 
+
+> N=l
+
+ nN
+
+ Nl
+
+
+
+(ap )N (1 − p)n−N
+
+!
+
+xl . (13) Consider a polynomial g(x) := ( ap (1 + x) + 1 − p)n. We have 
+
+(ap (1 + x) + 1 − p)n =
+
+> n
+
+X 
+
+> N=0
+
+ nN
+
+
+
+(ap )N (1 + x)N (1 − p)n−N
+
+=
+
+> n
+
+X 
+
+> N=0
+
+ nN
+
+
+
+(ap )N (1 − p)n−NNX
+
+> l=0
+
+Nl
+
+
+
+xl
+
+=
+
+> n
+
+X
+
+> l=0
+> n
+
+X 
+
+> N=l
+
+Nn
+
+ Nl
+
+
+
+(ap )N (1 − p)n−N
+
+!
+
+xl .
+
+Observe that Eq. (13) is a remainder of g(x) when approximated by a degree k polynomial. By the Taylor theorem, for fixed 
+
+x, there exists τ ∈ [0 , 1] such that 
+
+> n
+
+X
+
+> l=k+1
+> n
+
+X 
+
+> N=l
+
+ nN
+
+ Nl
+
+
+
+(ap )N (1 − p)n−N
+
+!
+
+xl = g(x) −
+
+> k
+
+X
+
+> l=0
+> n
+
+X 
+
+> N=l
+
+Nn
+
+ Nl
+
+
+
+(ap )N (1 − p)n−N
+
+!
+
+xl
+
+= xk+1 
+
+(k + 1)! g(x+1) (τ x ) .
+
+The proof is completed by noting that 1(k+1)! g(k+1) (x) =   nk+1 
+
+(ap )k+1 (ap (1 + x) + 1 − p)n−k−1.
+
+## G. Auxiliary Lemmas 
+
+Lemma 25 (Bennett’s inequality, Theorem 3 in Maurer & Pontil (2009)) . For n ≥ 1, let Z1, . . . , Z n be i.i.d. copies of a random variable Z that lies in [0 , 1] . Let ¯Zn := 1
+
+> n
+
+Pni=1 Zi and V := E[( Z − E[Z]) 2]. Then, for δ ∈ (0 , 1] , it holds that with probability at least 1 − δ,
+
+E[Z] − ¯Zn ≤
+
+s
+
+2Vn log 1
+
+> δ
+
+n + log 1
+
+> δ
+
+3n .
+
+Lemma 26 (Theorem 4 in Maurer & Pontil (2009)) . For n ≥ 2, let Z1, . . . , Z n be i.i.d. copies of a random variable Z that lies in [0 , 1] . Let ¯Zn := 1
+
+> n
+
+Pni=1 Zi and ˆVn := 1
+
+> n
+
+Pni=1 (Zi − ¯Zn)2. Then, for δ ∈ (0 , 1] , it holds that with probability at least 1 − δ,
+
+E[Z] − ¯Zn ≤ 2
+
+s
+
+ˆVn log 2
+
+> δ
+
+n + 14 log 2
+
+> δ
+
+3n .
+
+Lemma 27 (Hoeffding’s Inequality, Theorem 2 in Hoeffding (1963)) . Let {ξi}ni=1 be a sequence of real-valued random variables adapted to a filtration {F i}ni=0 . Suppose that there exist ai < b i such that ξi ∈ [ai, b i] holds almost surely for all 
+
+i ∈ [n]. Then, for δ ∈ (0 , 1] , the following inequality holds with probability at least 1 − δ:
+
+> n
+
+X
+
+> i=1
+
+(ξi − E [ξi | F t−1]) ≤
+
+vuut 12
+
+> n
+
+X
+
+> i=1
+
+(bi − ai)2
+
+!
+
+log 1
+
+δ .
+
+Lemma 28 (Pinsker’s inequality, Lemma 2.5 in Tsybakov (2008)) . For two probability measures P and Q, we have 
+
+V (P, Q ) ≤
+
+q 12 KL( P ∥ Q), where V (P, Q ) is the total variation of the two measures. 
+
+38

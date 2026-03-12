@@ -1,0 +1,940 @@
+Title: Transformer-Based Multipath Congestion Control: A Decoupled Approach for Wireless Uplinks
+
+URL Source: https://arxiv.org/pdf/2603.04550v1
+
+Published Time: Fri, 06 Mar 2026 01:06:48 GMT
+
+Number of Pages: 13
+
+Markdown Content:
+# Transformer-Based Multipath Congestion Control: A Decoupled Approach for Wireless Uplinks 
+
+Zongyuan Zhang *, Tianyang Duan *, Liang Wang, Zihan Fang, Zheng Lin, Yijun Lu, Jiening Wu, Xia Du, Miao Yang, Zhe Chen, Heming Cui, Member, IEEE and Jun Luo, Fellow, IEEE 
+
+Abstract —The proliferation of artificial intelligence applica-tions on edge devices necessitates efficient transport protocols that leverage multi-homed connectivity across heterogeneous networks. While Multipath TCP enables bandwidth aggregation, its in-kernel congestion control mechanisms lack the programma-bility and flexibility needed for achieving efficient transmission. Additionally, inherent measurement noise renders network state partially observable, challenging data-driven approaches like deep reinforcement learning (DRL). To address these challenges, we propose a Transformer-based Congestion Control Optimiza-tion (TCCO) framework for multipath transport. TCCO employs a decoupled architecture that offloads control decisions to an external decision engine via a lightweight in-kernel client and user-space proxy, enabling edge devices to leverage external computational resources while maintaining TCP/IP compatibility. The Transformer-based DRL agent in the external decision engine uses self-attention to capture temporal dependencies, filter noise, and coordinate control across subflows through a unified policy. Extensive evaluation on both simulated and real dual-band Wi-Fi testbeds demonstrates that TCCO achieves superior adaptability and performance than state-of-the-art baselines, validating the feasibility and effectiveness of TCCO for wireless networks. 
+
+Index Terms —Multipath TCP, edge computing, congestion control, Transformer-based reinforcement learning 
+
+I. I NTRODUCTION 
+
+As artificial intelligence (AI) applications [1], [2], [3], [4], [5], [6], [7] proliferate on edge devices, multi-homed devices equipped with heterogeneous network interfaces, such as Wi-Fi, LTE, and 5G, have become essential components of 
+
+Z. Zhang, T. Duan, and H. Cui are with the Division of Computer Science, The University of Hong Kong, Hong Kong SAR, China (e-mail: tyduan@cs.hku.hk; zyzhang2@cs.hku.hk; heming@cs.hku.hk). L. Wang is with the School of Electronic and Information Engineering, Beijing Jiaotong University, Beijing, China (e-mail: wangliang1@bjtu.edu.cn). Z. Fang is with the Department of Computer Science, City University of Hong Kong, Kowloon, Hong Kong SAR, China (e-mail: zihanfang3-c@my.cityu.edu.hk). Y. Lu is with the Department of Computer Science and Engineering, Waseda University, Tokyo, Japan (e-mail: yijun@ruri.waseda.jp). Z. Lin is with the Department of Electrical and Electronic Engineering, University of Hong Kong, Pok Fu Lam, Hong Kong SAR, China (e-mail: linzheng@eee.hku.hk). J. Wu is with the College of Artificial Intelligence, Southwest University, Chongqing 400715, China (e-mail: jnwu66@swu.edu.cn). X. Du and M. Yang are with the School of Computer and Information Engineering, Xiamen University of Technology, Xiamen, 361000, China (email: duxia@xmut.edu.cn; yangmiao@xmut.edu.cn ). Z. Chen is with the Institute of Space Internet, Fudan University, Shanghai 200438, China (e-mail: zhechen@fudan.edu.cn). J. Luo is with the School of Computer Engineering, Nanyang Technological University, Singapore (e-mail: junluo@ntu.edu.sg). 
+
+(Corresponding author: Liang Wang and Zihan Fang) 
+
+* These authors contributed equally. 
+
+edge networks. These devices offload compute-intensive AI workloads to edge servers when local processing capacity is insufficient. For instance, in industrial manufacturing, multi-homed sensors and controllers transmit high-dimensional data streams to nearby edge nodes for real-time inference, ex-ploiting multiple network paths to maintain uninterrupted communication despite individual link congestion or failure [8], [9]. By leveraging heterogeneous paths simultaneously, multi-homed devices can enhance transmission reliability and reduce latency, addressing the stringent quality-of-service re-quirements of latency-sensitive AI applications. Multipath transport protocols play a critical role in har-nessing the full potential of multi-homed devices. Multipath TCP (MPTCP), standardized by the IETF in RFC 8684 [10], has emerged as the dominant solution, with its widespread adoption in Linux kernel and Apple iOS. The efficacy of MPTCP fundamentally depends on its congestion control (CC) mechanism, which balances throughput optimization with fair-ness by adjusting each subflow’s sending rate in response to network conditions. To achieve optimal bandwidth utilization and controlled queueing depth, the CC mechanism must dy-namically adapt to the diverse and time-varying characteristics of each subflow. However, implementing adaptive CC algorithms within the kernel presents substantial obstacles [11]. First, kernel de-velopment is challenging due to its stringent programming environment, characterized by limited debugging tools and complex concurrency management, which requires specialized expertise and lengthy development cycles. Second, the kernel presents a resource-constrained execution environment, ill-suited for sophisticated computational models that require features unavailable in kernel space, such as floating-point arithmetic, access to user-space libraries, and hardware accel-erators like GPUs. Third, kernel-level implementations carry inherent risks, minor errors can trigger system-wide failures and critical security vulnerabilities. These limitations have driven an industry-wide trend toward relocating network functions from the monolithic kernel to enhance datapath programmability. Kernel-bypass technolo-gies such as DPDK [12] and user-space protocols like QUIC [13] exemplify this shift. These approaches embody a broader architectural principle: decoupling complex, evolving control logic from the static, performance-critical packet forwarding plane. This separation creates opportunities for integrating adaptive, data-driven CC methodologies. Among data-driven approaches, deep reinforcement learning 
+
+> arXiv:2603.04550v1 [cs.NI] 4 Mar 2026
+
+(DRL) is promising for adaptive CC as it learn policies that map network observations to transmission decisions without explicit modeling of network dynamics [14], [15]. However, conventional single-step DRL methods rely on instantaneous state observations, which are inherently noisy due to ACK aggregation and transient channel fluctuations. This observa-tion noise causes agents to react to transient artifacts rather than underlying network dynamics, leading to suboptimal control decisions. While extending the observation window can mitigate observation noise, it reduces responsiveness to genuine network variations. Single-step DRL formulations cannot satisfy these conflicting requirements. This fundamen-tal challenge motivates our proposed approach, as further elaborated in Section II. To address these challenges, we propose Transformer-based Congestion Control Optimization (TCCO), a framework that enables adaptive CC through edge-based policy learning. First, to overcome the limitations of in-kernel CC implementation while maintaining compatibility with the existing TCP/IP stack, we decouple MPTCP CC logic from its in-kernel execution. We implement a lightweight kernel client that communicates with an external decision engine via a user-space proxy, offloading sophisticated CC to external resources. This architecture allows TCCO to leverage edge computing resources for real-time, data-driven CC. Second, to handle the inherent noise in network measurements and the complex inter-subflow dependencies, we employ a Transformer-based DRL agent as the external decision engine. The Transformer-based DRL agent leverages self-attention mechanisms to jointly model temporal dependencies across historical observa-tions, effectively filtering transient fluctuations and extracting robust network state representations. This enables TCCO to infer underlying network dynamics and generate a coordinated control policy across all subflows. The contributions of this paper are as follows:  
+
+> •
+
+We propose TCCO, a Transformer-based congestion con-trol framework deployed and validated in real-world network infrastructure, demonstrating seamless compati-bility with existing protocol stacks and practical adaptive learning capabilities.  
+
+> •
+
+We design a decoupled architecture separating decision-making from the kernel datapath, enabling agile deploy-ment of DRL-based CC strategies on edge infrastructure.  
+
+> •
+
+We develop a Transformer-based DRL agent that distin-guishes network dynamics from transient noise, achieving robust multi-subflow control.  
+
+> •
+
+We empirically evaluate TCCO on simulated topologies and a real dual-band Wi-Fi testbed, and demonstrate that TCCO consistently outperforms state-of-the-art baselines across both local and edge deployments. The rest of this paper is organized as follows. Section II presents the challenge and motivation of the paper. Section III details the TCCO framework design. Section IV provides performance evaluation results. Section V discusses related work, and Section VI concludes the paper. 10 20 50      
+
+> Queue Size (packets)
+> 0
+> 10
+> 20
+> 30
+> Mean Throughput (Mbps)
+> (a) Throughput comparison
+> BBR Throughput
+> CUBIC Throughput
+> BBR Loss Rate
+> CUBIC Loss Rate
+> 025 50 75 100 125
+> Time (s)
+> 10
+> 15
+> 20
+> 25
+> Throughput (Mbps)
+> (b) RTT comparison
+> CUBIC
+> BBR
+> BBR Avg Throughput
+> CUBIC Avg Throughput
+> 0
+> 0.025
+> 0.05
+> 0.075
+> 0.1
+> Packet Loss Rate (%)
+
+Fig. 1: Performance comparison between CUBIC and BBR. The queue buffer was simulated using the Linux Traffic Control (TC). During the test in (b), the buffer size was set to 1000 packets (greater than the actual requirement). II. C HALLENGE AND MOTIVATION 
+
+In this section, we motivate our approach through empirical analysis of three key questions: first, the rationale for em-ploying DRL-based methods; second, the partial observability problem that limits DRL; and third, how the Transformer overcomes these challenges for more robust CC. 
+
+A. From Traditional Algorithms to DRL-based Methods 
+
+Traditional CC algorithms exhibit inherent limitations due to their reliance on hand-crafted heuristics with static parameter tuning. Such designs struggle to adapt to heterogeneous and time-varying wireless links, leading to inconsistent perfor-mance across diverse network conditions. To demonstrate this, we conducted experiments transferring 1GB of data between two hosts under two representative scenarios. In the first sce-nario (Fig.1(a)), configured with a 200Mbps link, 60ms delay, 0.01% packet loss, and a shallow buffer. BBR [16] delivered higher throughput but at the cost of greater packet loss. In the second scenario (Fig.1(b)), emulating a small Bandwidth-Delay Product (BDP) network (20Mbps, 5ms delay, sufficient buffer), CUBIC[17] attained superior throughput yet showed significant fluctuations in both sending rate and RTT. These observations demonstrate that the heuristic-based algorithm’s performance in terms of delivery rate, delay, and stability is highly dependent on the specific network environment. To address these limitations, learning-based methods, par-ticularly deep reinforcement learning (DRL), have emerged as a promising alternative. DRL enables agents to derive adaptive control policies through online interaction with networks, eliminating the need for explicit analytical models. Early work validated the feasibility of DRL-based transmission strate-gies: QTCP [18] applied Q-learning to congestion control, while PCC [19] employed online optimization to iteratively refine sending rates based on observed performance. DRL-based methods have also been extended to multipath trans-port, including delay-aware path scheduling [20], multi-agent frameworks for inter-subflow coordination [21], and multipath optimization for distributed edge learning [22]. 0 1000 2000 3000 4000     
+
+> ACK Packet Number
+> 0
+> 500
+> 1000
+> 1500
+> 2000
+> 2500
+> Delivery Rate (Mbps)
+> (a) Deliverd data for ACK packets
+> 5Ghz acked data (CV:37.9%)
+> 5Ghz avg rate
+> 6Ghz acked data (CV:40.5%)
+> 6Ghz avg rate
+> 01000 2000 3000 4000
+> ACK Packet Number
+> 0
+> 5
+> 10
+> 15
+> 20
+> 25
+> RTT (ms)
+> (b) RTT for ACK packets
+> 5Ghz rtt sample (CV:50.8%)
+> 5Ghz avg rtt
+> 6Ghz rtt sample (CV:41.2%)
+> 6Ghz avg rtt
+
+Fig. 2: Statistics of ACK packets during a real MPTCP upload. The test was conducted on a dual-band, dual-link Wi-Fi network supporting 5GHz and 6GHz. 
+
+B. Limitations of DRL-based Methods under Partial Observ-ability 
+
+Although these DRL-based methods have achieved progress, they model CC as a fully observable Markov decision process, sharing a common limitation: relying on instantaneous input inherently results in inaccurate estimates of throughput and latency. A preliminary experiment on a dual-band Wi-Fi multipath network demonstrated this phenomenon: during an MPTCP upload using BBR (as shown in Fig. 2), both the 5 GHz and 6 GHz links exhibited high coefficients of variation (CV) in delivered data volume and RTT, with instantaneous rate estimates exceeding the true average by over 40%. Such measurement variability fundamentally undermines the agent’s ability to assess network conditions accurately and track state transitions reliably. This mismatch between high-frequency measurement noise and slower, true network dynamics means the agent operates with only partial visibility into the true network state. The control loop must react to sub-millisecond-level measurement noise, while the true network dynamics (e.g., changes in available bandwidth) evolve over longer timescales. Agents that cannot separate transient fluctuations from persistent trends based on a sequence of misleading observations will make erratic decisions, degrading CC per-formance. A straightforward mitigation is to observe the network feedback over an extended window until conditions stabi-lize. However, longer aggregation periods delay responses to genuine state changes. In environments where network conditions shift on timescales comparable to or shorter than the observation window, the agent may miss critical transitions entirely and respond only after the network has evolved to a subsequent state. Furthermore, optimal window length varies across environments: a duration suitable for stable wired links can be inadequate for volatile wireless channels. This lack of generalizability undermines DRL’s promise of adaptive policies without extensive manual tuning. Instead of fixed-window aggregation, we let the agent to process sequences of historical observations directly. This preserves fine-grained information while maintaining high de-cision frequency, but requires an architecture that can capture long-range temporal dependencies. The Transformer is well-suited for this task. The self-attention mechanism dynamically weighs different points in the observation sequence, allowing 0 50 100 150 200 
+
+> Time (s)
+> 650
+> 750
+> 850
+> 950
+> 1050
+> Throughput (Mbps)
+> Total bandwidth of 2 links
+> TCCO (20ms)
+> TCCO w/o TF (600ms)
+> TCCO (1000ms)
+> Cubic
+
+Fig. 3: Responsiveness with different control intervals. TCCO (1000ms) uses artificially introduced delay. The dashed line shows the total bandwidth (altered via Linux TC) of paths. the agent to distinguish genuine network trends from transient noise. This enables proactive decisions based on underlying dynamics rather than reactive responses to noisy measure-ments. We conducted experiments to evaluate the impact of de-cision interval on control performance. The evaluation was performed in an emulated multipath network with periodically fluctuating link capacity (bandwidth alternating between 400 and 500 Mbps, delay varying between 3 and 5 ms). As shown in Fig. 3, TCCO operating at a decision interval of 20 ms (including per-step training overhead), responded effectively to bandwidth variations and achieved an average throughput of 817 Mbps, outperforming CUBIC (814 Mbps) which showed slower adaptation to capacity changes. In contrast, TCCO without the Transformer component (TCCO w/o TF) required decision intervals on the order of hundreds of milliseconds to ensure stable model updates, which diminished its responsive-ness to network dynamics (804 Mbps). Furthermore, extending the decision interval of TCCO to approximately 1000 ms resulted in significant performance degradation (775 Mbps), confirming that fine-grained temporal control is essential for maximizing throughput in dynamic network environments. III. TCCO F RAMEWORK 
+
+A. System Overview 
+
+In this section, we propose Transformer-based Congestion Control Optimization (TCCO), which adopts a decoupled architecture that separates decision-making logic from the in-kernel datapath, as illustrated in Fig. 4. This design enables multi-homed edge devices, such as industrial sensors trans-mitting high-dimensional data streams over heterogeneous interfaces to leverage external computational resources for sophisticated congestion control while maintaining efficient packet processing. TCCO comprises three key components that form a closed-loop control system: 
+
+In-kernel Client. The in-kernel client interacts with the datapath via lightweight hooks to perform three coordinated tasks. First, it monitors transmission status by retrieving precise metrics from kernel data structures, including both instantaneous values such as the latest RTT and aggregated statistics such as the maximum RTT. Second, upon trigger events like ACK arrivals, it serializes metrics and exports them to user space. Third, it receives control directives from user Operation                 
+
+> Enforcement
+> ACK Tracker
+> Client Messenger
+> jAcquire real -
+> time raw data
+> In -kernel Client
+> rExtract and
+> execute operation
+> User -space Proxy
+> kSublow
+> Observation
+> qCommand lData alignment
+> (if needed)
+> External Decision
+> Engine
+> mConnection
+> Observation
+> iClient
+> registration
+> Subflow Client
+> Manager
+> nObservation
+> storage (if needed)
+> pAcquire
+> decision
+> o Input  context
+> qCommand
+> Proxy Messenger
+> Temporary Storage
+> Data Storage
+> Engine Messenger
+> Decision Generator
+
+Fig. 4: The concept of network function decoupling in TCCO. The external decision engine can operate in edge devices. Communication methods between modules are flexible. space and translates them into atomic kernel operations that adjust transmission parameters. All interactions remain thread-safe and lock-free to preserve normal kernel functionality. 
+
+User-space Proxy. The proxy serves as an intermediary between in-kernel clients and the external decision engine, managing dedicated clients for each subflow in multipath scenarios. Its invocation controller determines when to trig-ger decision generation, optionally waiting for metric reports from all active clients before initiating coordinated multi-flow optimization. 
+
+External Decision Engine. The decision engine transforms aggregated metrics into structured state representations and computes CC strategies by a Transformer-based DRL agent. To enhance flexibility and scalability, it can be offloaded to edge devices or dedicated servers. The engine also maintains persistent storage for historical data, enabling decisions in-formed by long-term traffic patterns. 
+
+B. System Model 1) Cross-Subflow Coupling Dynamics: We begin by ana-lyzing the scheduling-induced coupling mechanism that arises when multiple subflows share a common scheduler. We con-duct our analysis based on the default minRTT scheduler [23]; analogous coupling patterns can be observed under alternative schedulers as well. Consider a multipath connection maintaining M parallel subflows distributed across a set of network paths W =
+
+{1, 2, . . . , M }. The multipath scheduler introduces implicit coupling among subflows through its packet-to-subflow as-signment logic. To formalize this coupling mechanism, we first define the subflow availability indicator: 
+
+ϕi(t) = I[cwnd i(t) > (qi(t) + fi(t)) ∧ mode i(t)̸ = recovery ]
+
+(1) where cwnd i(t) represents the congestion window size of sub-flow i, which limits the maximum amount of unacknowledged data permitted on that subflow. qi(t) denotes the number of packets currently queued in the send buffer awaiting transmis-sion on subflow i, and fi(t) denotes the number of packets that have been transmitted but not yet acknowledged (i.e., in-flight packets). The condition mode i(t)̸ = recovery ensures that the subflow is not currently executing loss recovery procedures, during which it should not accept new data. A subflow is deemed available for scheduling only when its congestion window has sufficient capacity to accommodate additional packets and it operates in normal transmission mode. Given the set of available subflows, the scheduler assigns each incoming packet to the subflow exhibiting the minimum round-trip time: 
+
+j∗(t) = arg min  
+
+> i:ϕi(t)=1
+
+RT T i(t) (2) where j∗(t) identifies the index of the selected subflow at time 
+
+t, and RT T i(t) denotes the current round-trip time estimate for subflow i. This selection policy reflects the intuition that routing traffic through lower-latency paths improves overall connection performance, though as we demonstrate subse-quently, it simultaneously introduces coupling asymmetry and cross-flow blindness. 
+
+Property 1 (Coupling Asymmetry). When subflow i op-erates with an excessive congestion window cwnd i, queuing delay accumulates, causing the total round-trip time to decom-pose as: 
+
+RT T i(t) = RT T min ,i (t) + Qqueue,i (t) (3) where RT T min ,i (t) represents the minimum achievable RTT (i.e., the propagation delay) and Qqueue,i (t) denotes the queu-ing delay experienced by subflow i at time step t. This elevated RTT causes the scheduler to favor alternative paths with lower latency. Conversely, when cwnd i is insufficient to support additional transmissions, the indicator becomes ϕi(t) = 0 ,effectively excluding subflow i from scheduling consideration. This behavior follows directly from the scheduler’s selection rule and the congestion window constraint specified in Eqn. 1 and 2. As a consequence, the traffic allocation probability for subflow i, which captures the coupling effects among subflows, can be expressed as: 
+
+Palloc (j∗(t) = i) = I[RT T i(t) = min j:ϕj (t)=1 RT T j (t)] 
+
+PMk=1 ϕk(t) (4) This creates asymmetric dependencies, whereby the perfor-mance of subflow j is influenced by the congestion window decisions of all other subflows. Specifically, the load assigned to each subflow is given by: 
+
+λi(t) = Λ( t) · Palloc (j∗(t) = i) (5) where Λ( t) denotes the total arrival rate at time step t, and 
+
+λi(t) denotes the traffic load allocated to subflow i. This coupling mechanism implies that each subflow’s effective throughput depends not only on its own state but also on the performance and availability of other subflows. 
+
+Property 2 (Cross-flow Blindness). The coupling described above introduces cross-flow blindness at the subflow level. Let 
+
+xit denote the true local state of subflow i at time step t, which evolves according to: 
+
+xit+1 = Pi(xit, ∆cwnd i(t), λ i(t)) (6) In -kernel Client s  
+
+> Network Stack (Datapath) Network Stack (Datapath)
+> Subflow 1 Client Subflow 1 Client
+> Subflow 2 Client Subflow 2 Client
+> Subflow n Client Subflow n Client
+> ...
+> User -space Proxy
+> fd_n fd_n cwnd cwnd
+
+[ ]obs n
+
+[ ]obs n    
+
+> ...
+> ... ...
+> Temporary Storage
+> ...
+> Temporary Storage Invocation
+> Controller
+> obs n
+> obs 1
+> obs 2
+> max_Tput tn
+> max_Tput t1
+> ...
+> Connection
+> observation
+> External Decision Engine
+> ... ...
+> Replay Buffer
+> (o t-1, a t-1, r t-1, o t)
+> ( o 2, a 2, r 2, o 3)
+> OtnOt-L+1 n
+> ...
+> ...
+> rt
+> ot+1 ot
+
+[ ]actions ( Δcwnd)     
+
+> data data
+> Context c t
+> atat
+> obs n-1
+> Enough
+> observations? to
+> j
+> k
+> lmn
+> nn
+> op
+> q
+> q
+> q
+> j
+> j
+> k
+> k
+
+[ ]Transport Layer Statistics 1~n 
+
+> data data
+> data data
+
+[ ]obs 2
+
+[ ]obs 2 
+
+> fd_2 fd_2 cwnd cwnd
+
+[ ]obs 1
+
+[ ]obs 1                  
+
+> fd_1 fd_1 cwnd cwnd
+> port port
+> [][]
+> []
+> avg_RTT tn
+> []avg_RTT tn
+> []
+> min_RTT tn
+> []min_RTT tn
+> []
+> cwnd tn
+> []cwnd tn
+> []
+> exp_flag tn
+> []exp_flag tn
+> []
+> avg_Tput tn
+> []avg_Tput tn
+> []
+> avg_Tput t1
+> avg_Tput t1
+> []avg_Tput t1
+> []
+> ...
+> Ot-L+1 3
+> Ot-L+1 2
+> Ot-L+1 3
+> Ot-1n
+> Ot3
+> Ot2
+> Ot1
+> Ot-13
+> Ot-12
+> Ot-11
+> ...
+> ...
+> ...
+> ...
+> ...
+> ( o t, a t, r t, o t+1 )
+> ( o 1, a 1, r 1, o 2)
+> Q-network Q-network
+> Calculate
+> loss
+> Calculate
+> loss
+> Copy
+> parameters
+> Copy
+> parameters
+> Target Q -network Target Q -network 1
+> 1
+> 
+> +
+> n
+> tcwnd
+> historical observations
+
+[ ]historical observations [ ]
+
+> latest observation
+
+[ ]latest observation [ ]Fig. 5: An overview of TCCO framework. where xit+1 denotes the true local state of subflow i at the subsequent time step, Pi(·) denotes the local system dynamics of subflow i, and ∆cwnd i(t) represents the local congestion window adjustment action taken by subflow i.The cross-flow blindness arises because λi(t) depends on cwnd j (t) for all j̸ = i, creating hidden dependen-cies that are unobservable to local controllers. Specifically, the traffic assignment λi(t) in Eqn. 5 is determined by the global state comprising the congestion window vec-tor cwnd (t) = [cwnd 1(t), . . . , cwnd n(t)] and the round-trip time vector RT T (t) = [ RT T 1(t), . . . , RT T n(t)] across all subflows. However, path i can only observe its lo-cal metrics (cwnd i(t), RT T i(t)) and cannot directly access 
+
+(cwnd j (t), RT T j (t)) for j̸ = i. Consequently, from an indi-vidual subflow’s perspective, the true system dynamics remain partially hidden, as the influence of other subflows manifests only indirectly through changes in the local state. 
+
+2) POMDP Formulation for Multipath CC: The cross-subflow coupling and cross-flow blindness established above reveal a fundamental limitation of independent single-flow control: each subflow optimizes based solely on its local observations while remaining unaware of the global state that governs traffic allocation. Consequently, the Nash equilibrium achieved by independent controllers is generally suboptimal compared to centralized joint control, as individual paths react to incomplete state information without accounting for the coupled dynamics induced by the scheduler. This observation motivates a joint optimization framework that explicitly mod-els the partial observability inherent in multipath CC. To this end, we formulate the multipath congestion control problem as a Partially Observable Markov Decision Process (POMDP) [24], defined by the tuple ⟨S , A, O, P, R, γ ⟩. The state space S comprises the complete information of all sub-flows, where each global state st = {xit | i ∈ W} aggregates the local states across the subflow set W. The action space A
+
+consists of joint congestion window adjustments at = {ait |
+
+i ∈ W} , where each ait = ∆ cwnd i(t) specifies the window modification for subflow i. The observation space O reflects the cross-subflow blindness: each observation ot = {oit}i∈W 
+
+comprises locally observable metrics for each subflow and provides incomplete information about the true global state 
+
+st. The state transition function P : S × A → S captures the coupled evolution of subflows through the scheduler traffic allocation: 
+
+P (st+1 |st, a t) = 
+
+> M
+
+Y
+
+> i=1
+
+Pi(xit+1 |xit, a it, λ i(t)) (7) where the dependence of λi(t) on the global state, as es-tablished in Eqn. 5, introduces the coupling among subflow transitions. The reward function R : S ×A → R is designed to maximize total throughput while maintaining bounded latency across all subflows: 
+
+max 
+
+> M
+
+X
+
+> i=1
+
+T put i(t) (8) s.t. 
+
+> M
+
+X
+
+> i=1
+
+max(0 , RT T i(t) − τi) ≤ ϵ (9) where T put i(t) denotes the time-averaged throughput of subflow i, τi denotes the minimum achievable RTT under zero queuing delay, and ϵ is the tolerable latency violation threshold. The discount factor γ ∈ [0 , 1) balances immediate and future rewards. 
+
+C. System Design 
+
+TCCO decouples control logic from data-path operations to enable adaptive CC in multipath transmission. As illus-trated in Fig. 5, in-kernel clients handle per-subflow metric collection and congestion window enforcement, a user-space proxy aggregates time-aligned observations, and an external decision engine based on a Transformer-based DRL agent processes historical observation sequences to derive context-aware, cross-path control decisions. 
+
+1) Observation Pipeline: Each subflow is managed by a dedicated in-kernel client responsible for metric exposure and directive enforcement. These clients communicate with the decision engine through a user-space proxy that performs metric aggregation and command demultiplexing, as depicted in Fig. 6. 
+
+In-kernel Client Behavior. Upon successful establishment of an MPTCP connection, each client initializes and enters the 
+
+Start phase. During initialization, the client allocates metric connection observation t               
+
+> server init
+> step t+1
+> Atomic contexts SF 1 Client User-space Proxy External Decision Engine SF n Client
+> action for subflow n
+> adjust
+> cwnd
+> subflow 1 observation t subflow 1 raw data
+> action for subflow 1 subflow n observation t
+> subflow n raw data
+> subflow n raw data
+> client init connection init client init model warm-up
+> …
+> …
+> …
+> …
+> subflow n observation t+1
+> step t
+> action for subflow n
+> action for subflow 1
+> proceed inference
+> with context t
+> 
+> get reward t
+> 
+> store transition t-1
+> 
+> update model
+> 
+> Multiple iterations
+> inter-device interaction
+> user-kernel IPC
+> inter-threads interaction
+> adjust
+> cwnd
+> …
+> connection observation t+1
+> subflow 1 raw data subflow n observation t+1 proceed inference
+> with context t+1
+> 
+> get reward t+1
+> 
+> store transition t
+> 
+> update model
+> 
+> collect long-term data
+> without inference
+> collect
+> ACKs
+> …
+> …
+> …
+> …
+> …
+> …
+> …
+> …
+> …
+> …
+> … …
+> …
+> …
+> … … …
+> … …
+> … …
+> …
+
+Fig. 6: TCCO workflow and interactions. buffers and spawns a dedicated kernel thread via workqueue to handle external communication. This design ensures that the sleepable operations remain in the process contexts instead of interrupt contexts of the kernel [25], preserving atomicity and non-preemption requirements for kernel-level operations. The Start phase employs a conservative slow-start mechanism similar to traditional algorithms to achieve initial rate ramping. It automatically terminates when the cwnd reaches a low threshold and sustains stable ACK reception, letting the agent assume primary control of decisions at the earliest viable stage. Following the Start phase, the client transitions to the Train 
+
+phase and performs four functions: (i) continuous monitoring of per-ACK packet metrics such as delivered data and RTT; (ii) periodic queue draining operations to obtain propagation delay of the path; (iii) transmitting raw metrics to and receiving commands from external components through bi-directional IPC channels; (iv) enforcement of cwnd adjustments based on received directives. To measure propagation delay, the client periodically enters a Probe phase to capture uncontended RTT. It captures per-ACK data and RTT to assess current performance, using the maximum delivery rate over a recent window as a bandwidth estimate. Both idle delay and bandwidth estimates are man-aged with finite lifecycles, prompting periodic re-evaluation of path characteristics for long-term adaptation. External I/O is handled by the background thread that continuously transmits real-time observations from the main control loop and receives target cwnd directives. The main control loop incrementally adjusts cwnd per ACK, treating the target as an upper limit. 
+
+User-space Proxy Behavior. The proxy acts as the in-termediary, bridging the in-kernel clients with the external decision engine. It synchronizes the data from each subflow’s client and aggregates these individual metrics into a time-aligned composite that represents a global snapshot of the entire MPTCP connection’s health. To bridge the mismatched timescales between high-frequency ACK arrivals and the agent’s decision-making interval, the proxy implements ashort-term observation window. Within this window, it ag-gregates all incoming measurements to compute a smoothed representation of metrics (short-term average throughput and RTT). This mitigates the impact of transient network jitter to some extent, providing the agent with a more stable and re-liable transmission representation. Specifically, the proxy also governs when to invoke the decision entity. While a single-step agent might require accumulating data across multiple windows to form a representative state, the sequence-aware model allows the proxy to trigger an inference after every single window, as the model itself leverages the historical sequence for robust decision-making. Conversely, when the agent issues a control decision, the proxy demultiplexes this command into specific cwnd directives for each subflow. They are then transmitted back to the respective kernel clients for enforcement. 
+
+2) Transformer-based DRL Agent in External Decision En-gine: We propose a Transformer-based DRL agent to learn the non-linear interdependencies among subflow control actions and adapt to time-varying channel conditions without reliance on pre-defined models. Unlike single-step RL approaches that observe only the current state, our agent processes a sequence of historical observations, thereby mitigating partial observability. This sequential context enables the agent to learn a holistic control policy from experiential data, facilitating fine-grained, context-aware policy adjustments. 
+
+Observation and Action Space. The agent operates on a context of the L most recent observations, denoted as ct =(ot−L+1 , . . . , o t). As illustrated in Fig. 5, each observation 
+
+ot comprises per-subflow observations from all M subflows. For each subflow i ∈ W , the observation vector oit captures both instantaneous performance metrics and underlying path characteristics: the smoothed throughput, RTT, and cwnd. The physical properties of path are determined by estimating the bottleneck bandwidth from peak delivery rates and proac-Split           
+
+> Subflow 1 FC1+ReLU
+> Concatenation
+> Vector Embedding
+> Position Encoding
+> Transformer Decoder
+> Output Q -values
+> (batch × seq_len × num_actions)
+> Observations Input
+> (batch × seq_len × obs_dim)
+> Observations Input
+> (batch × seq_len × obs_dim)
+> Subflow 1 Vector
+> (batch × seq_len × obs_dim/2)
+> Subflow 1 FC2+ReLU
+> Subflow n FC1+ReLU
+> Subflow n FC1+ReLU
+> Feed Forward Network
+> Subflow n Vector
+> (batch × seq_len × obs_dim/2)
+> ...
+> ...
+> ...
+
+Fig. 7: Network architecture of the Transformer-based Q-function in TCCO tively measuring the base propagation delay through periodic, controlled queue draining. Additionally, an exploration flag, denoted expflag , is also embedded in the observation to facilitate proactive bandwidth exploration. The action space 
+
+A comprises joint actions for all subflows. For subflow i,the action component ait specifies a discrete cwnd adjustment: 
+
+∆cwnd i = k · δ, where δ ∈ { j | j ∈ Z, −n ≤ j ≤ n}, and k
+
+is a scaling factor. 
+
+Reward Shaping. The reward signal guides the agent toward efficient CC, which fundamentally involves deciding when to increase or decrease the cwnd to maximize transmis-sion rates while maintaining acceptable queuing delay. The reward function R is designed to teach the agent this timing for each subflow, using latency as an indicator of queue depth and incorporating the expflag to prevent overly conservative policies. The reward signal guides the agent toward efficient CC, which fundamentally involves deciding when to increase or decrease the cwnd to maximize transmission rates while main-taining acceptable queuing delay. Our reward function R is designed to teach the agent this timing for each subflow, using latency as an indicator of queue depth and incorporating the 
+
+expflag to prevent overly conservative policies. Specifically, we adopt a hierarchical reward structure. First, boundary conditions are handled by deterministic rewards: a penalty of 
+
+−1 is applied when the cwnd reaches its operational bounds or when the action contradicts the expflag . Conversely, if the 
+
+expflag is active and the action aligns with its indication, a reward of +1 is given. The expflag is activated when no cwnd increase has occurred for a predefined period (6 time steps in our implementation), signaling the need to probe for available bandwidth. When no boundary condition is triggered, the agent receives a nuanced reward balancing throughput and latency. For subflow i, the reward is a weighted sum: 
+
+Ri = α · PD + (1 − α) · Rρ (10) where PD is the RTT-related penalty and Rρ is the throughput-related reward. These reward components are based on the average of historical RTT D and throughput ρ, yielding stable representations. The weighting factor α dynamically balances these objectives based on a threshold function T (Dmin ) that determines when delay increases become detrimental: 
+
+T (Dmin ) = β · (1 + g · (Dmin − Df )/σ )
+
+Dmin 
+
+(11) where β defines the baseline permissible RTT, analogous to an acceptable queue depth. It can be tuned for specific network conditions and latency tolerances. The growth factor g governs sensitivity to latency changes, Df provides a stable RTT floor, and σ sets the RTT resolution such that fluctuations within σsare treated equivalently. The weighting factor α is computed via a sigmoid function to ensure smooth transitions: 
+
+α = 11 + e−κ·( DDmin −T (Dmin )) (12) where κ controls the steepness of the transition. The RTT penalty is proportional to the excess delay ratio: 
+
+PD = −wD
+
+ DDmin 
+
+− T (Dmin )
+
+
+
+(13) and the throughput reward is proportional to the average throughput: 
+
+Rρ = wρ · ρ (14) where wD and wρ are normalization factors ensuring compa-rable scales. The total reward aggregates contributions from all subflows: R = PMi=1 Ri.
+
+Model Update. The agent’s policy is derived from a Q-function Q(c, a ), which estimates the expected cumulative reward for taking action a in context c. As shwon in Fig. 7, we employ a Transformer-based Q-function, which enables parallel computation in entire sequences. The agent follows an ϵ-greedy policy: with probability 1 − ϵ, the agent se-lects the action maximizing the Q-value, i.e., π(a | c) = arg max a Q(c, a ), while with probability ϵ, a random action is selected to facilitate exploration. The Q-function is updated by minimizing the mean squared error: 
+
+L(θ) = 1
+
+B · L
+
+> B
+
+X
+
+> i=1
+> L
+
+X
+
+> t=1
+
+(Qθ (ci,t , a i,t ) − yi,t )2 (15) where θ denotes the parameters of the Q-function, B is the batch size, L denotes the input sequence length, ci,t and ai,t 
+
+denote the context vector and the corresponding action at timestep t of the i-th sample, respectively. The target Q-value is calculated using the Bellman equation: 
+
+yi,t = ri,t + γ(1 − di,t )Qθ′ (ci,t +1 , arg max  
+
+> a′
+
+Qθ (ci,t +1 , a ′)) 
+
+(16) link2 
+
+> link1
+> link2
+> link1
+
+(b) Emulated Topology B 
+
+(c) Emulated Topology C 
+
+> link2
+> link1
+
+(a) Emulated Topology A 
+
+> User End
+> Content Server
+> Decision Engine
+
+(d) Physical Testbed  
+
+> Router Content
+> Server 5Ghz AP
+> 6Ghz AP
+> User End
+> Decision Engine
+
+Fig. 8: Topology of the experimental setup. The red line in (c) represents the link only traversed by multipath flows. TABLE I: Hyperparameters 
+
+Network Hyperparameters Subflow i FC1 & FC2 dim 64 Embedding dim 128 Attention heads 4Transformer layer 1Positional Encoding Learned Gating ResGate Normalization Post-LayerNorm Training Hyperparameters Gamma 0.969 Initial learning rate 1 × 10 −4
+
+Minimum learning rate 1 × 10 −6
+
+Decay rate 0.96 (every 10 time steps) Batch size 32 Replay buffer capacity 1 × 10 6
+
+Target net update frequency Every 1 × 10 4 time steps Context length 20 
+
+where ri,t denotes the reward of the i-th context sample, di,t ∈{0, 1} is an episode termination indicator, and θ′ denotes the parameters of a periodically updated target Q-function that provides stable bootstrap targets during training. IV. E VALUATION AND VALIDATION 
+
+We evaluated our method through extensive experiments conducted in both simulated and physical environments. The simulation environment (Fig. 8(a-c)) is implemented in Mininet with a modified Linux kernel version 5.4.243. For real-world validation, our physical testbed (Fig. 8(d)) consists of a desktop equipped with Mediatek MT7922 and Intel AX210 NICs, establishing a dual-band (5GHz/6GHz) multipath WLAN connection to a storage server through TP-Link BE800 (6GHz) and ZTE AX5400Pro (5GHz) access points. Training and inference processes is accelerated using an NVIDIA RTX 4060 Ti GPU. The user device’s kernel is upgraded to a modified Linux kernel version 6.8.0 to ensure driver compatibility with the NICs. We benchmarks TCCO against state-of-the-art MPTCP [26] and TCP [27] implemen-tations in both emulated and physical testbeds, while also TCCO 
+
+> DCTCP
+> Illinois
+> Vegas
+> wVegas
+> Cubic
+> Veno
+> DMCTCP
+> Westwood
+> YeAH
+> Balia
+> OLIA
+> LIA
+> BBR
+> 750
+> 775
+> 800
+> 825
+> Goodput (Mbps)
+> (a) Goodput under varying links
+> Single Test
+> TCCO
+> Illinois
+> BBR
+> Westwood
+> DMCTCP
+> YeAH
+> DCTCP
+> Veno
+> wVegas
+> Vegas
+> Cubic
+> LIA
+> Balia
+> OLIA 0
+> 200
+> 400
+> 600
+> 800
+> Goodput (Mbps)
+> (b) Goodput under 0.05% loss
+> TCCO
+> BBR
+> Illinois
+> Westwood
+> YeAH
+> DMCTCP
+> DCTCP
+> Veno
+> Cubic
+> Vegas
+> wVegas
+> Balia
+> LIA
+> OLIA 0
+> 200
+> 400
+> 600
+> 800
+> Goodput (Mbps)
+> (c) Goodput under 0.15% loss
+> TCCO
+> BBR
+> Westwood
+> Illinois
+> YeAH
+> DMCTCP
+> DCTCP
+> Veno
+> Cubic
+> wVegas
+> Vegas
+> Balia
+> LIA
+> OLIA 0
+> 250
+> 500
+> 750
+> 1000
+> Goodput (Mbps)
+> (d) Goodput under 0.50% loss
+
+Fig. 9: Average goodput comparison under varying links and different loss rates. The whiskers (a) and error bars (b-d) show the performance variation across multiple test runs. assessing its performance across local and edge deployment scenarios. The hyperparameters is detailed in Table I. 
+
+A. Evaluation in emulated environment 
+
+We first evaluated bandwidth efficiency under fluctuating link capacity conditions, using the topology shown in Fig. 8(a), which is identical to the setup described in Section II, Fig. 3. In this configuration, each path’s bandwidth oscillated between 400-500 Mbps with delay variations of 3-5 ms. Each algorithm underwent 20 tests to ensure statistical robustness against link variations. The results in Fig. 9(a) shows that TCCO achieves the highest mean goodput at 815.47 Mbps. This represents a 1.75% improvement over the next best MPTCP algorithm, wVegas (801.49 Mbps), and a 1.68% advantage over the top-performing TCP algorithm, DCTCP (802.07 Mbps). Within the MPTCP algorithm group, TCCO surpassed Balia by 2.92% and the TCP-friendliness-focused OLIA by 3.34%. In the TCP group, DCTCP, Illinois, and Vegas formed the top tier. BBR’s performance was the poorest, with its mean goodput of 765.01 Mbps being 6.2% below its group average. This result should be interpreted with caution, as BBR’s simulated performance diverged from real-world behavior. Using the topology in Fig. 8(a) where each path pos-sesses 500 Mbps bandwidth, Fig. 9(b-d) presents the per-formance under different packet loss rates, taking the mild loss scenario (0.05% loss) as the baseline. TCCO showed robust resilience with only 2.8% degradation at 0.15% loss (882.40 →857.74 Mbps) and 10.7% at 0.50% loss (882.40 →787.96 Mbps). In contrast, loss-based algorithms suffered severe performance drops from the baseline: Cubic declined by 44.8% (306.14 →169.00 Mbps) at 0.15% loss and 72.8% (306.14 →83.23 Mbps) at 0.50% loss. Illinois showed similar vulnerability, dropping 40.9% and 77.3% respectively. BBR showed moderate resilience with 4.3% and 10.1% reduc-tions. BBR TCCO DMCTCP Illinois DCTCP Veno Westwood Vegas wVegas YeAH Cubic Balia OLIA LIA                                                                                                                                                                                                                                                                                  
+
+> 100KB 200KB 300KB 400KB 500KB 1.0MB 1.5MB 2.0MB 2.5MB 5.0MB 10.0MB 20.0MB 30.0MB 40.0MB 50.0MB 100.0MB 120.0MB 140.0MB 160.0MB 180.0MB 200.0MB
+> Data Size
+> 9.358 17.470 16.407 11.955 14.771 12.304 9.640 15.573 17.590 16.899 9.607 15.750 13.660 29.397 15.197 32.985 33.108 30.188 28.871 32.207 29.180 32.426 27.301 35.288 21.829 36.240 26.382 26.154 31.395 21.434 39.148 49.492 50.816 43.896 37.384 39.331 48.165 48.402 48.503 46.464 64.781 50.435 32.251 25.340 53.026 57.201 60.548 56.507 46.576 51.695 72.135 64.825 55.669 71.544 67.789 65.656 24.524 27.454 55.842 57.423 57.790 65.578 56.260 78.299 81.141 70.210 62.020 83.076 80.236 82.139 28.530 41.545 121.315 75.928 66.835 68.049 79.974 80.505 75.835 71.073 93.670 73.282 89.237 83.665 39.099 53.266 154.622 143.037 139.622 126.555 130.944 169.843 157.034 160.564 154.288 141.339 240.407 151.063 39.814 64.309 164.398 172.450 134.747 171.615 178.033 190.037 183.457 199.002 186.481 273.579 278.489 284.872 45.125 72.942 181.994 191.075 184.069 181.516 181.729 211.488 198.254 211.822 195.953 305.925 339.879 336.985 69.807 138.331 278.456 118.143 131.646 281.686 265.204 114.692 303.335 362.756 278.302 541.376 547.357 548.999 103.764 209.602 389.863 389.793 380.887 384.455 390.204 434.734 482.398 526.753 370.365 844.164 897.707 889.624 192.726 360.357 285.600 313.630 324.443 342.255 344.694 252.051 303.047 328.810 331.678 336.194 316.961 316.195 303.713 468.457 450.558 474.953 446.439 469.458 449.950 488.412 481.566 499.695 509.236 543.817 530.645 546.592 399.653 565.297 555.586 551.799 608.168 504.122 528.828 519.680 626.965 542.057 631.576 738.789 748.891 764.270 487.445 656.607 680.198 701.112 722.273 700.108 722.755 737.960 727.524 760.760 969.837 920.172 893.347 877.394 990.341 1118.063 1196.071 1231.874 1254.146 1275.313 1274.608 1336.145 1330.116 1371.987 1314.186 1752.946 1717.916 1732.442 1206.211 1311.189 1378.142 1501.192 1464.563 1506.451 1501.911 1472.404 1532.696 1623.465 1737.510 2090.828 1994.690 2101.827 1416.976 1765.750 1592.509 1726.506 1686.342 1582.629 1611.898 1687.224 1753.776 1689.719 2124.941 2418.923 2385.907 2447.342 1622.042 1704.453 1767.624 1945.702 1931.675 1944.669 1990.020 1982.328 2018.327 1951.935 2115.556 2729.436 2747.212 2796.860 1838.210 1905.429 1973.985 1919.651 1994.566 1979.318 2008.913 1984.959 2119.153 2097.208 2003.837 2685.033 2505.114 2633.172 2092.088 2103.350 2130.982 2277.455 2323.011 2343.923 2343.984 2389.467 2433.667 2635.874 2542.627 3291.534 3482.396 3511.255
+> Slower Faster
+
+Fig. 10: Average FCT (ms) comparison under varying delay. TABLE II: Fairness of an MPTCP flow competing with an SPTCP flow, measured by Jain’s Fairness Index (JFI). 
+
+Algorithm JFI Algorithm JFI Algorithm JFI 
+
+YeAH 0.9998 Vegas 0.9143 BBR 0.8408 wVegaS 0.9802 BALIA 0.9141 TCCO 0.8161 DCTCP 0.9732 OLIA 0.9136 DMCTCP 0.7802 Westwood 0.9554 Illinois 0.8945 CUBIC 0.7116 Veno 0.9373 LIA 0.8918 
+
+To evaluate latency performance, we measure the Flow Completion Time (FCT) for short and medium-sized flows across various algorithms. The topology (Fig. 8(a)) utilizes a 500 Mbps bandwidth per path with 1-3 ms fluctuating delay. Each algorithm undergoes 20 tests per flow size. The results in Fig. 10 reveal a nuanced performance landscape across different flow sizes. Overall, BBR consistently achieves the lowest FCT, and DTQN-based TCCO ranks second. For 100KB flows, TCCO’s FCT is suboptimal, which can be attribute to the initial overhead of coordinating subflows that disproportionately impacts short transfers. For 1MB flows, as this overhead iss amortized, TCCO becomes competitive, outperforming most algorithms while trailing BBR. This trend continues for larger flows (100MB), where TCCO maintains its rank as the second-fastest method, surpassed only by BBR. We also investigate how each algorithm responds to varying buffer availability. Using the topology in Fig. 8(b), we vary the bottleneck link’s (1000 Mbps bandwidth) queue size to emu-late buffer-to-BDP ratios ranging from 0.3 to 3, corresponding to buffer sizes of 50 to 500 packets (MTU of 1500 bytes). As shown in Fig. 11(a), TCCO exhibits low sensitivity to buffer size, achieving 97% of its peak throughput (804.52 Mbps) with only 100 packets of buffering. While BBR performs best under the smallest buffer scenario (50 packets), TCCO outperforms all algorithms at 100 packets and maintains this advantage as buffer size increases. In contrast, other algorithms such as Balia, LIA, and CUBIC show strong dependence on queue capacity, achieving significant throughput gains with larger buffers but suffering poor performance in shallow queues. Fig. 11(b-d) illustrates FCT performance across varying queue capacities. Traditional algorithms like Balia, OLIA, and Westwood showed high buffer dependency, with FCT improvements of 61.9%, 59.7%, and 59.2%, respectively, from 50 to 300 packet buffers. BBR and TCCO exhibited lower sensitivity, with improvements of 37.3% and 39.6%, indicating better adaptability to limited buffer environments. BBR excels with small buffers (50 packets) for large flows (200MB: 3649ms vs. TCCO’s 4441ms) by avoiding buffer bloat. As buffer size increase to 300 packets, TCCO reduces the per-formance gap for large flows (2258ms vs. BBR’s 2183ms, a 3.5% difference) while maintaining strong performance across all flow sizes. We evaluated TCP friendliness using the topology in Fig. 8(c). As shown in Table II, YeAH achieves the highest fairness (JFI: 0.9998). TCCO shows moderate fairness (JFI: 0.8161) as its design focuses on bandwidth efficiency opti-mization rather than TCP compatibility. 
+
+B. Validation in Physical Testbed 
+
+To validate our approach beyond simulations, real-world experiments are conducted using the dual-band Wi-Fi testbed shown in Fig. 8(d). In addition to comparing TCCO against traditional TCP algorithms (other MPTCP congestion con-trol algorithms are excluded from physical tests due to ker-nel/MPTCP version compatibility constraints), we specifically evaluate: (1) the performance difference between edge en-tity and local endpoint deployment, and (2) the comparison between sequence-based (TCCO) and single-step inference models (TCCO without the Transformer agent). Fig. 12 presents the average FCT comparison for short flows, where different algorithms show varying performance across flow sizes (each algorithm undergoes 20 tests per flow size). For the smallest flow (100KB), TCCO’s performance is comparable to other algorithms (as for very short flows, cwnd adjustments are kernel-driven). For flows between 300KB and 1MB, locally deployed TCCO demonstrates superior latency performance, outperforming BBR by up to 10% at 500KB (43.31ms vs 48.14ms). For larger flows (5-6MB), BBR proves effective, achieving FCTs approximately 20% lower than Queue Size 50 Queue Size 100 Queue Size 300 Queue Size 500 Queue Size 750 Queue Size 1000 
+
+> 250 350 450 550 650 750 850
+> TCCO
+> BBR Balia Cubic DCTCP DMCTCP Illinois LIA OLIA Vegas Veno Westwood YeAH
+
+(a) Goodput under varied queue size Algorithm  
+
+> BBR
+> TCCO
+> Illinois Cubic DCTCP Westwood Veno wVegas Vegas YeAH DMCTCP Balia LIA OLIA
+> Flow Size
+> 200M 100M 50M 20M 10M
+> FCT (ms)
+> 02000 4000 6000 8000
+
+(b) FCT under 50 packets queue size Algorithm  
+
+> BBR
+> TCCO
+> Illinois Cubic DCTCP Westwood Veno wVegas Vegas YeAH DMCTCP Balia LIA OLIA
+> Flow Size
+> 200M 100M 50M 20M 10M
+> FCT (ms)
+> 02000 4000 6000 8000
+
+(c) FCT under 100 packets queue size Algorithm  
+
+> BBR
+> TCCO
+> Illinois Cubic DCTCP Westwood Veno wVegas Vegas YeAH DMCTCP Balia LIA OLIA
+> Flow Size
+> 200M 100M 50M 20M 10M
+> FCT (ms)
+> 02000 4000 6000 8000
+
+(d) FCT under 300 packets queue size 
+
+Fig. 11: Queue capacity impact on performance. The average goodput across different queue sizes is shown in (a), while (b-d) present FCT under queue sizes (we covered 10-200MB flows, given that queue constraints have little impact on shorter flows). BBR 
+
+TCCO (Local) 
+
+TCCO w/o TF (Local) 
+
+YeAH 
+
+TCCO (Edge) 
+
+DCTCP 
+
+Westwood 
+
+HTCP 
+
+Illinois 
+
+Veno 
+
+HighSpeed 
+
+Scalable 
+
+Vegas 
+
+Cubic 
+
+NewVegas 
+
+Hybla 
+
+CDG 
+
+100KB 
+
+200KB 
+
+300KB 
+
+400KB 
+
+500KB 
+
+750KB 
+
+1.0MB 
+
+1.5MB 
+
+2.0MB 
+
+2.5MB 
+
+5.0MB 
+
+6.0MB 
+
+> Data Size
+
+42.588 41.959 40.880 41.997 40.723 42.158 42.351 41.722 43.121 42.044 41.786 42.088 41.964 42.440 41.946 42.225 42.246 
+
+42.786 43.761 43.037 46.419 41.726 46.940 46.875 46.647 48.634 47.401 49.638 50.755 46.528 46.617 46.594 64.275 45.315 
+
+48.083 43.044 43.536 45.159 42.849 47.383 46.913 47.665 47.438 46.713 47.223 47.411 45.278 50.338 46.242 56.236 47.130 
+
+45.621 43.924 44.938 47.517 42.891 48.132 48.223 48.559 47.348 48.561 49.182 48.871 47.209 48.459 47.106 60.357 50.292 
+
+48.143 43.306 43.184 47.036 43.827 48.666 48.255 48.522 49.056 49.471 48.182 48.324 47.580 48.561 49.240 61.397 51.887 
+
+48.983 46.074 45.911 48.719 46.960 50.906 51.271 50.371 49.637 50.616 51.254 49.569 49.608 55.557 50.300 65.020 58.298 
+
+49.920 46.099 47.098 53.198 46.005 50.824 50.812 51.042 52.838 53.122 53.272 53.129 51.609 56.430 52.393 70.352 70.542 
+
+52.889 50.414 54.629 54.971 50.949 59.861 59.081 59.724 57.616 58.355 58.512 59.057 56.789 67.767 61.481 79.605 88.722 
+
+54.604 56.079 60.588 54.434 61.421 67.818 70.265 70.126 68.746 68.887 70.346 70.349 57.177 80.495 76.830 90.880 97.137 
+
+56.474 64.394 64.706 63.434 69.035 75.857 75.995 76.174 81.724 77.353 75.772 80.024 66.067 87.479 88.640 91.537 105.646 
+
+69.812 86.735 89.472 89.173 107.151 89.036 89.430 89.892 90.140 93.042 90.429 89.981 132.621 110.143 124.141 101.716 143.157 
+
+83.406 100.223 99.834 97.461 112.677 93.610 93.285 95.649 91.957 93.242 94.255 94.976 138.806 117.771 136.225 103.655 158.582 
+
+> Slower
+> Faster
+
+Fig. 12: Average FCT (ms) comparison in physical testbed. TCCO. Edge-deployed TCCO shows moderate performance due to its millisecond-level control delay. The goodput performance comparison in the physical testbed is presented in Fig. 13(a). For each algorithm, at least 20 trials are conducted (each lasting 60 seconds), with half performed in a daytime office environment and the other half in an isolated server room at night (this setup applies to all subsequent experiments). TCCO demonstrates competitive performance under both deployment scenarios: local deploy-ment achieves 2545.6 Mbps, while edge deployment achieves 2427.9 Mbps. The 4.8% performance gap between local and edge deployment confirms that millisecond-level control latency introduced by remote decision-making does impact performance in high-speed multipath scenarios. However, this degradation is a reasonable trade-off given the gains in de-ployment flexibility and the ability to offload computations from resource-constrained edge devices. In comparison, TCCO without the Transformer agent only achieves 2360.4 Mbps. Figure 13(a) presents the goodput comparison across differ-ent congestion control algorithms in our physical testbed. BBR achieves the highest throughput at 2474.9 Mbps among tradi-tional algorithms. Hybrid algorithms such as YeAH (2377.3 Mbps) and Hybla (2342.0 Mbps) demonstrate decent perfor-mance by combining delay-based queue management with loss-based adaptation. Loss-based algorithms exhibit varied results: Illinois (2341.6 Mbps) performs well, while CUBIC (2298.4 Mbps) shows moderate effectiveness. Notably, the TCCO ( Local )
+
+> BBR
+> TCCO (Edge)
+> YeAH
+> TCCO w/o TF ( Local )
+> Hybla Illinois HTCP Veno HighSpeed DCTCP Cubic Westwood Scalable CDG NewVegas Vegas 01000 2000
+> Goodput (Mbps)
+> NewVegas Vegas CDG
+> TCCO w/o TF (Local)
+> Cubic BBR
+> TCCO (Local) TCCO (Edge)
+> YeAH Hybla Illinois HTCP Veno DCTCP Scalable HighSpeed Westwood 036912 15
+> RTT (ms)
+
+(a) Goodput performance (b) Latency distribution 
+
+Fig. 13: Goodput comparison in physical testbed. The error bars in (a) represent the standard deviation of the average goodput over multiple test runs, while the whiskers in (b) show the distribution of per-packet RTT. delay-gradient approach CDG (1652.7 Mbps) underperforms significantly in wireless multipath environments. Fig. 13(b) presents the per-packet RTT distribution. Delay-based algorithms exhibit the lowest RTT, with NewVegas (2.47ms mean, 0.48ms std) and Vegas (2.59ms mean, 0.39ms std) achieving minimal latency but at the cost of throughput. TCCO (deployed locally) maintains a balanced RTT profile (5.19ms mean, 2.23ms std) comparable to BBR (5.15ms mean, 2.40ms std), while delivering superior throughput. Edge-deployed TCCO shows a slight latency increase (5.45ms mean, 2.34ms std) due to control loop extension. The RTT stability, reflected in the standard deviation to mean ratio, is better in TCCO (0.43) than in BBR (0.47). Fig. 14 benchmarks the throughput robustness of various 0.01% 0.05% 0.10% 0.30% 0.50% 1.00%                                                                                      
+
+> Loss Rate
+> TCCO (Local)
+> BBR
+> TCCO (Edge)
+> TCCO w/o TF (Local)
+> Scalable
+> Westwood
+> Illinois
+> YeAH
+> DCTCP
+> HTCP
+> Cubic
+> HighSpeed
+> Veno
+> CDG
+> Hybla
+> NewVegas
+> Vegas
+> 2427.0 2431.2 2449.1 2421.3 2344.5 2316.6
+> 2428.8 2471.7 2452.0 2403.9 2376.0 2248.2
+> 2377.4 2377.2 2364.4 2360.7 2337.0 2279.0
+> 2304.4 2318.6 2320.0 2320.1 2312.1 2217.8
+> 2324.3 2347.9 2378.8 2333.0 2038.9 1150.9
+> 2324.3 2249.9 2170.7 2010.2 1943.8 1833.4
+> 2417.6 2368.0 2251.3 1806.7 1586.0 1242.5
+> 2315.6 1847.7 1484.7 924.3 714.4 489.3
+> 2328.2 1897.5 1508.7 929.9 671.5 419.7
+> 2292.4 1889.4 1492.8 882.5 639.1 382.2
+> 2288.5 1805.2 1437.5 845.4 621.2 413.8
+> 2178.9 1805.8 1488.3 777.8 486.5 226.5
+> 2222.0 1551.5 1143.9 606.1 418.6 253.6
+> 1638.3 1456.5 1267.8 811.7 610.8 399.1
+> 2073.2 1243.4 870.6 454.7 334.7 208.1
+> 485.9 480.4 494.0 492.4 492.9 442.5
+> 128.8 128.4 128.3 134.2 134.4 131.5
+> Higher
+> Lower
+
+(a) Goodput Performance 0.01% 0.05% 0.10% 0.30% 0.50% 1.00% 
+
+> Loss Rate
+> -80
+> -60
+> -40
+> -20
+> 0
+> Performance Degradation (%)
+> Vegas
+> TCCO w/o TF (Local)
+> TCCO (Edge)
+> TCCO (Local)
+> BBR
+> NewVegas
+> Westwood
+> Illinois
+> Scalable
+> CDG
+> YeAH
+> Cubic
+> DCTCP
+> HTCP
+> Veno
+> HighSpeed
+> Hybla
+
+(b) Performance Degradation 
+
+Fig. 14: Goodput performance under varied stochastic loss. (a) shows the goodput (Mbps) of each algorithm at different loss rates. (b) shows the performance degradation (%). Loss rates represent artificial loss introduced via Linux TC, excluding inherent link loss. algorithms against stochastic packet loss. The TCCO family shows good robustness. At a 1% loss rate, their performance degradation ranges from just 3.8% to 4.5%, while loss-based algorithms like CUBIC and HTCP experience throughput degradation of over 80% under the same conditions. Locally deployed TCCO sustains an average throughput of 2316.56 Mbps in 1% stochastic loss, outperforming BBR by 3.04% and surpassing the average of loss-based algorithms (CUBIC, HTCP, and Illinois) by 283.53%. V. R ELATED WORK 
+
+Non-learning-based CC algorithms use varied feedback and goals. Delay-based methods [28] proactively detect congestion through RTT increases, while loss-based algorithms [17] [29] react to packet drops as congestion indicators. ECN-based approaches [30], [31] leverage explicit network feedback, pri-marily targeting data center environments with infrastructure support. Classic multipath CC algorithms aim to address fair-ness and efficiency. They extend single-path principles through coupled coordination [32], [33], [34], linking subflow controls to balance TCP-friendliness, responsiveness, and achieve load balancing across heterogeneous paths [35]. For better adaptability, many works have explored learning-based CC. Early attempts employ RL [36] and online learning [37] to automatically adapt transmission strategies. DRL has further advanced CC design, with works [38], [39] showing improved performance in various environments. For multipath scenarios, RL is applied for latency-aware path management [20]. DRL has been extended to multi-agent frameworks for subflow coordination [40] and adapted for multipath opti-mization in specialized scenarios such as distributed edge learning [22]. These learning-based approaches, while advanc-ing the field, share a common limitation: their reliance on instantaneous state renders them unable to capture temporal patterns in network dynamics. A promising solution involves integrating sequence-aware architectures like RNNs [41] and Transformers [42] [43] into DRL, which would enable agents to learn from historical data. Furthermore, the practical aspects of deploying deep-learning-based models to interact with the in-kernel datapath are often insufficiently discussed. Emerging technologies enable datapath extensibility and flexibility. RDMA-based solutions [44] achieve complex net-work offloads through self-modifying chains on commod-ity NICs. DPDK [45] provides high-performance user-space packet processing with deterministic latency for real-time ap-plications. The eBPF frameworks [46], [47] enable safe kernel extensibility through bytecode injection. QUIC’s user-space implementation represents another departure from kernel-based datapath [48], though performance limitations over high-speed networks merit further investigation [49]. VI. C ONCLUSION 
+
+In this paper, we propose TCCO, a Transformer-based Congestion Control Optimization framework designed to ad-dress the limitations of in-kernel multipath transport protocols in edge networks. By decoupling congestion control logic from the kernel datapath and offloading decision-making to an external external engine, TCCO enables flexible deploy-ment of advanced, data-driven algorithms while maintaining compatibility with existing TCP/IP infrastructure. Leveraging a transformer-based DRL agent, TCCO effectively mitigates the impact of measurement noise, thereby enabling robust inference of network dynamics and coordinated control across multiple subflows. Extensive evaluation on both simulated and real-world testbeds demonstrates that TCCO achieves superior bandwidth efficiency and loss resilience, compared to state-of-the-art baselines. These results validate the practicality of TCCO for enabling a new class of rapidly deployable, edge-served network functions. As a potential future direction, we are looking forward to extending our method to improve the performance of various applications such as large language models [50], [51], [2], [52], [53] and distributed learning system [54], [55], [56], [57]. REFERENCES [1] T. Duan, Z. Zhang, S. Guo, D. Huang, Y. Zhao, Z. Lin, Z. Fang, D. Luan, H. Cui, and Y. Cui, “Leed: A highly efficient and scalable llm-empowered expert demonstrations framework for multi-agent rein-forcement learning,” arXiv preprint arXiv:2509.14680 , 2025. [2] Z. Zhang, T. Duan, Z. Lin, D. Huang, Z. Fang, Z. Sun, L. Xiong, H. Liang, H. Cui, Y. Cui et al. , “Robust deep reinforcement learning in robotics via adaptive gradient-masked adversarial attacks,” Proc. IROS ,2025. [3] M. Hong, Z. Lin, Z. Lin, L. Li, M. Yang, X. Du, Z. Fang, Z. Kang, D. Luan, and S. Zhu, “Conflict-aware client selection for multi-server federated learning,” arXiv preprint arXiv:2602.02458 , 2026. [4] Z. Fang, Z. Lin, S. Hu, Y. Tao, Y. Deng, X. Chen, and Y. Fang, “Dynamic uncertainty-aware multimodal fusion for outdoor health monitoring,” 
+
+arXiv preprint arXiv:2508.09085 , 2025. [5] Z. Sun, X. Guan, Z. Lin, Z. Fang, X. Cai, Z. Chen, F. Liu, H. Cui, J. Xiong, W. Ni et al. , “Intra-dp: A high performance collabora-tive inference system for mobile edge computing,” arXiv preprint arXiv:2507.05829 , 2025. [6] Z. Lin, G. Qu, W. Wei, X. Chen, and K. K. Leung, “Adaptsfl: Adaptive Split Federated Learning in Resource-Constrained Edge Networks,” 
+
+IEEE Trans. Netw. , 2025. [7] H. Yuan, Z. Chen, Z. Lin, J. Peng, Z. Fang, Y. Zhong, Z. Song, X. Wang, and Y. Gao, “Graph Learning for Multi-Satellite Based Spectrum Sensing,” in Proc. IEEE Int. Conf. Commun. Technol. (ICCT) ,2023, pp. 1112–1116. [8] S. R. Pokhrel, L. Pan, N. Kumar, R. Doss, and H. L. Vu, “Multipath tcp meets transfer learning: A novel edge-based learning for industrial iot,” IEEE Internet of Things Journal , vol. 8, no. 13, pp. 10 299–10 307, 2021. [9] C. F. Silva, S. Ferlin, O. Alay, A. Brunstrom, and B. Y. Kimura, “Iot traffic offloading with multipath tcp,” IEEE Communications Magazine ,vol. 59, no. 4, pp. 51–57, 2021. [10] A. Ford, C. Raiciu, M. Handley, and O. Bonaventure, “Tcp exten-sions for multipath operation with multiple addresses,” https://www.rfc-editor.org/info/rfc8684, 2020. [11] A. Narayan, F. Cangialosi, D. Raghavan, P. Goyal, S. Narayana, R. Mittal, M. Alizadeh, and H. Balakrishnan, “Restructuring endpoint congestion control,” in Proceedings of the 2018 Conference of the ACM Special Interest Group on Data Communication , 2018, pp. 30–43. [12] DPDK Project, “Data Plane Development Kit,” http://www.dpdk.org/, 2014. [13] J. Iyengar and M. Thomson, “Rfc 9000: Quic: A udp-based multiplexed and secure transport,” Omtermet Emgomeeromg Task Force , p. 4, 2021. [14] Y. Xiao, J. Liu, J. Wu, and N. Ansari, “Leveraging deep reinforcement learning for traffic engineering: A survey,” IEEE Communications Sur-veys & Tutorials , vol. 23, no. 4, pp. 2064–2097, 2021. [15] L. Giacomoni and G. Parisis, “Reinforcement learning-based congestion control: A systematic evaluation of fairness, efficiency and respon-siveness,” in IEEE INFOCOM 2024-IEEE Conference on Computer Communications . IEEE, 2024, pp. 1451–1460. [16] N. Cardwell, Y. Cheng, C. S. Gunn, S. H. Yeganeh, and V. Jacobson, “Bbr: Congestion-based congestion control: Measuring bottleneck band-width and round-trip propagation time,” Queue , vol. 14, no. 5, pp. 20–53, 2016. [17] S. Ha, I. Rhee, and L. Xu, “Cubic: a new tcp-friendly high-speed tcp variant,” ACM SIGOPS operating systems review , vol. 42, no. 5, pp. 64–74, 2008. [18] W. Li, F. Zhou, K. R. Chowdhury, and W. Meleis, “Qtcp: Adaptive congestion control with reinforcement learning,” IEEE Transactions on Network Science and Engineering , vol. 6, no. 3, pp. 445–458, 2018. [19] M. Dong, Q. Li, D. Zarchy, P. B. Godfrey, and M. Schapira, “PCC: Re-architecting congestion control for consistent high performance,” in 12th USENIX Symposium on Networked Systems Design and Implementation (NSDI 15) , 2015, pp. 395–408. [20] Y. Cao, R. Ji, L. Ji, G. Lei, H. Wang, and X. Shao, “ l2-MPTCP: A learning-driven latency-aware multipath transport scheme for industrial internet applications,” IEEE Transactions on Industrial Informatics ,vol. 18, no. 12, pp. 8456–8466, 2022. [21] B. He, J. Wang, Q. Qi, H. Sun, J. Liao, C. Du, X. Yang, and Z. Han, “Deepcc: Multi-agent deep reinforcement learning congestion control for multi-path tcp based on self-attention,” IEEE Transactions on Network and Service Management , vol. 18, no. 4, pp. 4770–4788, 2021. [22] S. R. Pokhrel, J. Choi, and A. Walid, “Fair and efficient distributed edge learning with hybrid multipath tcp,” IEEE/ACM Transactions on Networking , vol. 31, no. 4, pp. 1582–1594, 2022. [23] H. Wu, G. Caso, S. Ferlin, ¨O. Alay, and A. Brunstrom, “Multipath scheduling for 5g networks: Evaluation and outlook,” IEEE Communi-cations Magazine , vol. 59, no. 4, pp. 44–50, 2021. [24] M. T. Spaan, “Partially observable markov decision processes,” in 
+
+Reinforcement learning: State-of-the-art . Springer, 2012, pp. 387–414. [25] R. Bharadwaj, Mastering Linux Kernel Development: A kernel devel-oper’s reference manual . Packt Publishing Ltd, 2017. [26] J. Zhao, J. Liu, H. Wang, C. Xu, and H. Zhang, “Multipath conges-tion control: Measurement, analysis, and optimization from the energy perspective,” IEEE Transactions on Network Science and Engineering ,vol. 10, no. 6, pp. 3295–3307, 2023. [27] C. L. Vielhaus, C. Von Lengerke, V. Latzko, J. Rischke, M. Reisslein, and F. H. Fitzek, “Evaluating transport layer congestion control algo-rithms: A comprehensive survey,” IEEE Communications Surveys & Tutorials , 2025. [28] V. Arun and H. Balakrishnan, “Copa: Practical {Delay-Based } conges-tion control for the internet,” in 15th USENIX Symposium on Networked Systems Design and Implementation (NSDI 18) , 2018, pp. 329–342. [29] S. Liu, T. Bas ¸ar, and R. Srikant, “Tcp-illinois: A loss and delay-based congestion control algorithm for high-speed networks,” in Proceedings of the 1st international conference on Performance evaluation method-olgies and tools , 2006, pp. 55–es. [30] M. Alizadeh, A. Greenberg, D. A. Maltz, J. Padhye, P. Patel, B. Prab-hakar, S. Sengupta, and M. Sridharan, “Data center tcp (dctcp),” in 
+
+Proceedings of the ACM SIGCOMM 2010 Conference , 2010, pp. 63–74. [31] J. Han, K. Xue, J. Li, Y. Xing, R. Yu, D. S. Wei, and G. Xue, “Fmptcp: Achieving high bandwidth utilization and low latency in data center networks,” IEEE Transactions on Communications , vol. 72, no. 1, pp. 317–333, 2023. [32] C. Raiciu, M. Handley, and D. Wischik, “Coupled Conges-tion Control for Multipath Transport Protocols,” https://www.rfc-editor.org/info/rfc6356, 2011. [33] R. Khalili, N. Gast, M. Popovic, and J.-Y. Le Boudec, “Mptcp is not pareto-optimal: Performance issues and a possible solution,” IEEE/ACM Transactions On Networking , vol. 21, no. 5, pp. 1651–1665, 2013. [34] Q. Peng, A. Walid, J. Hwang, and S. H. Low, “Multipath tcp: Analysis, design, and implementation,” IEEE/ACM Transactions on networking ,vol. 24, no. 1, pp. 596–609, 2014. [35] Y. Cao, M. Xu, and X. Fu, “Delay-based congestion control for multipath tcp,” in 2012 20th IEEE international conference on network protocols (ICNP) . IEEE, 2012, pp. 1–10. [36] W. Li, F. Zhou, K. R. Chowdhury, and W. Meleis, “Qtcp: Adaptive congestion control with reinforcement learning,” IEEE Transactions on Network Science and Engineering , vol. 6, no. 3, pp. 445–458, 2018. [37] M. Dong, T. Meng, D. Zarchy, E. Arslan, Y. Gilad, B. Godfrey, and M. Schapira, “ {PCC } vivace: {Online-Learning } congestion control,” in 
+
+15th USENIX symposium on networked systems design and implemen-tation (NSDI 18) , 2018, pp. 343–356. [38] M. Chen, R. Li, J. Crowcroft, J. Wu, Z. Zhao, and H. Zhang, “Ran information-assisted tcp congestion control using deep reinforcement learning with reward redistribution,” IEEE Transactions on Communi-cations , vol. 70, no. 1, pp. 215–230, 2021. [39] X. Nie, Y. Zhao, Z. Li, G. Chen, K. Sui, J. Zhang, Z. Ye, and D. Pei, “Dynamic tcp initial windows and congestion control schemes through reinforcement learning,” IEEE Journal on Selected Areas in Communications , vol. 37, no. 6, pp. 1231–1247, 2019. [40] B. He, J. Wang, Q. Qi, H. Sun, J. Liao, C. Du, X. Yang, and Z. Han, “Deepcc: Multi-agent deep reinforcement learning congestion control for multi-path tcp based on self-attention,” IEEE Transactions on Network and Service Management , vol. 18, no. 4, pp. 4770–4788, 2021. [41] M. J. Hausknecht and P. Stone, “Deep recurrent q-learning for partially observable mdps.” in AAAI fall symposia , vol. 45, 2015, p. 141. [42] K. Esslinger, R. Platt, and C. Amato, “Deep transformer q-networks for partially observable reinforcement learning,” arXiv preprint arXiv:2206.01078 , 2022. [43] L. Chen, K. Lu, A. Rajeswaran, K. Lee, A. Grover, M. Laskin, P. Abbeel, A. Srinivas, and I. Mordatch, “Decision transformer: Reinforcement learning via sequence modeling,” Advances in neural information pro-cessing systems , vol. 34, pp. 15 084–15 097, 2021. [44] W. Reda, M. Canini, D. Kosti´ c, and S. Peter, “RDMA is turing complete, we just did not know it yet!” in 19th USENIX Symposium on Networked Systems Design and Implementation (NSDI 22) , 2022, pp. 71–85. [45] L. Anastasio, A. Bogani, M. Cappelli, S. Di Gennaro, G. Gaio, and M. Lonza, “Integration of dpdk for real-time communication in the elettra synchrotron orbit feedback control system: Jitter and latency optimization,” IEEE Transactions on Industrial Informatics , 2025. [46] D. Shen, B. Yang, J. Zhang, F. Dong, and J. C. Lui, “emptcp: A framework to fully extend multipath tcp,” IEEE/ACM Transactions on Networking , 2024. [47] A. Fr¨ ommgen, A. Rizk, T. Erbsh¨ außer, M. Weller, B. Kolde-hofe, A. Buchmann, and R. Steinmetz, “A programming model for application-defined multipath tcp scheduling,” in Proceedings of the 18th ACM/IFIP/USENIX Middleware Conference , 2017, pp. 134–146. [48] Q. De Coninck and O. Bonaventure, “Multiflow quic: A generic multi-path transport protocol,” IEEE Communications Magazine , vol. 59, no. 5, 2021. [49] X. Zhang, S. Jin, Y. He, A. Hassan, Z. M. Mao, F. Qian, and Z.-L. Zhang, “Quic is not quick enough over fast internet,” in Proceedings of the ACM Web Conference 2024 , 2024, pp. 2713–2722. [50] Z. Lin, G. Qu, Q. Chen, X. Chen, Z. Chen, and K. Huang, “Pushing Large Language Models to the 6G Edge: Vision, Challenges, and Opportunities,” IEEE Communication Magazine , 2025. [51] Z. Fang, Z. Lin, S. Hu, Y. Ma, Y. Tao, Y. Deng, X. Chen, and Y. Fang, “Hfedmoe: Resource-aware heterogeneous federated learning with mixture-of-experts,” arXiv preprint arXiv:2601.00583 , 2026. [52] Z. Lin, Y. Zhang, Z. Chen, Z. Fang, X. Chen, P. Vepakomma, W. Ni, J. Luo, and Y. Gao, “HSplitLoRA: A Heterogeneous Split Parameter-Efficient Fine-Tuning Framework for Large Language Models,” arXiv preprint arXiv:2505.02795 , 2025. [53] T. Duan, Z. Zhang, Z. Lin, S. Guo, X. Guan, G. Wu, Z. Fang, H. Meng, X. Du, J.-Z. Zhou et al. , “LLM-Driven Stationarity-Aware Expert Demonstrations for Multi-Agent Reinforcement Learning in Mobile Systems,” arXiv preprint arXiv:2511.19368 , 2025. [54] J. Zhan, H. Shen, Z. Lin, and T. He, “Prism: Privacy-aware routing for adaptive cloud-edge llm inference via semantic sketch collaboration,” 
+
+arXiv preprint arXiv:2511.22788 , 2025. [55] M. Hu, J. Zhang, X. Wang, S. Liu, and Z. Lin, “Accelerating Federated Learning with Model Segmentation for Edge Networks,” IEEE Trans. Green Commun. Netw. , 2024. [56] Z. Fang, M. Yang, Z. Lin, Z. Lin, Z. Fang, Z. Zhang, T. Duan, D. Huang, and S. Zhu, “Nsc-sl: A bandwidth-aware neural subspace compression for communication-efficient split learning,” arXiv preprint arXiv:2602.02696 , 2026. [57] Y. Zhang, Z. Lin, Z. Chen, Z. Fang, W. Zhu, X. Chen, J. Zhao, and Y. Gao, “Satfed: A resource-efficient leo satellite-assisted heterogeneous federated learning framework,” Engineering , 2024.
