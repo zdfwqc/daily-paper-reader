@@ -1,0 +1,1185 @@
+Title: Constraints Matrix Diffusion based Generative Neural Solver for Vehicle Routing Problems
+
+URL Source: https://arxiv.org/pdf/2603.07568v1
+
+Published Time: Tue, 10 Mar 2026 01:12:47 GMT
+
+Number of Pages: 16
+
+Markdown Content:
+> JOURNAL OF L ATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2025 1
+
+# Constraints Matrix Diffusion based Generative Neural Solver for Vehicle Routing Problems 
+
+Zhenwei Wang, Tiehua Zhang Member, IEEE , Ning Xue Member, IEEE , Ender ¨ Ozcan Senior Member, IEEE ,Ling Wang Member, IEEE , Ruibin Bai Senior Member, IEEE 
+
+Abstract —Over the past decade, neural network solvers pow-ered by generative artificial intelligence have garnered significant attention in the domain of vehicle routing problems (VRPs), owing to their exceptional computational efficiency and superior reasoning capabilities. In particular, autoregressive solvers inte-grated with reinforcement learning have emerged as a prominent trend. However, much of the existing work emphasizes large-scale generalization of neural approaches while neglecting the limited robustness of attention-based methods across heteroge-neous distributions of problem parameters. Their improvements over heuristic search remain largely restricted to hand-curated, fixed-distribution benchmarks. Furthermore, these architectures tend to degrade significantly when node representations are highly similar or when tasks involve long decision horizons. To address the aforementioned limitations, we propose a novel fusion neural network framework that employs a discrete noise graph diffusion model to learn the underlying constraints of vehicle routing problems and generate a constraint assignment matrix. This matrix is subsequently integrated adaptively into the feature representation learning and decision process of the autoregressive solver, serving as a graph structure mask that facilitates the formation of solutions characterized by both global vision and local feature integration. To the best of our knowledge, this work represents the first comprehensive experimental investigation of neural network model solvers across a 378-combinatorial space spanning four distinct dimensions within the CVRPlib public dataset. Extensive experimental evaluations demonstrate that our proposed fusion model effectively captures and leverages problem constraints, achieving state-of-the-art performance across multi-ple benchmark datasets. 
+
+Index Terms —Vehicle Routing Problems, Graph Diffusion, Reinforcement Learning, Neural Combinatorial Optimization. 
+
+I. I NTRODUCTION 
+
+# THE rapid advancement of artificial intelligence (AI) over the past decade has fundamentally transformed the landscape of combinatorial optimization, particularly through the integration of generative AI techniques in vehicle routing problems (VRPs), thereby opening unprecedented opportu-nities for logistics, transportation, and operations optimiza-tion [Li et al.(2022a)Li, Wu, He, Fan, and Pedrycz], [Bai et al.(2023)Bai, Chen, Chen, Cui, Gong, He, Jiang, Jin, Jin, Kendall et al.], [Bogyrbayeva et al.(2024)Bogyrbayeva,  
+
+> Zhenwei Wang, Ning Xue and Ruibin Bai (Corresponding author) are with the School of Computer Science, University of Nottingham Ningbo China, Ningbo, 315100, China (email: zhenwei.wang@nottingham.edu.cn; ning.xue@nottingham.edu.cn;ruibin.bai@nottingham.edu.cn). Tiehua Zhang is with the School of Computer Science and Technology, Tongji University, Shanghai, 200092, China (email:tiehuaz@tongji.edu.cn). Ender ¨Ozcan is with the Computational Optimisation and Learning Lab, School of Computer Science, University of Nottingham, NG8 1BB Notting-ham, U.K. (email:ender.ozcan@nottingham.ac.uk). Ling Wang is with the Department of Automation, Tsinghua University, Beijing 100084, China. (email:wangling@mail.tsinghua.edu.cn).
+
+Meraliyev, Mustakhov, and Dauletbayev], [Che, Wang, and Zhou(2024)]. Exact methods (e.g., branch and bound, branch-and-price, cutting plane) provide optimality guarantees but, owing to the NP-hard nature of VRPs, become computation-ally intractable for obtaining optimal or near-optimal solutions at scale within practical time limits [Xue et al.(2021)Xue, Bai, Qu, and Aickelin]. Heuristic approaches construct ini-tial solutions and iteratively refine them via neighborhood search [Che et al.(2023)Che, Wang, Mu, Zhang, and Feng] and genetic operators, achieving strong performance un-der tight runtimes [Zhang et al.(2022)Zhang, Bai, Qu, Tu, and Jin], [Zheng et al.(2021)Zheng, He, Zhou, Jin, and Li], [Yang et al.(2021)Yang, Ke, Wang, and Lam], [Zhao et al.(2024)Zhao, Poon, Tan, and Zhang]; however, they gen-eralize poorly to uncertainties and typically require full re-optimization. By contrast, generative AI–driven neural solvers function as learned approximators that, once trained, deliver high-quality solutions on i.i.d. instances with fast online inference, thereby mitigating key limitations of conventional heuristics. Autoregressive neural solvers, inspired by natural lan-guage processing methodologies, have undergone substantial evolution from their inception with Pointer Networks (Ptr-Nets) [Vinyals, Fortunato, and Jaitly(2015)], building upon the foundational framework of Recurrent Neural Networks (RNNs) with Long Short Term Memory (LSTM) [Zaremba, Sutskever, and Vinyals(2014)], to sophisticated encoder-decoder architectures leveraging Transformer or Graph Neural Network (GNN) based models. This line of research [Vinyals, Fortunato, and Jaitly(2015)], [Nazari et al.(2018)Nazari, Oroojlooy, Snyder, and Tak´ ac], [Kool, Van Hoof, and Welling(2019)], [Kwon et al.(2020)Kwon, Choo, Kim, Yoon, Gwon, and Min], [Lei et al.(2022)Lei, Guo, Wang, Wu, and Zhao], [Wang et al.(2024)Wang, Bai, Khan, ¨Ozcan, and Zhang], [Chen et al.(2024)Chen, Wang, Liang, Yu, Feng, Zhao, and Ding], [Zuo et al.(2025)Zuo, Li, Zhao, Bai, Yang, Ma, and Zhu] has demonstrated remarkable convergence properties toward optimal solutions on synthetically generated datasets. Nevertheless, our experiments reveal a consistent pattern: au-toregressive architectures that construct solutions from scratch have limited discriminative power when nodes share sim-ilar representations, largely because constraint features are not incorporated during representation learning. This limita-tion is exacerbated by the predominance of fully connected, global-attention architectures [Vaswani et al.(2017)Vaswani, Shazeer, Parmar, Uszkoreit, Jones, Gomez, Kaiser, and Polo-sukhin]. Under uniform demands or strong spatial clustering, multi-layer attention induces oversmoothing in node embed- 
+
+> arXiv:2603.07568v1 [cs.LG] 8 Mar 2026 JOURNAL OF L ATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2025 2
+
+dings; conditioned on a context vector and these oversmoothed embeddings, the decoder produces dissolved attention logits, often degenerating toward near-random trajectory sampling. On the other hand, Reinforcement learning (RL) is ap-pealing when (near-) optimal labels are impractical, but cannot reliably assess per-step node decisions and instead updates policies from full trajectory rollouts. Under sparse, delayed rewards, errors accumulate with horizon length, lim-iting scalability to large, long-horizon routing, motivating diffusion-based approaches [Song, Meng, and Ermon(2020)], [Sun and Yang(2023)], [Li et al.(2023)Li, Guo, Wang, and Yan], [Li et al.(2024)Li, Guo, Wang, Zha, and Yan]. In these pipelines, high-quality solutions are first generated by heuristics such as Hybrid Genetic Search (HGS) [Vidal(2022)]. The diffusion model is trained by corrupting solutions with noise and learning denoising dynamics to predict poste-rior edge-coverage probabilities for unseen instances. Unlike autoregressive solvers, diffusion allows single-pass, length-independent inference, supporting efficient heuristic decoding and scalability. However, it still depends on high-quality labels and extensive post-processing (often complex search) to form valid tours, limiting its success to simple-constraint problems such as the Traveling Salesman Problem (TSP) and reducing performance on more complex variants. Based on a comprehensive review of learning-based solvers, we identify weak constraint awareness as the primary source of the observed optimality gap. Most methods behave as greedy, likelihood-maximizing selectors, i.e., a paradigm effec-tive in Natural Language Processing (NLP)/Computer Vision (CV), where synonymy or small pixel perturbations rarely alter meaning or perception, but brittle in VRP, where even near-identical single-step choices can compound into large sequence errors around the boundaries of the constraint poly-hedron. Moreover, decision quality hinges on learned node embeddings while the decoding procedure fails to explicitly enforce core feasibility constraints, creating a structural bot-tleneck that limits solution quality. To address these limitations, we propose a constraint-mask guided fusion framework driven by graph-diffusion guidance. We first apply data augmentation to induce a many-to-one mapping from near-optimal solutions across demand and geo-metric variations, from which one-hot constraint matrices are derived. Edge coverage in the matrices is then corrupted via a discrete noise transition process with a linear schedule, and a graph diffusion model is trained to denoise and reconstruct the original constraint matrices, aiming for a fast inference of constraint pattern from experiences. The reconstructed matrices serve as prior topological masks for an autoregres-sive encoder–decoder. The predicted constraint masks gate local representation learning in the encoder and are fused with global representations, thereby mitigating oversmoothing in fully connected graph structures while preserving global context for decision making. The contributions of this work can be summarized as follows:  
+
+> •
+
+To the best of our knowledge, this is the first com-prehensive, systematic evaluation of autoregressive neu-ral solvers across all 378 category combinations span-ning four dimensions in the XML100 dataset from the CVRPLIB repository [Queiroga et al.(2022)Queiroga, Sadykov, Uchoa, and Vidal], thereby revealing intrinsic limitations of contemporary neural solvers for VRP.  
+
+> •
+
+We propose a novel graph diffusion guided constraint-matrix masking scheme that integrates local and global representations to mitigate oversmoothing in fully connected graph encoders. Constraint matrices, reconstructed from (near-) optimal solutions via graph diffusion, serve as topological masks that strengthen local representation learning and decision-making; the resulting local embeddings are fused with global features, enhancing the autoregressive model’s performance and robustness.  
+
+> •
+
+Extensive experiments and analyses demonstrate that our graph diffusion prior mask fusion framework attains state-of-the-art performance on both synthetic datasets and multi-dimensional, cross-distribution benchmarks that closely reflect real-world conditions. II. R ELATED WORK 
+
+In this section, we review generative AI approaches to the VRP, focusing on three paradigms: autoregressive generation, diffusion-based generation, and improvement heuristics. 
+
+A. Auto-Regressive Neural Solvers for VRPs 
+
+Inspired by variable-length sequence mapping in NLP, au-toregressive VRP models have advanced substantially. Pointer Networks established the seminal encoder–decoder paradigm for supervised TSP [Vinyals, Fortunato, and Jaitly(2015)]. Nazari et al. extended this line with LSTMs and intro-duced the first RL-based unsupervised VRP solver [Nazari et al.(2018)Nazari, Oroojlooy, Snyder, and Tak´ ac]. Kool et al. proposed a Transformer-based, position-free encoder with RE-INFORCE self-critical training, achieving major gains [Kool, Van Hoof, and Welling(2019)]. Building on Transformers, POMO [Kwon et al.(2020)Kwon, Choo, Kim, Yoon, Gwon, and Min] further improved performance via data augmenta-tion and multi-start, parallel, average-baseline RL, becoming the backbone for many subsequent approaches. Follow-ups refined POMO along data scale and cross-problem gener-alization axes [Gao et al.(2023)Gao, Shang, Xue, Li, and Qian], [Bi et al.(2022)Bi, Ma, Wang, Cao, Chen, Sun, and Chee], [Luo et al.(2023)Luo, Lin, Liu, Zhang, and Wang], [Huang et al.(2025)Huang, Zhou, Cao, and Xu]. A parallel direction employs graph neural encoders, e.g., multi-layer Graph Attention Networks (GAT) [Veliˇ ckovi´ cet al.(2017)Veliˇ ckovi´ c, Cucurull, Casanova, Romero, Lio, and Bengio] with edge weights, followed by autoregressive decod-ing [Wang et al.(2024)Wang, Bai, Khan, ¨ Ozcan, and Zhang], [Lei et al.(2022)Lei, Guo, Wang, Wu, and Zhao], [Fellek et al.(2023)Fellek, Farid, Gebreyesus, Fujimura, and Yoshie]; Wang et al. further leverage hypergraph learning to encode constraints via dynamically constructed hyperedges, enabling cross-problem solving [Wang, Bai, and Zhang(2025)]. Despite strong results, these approaches still struggle to in-ternalize constraint structure: at inference, they largely perform greedy, likelihood-based decoding over attention-weighted JOURNAL OF L ATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2025 3
+
+node embeddings within a single distribution, limiting their ability to reason explicitly about constraints across diverse settings. 
+
+B. Solving VRPs via Diffusion-Based Neural Approaches 
+
+Another prominent line of work leverages diffusion models, which have achieved notable success in computer vision and, more recently, in routing. Sun et al. [Sun and Yang(2023)] apply discrete and continuous forward corruption to optimal TSP tours, learn timestep-wise noise mappings, and perform reverse denoising from random initialization to reconstruct so-lutions. Similarly, Li et al. [Li et al.(2023)Li, Guo, Wang, and Yan], [Li et al.(2024)Li, Guo, Wang, Zha, and Yan] generate initial TSP solutions via diffusion and refine them through post-processing. Conceptually, these approaches corrupt high-quality solutions and train denoisers to minimize a varia-tional upper bound on negative log-likelihood, yielding edge-probability heatmaps that capture solution structure. Diffusion thus offers one-shot heatmap generation and strong scalability, with promising results on TSP. However, its applicability remains limited for constraint-rich problems. For example, in CVRP, capacity constraints fragment the solution space: instead of a single flow-balancing Hamiltonian cycle in TSP, the task becomes finding Hamiltonian paths within connected components induced by sparse graph cuts. This constraint-driven partitioning makes diffusion models prone to infeasible outputs, even with posterior search. 
+
+C. Improvement Heuristic Neural Solvers for VRPs 
+
+Improvement heuristics iteratively destroy and repair feasi-ble solutions. A neural model typically first proposes a feasible solution, which is then enhanced via heuristic search; alter-natively, the destroy/repair operators themselves are learned. For example, Joshi et al. [Joshi, Laurent, and Bresson(2019)] use graph convolutional networks to learn node embeddings and derive heatmaps that guide iterative heuristic search. Gao et al. [Gao et al.(2020)Gao, Chen, Chen, Luo, Zhu, and Liu] employ a GAT encoder to fuse node–edge features and a GRU-based decoder to generate destroy–repair operator pairs, training within an actor–critic framework. Deudon et al. [Deudon et al.(2018)Deudon, Cournut, Lacoste, Adulyasak, and Rousseau] predict TSP tours via RL with a critic and subsequently refine them using operators such as 2-opt. Chen et al. [Chen and Tian(2019)] train a policy to select rewrite operators that reconstruct solution sequences and progressively improve quality. While effective across diverse combinatorial problems, these methods do not directly predict optimal solu-tions; they depend on search-based destruction and reconstruc-tion, incurring notable efficiency costs and limiting real-time applicability. Moreover, as with diffusion approaches heavily reliance on post-search in complex, constraint-rich settings can obscure the net contribution of the neural component sophisticated strategies such as Monte Carlo Tree Search (MCTS) [ ´ Swiechowski et al.(2023) ´ Swiechowski, Godlewski, Sawicki, and Ma´ ndziuk] often yield strong results even when paired with simple heuristics. III. P RELIMINARIES 
+
+A. Problem Statement 
+
+Given a graph G = ( V, A), where V represents the node set, comprising a depot node and N customer nodes to be served, and A denotes the edge set between all nodes. The Capacitated Vehicle Routing Problem (CVRP) requires that, collectively, a fleet of vehicles visit each node exactly once while ensuring that the cumulative demands from all nodes serviced by each vehicle do not exceed its capacity Q. The objective is to minimize the total distance of all vehicles. The mathematical formulation can be expressed as follows: 
+
+min X
+
+> r∈Ω
+
+cr zr (1) s.t. X
+
+> r∈Ω
+
+zr ≤ |K| (2) 
+
+X
+
+> r∈Ω
+
+ai,r zr = 1 , ∀i ∈ V\{ 0} (3) Formula (1) defines the optimization objective of the CVRP, where cr represents the cost associated with subgraph Hamil-tonian circuit r covered by vehicles, and zr denotes a binary decision variable that determines whether r is selected to form the current solution within the set of all feasible subgraph Hamiltonian circuits Ω that satisfy capacity constraints. Con-straint (2) imposes a limitation on the number of vehicles, stipulating that the cumulative sum of route r formed by ve-hicles in the current solution must not exceed the total number of available vehicles K. It is noteworthy that in contemporary autoregressive-based neural solvers, this constraint is often relaxed. Constraint (3) ensures that all customer nodes, except node 0 (depot), are visited exactly once, where ai,r is a binary constant to indicate whether node i is included in vehicle route 
+
+r or not. 
+
+B. Constraint Matrix 
+
+In this work, we define a binary constraint matrix M ∈ {0, 1}N ×N where Mij = 1 if nodes i and j belong to the same vehicle tour (Hamiltonian circuit), and Mij = 0 
+
+otherwise. The matrix satisfies: (1) Symmetry : Mij = Mji .(2) Transitivity : if Mij = 1 and Mjk = 1 , then Mik = 1 .(3) No self-edges : Mii = 0 . (4) Capacity consistency : for each node i, the total demand of the set {i} ∪ { j : Mij = 1 }
+
+does not exceed the vehicle capacity Q.Given an optimal or near-optimal solution, M can be di-rectly constructed from the corresponding route memberships. The diffusion model is then trained to predict such constraint matrices for previously unseen instances. 
+
+C. Markov Decision Process 
+
+After learning the constraint matrix, the diffusion model incorporates this information with graph embeddings as a topological mask, embedding the constraint structure into the encoder and mitigating oversmoothing of node representations. Decision-making is formalized as an MDP and trained autore-gressively through RL. JOURNAL OF L ATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2025 41    
+
+> (6)
+> 2
+> (5)
+> 3
+> (2)
+> 4
+> (4)
+> 5
+> (6)
+> 6
+> (6)
+> 7
+> (2)
+> 8
+> (4)
+> 9
+> (5)
+> 10
+> (1)
+> Original
+> 1
+> (6)
+> 2
+> (5)
+> 3
+> (2)
+> 4
+> (4)
+> 5
+> (6)
+> 6
+> (6)
+> 7
+> (2)
+> 8
+> (4) 9
+> (5)
+> 10
+> (1)
+> Horizontal
+> 1
+> (6)
+> 2
+> (5)
+> 3
+> (2) 4
+> (4)
+> 5
+> (6)
+> 6
+> (6)
+> 7
+> (2)
+> 8
+> (4)
+> 9
+> (5)
+> 10
+> (1)
+> Vertical
+> 1
+> (6) 2
+> (5)
+> 3
+> (2)
+> 4
+> (4)
+> 5
+> (6) 6
+> (6)
+> 7
+> (2)
+> 8
+> (4)
+> 9
+> (5)
+> 10
+> (1)
+> Diagonal1
+> 1
+> (6)
+> 2
+> (5)
+> 3
+> (2)
+> 4
+> (4)
+> 5
+> (6)
+> 6
+> (6) 7
+> (2)
+> 8
+> (4)
+> 9
+> (5)
+> 10
+> (1)
+> Diagonal2
+> 1
+> (6)
+> 2
+> (5)
+> 3
+> (2)
+> 4
+> (4)
+> 5
+> (6)
+> 6
+> (6)
+> 7
+> (2)
+> 8
+> (4)
+> 9
+> (5)
+> 10
+> (1)
+> Original
+> 1
+> (2)
+> 2
+> (5)
+> 3
+> (6)
+> 4
+> (2)
+> 5
+> (6)
+> 6
+> (6)
+> 7
+> (4)
+> 8
+> (1)
+> 9
+> (5)
+> 10
+> (4)
+> Reverse
+> 1
+> (6)
+> 2
+> (2)
+> 3
+> (5)
+> 4
+> (6)
+> 5
+> (6)
+> 6
+> (2)
+> 7
+> (4)
+> 8
+> (5)
+> 9
+> (4)
+> 10
+> (1)
+> Shuffle
+> 1
+> (2)
+> 2
+> (6)
+> 3
+> (5)
+> 4
+> (2)
+> 5
+> (4)
+> 6
+> (6)
+> 7
+> (6)
+> 8
+> (1)
+> 9
+> (4)
+> 10
+> (5)
+> Rotate CW
+> 1
+> (5)
+> 2
+> (2)
+> 3
+> (6)
+> 4
+> (6)
+> 5
+> (6)
+> 6
+> (2)
+> 7
+> (4)
+> 8
+> (5)
+> 9
+> (1)
+> 10
+> (4)
+> Rotate CCW
+
+CVRP Data Augmentation Strategies (10 Nodes) 
+
+> Geometric
+> Augmentation
+> Demand
+> Augmentation
+> Depot
+> Route 1
+> Route 2
+> Route 3
+
+Fig. 1: Demonstrating the effects of data augmentation, the numerical value within the rectangle above each scatter point indicates the origin node index, while the value in parentheses represents the node demand. The black dashed lines in the first row of the four symmetric transformation subgraphs correspond to the symmetry axes. 
+
+1) State: We decompose the state into static and dynamic components. The static state remains fixed throughout a rollout and comprises node embeddings—learned representations of demands, coordinates, and edge weights. The dynamic state is updated after each action and includes fused embeddings of remaining vehicle capacity, visitation status, and other step-dependent variables. 
+
+2) Action: An action selects the next node to visit. During training, we employ sampling; at inference, a greedy policy is used. Concretely, the decoder computes attention scores between the current state embedding and node embeddings, which are normalized into a categorical distribution for sam-pling. Let θ denote network parameters and π the policy; the probability of a trajectory τ on instance G factorizes as 
+
+pπθ (τ | G ) =  
+
+> |τ|
+
+Y
+
+> t=1
+
+pπθ
+
+ τt | G , τ t′ , ∀ t′ < t . (4) At inference, the action with the highest probability pπθ
+
+ τt |G, τ t′ , ∀ t′ < t  is selected at each step t.
+
+3) Reward: Upon the completion of routing process, the trajectory reward R is computed, and policy gradients [Sutton et al.(1999)Sutton, McAllester, Singh, and Mansour] are used to optimize θ. The standard reward is the negative tour length, so reward maximization is equivalent to distance minimization: 
+
+R(τ ) = −L(τ ) = − 
+
+> |τ|
+
+X
+
+> i=0
+
+∥τi − τi+1 ∥2 . (5) IV. M ETHODOLOGY 
+
+This section presents our proposed fusion methodology from the following perspectives: Data Augmentation, graph diffusion-based constraint matrix generation, and topological mask-guided encoding and decoding. 
+
+A. Data Augmentation 
+
+Before feeding each instance into the neural architecture, we apply two augmentation modalities: geometric augmentation of node coordinates and demand augmentation informed by network characteristics. We combine them to induce a many-to-one mapping from instances to optimal solutions, thereby improving robustness. The procedure is illustrated in Fig. 1. For geometric augmentation, inspired by Yao et al. [Yao et al.(2024)Yao, Lin, Wang, Zhang, and Wang], we use four axial symmetries: horizontal, vertical, and the two diagonals. These are implemented by centering the graph, converting to polar coordinates, and applying reflections/rotations. The first row of Fig. 1 shows that the optimal solution is invariant under these transformations. For demand augmentation, we exploit the observation that if demands within a subpath satisfy capac-ity constraints, permuting those demands within the subpath preserves optimality. Accordingly, we adopt four strategies in sub-routes: demand inversion, random reassignment, clock-wise cyclic permutation (CW), and counter-clockwise cyclic permutation (CCW) (second row of Fig. 1). 
+
+B. Graph Diffusion Constraint Matrix Generation 
+
+This subsection introduces the supervised graph diffusion framework, comprising constraint-matrix generation, forward noise injection, and graph denoising. 
+
+1) Constraint Matrices Generation: An optimal CVRP tour naturally decomposes into variable-length subpaths (routes). Because each customer is visited exactly once, we explicitly encode subpath membership with an N × N binary matrix, where entry (i, j ) = 1 if and only if customers i and j
+
+lie on the same routes. For example, for the visit sequence 
+
+0 − 4 − 1 − 3 − 0 − 2 − 9 − 8 − 0 − 5 − 6 − 7 with depot 0 and nine customers, a 9 × 9 sparse matrix captures the customer pairs that satisfy the capacity constraint under the optimal solution (Fig. 2). The generated constraint matrix serves as the training label for the graph diffusion model, essentially JOURNAL OF L ATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2025 5Instance            
+
+> Instance Augmentation Constraint Matrix
+> one -hot
+> mapping
+> 𝒑 𝜽 (𝒙 𝟎 |𝒙 𝒕 ){0,1}
+> 12
+> 3
+> 4
+> 56
+> 7
+> 8
+> 9
+> depot customer nodes
+> binary indicator vehicle routes
+> many -to -one
+
+Fig. 2: Constraint matrix mapping from augmented optimal solution instances 
+
+representing the original solution to be reconstructed. Under the aforementioned augmentations, instances with different coordinates and demands map to identical constraint matrices. 
+
+2) Diffusion Process: The diffusion model corrupts the original constraint matrices x0 ∼ q(X0 | G ) via a forward process, gradually producing pure noise xT . At different tem-poral steps t, the corresponding relationship between data and noise, specifically x1... xT is essentially a latent variable with identical dimensionality to x0, implying that q(xt−1|x0, xT )
+
+represents the known forward condition. Learning proceeds by approximating the reverse dynamics p(xt−1 | xt). With model parameters θ′, the marginal pθ′ (x0) = R pθ′ (x0: T ) dx1: T leads to the training objective E − log pθ′ (x0) , which measures how well pθ′ (·) fits q(x0 | G). Since direct computation of high-dimensional integrals is typically computationally in-tractable, the actual optimization objective is to approximate this using a variational lower bound, specifically: 
+
+E [− log pθ′ (x0)] ≤ Eq
+
+
+
+− log pθ′ (x0: T )
+
+q (x1: T | x0)
+
+
+
+(6) where pθ′ (x0: T ) = p (xT ) QTt=1 pθ′ (xt−1 | xt) represents the denoising process joint probability distribution that gradually reconstructs the original data while distribution 
+
+q (x1: T | x0) = QTt=1 q (xt | xt−1) can be interpreted as a known forward noise process. The variational lower bound can be expanded by the KL divergence between two distributions 
+
+p, q , the conditional probability of reconstructing the original constraint matrix x0 from the first-step noise latent variable 
+
+x1 in the denoising process, and a constant term C, pro-viding an optimizable approximate objective for the negative log-likelihood that is computationally intractable to evaluate directly, i.e.: 
+
+L =C + Eq [− log pθ′ (x0 | x1)+ X
+
+> t> 1
+
+DKL [q (xt−1 | xt, x0) ∥pθ′ (xt−1 | xt)]] (7) Note that in equation (7), the KL divergence term quantifies the discrepancy between two probability distributions. The distribution q(xt−1|xt, x0) represents the true conditional dis-tribution derived from the forward noise, and pθ′ (xt−1|xt)
+
+denotes the conditional probability distribution learned by the model during the denoising process. The summation term represents the cumulative discrepancy between the conditional distribution of the model’s reverse process and the true condi-tional distribution derived from the forward process across all steps where t > 1. The term − log pθ′ (x0|x1) quantifies the difficulty of the model directly reconstructing the original data from the first-step noise. The constant term C is independent to the model parameters θ′ and can be neglected during the optimization process, as it does not affect the parameter update direction. By minimizing this lower bound (i.e., reducing the sum of KL divergences and − log pθ′ (x0|x1)), the model can indirectly achieve better fitting to the data distribution, ultimately enabling the learned reverse denoising process to accurately reconstruct samples that closely approximate the true constraint matrices distribution from noise. Fig. 3 illustrates the forward corruption and reverse denoising pro-cedures, conditioned on constraint-matrix labels derived from the underlying graph; the next two subsections detail noise injection and denoising. 
+
+a) Forward Noising: When injecting noise into the orig-inal adjacency matrix, the constraint matrix x0 ∈ { 0, 1}N ×N
+
+is initially one-hot encoded to obtain ¯x0 ∈ { 0, 1}N ×N ×2.Discrete noise is subsequently added through the noise state transition matrix Qt =
+
+ (1 − βt) βt
+
+βt (1 − βt)
+
+
+
+∈ { 0, 1}2×2
+
+according to the corruption parameter β at each temporal step t, where β follows a linear schedule with respect to 
+
+t, i.e. β1 = 1e−4, β T = 2e−2. Consequently, the one-step conditional distribution is q(xt|xt−1) = Cat( xt; p =¯xt−1Qt), where Cat( ·; p) denotes the categorical distribu-tion with parameter p representing the probability vector. Following T steps of noise injection, the cumulative ¯QT =
+
+Q1Q2... Qt =
+
+ 0.5 0.50.5 0.5
+
+
+
+. The T-step marginal distribution is expressed as: q(xT|x0) = Cat( xT; p = ¯x0 ¯QT), leading to a state with maximum entropy, whereby the constraints in the original constraint matrix become disordered. At this stage, the probability transition is independent of the sparsity characteristics of x0 and demonstrates applicability across all items in x0. Furthermore, according to Bayes’ theorem, given 
+
+x0 and xt, the posterior distribution probability of xt−1 is expressed as: 
+
+q (xt−1 | xt, x0) = q (xt | xt−1, x0) q (xt−1 | x0)
+
+q (xt | x0)= Cat 
+
+
+
+xt−1; p = ¯xtQ⊤ 
+
+> t
+
+⊙ ¯x0 ¯Qt−1
+
+¯x0 ¯Qt ¯x⊤
+
+> t
+
+ (8) where the numerator ¯xtQ⊤ 
+
+> t
+
+is combined with ¯x0 ¯Qt−1 through element-wise multiplication ⊙, corresponding to the parame-ters of the conditional probability q (xt | xt−1, x0) and the marginal distribution q (xt−1 | x0), respectively. The denomi-nator ¯x0 ¯Qt ¯x⊤ 
+
+> t
+
+serves as a normalization factor that ensures the probabilities sum to unity, representing the probability value corresponding to xt in q (xt | x0).
+
+b) Anisotropic Graph Denoising : The denoising process employs a neural network to reconstruct x0 from the sampled 
+
+xt. This constitutes the inverse of the forward noising pro-cess. Herein, we train an anisotropic graph neural network JOURNAL OF L ATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2025 61 2                                               
+
+> 3
+> 4
+> 56
+> 7
+> 8
+> 912
+> 3
+> 4
+> 56
+> 7
+> 8
+> 912
+> 3
+> 4
+> 56
+> 7
+> 8
+> 912
+> 3
+> 4
+> 56
+> 7
+> 8
+> 9
+> Random Arc Noisy XTGround Truth X0
+> Denoising
+> Noising
+> p!(𝑥 "#$|𝑥 ",𝐺 )
+> q(𝑥 "|𝑥 "#$)
+> 12
+> 3
+> 4
+> 56
+> 7
+> 8
+> 912
+> 3
+> 4
+> 56
+> 7
+> 8
+> 912
+> 3
+> 4
+> 56
+> 7
+> 8
+> 912
+> 3
+> 4
+> 56
+> 7
+> 8
+> 9
+> Augmented Graph
+> Constraint Matrix
+> Instance Graph
+> Adjacency Matrix
+> Sample at State tSample at State t-1
+> Mapping
+> Generate
+> Generate
+> Denoising Noising Generate Process Mapping Process Instance Arc Augmented Instance Arc
+
+Fig. 3: Constraint-Matrix Generation and Forward Corruption/Reverse Denoising under a Discrete-Noise Diffusion 
+
+and utilize its gating mechanism, as described in [Sun and Yang(2023)], to learn the mapping between x0 and the model’s predicted ˆx0 through loss function (7). During inference, the predicted ˆx0 is substituted for the true x0 to complete the denoising process: 
+
+pθ′ (xt−1 | xt) ∝ X
+
+> ˆx0
+
+q (xt−1 | xt, ˆx0) pθ′ (ˆ x0 | xt) (9) The parameter θ′ is derived from a multi-layer gated anisotropic GNN. The network input comprises the node representation embeddings learned by a pre-trained GAT, and the edge representation embeddings fused with temporal step encoding and xt. The output constitutes the probability distribution of the predicted constraint matrix. The node and edge representation are updated through Equations (10)-(13): 
+
+eℓ+1  
+
+> ij
+
+= W1ℓhℓi + W2ℓhℓj + W3ℓ ¯eℓij (10) 
+
+¯eℓij = MLP e
+
+ BN  eℓij 
+
+ + MLP t(¯t) (11) 
+
+gate ℓ+1  
+
+> ij
+
+= σ(eℓ+1  
+
+> ij
+
+) ⊙ W4hℓj (12) 
+
+hℓ+1  
+
+> i
+
+= hℓi + ReLU(BN( W5ℓhℓi + X
+
+> j∈N (i)
+
+gate ℓ+1  
+
+> ij
+
+)) (13) The learnable parameters integrate the edge features ( ¯eℓij ), temporal step positional encoding ¯t, source node features ( hℓi ), and target node features ( hℓj ), thereby capturing anisotropy (distinguishing the influence of source/target nodes). W1 to 
+
+W5 represent the learnable weight parameters, and MLP( ·)
+
+denotes a two-layer multilayer perception(MLP). Note that 
+
+h0 = GAT( G), which is extracted from a pretrained five-layer GAT, while e0 = xt is assigned by the noising process. 
+
+σ is the sigmoid function while ReLU( ·) and BN( ·) denote ReLU activation and Batch Normalization(BN), respectively. The temporal step positional encoding ¯t is defined as: PE (t, 2i) = sin 
+
+
+
+t · 10000 −2i/d 
+
+(14) PE (t, 2i + 1) = cos 
+
+
+
+t · 10000 −2i/d 
+
+(15) Following training, the graph diffusion model ultimately pre-dicts a constraint matrix, and the performance Area Under Curve (AUC) value on the test set exceeds 0.95, indicating robust discrimination of same-subpath node assignments in sparse constraint matrices. 
+
+C. Topological Mask-Guided Encoder-Decoder 
+
+We employ the constraint matrix predicted by the graph diffusion model as a learned topological mask to build a GAT-based encoder for representation learning on unseen data. Compared with fully connected Transformer-style attention, this mask mitigates over-smoothing by restricting message passing to plausible subpath relations, yielding sharper node embeddings and, in turn, more discriminative decoder atten-tion during decoding. The fusion architecture is shown in Fig. 4(b)–(c). 
+
+1) Masked Graph Encoder: As shown in Fig. 4(b), the encoder fuses global and local node representations. The global component is produced by the same pre-trained GNN used in the diffusion model: each instance is treated as a fully connected graph, and attention weights cross-node aggregation to yield the latent embedding hGAT . These parameters remain frozen. The local component is produced by a GAT whose edges are defined by the sparse constraint matrix predicted by the diffusion model. During attention, each node aggregates only over neighbors indicated by its matrix row, masking JOURNAL OF L ATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2025 7Masked GAT 
+
+Pre -trained GAT 
+
+Linear Layer Pooling    
+
+> out Encode
+> Hl
+> L/G MHA Layer
+> MLP Layer
+
+Softmax Layer 
+
+Mask Layer                            
+
+> WQlocal
+> WQglobal WKglobal WVglobal Wklocal WVlocal
+> u_masked
+> p_distribution xN
+> multi_start
+> context
+> update
+> node
+> update
+> initial_graph data_augmentation
+> spatial info
+> demands
+> optima
+> graph diffusion
+> constraint matrix
+> mapping
+> noising denoising
+> hidden_embeddings hidden_embeddings
+> I/O stream Frozen parameters
+> Trainable parameters
+> Latent node embeddings
+> Latent graph readout
+> Masked node
+> Concatenation Attention calculation
+> Available static embeddings
+> local/global context embeddings
+
+(a) 
+
+(b) (c)                          
+
+> loop until all nodes visited
+> sampling
+> sampled solutions
+> xLxL
+> xN
+> SHA Layer
+> uij
+> WKWQ
+> hcontext
+> single node representation single node representation
+> (2) Graph
+> Diffusion
+> (1) Data
+> Augmentation masked
+> topology
+> (3) Mask Guided
+> Encoder (4) Dual Pointer
+> Decoder
+> hGAT hl
+> ℎ!"#$%&$
+> '"!(' ℎ!"#$%&$
+> )'"*('
+
+Pre -trained 
+
+Fig. 4: Overall architecture. (a) Graph-diffusion prior with two submodules: (1) data augmentation and (2) constraint-matrix generation. (b) Mask-guided encoder: a pretrained multi-layer GAT extracts global representations, and a trainable masked GAT extracts local representations; their fusion yields node embeddings. (c) Dual-pointer decoder: two attention pointers fuse global and local decisions, conditioned on the global graph embedding and the current system state. 
+
+interactions across different subpaths. Thus, representation learning is restricted to the local sparse neighborhood specified by the constraint matrix. 
+
+αℓij = Softmax 
+
+
+
+W head q h(ℓ−1) 
+
+> i
+
+⊤
+
+W head k h(ℓ−1) 
+
+> j
+
+√dk
+
+ (16) 
+
+hℓi = BN 
+
+∥Head head =1 
+
+X
+
+> j∈ˆxi
+> 0
+
+
+
+α(ℓ−1)  
+
+> ij
+
+W head v
+
+
+
+h(ℓ−1) 
+
+> j
+
+ 
+
+⊕ hℓ−1
+
+> i
+
+
+
+(17) Equation (16) computes inter-node attention scores, where 
+
+Whead q ∈ R dk ×d and Whead k ∈ R dk ×d represent learnable weight matrices, head denotes the index of multi-head atten-tion heads, and dk represents the dimension of the latent vector for each attention head. Equation (17) aggregates the multi-head representations of the unmasked node j in the i − th row of the constraint matrix ˆx0 predicted by the graph diffusion network with the current node i. Whead v ∈ R dk ×d represent learnable value-vector weight matrix. The operator ∥ denotes the concatenation operation, while ⊕ represents a residual connection. The encoder then fuses the graph representation hGAT ∈
+
+RN ×d with the masked representation hℓ ∈ RN ×d via a 2-layer MLP, and uses the output of an average-pooling layer as the graph-level encoder output, as in Equation (18). 
+
+RO Encode = Mean  MLP( hℓ + hGAT ) (18) 
+
+2) Dual-Pointer Fusion Decoder: Similar to prior work [Kwon et al.(2020)Kwon, Choo, Kim, Yoon, Gwon, and Min], our decoder operates autoregressively: given node representations and the encoder’s global graph embedding, a lightweight attention layer computes scores between the current context and candidate nodes to form a distribution for sampling the next visit. During decoding, the vehicle-capacity embedding M LP (RC t), where RC t is the remaining capacity at step t, and the representation of the most recently visited node hlτt−1 are updated online. Despite its efficiency, this attention can struggle to distinguish similar nodes. We therefore introduce a dual-pointer fusion decoder: a local pointer restricts attention to candidates indicated by the constraint matrix predicted by the graph diffusion model, while a global pointer scores all nodes. Fusing these scores injects a targeted bias, encouraging exploration early and promoting stability later, thereby balancing exploration and JOURNAL OF L ATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2025 8
+
+exploitation. Fig. 4(c) illustrates stepwise parallel decoding and sampling for N start nodes. The decoder input comprises static and dynamic (context) components. The static input consists of the available node embeddings hli at step t, fused with hGAT  
+
+> i
+
+as in Equation (19); these remain fixed during decoding because the two encoder GATs already encode decision-relevant information: 
+
+htstatic = MLP( hli + hGAT  
+
+> i
+
+), ∀i ∈ V\{ τ1, . . . , τ t}. (19) The dynamic context concatenates the remaining capacity, the depot, and the most recently visited node, and serves as the query in attention. Under the dual-pointer design, we form hglobal context = hl 
+
+> 0
+
++ hlτt−1 + RO Encode + MLP( RC t) and 
+
+hlocal context = hl 
+
+> 0
+
++ hlτt−1 + MLP( RC t). At each step, keys are drawn only from unvisited nodes, shrinking the search space without extra cost. To exploit the diffusion prior, we apply the constraint matrix as an attention mask (as in Equation (17)): the local pointer attends within the masked neighborhood, while the global pointer attends over all nodes. Their multi-head attention outputs are 
+
+L/GM HA =
+
+ M HA (hbcontext , h tstatic , h tstatic ) b = global M HA (hbcontext , h tstatic , h tstatic ) b = local 
+
+(20) and are fused to form a novel context vector (Equation (21)): 
+
+hcontext =
+
+> global
+
+X
+
+> b=local
+
+M HA (hbcontext , h tstatic , h tstatic )= || head 
+
+X
+
+> j∈ˆxi
+> 0
+
+ulocal i,j W Vlocal hj
+
++ || head 
+
+X
+
+> j / ∈{ τ0...τ t−1}
+
+uglobal i,j W Vglobal hj
+
+(21) This vector integrates rich global and local information, thereby enabling effective single-step decision-making. The dual pointers independently compute their respective attention scores ulocal i,j ,uglobal i,j and update the value matrices associated with their corresponding available node embeddings hj , as detailed in Equations (22) and (23). 
+
+ulocal i,j = Sof tmax (W Qlocal hlocal context )T W Klocal htstatic 
+
+√dhead 
+
+!
+
+(22) 
+
+uglobal i,j = Sof tmax (W Qglobal hglobal context )T W Kglobal htstatic 
+
+√dhead 
+
+!
+
+(23) In essence, the multi-head attention layer delineated in Equations (21)-(23) supplies two distinct sets of query-key-value (QKV) weights, denoted as W Qlocal ,W Qgloval , W Klocal ,
+
+W Kglobal ,W Vlocal , and W Vglobal all ∈ R dk ×d, which enable the learning and updating processes to generate an intermediate context vector hcontxt that effectively combines global and local information. Here, the operator ∥ denotes the concatena-tion of the multi-head value matrices. For brevity, superscripts 
+
+k ∈ [1 , head ] designating the attention heads have been omitted in the equations. This fusion yields two benefits: nodes highlighted by both pointers act as anchors that sta-bilize exploration, and when global attention is diffuse (e.g., clustered features), the model prioritizes constraint-consistent local nodes, improving robustness to look-alike candidates. In previous studies [Kool, Van Hoof, and Welling(2019)], [Kwon et al.(2020)Kwon, Choo, Kim, Yoon, Gwon, and Min], [Wang et al.(2024)Wang, Bai, Khan, ¨Ozcan, and Zhang], [Lei et al.(2022)Lei, Guo, Wang, Wu, and Zhao], [Luo et al.(2023)Luo, Lin, Liu, Zhang, and Wang], attention weights are computed from the context vector and available nodes and then used to update only the nodes’ value matrices, leaving the context vector unchanged during learning. To better exploit contextual information, we introduce an auxiliary perception layer that processes the current-step local context and fuses it with vectors from the local and global attention mechanisms, as detailed in Equation (24). 
+
+¯hcontext = M LP (hlocal context ) + hcontext (24) The resultant vector ¯hcontext serves as the updated context for computing attention scores via a single-head attention layer. The probability distribution pθ is then derived through hyperbolic tangent activation ( tanh ) and clipping constant C,as formulated in Equations (25) and (26). 
+
+ui,j = SHA (¯hcontext , h tstatic )=
+
+ (W Q¯hcontext )T W K htstatic 
+
+√d + log (Saving i,j )
+
+
+
+(25) 
+
+pθ (τt|τ0...τ t−1) = Sof tmax  C · tanh (uτt−1,τ t ))  (26) Notably, when computing attention weights in Equation (25), we incorporate a heuristic savings term Saving i,j =
+
+dist (0 , i ) + dist (0 , j ) − dist (i, j )(with 0 denoting the depot), which measures the distance saved by visiting i and j con-secutively rather than separately. Drawing upon the estab-lished mileage savings algorithm [Segerstedt(2014)], this term biases exploration toward nodes that offer greater economic efficiency. 
+
+D. Training and Inference 1) Training: As shown in Fig. 4, we first pre-train the graph diffusion model via standard supervised learning on synthetic instances from POMO [Kwon et al.(2020)Kwon, Choo, Kim, Yoon, Gwon, and Min]. Labels are generated by HGS on 50,000 instances, yielding the corresponding adjacency and constraint matrices. We then freeze the diffusion model and train the encoder–decoder with unsupervised reinforcement learning, using it to iteratively construct solutions from a sketch. This section details the RL procedure. During training, we use Monte Carlo estimates over batched trajectories to optimize the expected reward, L(πθ |G ) =
+
+Eτ ∼pπθ (τ |G )R(τ ). To promote more stable model convergence, we adopt the REINFORCE [Zhang et al.(2021a)Zhang, Kim, O’Donoghue, and Boyd], with a self-critic baseline, maximiz-ing reward (equivalently, minimizing tour length). We further introduce an enhancement baseline, evaluating two strategies: JOURNAL OF L ATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2025 9
+
+(i) the average tour length from multi-start sampling over sev-eral starting nodes, and (ii) the average tour length from single-start greedy inference. Empirically, the single-start baseline converges faster but is prone to local optima; hence we use the multi-start baseline. The comprehensive training algorithm is outlined as follows: As in POMO [Kwon et al.(2020)Kwon, 
+
+Algorithm 1 Self-critic Reinforce Training 
+
+Input: Training set DT ; policy network πθ ; Training epochs 
+
+E; Batch size B; Steps per epoch T ; Number of starting nodes N ; Optimizer Adam . 
+
+> 1:
+
+Initialization: θ 
+
+> 2:
+
+for e in 1...E do  
+
+> 3:
+
+for t in 1...T do  
+
+> 4:
+
+Gi ← RandomInstance (DT ), ∀i ∈ { 1, ...., B } 
+
+> 5:
+
+S{s1   
+
+> i,...,s Ni}
+
+← N Start (Gi), ∀i ∈ { 1, ...., B } 
+
+> 6:
+
+τ ni ← SampleSolution (πθ , S) 
+
+> 7:
+
+Compute R(τ ni ) through Eq. (5)  
+
+> 8:
+
+R(τ bi ) = 1
+
+> N
+
+PNn=1 R(τ ni ) 
+
+> 9:
+
+∇θ L(θ) ← 1
+
+> B×N
+
+PBi=1 
+
+PNn=1 (R(τ ni ) −R(τ bi )) ∇θ logp θ (τ ni |S ) 
+
+> 10:
+
+θ ← Adam (θ, ∇θ L(θ) 
+
+> 11:
+
+end for  
+
+> 12:
+
+end for Output: Parameters set θ of actor network Choo, Kim, Yoon, Gwon, and Min], the Nstart strategy uses all nodes as starting points for instances with N ≤ 100 to enable parallel decoding; for N > 100 , it selects the 100 nodes closest to the depot. This caps start-node parallelism at a tractable scale and aligns with the observation that, in large instances, both the first and last nodes (the latter in the reverse tour) are typically near the depot. During training, actions are sampled from the policy πθ via its distribution pθ , enlarging the exploration space in action selection. The final output is the converged policy parameters, obtained once rewards stabilize. 
+
+2) Inference: At inference, unlike training, we exploit the permutation invariance of optimal solutions in geometric space to apply data augmentation under the current policy network parameters and test whether augmented instances yield better tours. As delineated in Algorithm 2, a single instance is augmented by a dedicated routine that applies geometric symmetries to generate total A variants. Notably, this uses the same geometric space as the diffusion-stage augmentation but omits demand-level augmentation. Because the optimal solution is unknown at inference, demand-constraint validity cannot be verified, so demands are not modified. V. E XPERIMENTS 
+
+We evaluate the proposed graph diffusion–augmented gener-ative solver through three key research questions: RQ1) perfor-mance on public benchmarks; RQ2) zero-shot generalization to out-of-distribution (OOD) instances; and RQ3) sensitivity to hyperparameters and ablation settings, including the removal of the diffusion prior from the graph-mask–guided encoder and the dual-pointer modules. 
+
+Algorithm 2 Inference 
+
+Input: Instance G; policy network πθ ; Number of starting nodes N ; Number of augmented instances A. 
+
+> 1:
+
+{G 1, ..., GA} ← AugmentedInstance (G) 
+
+> 2:
+
+S{s1   
+
+> i,...,s Ni}
+
+← N Start (Gi), ∀i ∈ { 1, ...., A } 
+
+> 3:
+
+τ ai ← GreedyRulloutSolution (πθ , S), ∀a ∈{1, ..., A }, ∀i ∈ { 1, ..., N } 
+
+> 4:
+
+amax , i max ← argmax a,i R(τ ai )
+
+Output: τ amax 
+
+> imax
+
+A. Experiment Setup 1) Datasets: The datasets consist of synthetic instances and public benchmarks. To train the graph diffusion model, we generate 50,000 labeled instances with solutions computed by HGS to balance efficiency and accuracy. For RL of the autoregressive policy, we synthesize 200,000 unlabeled instances from the same distribution. Node coordinates are drawn uniformly from [0,1], demands uniformly from 1 to 9, depot locations are random, and vehicle capacities are set to 30/40/50 for problem sizes of 20/50/100, respectively. For public cross-distribution benchmark evaluation, we employ the CVRPLIB XML100 suite [Queiroga et al.(2022)Queiroga, Sadykov, Uchoa, and Vidal], comprising 10,000 test instances. The suite categorizes instances along four attributes: node distribution, depot distribution, demand distribution, and route length, resulting in 378 combinatorial groups. To the best of our knowledge, this work presents the first systematic evaluation of constructive heuristic neural solvers on XML100. 
+
+2) Parameters and Environmental Setup: Table I outlines the key parameters for the graph diffusion and autoregressive models. The diffusion model uses 1,000 denoising steps dur-ing training; however, following Denoising Diffusion Implicit Models (DDIM), far fewer steps are used at inference. We conduct a grid search over inference step counts and per-step sample sizes, evaluating AUC and runtime; results appear in the parameter-sensitivity section. All experiments were run on an NVIDIA RTX A6000 (48 GB) and an Intel Xeon Silver 4126 CPU. 
+
+3) Baselines: We survey representative methods and group them into four categories: general solvers (Gurobi, LKH3, HGS, OR-Tools); sequence-based autoregressive solvers (Ptr-Net); fully connected Transformer-based autoregressive solvers (AM, POMO, LEHD, ReLD); and graph-structured autoregressive solvers (E-GAT, GASE). Notably, no diffusion model-based solvers directly address CVRP, largely due to its complex constraints and heavy reliance on posterior search (e.g., MCTS). The predominant approach entails generating a probability heatmap followed by search-based decoding. Most diffusion approaches generate a probability heatmap followed by search-based decoding. Although neighborhood-search refinement of an initial feasible solution can yield strong results, it is computationally expensive and ill-suited for online use, and it underutilizes the intrinsic value of the neural policy’s solutions. We therefore exclude such methods JOURNAL OF L ATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2025 10                                   
+
+> TABLE I: Experimental parameters
+> Parameters Values Diffusion Training steps T1000 Diffusion Inference steps T′50 Diffusion linear noise schedule β110 −4
+> Diffusion linear noise schedule βT0.02
+> Diffusion batch size 32 Diffusion Training epoch 50 Pre-trained GAT layers L′5Pre-trained GAT batch size 64 Pre-trained GAT embedding dim 128 Pre-trained GAT attention head number 8Encoder graph layers L5Decoder attention head number head 8Decoder QKV dim 16 Logit clipping C10 Learning rate α10 −4
+> Weight decay 10 −6
+> Optimizer Adam Reinforce batch size B32 Hidden dim d128 Training Epoch E100 with early stop
+
+from comparison. The selected neural network solver baselines are delineated as follows:  
+
+> •
+
+Pointer Networks (PtrNets) [Nazari et al.(2018)Nazari, Oroojlooy, Snyder, and Tak´ ac]: Pioneers reinforcement learning with LSTMs for CVRP and TSP, achieving strong performance.  
+
+> •
+
+Attention Model (AM) [Kool, Van Hoof, and Welling(2019)]: The first to couple Transformers with reinforcement learning, fully exploiting attention in both encoder and decoder; it serves as the backbone for many subsequent autoregressive methods.  
+
+> •
+
+POMO [Kwon et al.(2020)Kwon, Choo, Kim, Yoon, Gwon, and Min]: An AM-based autoregressive RL model introducing multi-start parallel sampling and inference-time data augmentation.  
+
+> •
+
+LEHD [Luo et al.(2023)Luo, Lin, Liu, Zhang, and Wang]: A supervised approach with a lightweight encoder and a heavy decoder (stacked multi-attention layers), plus a sampling-and-reconstruction strategy for accuracy and scalability.  
+
+> •
+
+ReLD [Huang et al.(2025)Huang, Zhou, Cao, and Xu]: Emphasizes encoding over decoding; augments AM/POMO backbones with a feedforward layer to cap-ture the decoding state and better exploit the current system state.  
+
+> •
+
+ELG [Gao et al.(2023)Gao, Shang, Xue, Li, and Qian]: Builds on POMO with combined global–local attention; uses KNN in polar coordinates to add an out-of-local penalty in the RL loss, focusing decisions on nearby nodes while preserving global awareness.  
+
+> •
+
+E-GAT [Lei et al.(2022)Lei, Guo, Wang, Wu, and Zhao]: The first RL autoregressive model to fully leverage GAT for encoding, incorporating node distances as edge fea-tures to improve representations for downstream decod-ing.  
+
+> •
+
+GASE [Wang et al.(2024)Wang, Bai, Khan, ¨Ozcan, and Zhang]: Extends E-GAT with a sampling strat-egy in the GAT encoder to enhance representational accuracy, achieving state-of-the-art performance among graph-structured autoregressive models. We compare against these neural baselines on the test set to address the three research questions and provide detailed analysis of our model. 
+
+B. Experimental Results 1) Performance Analysis on Synthetic and CVRPLIB Benchmark: We first evaluate our model on 1,000 synthetic test instances whose node coordinates and demands follow the training distribution, with random depot locations. Table II re-ports results: the first block lists general-purpose solvers using exact (for small scales) or heuristic methods; the second block lists autoregressive neural solvers, split into graph-structured and non-graph-structured variants. The Objective column re-ports the average solution distance, while the Gap column quantifies the relative deviation from the current best baseline, computed as (Obj − Obj best )/Obj best .Evidently, learning-based approaches exhibit substantial ad-vantages in solution time and generalization. Once trained, they produce near-optimal in-distribution solutions with low latency. Because LEHD, ELG, and ReLD target large-scale settings and release models only for 100-node cases, we adapted the authors’ code under matched conditions to eval-uate smaller scales. On the synthetic benchmark in Table II, our method attains SOTA performance among recent represen-tative learning-based solvers, particularly without augmented inference, and demonstrates a modest efficiency edge. We attribute these gains to the graph diffusion prior, which cap-tures constraint patterns via geometric and demand augmenta-tion, thereby strengthening the mask-guided encoder and the dual-pointer decoder that fuses local and global attention. Furthermore, to guard against overfitting to the synthetic distribution, we further evaluate on CVRPLIB across multiple scales, comparing against leading models trained on synthetic data. The results are presented in Table III. Under distribution shift, autoregressive models exhibit an average gap of over 5% to optimal, markedly worse than in-distribution. Moreover, our experiments underscore the limited scalability of autore-gressive models with lightweight decoders (i.e., those incor-porating few attention layers in the decoder). In particular, deploying a model pre-trained on 100-node instances to prob-lems with 200 or more nodes yields pronounced performance declines. A key factor is per-step out-of-distribution inputs in large instances, which raise stepwise error rates; as horizons lengthen, errors accumulate. Besides, policy-gradient RL with trajectory-level rewards scales poorly as the per-step action space grows combinatorially, yielding sparse signals and slow convergence. Despite these challenges, our approach outper-forms contemporaries using comparable training regimes (i.e. light decoder models such as POMO). Additionally, it exhibits a lower standard deviation than the heavy decoder models (LEHD). To summarize, compared with state-of-the-art models, our approach yields superior solution quality and competitive JOURNAL OF L ATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2025 11 
+
+TABLE II: Comparison with SOTA methods on randomly generated CVRP instances. “–” in the Gurobi row indicates no result within the time limit; Gurobi, HGS, and LKH3 results are reproduced from prior studies [Kool, Van Hoof, and Welling(2019)], [Kwon et al.(2020)Kwon, Choo, Kim, Yoon, Gwon, and Min], [Lei et al.(2022)Lei, Guo, Wang, Wu, and Zhao]. “*” in the Time column denotes the total runtime of a single-threaded, sequential OR-Tools run with a 1s per-instance search limit over 1,000 test cases. Entries in bold and underlined show the best results across neural solvers                                                                                                                                                                
+
+> Model CVRP20 CVRP50 CVRP100 Objective Gap(%) Time Objective Gap(%) Time Objective Gap(%) Time Gurobi [Gurobi Optimization, LLC(2024)] 6.10 0.00 13h ------HGS [Kwon et al.(2020)Kwon, Choo, Kim, Yoon, Gwon, and Min] 6.11 0.16 8.2h 10.36 0.00 21h 15.51 0.00 32h LKH3 [Helsgaun(2017)] 6.14 0.65 2h 10.38 0.19 7h 15.65 0.90 13h OR Tools [Google Optimization Tools(2024)] 6.18 1.31 *1000s 10.98 5.98 *1016s 17.09 10.19 *1054s PtrNet [2018] 6.59 8.03 <1s 11.39 9.94 <1s 17.23 11.09 <1s AM [2019] 6.40 4.97 1s 10.98 5.98 3s 16.80 8.32 8s AM Sampling [2019] 6.24 2.30 3m 10.59 2.22 7m 16.16 4.19 30m POMO [2020] 6.35 4.09 1s 10.74 3.67 1s 16.15 4.13 3s POMO ×8Aug [2020] 6.14 0.65 5s 10.42 0.58 26s 15.73 1.42 2m LEHD Greedy [2023] 6.36 4.26 2s 10.92 5.41 2s 16.22 4.59 30s ELG ×8Aug ensemble 0.4 Local Size [2024] 6.35 4.16 4s 10.47 1.06 10s 15.84 2.13 3.18m ReLD ×8Aug [2025] 6.15 0.89 3s 10.43 0.66 9s 15.80 1.87 1.34m E-GAT [2023] 6.26 2.60 2s 10.80 4.25 7s 16.69 6.68 17s GASE [2024] 6.21 1.80 2s 10.74 3.52 3s 16.37 4.60 7s
+> Our approach 6.20 1.64 2s 10.64 2.70 5s 15.76 1.61 12s
+> Our approach ×8Aug 6.14 0.65 6s 10.41 0.48 30s 15.70 1.23 2m
+
+TABLE III: Model performance on CVRPLIB across multiple problem scales. Boldface upon underlines denotes the best result among compared methods; “–” indicates omitted (not reported) entries. The Gap column quantifies the discrepancy from the optimal solution. 
+
+Data instance Nodes number Optimal Solution Our Approach ×8Aug E-GAT POMO ×8Aug LEHD Objective Objective Gap(%) Objective Gap(%) Objective Gap(%) Objective Gap(%) A-n44-k6 43 937 972 3.74 979 4.49 997 6.40 1000 6.74 A-n45-k6 44 944 970 2.75 984 4.23 993 5.22 994 5.33 A-n63-k10 62 1314 1337 1.75 1519 15.60 1329 1.16 1463 11.32 A-n64-k9 63 1401 1493 6.57 1659 18.40 1430 2.10 1478 5.55 A-n69-k9 68 1159 1193 2.93 1264 9.05 1199 3.47 1264 9.04 B-n34-k5 33 788 811 2.91 812 3.04 903 14.66 813 3.23 B-n35-k5 34 955 965 1.05 986 3.24 1005 5.28 976 2.20 B-n45-k6 43 678 710 4.72 729 7.52 737 8.73 739 8.97 B-n51-k7 50 1032 1039 0.68 1045 1.25 1088 5.48 1034 0.25 
+
+P-n50-k8 49 631 655 3.80 655 3.80 661 4.83 654 3.65 
+
+P-n51-k10 50 741 759 2.43 811 9.44 759 2.43 754 1.70 
+
+P-n70-k10 69 827 872 5.44 865 4.59 867 4.79 857 3.60 
+
+E-n101-k14 100 1067 1133 6.18 1163 8.96 1116 4.22 1157 8.41 M-n101-k10 100 820 831 1.34 873 6.46 842 2.68 828 1.03 
+
+M-n121-k7 120 1034 1141 10.35 1144 10.63 1110 7.35 1206 16.60 M-n151-k12 150 1015 1153 13.60 1106 8.96 1076 6.01 1070 5.44 
+
+M-200-k16 199 1274 1484 16.48 1438 12.87 1374 7.85 1354 6.24 
+
+Average Gap - - - 5.10 - 6.49 - 5.45 - 5.84 
+
+inference speed on in-distribution data, and generalizes better across scales for problems with 100 nodes or fewer. 
+
+2) Few-Shot OOD Analysis: To further substantiate and investigate the model’s generalization capabilities on out-of-distribution (OOD) feature data, we conducted experiments and detailed comparative analyses on the CVRP XML100 dataset using identical architectures. The XML100 dataset encompasses 10,000 instances, each with a problem scale of 100 nodes, yet featuring intricate and diverse feature distri-butions. The four categorization dimensions: depot location, node coordinate distribution, demand slackness distribution, and route length distribution, yield a total of 19 classes and 378 combinations. Each instance is characterized by a complex combination across the four distributional dimensions. The experimental results are presented in Table IV. The results demonstrate that, when confronted with instances of equivalent scale but intricate feature distributions, our model exhibits an average gap of approximately 5.77% relative to the optimal so-lution. Compared to the current SOTA, it achieves smaller gaps (Gap%) and lower variability (Gap Std), highlighting improved robustness from the graph-diffusion prior. However, perfor-mance degrades markedly in scenarios involving extreme (long or short) route lengths, uniform demands, clustered customer nodes, and centrally located depots. We attribute this to the encoder’s propensity for over-representation and oversmoothing of node embeddings, which rely on coordinates and demands as inputs, yielding diffuse decoder attention and weaker greedy rollouts on OOD data. Our diffusion-mask mitigates this by constraining aggregation, improving averages by 1.2% in clustered, uniform-demand, and extreme-route cases. Furthermore, we observed that our model underperforms POMO in scenarios where node demand and vehicle capac-ity constraints are relatively relaxed, specifically, when node demands are comparatively small but with greater vehicle capacity. This suggests that our model is better suited for instances involving tighter capacity constraints. We attribute this phenomenon to the latent constraint pattern learned by the diffusion prior, which decreases the susceptibility of node rep-resentations to oversmoothing when facing tighter constraints. Moreover, longer vehicle routes result in denser constraint matrices, which pose greater challenges for graph diffusion JOURNAL OF L ATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2025 12 
+
+TABLE IV: Comparative analysis of out-of-distribution (OOD) generalization. Boldface upon underlines indicates that the current subcategory achieves a lower average gap or lower average standard deviation than the competing model without/with 8 times data augmentation. Inference uses a pretrained 100-node model trained on synthetic data.                                                                                                                                                                                                  
+
+> Dimension Description Number of Instance POMO Our Approach POMO ×8Aug Our Approach ×8 Aug Gap(%) Gap Std Gap(%) Gap Std Gap(%) Gap Std Gap(%) Gap Std Depot Distribution random 3402 8.80 7.10 8.27 6.42 5.86 4.25 5.62 3.87
+> centered 3322 10.60 9.67 9.95 8.13 6.59 4.62 6.27 4.08
+> cornered 3276 8.11 6.60 7.97 6.37 5.50 4.17 5.40 4.05
+> Customer Distribution random 3360 8.28 6.59 7.86 6.25 5.58 3.84 5.36 3.56
+> clustered 3322 10.59 9.11 9.98 8.07 6.62 5.05 6.42 4.66
+> random-clustered 3318 8.75 7.83 8.36 6.59 5.77 4.06 5.52 3.66
+> Demands Distribution unitary 1432 14.11 9.67 11.89 8.46 8.41 5.50 7.25 4.71
+> small values large CV 1428 6.59 6.19 6.61 6.02 4.46 3.63 4.55 3.63
+> small values small CV 1428 8.14 8.43 7.74 6.41 5.54 4.63 5.30 4.25
+> large values large CV 1428 6.73 5.44 7.07 5.73 4.79 3.54 4.80 3.55 large values small CV 1428 8.46 7.30 8.07 6.73 5.82 4.61 5.50 4.06
+> depending on quadrant 1428 6.91 5.41 7.01 5.19 4.75 3.19 4.90 3.30 many small & few large 1428 13.24 8.34 12.77 7.62 8.13 3.00 8.06 2.96
+> Vehicle Route Distribution very short 1667 9.18 7.12 8.68 7.06 5.91 2.34 5.63 2.34
+> short 1667 6.95 5.83 6.54 5.15 4.53 2.92 4.36 2.72
+> medium 1667 5.21 5.54 5.09 5.15 3.00 2.34 3.03 2.26
+> long 1667 6.14 5.49 5.86 4.57 3.76 2.64 3.64 2.18
+> very long 1666 10.04 6.73 9.53 5.53 6.54 3.40 6.38 2.94
+> ultra long 1666 17.50 9.33 16.69 7.45 12.18 4.68 11.56 4.18 Average 9.17 7.98 8.73 7.07 5.99 4.37 5.77 4.02
+
+networks in accurate generation compared to sparse counter-parts. Additionally, an excessively dense OOD constraint ma-trix, although upon masking, can still substantially dissolve the decision network’s attention computations, thereby amplifying errors. In our experiments, we further assessed the performance of the heavy decoder baseline model LEHD at the instance level. The comparative heatmap, ordered by gap percentage, is depicted in Fig. 5. Our proposed model surpassed the baseline heavy decoder SOTA LEHD in 82.2% of the 10,000 instances featuring complex distributions, with 80.0% exhibit-ing a significant advantage (i.e., a gap difference exceeding the 0.5% significance threshold). These findings underscore that, although stacking attention layers within the decoder offers advantages for large-scale tasks, it performs poorly on complex OOD problems. Examining the instance distribution, we analyzed the top 100 instances where our model exhibits a clear advantage. These cases typically feature uniform or small node demands, clustered customer nodes, extremely long decision paths, and depot locations that are either central or random. The per-formance gaps in our favor consistently exceed 20%, with the maximum reaching 126%. Conversely, we examined the top 100 instances where POMO demonstrates a pronounced lead. These advantages manifest in scenarios with centrally located depots, randomly distributed customer nodes with high demands, and long decision paths. The gaps in POMO’s favor range from approximately 20%, peaking at 119%. In summary, across the comprehensive fair XML100 OOD dataset, our model exhibits marginally superior performance and solution stability. However, part of the gap percentage over 10% indicates that constructive heuristic neural models remain far from optimal under zero- or few-shot generalization. 
+
+3) Ablation Study: This subsection reports two ablations for the pretrained graph diffusion model: (i) removing the constraint-matrix mask from the autoregressive model, and (ii) comparing discrete Bernoulli-noise diffusion with continuous Gaussian-noise diffusion for the diffusion model. LEHD Advantage Area  
+
+> Ours Advantage Area
+> 10000InstancePerformance (Ours vs LEHD)
+> Ours significant better: 80.0% | LEHD significant better: 15.8%
+> No significant difference: 4.2% 1.0
+> 0.5
+> 0.0
+> 0.5
+> 1.0
+> Normalized GAP Difference
+
+Fig. 5: Performance gaps over 10,000 XML100 instances. A 0.5% gap defines significance: red denotes our model outperforming LEHD, and blue denotes POMO outperforming ours. 
+
+Fig. 6 compares diffusion models with continuous (Gaus-sian) and discrete (Bernoulli) noise under identical settings. As each constraint-matrix entry is a binary indicator (con-strained vs. unconstrained), we assess mask discrimination on the validation sets using standard classification metrics. With graph-network hyperparameters fixed, the discrete model better suits constraint-matrix generation. This accords with the instance graph’s discrete, sparse adjacency: under high entropy, discrete-state Markov transitions provide a more appropriate inductive bias than continuous noise. We also ablate two components of the autoregressive model: the encoder-masking module (“Ours-ME”) and the local-attention decoder (“Ours-LA”). We further assess a vari-JOURNAL OF L ATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2025 13 AUC        
+
+> ACC
+> Precision
+> Recall
+> F1
+> 0.65 0.70 0.75 0.80 0.85 0.90 0.95 1.00
+> 0.97 0.92
+> 0.95
+> 0.91
+> 0.82
+> 0.80
+> 0.78
+> 0.80
+> 0.71
+
+Performance Metrics Comparison 
+
+Bernoulli Diffusion 
+
+Gaussian Diffusion 
+
+Fig. 6: Evaluation metrics for diffusion models parameterized by Bernoulli and Gaussian noise. All metrics are computed from en-trywise classification statistics of the constraint matrix. 
+
+ant that fine-tunes the pretrained global GAT during reinforce-ment learning (“Ours-FTGAT”). Ablated variants are prefixed “w/o”. Results are reported in Table V, and training curves are shown in Fig. 7. Since early stopping is used, the number of training epochs varies across models. 
+
+TABLE V: Experimental results for the ablation and Fine-Tuned models 
+
+Module CVRP100 CVRPLib Objectives Gap(%) Average Gap(%) Ours 15.70 0.00 5.10 Ours-FTGAT 15.68 -0.13 5.52 w/o Ours-ME 15.92 1.40 6.33 w/o Ours-LA 15.88 1.14 5.98 0 10 20 30 40 50 60 70 80 
+
+> Epoch
+> 16
+> 17
+> 18
+> 19
+> Objectives
+
+Ablated Models Training Performance 
+
+> w/o Ours-LA
+> w/o Ours-ME
+> Ours
+> Ours-FTGAT
+
+Fig. 7: Training curves for the ablation study. 
+
+Ablation studies confirm that applying graph-diffusion prior masks to both the encoder and decoder yields clear gains for the autoregressive model. We also fine-tuned the pretrained encoder GAT, achieving additional improvements on synthetic data, nearly matching LKH3 on in-distribution tests. However, OOD generalization deteriorated, likely due to overfitting from over-tuning. Accordingly, in the final model we freeze the pretrained GAT to enhance robustness. 
+
+4) Sensitivity analysis: In our hyperparameter analysis, we vary two factors: the number of diffusion inference steps 
+
+T ′ and the number of graph neural network layers L. For simplicity, all GATs are assigned the same depth L, as their role across modules is to extract node representation embed-dings. Although the diffusion model is trained with a linear noise schedule of T = 1000 , at inference we employ step-skipping to recover denoised outputs with a reduced T ′. Unlike DDIM [Song, Meng, and Ermon(2020)] and Sun et al [Sun and Yang(2023)], we do not perform per-step sampling, as it is prohibitively time-consuming; our goal is for the pre-trained diffusion model to rapidly provide the prior constraint mask required by the autoregressive model. A grid search over 
+
+T ′ (Fig. 8) indicates that 50 steps offer a favorable accuracy efficiency trade-off. Since the autoregressive component dom-inates inference time, choosing T ′ > 50 is not economical for online deployment. 1 5 10 20 50 200 1000 
+
+> Inference Steps (T)
+> 0.65
+> 0.70
+> 0.75
+> 0.80
+> 0.85
+> F1 Score
+> 0.616
+> 0.683
+> 0.739
+> 0.781
+> 0.823
+> 0.858
+> 0.875
+> Trade-off Point
+> F1 Score
+> Time Consuming
+> 10 0
+> 10 1
+> 10 2
+> Time (seconds)
+> <1s
+> 1s
+> 2s
+> 4s
+> 10s
+> 40s
+> 200s
+
+Performance-Efficiency Trade-off in Diffusion Inference 
+
+Fig. 8: Sensitivity analysis of inference steps in the diffusion model 0 20 40 60 80 100 
+
+> Epoch
+> 16
+> 18
+> 20
+> 22
+> 24
+> 26
+> 28
+> Objective
+
+Sensitivity Analysis Across Attention Layer Depths 
+
+> 1 Layer
+> 2 Layers
+> 3 Layers
+> 4 Layers
+> 5 Layers (Best)
+> 6 Layers
+
+Fig. 9: Training curves of the encoder GAT across depths: 1–4-layer models did not meet the early-stopping criterion within 100 epochs, whereas 5–6-layer models triggered early stopping. 
+
+Fig. 9 examines the effect of GAT depth (number of layers) on model performance. Moderate stacking effectively captures multi-scale feature dependencies; however, excessive depth introduces spurious long-range aggregation and noise during representation learning. For instance, features of nodes separated by large spatial distances may be erroneously fused by deep attention stacks, leading to diffuse attention at decision JOURNAL OF L ATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2025 14 
+
+time. Moreover, overly deep GATs exacerbate representation oversmoothing, particularly under clustered customer layouts or uniformly distributed demands. 
+
+5) Discussion and Future Work: We summarize findings for these three research questions. For RQ1, on synthetic datasets matched to training (20, 50, 100 nodes), our model outper-forms eight autoregressive baselines (ten variants). Without inference augmentation, it sets a new SOTA with a 2.52% gain; augmentation adds 0.19% at the cost of slower inference. For RQ2, on CVRPLIB, our method achieves average SOTA for instances under 200 nodes (0.35% gain), but per-formance declines with increasing size due to limitations of diffusion-generated constraints and insufficient decoder depth; current re-decoding architectures are better suited to large scales. On XML100 (a first careful zero-shot evalu-ation), our model surpasses existing autoregressive solvers and markedly mitigates oversmoothing from spatial/demand clustering, with gains often over 20% in combined-distribution settings. Nonetheless, very long route-length decisions remain challenging: even at 100 nodes, OOD gaps can exceed 10%. For RQ3, ablations validate the effectiveness of the graph-diffusion prior (constraint matrix) and its encoder–decoder fusion. Performance is not strongly sensitive to the examined hyperparameters, and the chosen settings are supported by enumeration/grid search. Recent advances emphasize large-scale, cross-distribution optimization and variant ensembles. Yet on small/medium scales, fast-inference neural solvers still show limited zero-/few-shot generalization and do not consistently dominate under matched distributions. We advocate robust methods for small- to medium-scale settings across heterogeneous feature distributions and Mixture of Experts (MOE) neural solvers tailored to instance-level structure. We hope these insights catalyze further progress in neural combinatorial optimization. VI. C ONCLUSION 
+
+We propose a discrete-noise graph diffusion model to generate a constraint-matrix prior for the vehicle routing problem. This prior is integrated with an autoregressive en-coder–decoder via a unified global–local masked attention mechanism. The framework achieves state-of-the-art perfor-mance on synthetic datasets and public benchmarks. Compre-hensive analyses on datasets with complex feature distributions show that our method markedly mitigates oversmoothing of node embeddings, particularly under tight customer clustering and limited demand heterogeneity, while maintaining strong generalization. Our framework exposes the performance ceil-ings of existing autoregressive models. Despite the benefits of supervised constrained priors, they fail to guarantee instance-level optimality in CVRP tasks. Thus, incorporating MOE mechanisms represents a promising direction for future work. ACKNOWLEDGMENTS 
+
+REFERENCES [Bai et al.(2023)Bai, Chen, Chen, Cui, Gong, He, Jiang, Jin, Jin, Kendall et al.] Bai, R.; Chen, X.; Chen, Z.-L.; Cui, T.; Gong, S.; He, W.; Jiang, X.; Jin, H.; Jin, J.; Kendall, G.; et al. 2023. Analytics and machine learning in vehicle routing research. International Journal of Production Research ,61(1): 4–30. [Bello et al.(2016)Bello, Pham, Le, Norouzi, and Bengio] Bello, I.; Pham, H.; Le, Q. V.; Norouzi, M.; and Bengio, S. 2016. Neural com-binatorial optimization with reinforcement learning. arXiv preprint arXiv:1611.09940 .[Bi et al.(2022)Bi, Ma, Wang, Cao, Chen, Sun, and Chee] Bi, J.; Ma, Y.; Wang, J.; Cao, Z.; Chen, J.; Sun, Y.; and Chee, Y. M. 2022. Learn-ing generalizable models for vehicle routing problems via knowledge distillation. Advances in Neural Information Processing Systems , 35: 31226–31238. [Bi et al.(2024)Bi, Ma, Zhou, Song, Cao, Wu, and Zhang] Bi, J.; Ma, Y.; Zhou, J.; Song, W.; Cao, Z.; Wu, Y.; and Zhang, J. 2024. Learning to handle complex constraints for vehicle routing problems. arXiv preprint arXiv:2410.21066 .[Bogyrbayeva et al.(2024)Bogyrbayeva, Meraliyev, Mustakhov, and Dauletbayev] Bogyrbayeva, A.; Meraliyev, M.; Mustakhov, T.; and Dauletbayev, B. 2024. Machine learning to solve vehicle routing problems: A survey. IEEE Transactions on Intelligent Transportation Systems , 25(6): 4754–4772. [Braekers, Ramaekers, and Van Nieuwenhuyse(2016)] Braekers, K.; Ramaekers, K.; and Van Nieuwenhuyse, I. 2016. The vehicle routing problem: State of the art classification and review. Computers & industrial engineering , 99: 300–313. [Che et al.(2023)Che, Wang, Mu, Zhang, and Feng] Che, A.; Wang, W.; Mu, X.; Zhang, Y.; and Feng, J. 2023. Tabu-Based Adaptive Large Neighborhood Search for Multi-Depot Petrol Station Replenishment With Open Inter-Depot Routes. IEEE Transactions on Intelligent Transportation Systems , 24(1): 316–330. [Che, Wang, and Zhou(2024)] Che, A.; Wang, Z.; and Zhou, C. 2024. Multi-Agent Deep Reinforcement Learning for Recharging-Considered Vehicle Scheduling Problem in Container Terminals. IEEE Transactions on Intelligent Transportation Systems , 25(11): 16855–16868. [Chen et al.(2020a)Chen, Qu, Bai, and Laesanklang] Chen, B.; Qu, R.; Bai, R.; and Laesanklang, W. 2020a. A variable neighborhood search algo-rithm with reinforcement learning for a real-life periodic vehicle routing problem with time windows and open routes. RAIRO - Operations Research , 54(5): 1467–1494. [Chen et al.(2024)Chen, Wang, Liang, Yu, Feng, Zhao, and Ding] Chen, J.-F.; Wang, L.; Liang, Y.; Yu, Y.; Feng, J.; Zhao, J.; and Ding, X. 2024. Order Dispatching Via GNN-Based Optimization Algorithm for On-Demand Food Delivery. IEEE Transactions on Intelligent Transportation Systems , 25(10): 13147–13162. [Chen et al.(2022)Chen, Bai, Qu, and Dong] Chen, X.; Bai, R.; Qu, R.; and Dong, H. 2022. Cooperative double-layer genetic programming hyper-heuristic for online container terminal truck dispatching. IEEE Trans-actions on Evolutionary Computation .[Chen et al.(2020b)Chen, Bai, Qu, Dong, and Chen] Chen, X.; Bai, R.; Qu, R.; Dong, H.; and Chen, J. 2020b. A data-driven genetic programming heuristic for real-world dynamic seaport container terminal truck dis-patching. In 2020 IEEE Congress on Evolutionary Computation (CEC) ,1–8. Ieee. [Chen and Tian(2019)] Chen, X.; and Tian, Y. 2019. Learning to perform local rewriting for combinatorial optimization. Advances in neural information processing systems , 32. [C ¸ il et al.(2023)C ¸ il, ¨ Oztop, Diri Kenger, and Kizilay] C¸ il, Z. A.; ¨ Oztop, H.; Diri Kenger, Z.; and Kizilay, D. 2023. Integrating Distributed Disassem-bly Line Balancing and Vehicle Routing Problem in Supply Chain: Inte-ger Programming, Constraint Programming, and Heuristic Algorithms. 
+
+International Journal of Production Economics , 265: 109014. [da Costa et al.(2020)da Costa, Rhuggenaath, Zhang, and Akcay] da Costa, P. R. d. O.; Rhuggenaath, J.; Zhang, Y.; and Akcay, A. 2020. Learning 2-Opt Heuristics for the Traveling Salesman Problem via Deep Rein-forcement Learning. arxiv:2004.01608. [Deudon et al.(2018)Deudon, Cournut, Lacoste, Adulyasak, and Rousseau] Deudon, M.; Cournut, P.; Lacoste, A.; Adulyasak, Y.; and Rousseau, L.-M. 2018. Learning Heuristics for the TSP by Policy Gradient. In Van Hoeve, W.-J., ed., Integration of Constraint Programming, Artificial Intelligence, and Operations Research , volume 10848, 170– 181. Cham: Springer International Publishing. ISBN 978-3-319-93030-5 978-3-319-93031-2. [Duan et al.(2020)Duan, Zhan, Hu, Gong, Wei, Zhang, and Xu] Duan, L.; Zhan, Y.; Hu, H.; Gong, Y.; Wei, J.; Zhang, X.; and Xu, Y. 2020. Efficiently Solving the Practical Vehicle Routing Problem: A Novel Joint Learning Approach. In Proceedings of the 26th ACM SIGKDD International Conference on Knowledge Discovery & Data Mining ,3054–3063. Virtual Event CA USA: ACM. ISBN 978-1-4503-7998-4. [Fellek et al.(2023)Fellek, Farid, Gebreyesus, Fujimura, and Yoshie] Fellek, G.; Farid, A.; Gebreyesus, G.; Fujimura, S.; and Yoshie, O. 2023. JOURNAL OF L ATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2025 15 
+
+Graph Transformer with Reinforcement Learning for Vehicle Routing Problem. IEEJ Transactions on Electrical and Electronic Engineering ,18(5): 701–713. [Feng et al.(2021)Feng, Huang, Zhou, Zhong, Gupta, Tang, and Tan] Feng, L.; Huang, Y.; Zhou, L.; Zhong, J.; Gupta, A.; Tang, K.; and Tan, K. C. 2021. Explicit Evolutionary Multitasking for Combinatorial Optimization: A Case Study on Capacitated Vehicle Routing Problem. 
+
+IEEE Transactions on Cybernetics , 51(6): 3143–3156. [Fey and Lenssen(2019)] Fey, M.; and Lenssen, J. E. 2019. Fast graph representation learning with PyTorch Geometric. arXiv preprint arXiv:1903.02428 .[Gao et al.(2023)Gao, Shang, Xue, Li, and Qian] Gao, C.; Shang, H.; Xue, K.; Li, D.; and Qian, C. 2023. Towards generalizable neural solvers for vehicle routing problems via ensemble with transferrable local policy. 
+
+arXiv preprint arXiv:2308.14104 .[Gao et al.(2020)Gao, Chen, Chen, Luo, Zhu, and Liu] Gao, L.; Chen, M.; Chen, Q.; Luo, G.; Zhu, N.; and Liu, Z. 2020. Learn to Design the Heuristics for Vehicle Routing Problem. arxiv:2002.08539. [Gao et al.(2022)Gao, Feng, Ji, and Ji] Gao, Y.; Feng, Y.; Ji, S.; and Ji, R. 2022. HGNN+: General hypergraph neural networks. IEEE Transactions on Pattern Analysis and Machine Intelligence , 45(3): 3181–3199. [Glorot and Bengio(2010)] Glorot, X.; and Bengio, Y. 2010. Understanding the difficulty of training deep feedforward neural networks. In Proceed-ings of the thirteenth international conference on artificial intelligence and statistics , 249–256. JMLR Workshop and Conference Proceedings. [Google Optimization Tools(2024)] Google Optimization Tools. 2024. Google Optimization Tools. Online. Accessed: 2024-03-26. [Guo et al.(2021)Guo, Yin, Chen, Zhang, and Zheng] Guo, L.; Yin, H.; Chen, T.; Zhang, X.; and Zheng, K. 2021. Hierarchical hyperedge embedding-based representation learning for group recommendation. 
+
+ACM Transactions on Information Systems (TOIS) , 40(1): 1–27. [Gurobi Optimization, LLC(2024)] Gurobi Optimization, LLC. 2024. Gurobi Optimizer. Accessed: 2024-03-26. [Hamilton, Ying, and Leskovec(2017)] Hamilton, W.; Ying, Z.; and Leskovec, J. 2017. Inductive Representation Learning on Large Graphs. In Advances in Neural Information Processing Systems , volume 30. [Helsgaun(2017)] Helsgaun, K. 2017. An extension of the Lin-Kernighan-Helsgaun TSP solver for constrained traveling salesman and vehicle routing problems. Roskilde: Roskilde University , 12: 966–980. [Huang et al.(2025)Huang, Zhou, Cao, and Xu] Huang, Z.; Zhou, J.; Cao, Z.; and Xu, Y. 2025. Rethinking light decoder-based solvers for vehicle routing problems. arXiv preprint arXiv:2503.00753 .[Ioffe and Szegedy(2015)] Ioffe, S.; and Szegedy, C. 2015. Batch normaliza-tion: Accelerating deep network training by reducing internal covariate shift. In International conference on machine learning , 448–456. PMLR. [Jiang et al.(2019)Jiang, Wei, Feng, Cao, and Gao] Jiang, J.; Wei, Y.; Feng, Y.; Cao, J.; and Gao, Y. 2019. Dynamic hypergraph neural networks. In IJCAI , 2635–2641. [Jin et al.(2023)Jin, Ding, Pan, He, Zhao, Qin, Song, and Bian] Jin, Y.; Ding, Y.; Pan, X.; He, K.; Zhao, L.; Qin, T.; Song, L.; and Bian, J. 2023. Pointerformer: Deep reinforced multi-pointer transformer for the traveling salesman problem. Proceedings of the AAAI Conference on Artificial Intelligence , 37(7): 8132–8140. [Joshi et al.(2020)Joshi, Cappart, Rousseau, and Laurent] Joshi, C. K.; Cap-part, Q.; Rousseau, L.-M.; and Laurent, T. 2020. Learning the travelling salesperson problem requires rethinking generalization. arXiv preprint arXiv:2006.07054 .[Joshi, Laurent, and Bresson(2019)] Joshi, C. K.; Laurent, T.; and Bresson, X. 2019. An efficient graph convolutional network technique for the travelling salesman problem. arXiv preprint arXiv:1906.01227 .[Kalatzantonakis, Sifaleras, and Samaras(2023)] Kalatzantonakis, P.; Sifaleras, A.; and Samaras, N. 2023. A Reinforcement Learning-Variable Neighborhood Search Method for the Capacitated Vehicle Routing Problem. Expert Systems with Applications , 213: 118812. [Karimi, Karimi, and Vahidi(2023)] Karimi, S.; Karimi, A.; and Vahidi, A. 2023. Level-$K$ Reasoning, Deep Reinforcement Learning, and Monte Carlo Decision Process for Fast and Safe Automated Lane Change and Speed Management. IEEE Transactions on Intelligent Vehicles , 8(6): 3556–3571. [Khalil et al.(2017)Khalil, Dai, Zhang, Dilkina, and Song] Khalil, E.; Dai, H.; Zhang, Y.; Dilkina, B.; and Song, L. 2017. Learning Combina-torial Optimization Algorithms over Graphs. In Advances in Neural Information Processing Systems , volume 30. [Kingma and Ba(2014)] Kingma, D. P.; and Ba, J. 2014. Adam: A method for stochastic optimization. arXiv preprint arXiv:1412.6980 .[Kipf and Welling(2016)] Kipf, T. N.; and Welling, M. 2016. Semi-supervised classification with graph convolutional networks. arXiv preprint arXiv:1609.02907 .[Kool, Van Hoof, and Welling(2019)] Kool, W.; Van Hoof, H.; and Welling, M. 2019. Attention, learn to solve routing problems! arXiv preprint arXiv:1803.08475 .[Kwon et al.(2020)Kwon, Choo, Kim, Yoon, Gwon, and Min] Kwon, Y.-D.; Choo, J.; Kim, B.; Yoon, I.; Gwon, Y.; and Min, S. 2020. POMO: Policy Optimization with Multiple Optima for Reinforcement Learning. In Advances in Neural Information Processing Systems , volume 33, 21188–21198. [Lauri, Hsu, and Pajarinen(2023)] Lauri, M.; Hsu, D.; and Pajarinen, J. 2023. Partially Observable Markov Decision Processes in Robotics: A Survey. 
+
+IEEE Transactions on Robotics , 39(1): 21–40. [Lei et al.(2022)Lei, Guo, Wang, Wu, and Zhao] Lei, K.; Guo, P.; Wang, Y.; Wu, X.; and Zhao, W. 2022. Solve Routing Problems with a Residual Edge-Graph Attention Neural Network. Neurocomputing , 508: 79–98. [Li et al.(2022a)Li, Wu, He, Fan, and Pedrycz] Li, B.; Wu, G.; He, Y.; Fan, M.; and Pedrycz, W. 2022a. An overview and experimental study of learning-based optimization algorithms for the vehicle routing problem. 
+
+IEEE/CAA Journal of Automatica Sinica , 9(7): 1115–1138. [Li et al.(2022b)Li, Ma, Gao, Cao, Lim, Song, and Zhang] Li, J.; Ma, Y.; Gao, R.; Cao, Z.; Lim, A.; Song, W.; and Zhang, J. 2022b. Deep Reinforcement Learning for Solving the Heterogeneous Capacitated Vehicle Routing Problem. IEEE Transactions on Cybernetics , 52(12): 13572–13585. [Li et al.(2023)Li, Guo, Wang, and Yan] Li, Y.; Guo, J.; Wang, R.; and Yan, J. 2023. T2t: From distribution learning in training to gradient search in testing for combinatorial optimization. Advances in Neural Information Processing Systems , 36: 50020–50040. [Li et al.(2024)Li, Guo, Wang, Zha, and Yan] Li, Y.; Guo, J.; Wang, R.; Zha, H.; and Yan, J. 2024. Fast t2t: Optimization consistency speeds up diffusion-based training-to-testing solving for combinatorial optimiza-tion. Advances in Neural Information Processing Systems , 37: 30179– 30206. [Lin and Kernighan(1973)] Lin, S.; and Kernighan, B. W. 1973. An Effective Heuristic Algorithm for the Traveling-Salesman Problem. Operations Research , 21(2): 498–516. [Lin et al.(2024)Lin, Wu, Zhou, Cao, Song, Zhang, and Jayavelu] Lin, Z.; Wu, Y.; Zhou, B.; Cao, Z.; Song, W.; Zhang, Y.; and Jayavelu, S. 2024. Cross-problem learning for solving vehicle routing problems. arXiv preprint arXiv:2404.11677 .[Liu et al.(2023)Liu, Zhang, Tang, and Yao] Liu, S.; Zhang, Y.; Tang, K.; and Yao, X. 2023. How Good Is Neural Combinatorial Optimization? A Systematic Evaluation on the Traveling Salesman Problem. IEEE Computational Intelligence Magazine , 18(3): 14–28. [Luo et al.(2023)Luo, Lin, Liu, Zhang, and Wang] Luo, F.; Lin, X.; Liu, F.; Zhang, Q.; and Wang, Z. 2023. Neural combinatorial optimization with heavy decoder: Toward large scale generalization. Advances in Neural Information Processing Systems , 36: 8845–8864. [Ma et al.(2019)Ma, Ge, He, Thaker, and Drori] Ma, Q.; Ge, S.; He, D.; Thaker, D.; and Drori, I. 2019. Combinatorial optimization by graph pointer networks and hierarchical reinforcement learning. arXiv preprint arXiv:1911.04936 .[Mnih et al.(2016)Mnih, Badia, Mirza, Graves, Lillicrap, Harley, Silver, and Kavukcuoglu] Mnih, V.; Badia, A. P.; Mirza, M.; Graves, A.; Lillicrap, T.; Harley, T.; Silver, D.; and Kavukcuoglu, K. 2016. Asynchronous methods for deep reinforcement learning. In International conference on machine learning , 1928–1937. PMLR. [Mnih et al.(2015)Mnih, Kavukcuoglu, Silver, Rusu, Veness, Bellemare, Graves, Riedmiller, Mnih, V.; Kavukcuoglu, K.; Silver, D.; Rusu, A. A.; Veness, J.; Bellemare, M. G.; Graves, A.; Riedmiller, M.; Fidjeland, A. K.; Ostrovski, G.; Petersen, S.; Beattie, C.; Sadik, A.; Antonoglou, I.; King, H.; Kumaran, D.; Wierstra, D.; Legg, S.; and Hassabis, D. 2015. Human-Level Control through Deep Reinforcement Learning. Nature ,518(7540): 529–533. [Nazari et al.(2018)Nazari, Oroojlooy, Snyder, and Tak´ ac] Nazari, M.; Oroojlooy, A.; Snyder, L.; and Tak´ ac, M. 2018. Reinforcement learning for solving the vehicle routing problem. Advances in neural information processing systems , 31. [Ng et al.(2017)Ng, Lee, Zhang, Wu, and Ho] Ng, K.; Lee, C.; Zhang, S.; Wu, K.; and Ho, W. 2017. A Multiple Colonies Artificial Bee Colony Algorithm for a Capacitated Vehicle Routing Problem and Re-Routing Strategies under Time-Dependent Traffic Congestion. Computers & Industrial Engineering , 109: 151–168. [Queiroga et al.(2022)Queiroga, Sadykov, Uchoa, and Vidal] Queiroga, E.; Sadykov, R.; Uchoa, E.; and Vidal, T. 2022. 10,000 optimal CVRP JOURNAL OF L ATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2025 16 
+
+solutions for testing machine learning based heuristics. In AAAI-22 Workshop on Machine Learning for Operations Research (ML4OR) .[Segerstedt(2014)] Segerstedt, A. 2014. A simple heuristic for vehicle routing–A variant of Clarke and Wright’s saving method. International journal of production economics , 157: 74–79. [Senuma et al.(2022)Senuma, Wang, Nakano, and Ohya] Senuma, Y.; Wang, Z.; Nakano, Y.; and Ohya, J. 2022. GEAR: a graph edge attention routing algorithm solving combinatorial optimization problem with graph edge cost. In Proceedings of the 10th ACM SIGSPATIAL International Workshop on Analytics for Big Geospatial Data , 8–16. [Song, Meng, and Ermon(2020)] Song, J.; Meng, C.; and Ermon, S. 2020. Denoising diffusion implicit models. arXiv preprint arXiv:2010.02502 .[Sugiyama and Borgwardt(2015)] Sugiyama, M.; and Borgwardt, K. 2015. Halting in random walk kernels. Advances in neural information processing systems , 28. [Sun and Yang(2023)] Sun, Z.; and Yang, Y. 2023. Difusco: Graph-based diffusion solvers for combinatorial optimization. Advances in neural information processing systems , 36: 3706–3731. [Sutton et al.(1999)Sutton, McAllester, Singh, and Mansour] Sutton, R. S.; McAllester, D.; Singh, S.; and Mansour, Y. 1999. Policy Gradient Methods for Reinforcement Learning with Function Approximation. In 
+
+Advances in Neural Information Processing Systems , volume 12. [ ´ Swiechowski et al.(2023) ´ Swiechowski, Godlewski, Sawicki, and Ma´ ndziuk] ´Swiechowski, M.; Godlewski, K.; Sawicki, B.; and Ma´ ndziuk, J. 2023. Monte Carlo tree search: A review of recent modifications and applications. Artificial Intelligence Review , 56(3): 2497–2562. [Szegedy et al.(2017)Szegedy, Ioffe, Vanhoucke, and Alemi] Szegedy, C.; Ioffe, S.; Vanhoucke, V.; and Alemi, A. 2017. Inception-v4, Inception-ResNet and the Impact of Residual Connections on Learning. 
+
+Proceedings of the AAAI Conference on Artificial Intelligence , 31(1). [Toth and Vigo(2014)] Toth, P.; and Vigo, D. 2014. Vehicle routing: prob-lems, methods, and applications . Society for industrial and applied mathematics. [Uchoa et al.(2017)Uchoa, Pecin, Pessoa, Poggi, Vidal, and Subramanian] Uchoa, E.; Pecin, D.; Pessoa, A.; Poggi, M.; Vidal, T.; and Subramanian, A. 2017. New benchmark instances for the capacitated vehicle routing problem. European Journal of Operational Research , 257(3): 845–858. [Vaswani et al.(2017)Vaswani, Shazeer, Parmar, Uszkoreit, Jones, Gomez, Kaiser, and Polosukhin] Vaswani, A.; Shazeer, N.; Parmar, N.; Uszkoreit, J.; Jones, L.; Gomez, A. N.; Kaiser, Ł.; and Polosukhin, I. 2017. Attention is all you need. 
+
+Advances in neural information processing systems , 30. [Veliˇ ckovi´ c et al.(2017)Veliˇ ckovi´ c, Cucurull, Casanova, Romero, Lio, and Bengio] Veliˇ ckovi´ c, P.; Cucurull, G.; Casanova, A.; Romero, A.; Lio, P.; and Bengio, Y. 2017. Graph attention networks. arXiv preprint arXiv:1710.10903 .[Vidal(2022)] Vidal, T. 2022. Hybrid genetic search for the CVRP: Open-source implementation and SWAP* neighborhood. Computers & Oper-ations Research , 140: 105643. [Vinyals, Fortunato, and Jaitly(2015)] Vinyals, O.; Fortunato, M.; and Jaitly, N. 2015. Pointer networks. Advances in neural information processing systems , 28. [Wang et al.(2024)Wang, Bai, Khan, ¨ Ozcan, and Zhang] Wang, Z.; Bai, R.; Khan, F.; ¨ Ozcan, E.; and Zhang, T. 2024. Gase: graph attention sampling with edges fusion for solving vehicle routing problems. Memetic Computing , 16(3): 337–353. [Wang, Bai, and Zhang(2025)] Wang, Z.; Bai, R.; and Zhang, T. 2025. Towards Constraint-Based Adaptive Hypergraph Learning for Solv-ing Vehicle Routing: An End-to-End Solution. arXiv preprint arXiv:2503.10421 .[Xu et al.(2021)Xu, Fang, Chen, Xu, Du, and Zhang] Xu, Y.; Fang, M.; Chen, L.; Xu, G.; Du, Y.; and Zhang, C. 2021. Reinforcement learning with multiple relational attention for solving vehicle routing problems. 
+
+IEEE Transactions on Cybernetics , 52(10): 11107–11120. [Xue et al.(2021)Xue, Bai, Qu, and Aickelin] Xue, N.; Bai, R.; Qu, R.; and Aickelin, U. 2021. A hybrid pricing and cutting approach for the multi-shift full truckload vehicle routing problem. European Journal of Operational Research , 292(2): 500–514. [Yang et al.(2021)Yang, Ke, Wang, and Lam] Yang, W.; Ke, L.; Wang, D. Z.; and Lam, J. S. L. 2021. A Branch-Price-and-Cut Algorithm for the Vehicle Routing Problem with Release and Due Dates. Transportation Research Part E: Logistics and Transportation Review , 145: 102167. [Yao et al.(2024)Yao, Lin, Wang, Zhang, and Wang] Yao, S.; Lin, X.; Wang, J.; Zhang, Q.; and Wang, Z. 2024. Rethinking Supervised Learning Based Neural Combinatorial Optimization for Routing Problem. ACM Transactions on Evolutionary Learning and Optimization , 3694690. [Zaremba, Sutskever, and Vinyals(2014)] Zaremba, W.; Sutskever, I.; and Vinyals, O. 2014. Recurrent neural network regularization. arXiv preprint arXiv:1409.2329 .[Zhang et al.(2021a)Zhang, Kim, O’Donoghue, and Boyd] Zhang, J.; Kim, J.; O’Donoghue, B.; and Boyd, S. 2021a. Sample efficient reinforcement learning with REINFORCE. In Proceedings of the AAAI conference on artificial intelligence , volume 35, 10887–10895. [Zhang et al.(2021b)Zhang, Liu, Chen, Huang, Zhu, and Zheng] Zhang, T.; Liu, Y.; Chen, X.; Huang, X.; Zhu, F.; and Zheng, X. 2021b. GPS: A Policy-driven Sampling Approach for Graph Representation Learning. 
+
+arXiv preprint arXiv:2112.14482 .[Zhang et al.(2025)Zhang, Liu, Shen, Ma, Qi, Ding, and Jin] Zhang, T.; Liu, Y.; Shen, Z.; Ma, X.; Qi, P.; Ding, Z.; and Jin, J. 2025. Learning from heterogeneity: A dynamic learning framework for hypergraphs. 
+
+IEEE Transactions on Artificial Intelligence .[Zhang et al.(2022)Zhang, Bai, Qu, Tu, and Jin] Zhang, Y.; Bai, R.; Qu, R.; Tu, C.; and Jin, J. 2022. A deep reinforcement learning based hyper-heuristic for combinatorial optimisation with uncertainties. European Journal of Operational Research , 300(2): 418–427. [Zhao et al.(2021)Zhao, Mao, Zhao, and Zou] Zhao, J.; Mao, M.; Zhao, X.; and Zou, J. 2021. A Hybrid of Deep Reinforcement Learning and Local Search for the Vehicle Routing Problems. IEEE Transactions on Intelligent Transportation Systems , 22(11): 7208–7218. [Zhao et al.(2024)Zhao, Poon, Tan, and Zhang] Zhao, J.; Poon, M.; Tan, V. Y.; and Zhang, Z. 2024. A hybrid genetic search and dynamic programming-based split algorithm for the multi-trip time-dependent vehicle routing problem. European Journal of Operational Research .[Zheng et al.(2021)Zheng, He, Zhou, Jin, and Li] Zheng, J.; He, K.; Zhou, J.; Jin, Y.; and Li, C.-M. 2021. Combining reinforcement learning with Lin-Kernighan-Helsgaun algorithm for the traveling salesman problem. In Proceedings of the AAAI conference on artificial intelligence , vol-ume 35, 12445–12452. [Zuo et al.(2025)Zuo, Li, Zhao, Bai, Yang, Ma, and Zhu] Zuo, B.; Li, W.; Zhao, J.; Bai, T.; Yang, L.; Ma, Z.; and Zhu, Y. 2025. CMIP: Combining Constructive Model With Improvement Policy for Large-Scale Min-Max Multiple Traveling Salesman Problem. IEEE Transactions on Intelligent Transportation Systems , 1–15.

@@ -1,0 +1,936 @@
+Title: Learning-Based Robust Control: Unifying Exploration and Distributional Robustness for Reliable Robotics via Free Energy
+
+URL Source: https://arxiv.org/pdf/2603.06831v1
+
+Published Time: Tue, 10 Mar 2026 00:10:21 GMT
+
+Number of Pages: 8
+
+Markdown Content:
+# Learning-Based Robust Control: Unifying Exploration and Distributional Robustness for Reliable Robotics via Free Energy 
+
+Hozefa Jesawada ∗1, Giovanni Russo 2, Abdalla Swikir 3, and Fares Abu-Dakka 1
+
+Abstract — A key challenge towards reliable robotic control is devising computational models that can both learn policies and guarantee robustness when deployed in the field. Inspired by the free energy principle in computational neuroscience, to address these challenges, we propose a model for policy computation that jointly learns environment dynamics and rewards, while ensuring robustness to epistemic uncertainties. Expounding a distributionally robust free energy principle, we propose a modification to the maximum diffusion learning framework. After explicitly characterizing robustness of our policies to epistemic uncertainties in both environment and reward, we validate their effectiveness on continuous-control benchmarks, via both simulations and real-world experiments involving manipulation with a Franka Research 3 arm. Across simulation and zero-shot deployment, our approach narrows the sim-to-real gap, and enables repeatable tabletop manipulation without task-specific fine-tuning. 
+
+I. I NTRODUCTION 
+
+A popular paradigm to design autonomous robots has become that of learning control policies from simulations [1]. Yet, even with high-fidelity simulators, these policies can fail when deployed in real-world conditions that deviate, even slightly, from those seen during training [2]. Such mismatches can arise in, e.g., contact-rich tasks, or in the presence of sensing/actuation noise, or even when some dynamics – such as nonlinear frictions, delays, calibration drifts [3] – is not perfectly modeled. In these settings, small discrepancies can cause large failures, with potentially catastrophic consequences for the robot and its environment. In this context, the minimization of the free energy – and its instantiation into active inference robotics architectures – has emerged as a promising approach bridging machine learning, robotics and neuroscience to design inference, learning and control algorithms for effective robot control [4], [5], [6], [7], [8], [9], [10]. Yet, despite the success of free energy based policies, there is currently no computational model that, simultaneously, learns the policy and provides explicit robustness guarantees against epistemic uncertainties in the environment model learned by the agent and the task reward. Motivated by this, we present a computational model that: (i) without having available a model of the environment and reward function, learns a policy that minimizes the (vari-ational) free energy; (ii) provides a-priori explicit robustness guarantees of the policy that can be used as certificates for robot deployment in the field.      
+
+> ∗Corresponding: hj3000@nyu.edu .1Mechanical Engineering Pro-gram, New York University Abu Dhabi, Abu Dhabi, UAE. 2Department of Information and Electrical Engineering & Applied Mathematics, University of Salerno, Fisciano, Italy. 3Mohammed bin Zayed University for Artificial Intelligence, Abu Dhabi, UAE. Work not supported by any organization MaxDiff RL Robust Free-Energy Minimization
+
++
+
+> Sim-to-Real gap Epistemic Uncertainty Proposed Framework
+
+Fig. 1: Modifying Maximum Diffusion RL with Distribu-tionally Robust Free Energy Principle to address epistemic uncertainty, narrowing sim-to-real gaps for reliable robotics. To achieve this, expounding a model-based distributional free energy principle (DR-FREE) for policy computation [11], we propose a modification to a recent learning frame-work [12], Maximum Diffusion (MaxDiff). MaxDiff, which generalizes maximum entropy methods – see, e.g., [13], [14], [15] – and exceeds state-of-the-art performance on popular robotics benchmarks, learns policies with maxi-mally diffusive path statistics without having access to the environment model and reward function. However, despite its impressive control performance, MaxDiff robustness is only implicit: it depends on the entropy of the optimal policy, not known a priori [13], and explicit bounds are only available for discrete action spaces. In contrast, DR-FREE provides explicit distributional robustness guarantees in free energy minimization problems, but requires access to both the dynamics model and the reward. Remarkably, as we recall in Section II, the MaxDiff optimization can be recast as a free energy minimization problem, enabling us to integrate DR-FREE into MaxDiff and obtain explicit robustness guarantees without sacrificing MaxDiff’s desir-able features. The effectiveness of our method is illustrated via continuous control benchmarks. Numerical and hardware experiments – involving manipulation with a Franka Emika Panda arm – show that our method outperforms baseline MaxDiff [12], narrows the sim-to-real gap and enables zero-shot deployment of the policy. 
+
+Related Work : the minimization of the free energy offers a unifying account across machine learning, robotics and neuroscience. See [5], [6], [7], [8], [9], [10] for surveys and results instantiating this framework into robots. Here, we focus on robustness in learning based control for robotics. Adversarial and ensemble-based training strategies like RARL [16] and EPOpt [17] expose policies to disturbances 
+
+> arXiv:2603.06831v1 [cs.RO] 6 Mar 2026
+
+or challenging domains during training, enhancing tolerance to parametric spread. Domain randomization has been a key sim2real tactic in robotics, i.e., randomizing inertial and contact parameters for transfer [18], [19], [20]. While effective in broadening training coverage, these methods typically optimize a nominal objective at test time; robustness relies on the alignment between training distributions and deployment shifts, with no explicit control over deployment-time worst-case model misspecification. In contrast, we opti-mize a distributionally robust objective at execution through per–state-action KL ambiguity, directly aligning decisions with epistemic risk. Robust MDPs and their distributionally robust variants optimize the worst-case value over uncertainty sets on tran-sition kernels, yielding robust Bellman operators and bounds under bounded misspecification [21], [22], [23]. Wasser-stein and f -divergence sets (incl. KL) offer tractable inner maximizations and interpretable radii [24]. Our formulation instantiates per–state-action KL balls shaped by the learned model’s uncertainty and solves the inner step via a free-energy (Donsker–Varadhan) reduction [11] to a scalar convex problem, enabling real-time planning. In contrast to most DR-MDP applications that target tabular or abstract bench-marks, we tailor ambiguity calibration and solver design to continuous-state/action robotics and couple it with adiffusion prior. Max-entropy RL and control-as-inference (e.g., LMDP, PI 2, soft-actor methods) temper policies toward high entropy, offering stochastic smoothing and connections to risk sensi-tivity [25]. These objectives regularize the policy distribution (or passive dynamics) [26], but do not defend against adver-sarial shifts in the transition model. We borrow the same free-energy machinery but place the KL on next-state distributions (epistemic dynamics), yielding a robust soft policy whose conservatism adapts to model uncertainty. Information-theoretic MPC/MPPI performs trajectory sampling with exponential cost weighting and has seen extensive robotic deployments (autonomous driving, quadro-tors, manipulators), including GPU-accelerated real-time variants [27], [28]. Standard NN-MPPI, however, assumes a single predictive model plus temperature tuning; it does not enforce distributional robustness to transition misspecifica-tion. Our controller preserves MPPI’s practicality but embeds a principled inner robustification via per-step KL ambiguity. Probabilistic ensembles (PETS) [29] and model-based policy optimization (MBPO) [30] achieve strong sample efficiency and competitive control on continuous-control and robotics benchmarks. Model-Ensemble Exploration and Exploitation (MEEE) [31] tackles the problem of exploration and exploitation simultaneously by taking into account the future observation novelty and leveraging a model-ensemble. However, none of these methods provide any formal guar-antees of robustness against adversarial uncertainty. Maximum Diffusion RL [12] enhances state-space cover-age by amplifying diffusion and mitigating temporal corre-lations. MaxDiff outperforms MaxEnt RL [13], NN-MPPI [28], and Soft-Actor Critic (SAC) [15]. We incorporate a MaxDiff-style diffusion prior into our planner to ensure effective exploration in simulation, while KL ambiguity maintains robustness during execution, ensuring clear sep-aration of concerns. Robotics-focused RL demonstrations—SAC on real plat-forms, vision-in-the-loop manipulation, and sim2real loco-motion [32], [33]—either rely on large real-world data, on-policy adaptation, or heavy randomization. In contrast, using a simulation-trained dynamics model, (i) we align control with epistemic risk via per-state KL ambiguity, (ii) preserve sample-based planning (MPPI/PETS), and (iii) cou-ple exploration (MaxDiff) with free-energy DR robustness without deployment fine-tuning. We also show that KL-bounded dynamics robustness extends to a class of reward perturbations through an augmented-state free-energy bound. 
+
+Contributions : we propose a modification to MaxDiff, combining it with the distributional free energy principle, DR-FREE. For our resulting computational model, we char-acterize policy robustness bounds and evaluate performance across both simulations, via OpenAI Gym [34] and MuJoCo [35], and real hardware experiments with a Franka Emika Panda arm in a manipulation task. Experiments convincingly show that our framework outperforms standard MaxDiff baselines. Moreover, our model also proves useful for zero-shot deployments. In particular, we train a policy for a 
+
+Franka Research 3 from a simulator, with the model available during training different from the real robotic arm. Then, after training, we deploy the trained policy on the real arm and show that, without any fine-tuning, the robot is able to complete a tabletop manipulation task. To the best of our knowledge, this work provides the first free energy computational model that, simultaneously, learns policies for continuous control tasks and provides explicit, a priori robustness guarantees that can be used to certify the use of the robot in field settings. Indeed: 1) in MaxDiff, and related literature, continuous policies can be learned without having access to the environment model and reward function. However, robustness only emerges a posteriori as a by-product of the entropy of the optimal policy; 2) In contrast, DR-FREE can guarantee robustness a priori. However, it requires a model and reward available to the agent. Our framework combines the strengths of these ap-proaches, enabling a priori robustness guarantees as in DR-FREE, while simultaneously learning policies without requir-ing access to models or rewards as in MaxDiff. II. B ACKGROUND 
+
+After introducing the key notation and definitions, we for-malize the optimization problems relevant to our work. Then, leveraging this problem, we introduce the key ingredients behind our computational model, MaxDiff and DR-FREE, motivating our approach to learning-based robust control. 
+
+A. Notation and Definitions 
+
+We use calligraphic letters to denote sets e.g, X and boldface to denote vectors e.g, x. A random variable is written as V, with a particular realization denoted by v.The probability density function (pdf) of v is denoted by 
+
+p(v). Whenever integrals involving a pdf are considered, we implicitly assume that they exist. The expectation of a function h(·) applied to v is defined as Ep[h(v)] :=R h(v)p(v)dv, where the integral is taken over the support of p(v). The conditional pdf of v1 given v2 is written as 
+
+p(v1 | v2). For countable sets, we use the notation wk 1 : kn,where wk represents a generic element, k1 (kn) denotes the index of the first (last) element, and k1 : kn represents the set of consecutive integers from k1 through kn. We denote by D
+
+the set of all probability density functions. 
+
+Definition 2.1: The KL divergence of p(v) w.r.t q(v) with supp p ⊆ supp q is: 
+
+DKL (p || q) :=
+
+Z
+
+> v
+
+p(v) ln p(v)
+
+q(v) dv.
+
+The KL divergence is a measure of the proximity of the pair of pdfs. For discrete pmfs the integral can be substituted with a summation over v.Let X ⊆ Kn and U ⊆ Kp be the state and action spaces (with K ∈ { R, Z}), and let the decision horizon be k =
+
+1, . . . , N. At each k, we consider:  
+
+> •
+
+A trained (nominal) dynamics model ¯pk(xk | xk−1, uk); 
+
+> •
+
+A generative model q k (xk | xk−1, uk) for states and a 
+
+generative prior q k (uk | xk−1) for actions;  
+
+> •
+
+the trajectory measures 
+
+p0: N = p0(x0)
+
+> N
+
+# ∏
+
+> k=1
+
+pk (xk | xk−1, uk) πk(uk | xk−1),
+
+q0: N = p0(x0)
+
+> N
+
+# ∏
+
+> k=1
+
+qk (xk | xk−1, uk) qk (uk | xk−1) . 
+
+> •
+
+stage costs c(x) 
+
+> k
+
+: X → R≥0 and c(u) 
+
+> k
+
+: U → R≥0.
+
+B. Free-Energy Minimization Problem 
+
+Free-energy principle arises naturally in decision-making across information theory, active inference, learning, and control. In RL, they underpin schemes such as Maximum Entropy RL [13], [12], Bayesian inference [7], and entropy-based transport methods. In our setting, the free-energy functional is 
+
+F (p0: N ) = DKL (p0: N || q0: N )
+
+| {z }
+
+> complexity
+
++ Ep0: N
+
+" N
+
+# ∑
+
+> k=1
+
+c(x) 
+
+> k
+
+(xk) + c(u) 
+
+> k
+
+(uk)
+
+#| {z }
+
+> expected cost
+
+,
+
+(1) where the first term measures divergence from a reference distribution q0: N and the second is expected cost. Notably, by defining a cost-shaped reference ˜ q0: N ∝ q0: N exp (− ∑k c(x) 
+
+> k
+
++
+
+c(u) 
+
+> k
+
+), (1) reduces to F (p0: N ) = DKL (p0: N || ˜q0: N ), shows that minimization of (1) is equivalent to KL projection onto a cost-weighted reference. 
+
+C. Maximum Diffusion (MaxDiff) RL 
+
+MaxDiff derives a path-distribution Pmax that maximizes trajectory entropy under continuity constraints, yielding Markov and ergodic sample paths and diffusion-like explo-ration. Writing the finite-horizon path entropy via the chain rule, 
+
+SPmax [x1: N ] =
+
+> N
+
+# ∑
+
+> t=1
+
+Spmax (xt+1 | xt ) ∝ 12
+
+> N
+
+# ∑
+
+> t=1
+
+logdet C[xt ],
+
+where C[x] is the local state-increment covariance; thus maximizing path entropy promotes large log det C[x] along the trajectory. A practical MaxDiff RL objective (SOC form) augments rewards with a diffusion bonus: 
+
+π⋆ 
+
+> MaxDiff
+
+∈ arg max  
+
+> π
+
+E(x1: N ,u1: N )∼Pπ
+
+h N
+
+# ∑
+
+> k=1
+
+r(xk, uk)+ α
+
+2 log det Cπ [xk]
+
+i
+
+,
+
+(2) which is the objective used for the empirical results in [12]. Equivalently, MaxDiff can be cast as minimizing 
+
+DKL 
+
+ Pπ ∥Pr
+
+> max
+
+ between the agent’s path distribution and a maximally diffusive, reward-shaped reference Pr
+
+> max
+
+, leading to an SOC with modified running reward or cost. 
+
+D. Distributionally Robust Free-Energy Principle 
+
+DR-FREE [11] defines a sequential min–max problem over policies {πk(uk | xk−1)}1: N and environment models 
+
+{pk(xk | xk−1, uk)}1: N :min  
+
+> {πk}
+
+max    
+
+> {pk∈Bη(¯pk)}
+
+F (p0: N ), (3) subject to pk ∈ Bη ( ¯pk) for all k = 1, . . . , N. The ambiguity set is 
+
+Bη
+
+  ¯pk
+
+ =
+
+n
+
+pk ∈ D : DKL 
+
+ pk ∥ ¯pk
+
+ ≤ ηk(xk−1, uk),
+
+o
+
+,
+
+where ηk(xk−1, uk) ≥ 0 bounds the statistical complexity relative to the trained model ¯pk, and the support constraint ensures the free-energy objective remains finite. At each time-step k, the resolution engine solves a stage-wise bi-level problem: min 
+
+> πk
+
+DKL 
+
+ πk∥q(u)
+
+> k
+
+ + Eπk
+
+h
+
+c(u) 
+
+> k
+
+(Uk)+ max   
+
+> pk∈Bη(¯pk)
+
+n
+
+DKL 
+
+ pk∥q(x)
+
+> k
+
+ + Epk
+
+ ¯ck(Xk)oi 
+
+,
+
+(4) where the cost-to-go is defined recursively as ¯ck(xk) = 
+
+c(x) 
+
+> k
+
+(xk) + ˆck+1(xk), with ˆ ck+1(xk) being the optimal value of (4) evaluated at k + 1 (initialized at ˆcN+1 = 0). The inner maximization reduces to a scalar convex optimization problem whose non-negative optimal value yields the cost of ambiguity ηk(xk−1, uk) + ˜c(xk−1, uk).The optimal policy has an explicit Gibbs form: 
+
+π⋆ 
+
+> k
+
+(u | xk−1) ∝
+
+qk(u | xk−1) exp 
+
+
+
+− c(u) 
+
+> k
+
+(u) − ηk(xk−1, u) − ˜c(xk−1, u)
+
+
+
+,
+
+(5) i.e., the generative prior qk(uk | xk−1) is modulated by an exponential kernel containing the action cost and the cost of ambiguity. Actions associated with higher ambiguity are assigned lower probability, while as ambiguity vanishes, the policy recovers that of a standard free-energy minimizing agent. III. M ODIFYING MAX DIFF WITH DR-FREE First, we note that, given the reward r = −(c(x) + c(u)),one can define ˜q0: N ∝ q0: N exp 
+
+
+
+−
+
+> N
+
+# ∑
+
+> k=1
+
+(c(x) 
+
+> k
+
+(Xk) + c(u) 
+
+> k
+
+(Uk)) 
+
+
+
+.
+
+Then, as noted in [11], when there is no ambiguity the DR-FREE objective can be recast as the minimization of the KL divergence between p0: N and ˜ q0: N [36]. In turn, this means that the optimization problem becomes the same problem tackled by MaxDiff when the generative model is chosen as 
+
+qk (xk | xk−1, uk) = pmax (xk | xk−1) and a fixed action prior 
+
+qk (uk | xk−1) (e.g., ¯ p(uk | xk−1)), so that the reference density becomes ∝ ∏ k pmax (xk | xk−1) exp (∑k r(xk, uk)) .
+
+A. Modifying MaxDiff: constructing p max and using it as the state generative model a) Principle: in DR-FREE, the complexity term 
+
+DKL 
+
+ p0: N ∥q0: N
+
+ biases the optimal policy toward a genera-tive model q 0: N whose single-step factors are qk(xk | xk−1, uk)
+
+and qk(uk | xk−1). To inject MaxDiff’s exploration into this bias, we choose the state generative kernel to be maximally diffusive , i.e. 
+
+qk(xk | xk−1, uk) ≡ pmax 
+
+ xk | xk−1, uk
+
+,
+
+while keeping any convenient prior qk(uk | xk−1) for actions. This choice plugs MaxDiff’s path-entropy objective into DR-FREE via the complexity term, while the ambiguity machinery (inner maximization over pk) and the soft optimal policy remain as in DR-FREE (scalar, convex inner step; Gibbs-form policy kernel). 
+
+b) What p max means (MaxDiff): MaxDiff defines max-imally diffusive Markov transitions by maximizing path entropy; for Gaussian increments this reduces to maximizing the sum of local entropies, 
+
+SPmax [x1: N ] =
+
+> N
+
+# ∑
+
+> t=1
+
+Spmax (xt+1 | xt ) ∝ 12
+
+> N
+
+# ∑
+
+> t=1
+
+logdet C[xt ],
+
+which yields the implemented MaxDiff-RL objective max π E∑t r(xt , ut ) + α 
+
+> 2
+
+logdet Cπ [xt ]. In practice, when C[x]
+
+can be low-rank/high-dimensional, one may use leading-eigenvalue or log-trace approximations for numerical stabil-ity (with the usual caveats). 
+
+c) Computing p max for DR-FREE: a KL–MaxEnt con-struction: for each (xk−1, uk), the trained nominal dynamics are ¯pk(· | xk−1, uk). We compute a single-step maximally diffusive kernel by solving the maximum-entropy trust-region 
+
+problem 
+
+pmax (· | xk−1, uk) ∈ arg max  
+
+> p∈D
+
+H  p
+
+s.t. DKL 
+
+ p∥ ¯pk(· | xk−1, uk) ≤ εk(xk−1, uk),
+
+supp p ⊆ supp ¯ pk.
+
+(6) Lagrangian calculus gives pmax (dx′) ∝ ¯pk(dx′)βk with aunique βk ∈ (0, 1] chosen to meet the KL budget; in expo-nential families this is equivalent to flattening the nominal precision (increasing entropy) while staying within KL ra-dius. 
+
+Gaussian closed form: assume ¯ pk(·| xk−1, uk) = N   ¯μk, ¯Σk
+
+
+
+with ¯ μk := ¯fk(xk−1, uk). Then 
+
+pmax (· | xk−1, uk) = N   ¯μk, Σmax ,k
+
+, Σmax ,k = λk ¯Σk, λk > 0,
+
+with scalar λk determined by the KL constraint. If we enforce DKL 
+
+ pmax ∥ ¯pk
+
+ = εk, the unique solution satisfies 
+
+n
+
+2
+
+ λk − 1 − log λk
+
+ = εk (λk ≥ 1), (7) so Σmax ,k is a uniform inflation of ¯ Σk that maximizes entropy, i.e., logdet Σmax ,k = logdet ¯ Σk + n log λk increases monotoni-cally with λk—exactly aligned with MaxDiff’s 12 logdet (·)
+
+objective. Equation (7) is a one-dimensional root find (bi-section/Newton), strictly increasing in λk.
+
+d) Plug-in to DR-FREE: Once pmax is computed, set qk(xk | xk−1, uk) ← pmax (xk | xk−1, uk) and proceed with DR-FREE: (i) the inner maximization of DKL (pk∥qk) + 
+
+Epk [ ¯ck(Xk)] over pk ∈ Bη ( ¯pk) yields the cost of am-biguity η(xk−1, uk) + ˜c(xk−1, uk), where ˜c(xk−1, uk) = 
+
+min α≥0 ˜Vα (xk−1, uk) is obtained via scalar convex optimiza-tion 1; (ii) the outer minimization over πk returns the Gibbs policy (5). 
+
+e) Ambiguity-free limit: when ηk → 0 the DR-FREE policy reduces to the free-energy minimizer that explicitly contains DKL 
+
+  ¯pk∥qk
+
+ and E ¯pk[ ¯ck] in its exponent; with the MaxDiff plug-in qk = pmax (Gaussian), this term is 
+
+DKL 
+
+ N ( ¯μk, ¯Σk) ∥ N ( ¯μk, λk ¯Σk) = n
+
+2
+
+ 1
+
+λk
+
+− 1 + log λk
+
+
+
+,
+
+which is a closed-form function of the λk used to build pmax .
+
+f) When estimating through data: when estimating a state-diffusion matrix C[x] from data as in [13], use the log-det objective or its stable approximations for large n. Any 
+
+qk is admissible in DR-FREE (it can be a time-series model or encode goals); the plug-in qk = pmax is therefore fully compatible with the framework. The overall decision cycle is illustrated in Fig. 2, which complements Algorithm 1 by showing the interaction be-tween replay buffer, model training, the computation of pmax ,the min–max optimization, and action execution.                  
+
+> 1Explicitly, ˜ Vα=αln E¯pk
+>   ¯pkexp ¯ ck/qk
+> 1/α+α η kfor α>0; see [11] for the boundary case α=0.
+
+Overall Optimization Objective 
+
+Replay Buffer Dynamics & Cost Model Training Compute pmax 
+
+Solve Inner Maximization Solve Outer Minimization Twisted Kernel Policy Sampled Action u ∗
+
+> k
+
+Agent’s Decision Cycle Solve Min-Max Optimization 
+
+Cost of Ambiguity xk−1
+
+{xk, ck, xk−1, uk}
+
+Fig. 2: overview of the proposed control loop. At each step, the agent collects data into a replay buffer, updates the dynamics and cost models, computes the maximally diffusive kernel pmax , and solves the min–max optimization. The resulting twisted kernel produces an action that is applied to the system, and the cycle repeats. 
+
+Algorithm 1 Our Computational Model 
+
+Require: Horizon N, ambiguity radius ηk(xk−1, uk), MaxD-iff trust εq, action prior q(uk|xk−1). 
+
+> 1:
+
+Initialize the replay buffer D, nominal dynamics model ¯p(xk | xk−1, uk) and cost model ck(xk, uk) as neural networks.  
+
+> 2:
+
+for episode e = 1, 2, . . . , E do  
+
+> 3:
+
+Initialize state x0 
+
+> 4:
+
+for time step k = 0, 1, . . . , N − 1 do  
+
+> 5:
+
+Build pmax using (6)–(7).  
+
+> 6:
+
+Sample random action from U . 
+
+> 7:
+
+Solve scalar convex optimization as in (11).  
+
+> 8:
+
+Solve outer minimization (3) and obtain optimal policy (5).  
+
+> 9:
+
+Execute action : sample uk ∼ π∗ 
+
+> k
+
+(·| Xk), apply to system, collect {xk, ck, xk−1, uk} → D. 
+
+> 10:
+
+end for  
+
+> 11:
+
+Update ¯p(xk | xk−1, uk) and ck(xk, uk) using D and backpropagation.  
+
+> 12:
+
+end for 
+
+IV. J OINT ROBUSTNESS TO DYNAMICS AND COST 
+
+PERTURBATIONS 
+
+In this section, we extend our framework to account not only for dynamics misspecification but also for bounded perturbations in the stage cost. The idea of augmenting the system state with a running-cost variable, so that cost per-turbations appear as additional uncertainty in the transition kernel, was briefly discussed in [13]. Our formal analysis, however, builds directly on the distributional free-energy results in [11]. Leveraging these results, we show that the policy obtained by solving (3) remains robust under stage cost perturbations. This extension allows the adversary’s KL budget to be allocated jointly across dynamics and cost channels, while preserving the tractable min–max structure and Gibbs-form policy of DR-FREE. 
+
+A. Augmented State Formulation 
+
+Let the nominal (stage) cost be 
+
+ℓ(x, u) := c(x)(x) + c(u)(u).
+
+We reserve ˜c(x, u) exclusively for the ambiguity cost re-turned by the DR-FREE inner maximization. To account for perturbations δ c(x, u) with |δ c| ≤ ∆k(x, u), we augment the observation with the running cost Ck, so the augmented state is (Xk,Ck).The corresponding transition kernels are ¯paug  
+
+> k
+
+(x′, c′ | x,C, u) = ¯pk(x′ | x, u) N  c′ C + ℓ(x, u), σ 2,
+
+paug ,δ 
+
+> k
+
+(x′, c′ | x,C, u) = pk(x′ | x, u)
+
+N  c′ C + ℓ(x, u) + δ c(x, u), σ 2,
+
+where ¯pk is the nominal next-state model and pk is an admissible (possibly misspecified) next-state model. As in DR-FREE, we impose per–state-action KL balls: 
+
+DKL (pk || ¯pk) ≤ ηdyn  
+
+> k
+
+(x, u).
+
+Theorem 4.1: Suppose the augmented ambiguity radii obey 
+
+ηaug  
+
+> k
+
+(x, u) ≥ ηdyn  
+
+> k
+
+(x, u) + ∆k(x, u)2
+
+2σ 2 for all (x, u), (8) Then, for each k and every (x, u), the true augmented kernels paug ,δ 
+
+> k
+
+lie in the DR-FREE augmented ambiguity sets 
+
+Bηaug  
+
+> k
+
+( ¯paug  
+
+> k
+
+), and the saddle-point policy solving min  
+
+> {πk}
+
+max    
+
+> {paug
+> k∈Bηaug
+> k
+> (¯paug
+> k)}
+
+DKL 
+
+ paug 0: N ∥ ˜qaug 0: N
+
+ (9) is simultaneously robust to both dynamics and cost pertur-bations, while preserving the DR-FREE Gibbs-form policy. 
+
+Proof: Step 1 — KL decomposition and Gaussian bound. By the KL chain rule on (Xk+1,Ck+1),
+
+DKL 
+
+ paug ,δ 
+
+> k
+
+∥ ¯paug 
+
+> k
+
+ = DKL 
+
+ pk(· | x, u) ∥ ¯pk(· | x, u)
+
++ Epk(x′|x,u)
+
+h
+
+DKL 
+
+ N (· | C + ℓ + δ c, σ 2) ∥
+
+N (· | C + ℓ, σ 2)i
+
+. (10) For Gaussians with equal variance, the second term equals 
+
+(δ c)2/(2σ 2) ≤ ∆k(x, u)2/(2σ 2). Using DKL (pk∥ ¯pk) ≤
+
+ηdyn  
+
+> k
+
+(x, u), we obtain 
+
+DKL 
+
+ paug ,δ 
+
+> k
+
+∥ ¯paug 
+
+> k
+
+ ≤ ηdyn  
+
+> k
+
+(x, u) + ∆k(x, u)2
+
+2σ 2 = ηaug  
+
+> k
+
+(x, u),
+
+so paug ,δ 
+
+> k
+
+∈ Bηaug  
+
+> k
+
+( ¯paug  
+
+> k
+
+) pointwise. 
+
+Step 2 — Pathwise feasibility. Per-step feasibility com-poses along the horizon, hence paug ,δ 
+
+> 0: N
+
+∈ ∏k Bηaug  
+
+> k
+
+( ¯paug  
+
+> k
+
+). For any fixed {πk},
+
+DKL 
+
+ paug ,δ 
+
+> 0: N
+
+∥ ˜qaug 0: N
+
+ ≤ sup  
+
+> {paug
+> k∈Bηaug
+> k
+> }
+
+DKL 
+
+ paug 0: N ∥ ˜qaug 0: N
+
+.
+
+Step 3 — Inner maximization, Lagrangian, and am-biguity cost. At a fixed (x, u), introduce the multiplier 
+
+λk(x, u) ≥ 0 for the per-step KL constraint. Writing p(x)
+
+> k
+
+for the next-state component and p(r) 
+
+> k
+
+for the running-cost component, the inner Lagrangian is 
+
+Lk
+
+ p(x) 
+
+> k
+
+, p(r) 
+
+> k
+
+, λk
+
+ = Ep(x) 
+
+> kp(r)
+> k
+
+Rk +Vk+1(Xk+1)
+
+− λkDKL (p(x) 
+
+> k
+
+∥ ¯p(x) 
+
+> k
+
+) − λkEp(x)
+
+> k
+
+DKL 
+
+ p(r) 
+
+> k
+
+∥ ¯p(r)
+
+> k
+
+ + λkηaug  
+
+> k
+
+(x, u).
+
+Where, Rk := Ck+1 −Ck and Vk+1(Xk+1) ≡ ˆck+1(Xk+1). Max-imizing over p(r) 
+
+> k
+
+(pointwise) gives the running-cost dual term 
+
+ψk(x, u; λk) = λk log E ¯p(r)
+
+> k
+
+h
+
+eRk/λk
+
+i
+
+= ℓ(x, u) + σ 2
+
+2λk
+
+.
+
+Then, maximizing over p(x) 
+
+> k
+
+yields the DV dual 
+
+eVk(x, u; λk) = λk log E ¯p(x) 
+
+> k(·| x,u)
+
+h
+
+exp 
+
+Vk+1(Xk+1)+ ψk(x,u;λk)
+
+> λk
+
+i 
+
+.
+
+Hence, the ambiguity cost at (x, u) is the scalar convex program ˜c(x, u) = min 
+
+> λk≥0
+
+neVk(x, u; λk) + λk ηaug  
+
+> k
+
+(x, u)
+
+o
+
+. (11) 
+
+Step 4 — Policy form. Substituting the inner value into the outer step (with action prior and control cost) yields the DR-FREE Gibbs policy in (5). 
+
+Step 5 — Conclusion. Steps 1–4 establish that the aug-mented radius (8) ensures robustness to joint dynamics and cost perturbations, with the same implementable inner–outer structure as DR-FREE. 
+
+a) Discussion.: The result strictly extends DR-FREE: when ∆k ≡ 0 (no cost perturbations), ηaug  
+
+> k
+
+= ηdyn  
+
+> k
+
+and the formulation reduces to the original DR-FREE engine. When 
+
+∆k > 0, the adversary’s KL budget can be allocated across dynamics and the cost channel, yet the ambiguity cost still arises from a one-dimensional convex minimization over λk,preserving tractability and the Gibbs policy form. 
+
+Remark 4.1: The resolution engine still yields the ex-ponential policy kernel qk (uk | xk−1) exp   − c(u) 
+
+> k
+
+(uk) −
+
+ηk(xk−1, uk) − ˜c(xk−1, uk), whose normalization gives 
+
+π⋆ 
+
+> k
+
+(uk | xk−1). The only change is that the adversary’s KL budget can now flow into the cost channel, which is precisely the claimed robustness. V. E XPERIMENTS 
+
+We evaluate the proposed controller in three settings with two sources of epistemic uncertainty: (i-ii) model learning error , where a neural network approximates the true dy-namics but inevitably incurs prediction errors (HalfCheetah, Franka simulation), and (iii) sim-to-real transfer , where a simulation-trained model is deployed on physical hardware (Franka Research 3). All experiments use identical greedy controllers (horizon N=1) for both the proposed method and baselines, isolating the effect of the robustness mechanism. The reference control prior qk(uk|xk) is uniform over the action space. We set ηk(xk−1, uk) = DKL 
+
+ N (x⋆, Σ⋆) ∥ ¯pk(xk|xk−1, uk),
+
+linking robustness to model uncertainty. For sensitivity anal-ysis, we scale by coefficient ρ: ηeff  
+
+> k
+
+= ρ · ηk(xk−1, uk). The baseline ρ=0 recovers MaxDiff, ρ=1 is the default, ρ > 1increases conservatism. For all the experiments, ambiguity arises from mismatch between the learned neural network dynamics model ¯ pk(xk | xk−1, uk) and true dynamics, and also the Gaussian noise injected into the environment reward. Given this setup, the resulting greedy policy takes the Gibbs form 
+
+π⋆(uk | xk−1) ∝ exp  −η(xk−1, uk)− ˜c(xk−1, uk), N = 1.
+
+(12) We report (i) episode return , and, for manipulation tasks, (ii) the minimum distance-to-goal with a 5 cm success thresh-old. Figures referenced below show mean ± one standard deviation across seeds. Across all tasks the maximum episode length is set at 1000 steps. For implementation details and code refer to: https://tinyurl.com/2v9yc9dk. 
+
+A. HalfCheetah-v5 (MuJoCo) 
+
+Task and priors. The desired state x⋆ encodes target forward velocity and an approximately upright pose. The controller uses the greedy policy (12) at every step. 
+
+Results. Figure 3-top compares learning curves for DR-FREE and a MaxDiff baseline. DR-FREE shows steady improvement in return with lower variance early in training. Snapshots in Fig. 3-middle and bottom panels illustrate qual-itatively smoother, more stable gaits relative to the higher-variance baseline. For the HalfCheetah benchmark, after training we performed 20 evaluation rollouts: our proposed method successfully reached the goal 18 times, while the MaxDiff baseline succeeded only 6 times. 
+
+B. Franka Obstacle Task (simulation) 
+
+Environment. A tabletop manipulation scene with a ver-tical obstacle between the start pose and the goal (grasp-and-place of a green block). 
+
+Results. Figure 4-top shows returns increasing as the minimum distance-to-goal falls below the 5 cm threshold. The snapshots in Fig. 4b depict a learned, collision-free path that adapts around the obstacle. The controller’s cautious lateral adjustment emerges from the ambiguity cost, which is larger near contact-uncertain poses and thus biases the Gibbs kernel toward safer actions. Fig. 3: HalfCheetah results. Top: training performance of the proposed algorithm vs. MaxDiff RL on HalfCheetah-v5 (mean ±1 STD over n = 20 runs). Middle: rollout frames from the proposed algorithm showing a stable stride reaching the target. Bottom: rollout frames from MaxDiff RL illustrat-ing an unstable gait leading to failure. 
+
+C. Franka Research 3 (real robot) 
+
+Deployment. We deploy the proposed algorithm on the real Franka Research 3 arm for a pick-and-place task in a cluttered tabletop scene, directly transferring the learned dy-namics and executing the greedy controller without any task-specific tuning. The robot must reach a first goal position to grasp a green cube and then transport it to a second goal location. Two representative executions are shown in Fig. 5: 1) No-obstacle: After grasping the cube at the first goal, the policy selects the optimal straight path across the table and successfully places the object at the second goal; see Fig. 5-top. 2) Obstacle-present: When an obstacle is encountered en route, the policy autonomously plans a collision-free strategy by elevating the gripper above the obstruction before advancing toward and placing the object at the second goal; see Fig. 5-bottom. 
+
+Interpretation. Qualitatively distinct, yet collision-free behaviors in these settings arise directly from the optimal policy in (12). With a non-informative action prior, adapta-tion is governed by the Gibbs exponent: the goal-centered state prior pulls the system toward the target state x⋆, while the obstacle cost increases in regions near obstacles. This modulation naturally leads the policy to take the direct path when unobstructed, or to switch to a lift-over maneuver when obstacles are present, ensuring safe task execution.     
+
+> 100 0
+> -0.4
+> -100 -200 99775533110.0 0.0 0.2 0.2 0.4 Distance (m) Return Episode Sucess Threshold Episode Mean Distance
+> ±STD 0.2 0.2 0.4 0.4 0.0 -0.1 -0.2 0.6 0.5 X (m) Y (m) Z (m) Start End Goal Mean Return
+> ±1 STD
+
+Fig. 4: Franka obstacle-avoidance results with the proposed method. Top: learning curves showing episode return and minimum distance to goal (success threshold 5 cm, mean 
+
+±1 STD over n = 20 runs). Bottom: i) a rollout demonstrating collision-free manipulation around the obstacle. ii) trajectory plot with goal orientation highlighted in cyan, magenta, and yellow, illustrating efficient training and task execution.                            
+
+> Metric ρ=00.515100 1000 2000 Normalized Avg. Episode Cost ( ↓)1.87 1.01 1.00 1.24 9.50 56 .8148 Standard Devia-tion 0.076 0.014 0.055 0.099 7.96 11 .428 .3Success Rate ( ↑)100% 100% 100% 80% 60% 20% 0%
+
+TABLE S-1: Performance across ρ over 5 trials. Episode cost is normalized to the best case ( ρ=1). A trial succeeds if the robot reaches the goal while staying ≥ 0.07,m from all obstacle centers throughout the episode. In Table S-1, we report a sensitivity analysis of the scaling coefficient ρ for obstacle-aware pick-and-place. As 
+
+ρ increases, the learned policy becomes increasingly goal-seeking and less responsive to obstacles, leading to more frequent collisions. VI. C ONCLUSION 
+
+Building on the distributionally robust free energy prin-ciple, we introduced a modification to the maximum diffu-sion framework that simultaneously enables policy learning for continuous robotics control tasks and provides a priori robustness guarantees. The resulting computational model enables robust exploration by combining maximum-diffusion state generation with per–state-action KL ambiguity sets, yielding a tractable min–max objective and a robust optimal policy. The same min–max structure extends to bounded stage-cost perturbations via an augmented-state formulation. Fig. 5: Deployment on the Franka Research 3 for cluttered tabletop pick-and-place. Top: grasp at the first goal and place at the second. Bottom: with an obstacle, the controller lifts to avoid collision and completes the placement. Both numerical and hardware experiments illustrate that our policy computation model convincingly outperforms MaxD-iff baselines in the HalfCheetah environment and enables zero-shot deployments on real hardware. REFERENCES [1] J. Kober, J. A. Bagnell, and J. Peters, “Reinforcement learning in robotics: A survey,” The International Journal of Robotics Research ,vol. 32, no. 11, pp. 1238–1274, 2013. [2] M. Kejriwal, E. Kildebeck, R. Steininger, and A. Shrivastava, “Chal-lenges, evaluation and opportunities for open-world learning,” Nature Machine Intelligence , vol. 6, no. 6, p. 580–588, 2024. [3] S. Thrun, “Probabilistic robotics,” Communications of the ACM ,vol. 45, no. 3, pp. 52–57, 2002. [4] K. Friston, “The free-energy principle: a rough guide to the brain?” 
+
+Trends in cognitive sciences , vol. 13, no. 7, pp. 293–301, 2009. [5] T. J. Prescott and S. P. Wilson, “Understanding brain functional architecture through robotics,” Science Robotics , vol. 8, no. 78, 2023. [6] P. Vijayaraghavan, J. F. Queißer, S. V. Flores, and J. Tani, “Develop-ment of compositionality through interactive learning of language and action of robots,” Science Robotics , vol. 10, no. 98, 2025. [7] P. Lanillos, C. Meo, C. Pezzato, A. A. Meera, M. Baioumy, W. Ohata, A. Tschantz, B. Millidge, M. Wisse, C. L. Buckley, and J. Tani, “Active inference in robotics and artificial agents: Survey and challenges,” 2021. [8] M. Baioumy, P. Duckworth, B. Lacerda, and N. Hawes, “Active inference for integrated state-estimation, control, and learning,” in 
+
+IEEE International Conference on Robotics and Automation , 2021, p. 4665–4671. [9] S. Wakayama and N. Ahmed, “Active inference for autonomous decision-making with contextual multi-armed bandits,” in IEEE In-ternational Conference on Robotics and Automation , 2023, pp. 7916– 7922. [10] C. Pezzato, R. Ferrari, and C. Hern´ andez, “A novel adaptive controller for robot manipulators based on active inference,” IEEE Robotics and Automation Letters , vol. 5, no. 2, p. 2973–2980, 2020. [11] A. Shafiei, H. Jesawada, K. Friston, and G. Russo, “Distributionally robust free energy principle for decision-making,” Nature Communi-cations , vol. 17, no. 1, p. 707, 2025. [12] T. A. Berrueta, A. Pinosky, and T. D. Murphey, “Maximum diffusion reinforcement learning,” Nature Machine Intelligence , vol. 6, no. 5, pp. 504–514, 2024. [13] B. Eysenbach and S. Levine, “Maximum entropy rl (provably) solves some robust rl problems,” in International Conference on Learning Representations , 2022. [14] E. Hazan, S. Kakade, K. Singh, and A. Van Soest, “Provably effi-cient maximum entropy exploration,” in International Conference on Machine Learning , 2019, pp. 2681–2691. [15] T. Haarnoja, A. Zhou, P. Abbeel, and S. Levine, “Soft actor-critic: Off-policy maximum entropy deep reinforcement learning with a stochastic actor,” in International conference on machine learning , 2018, pp. 1861–1870. [16] L. Pinto, J. Davidson, R. Sukthankar, and A. Gupta, “Robust adver-sarial reinforcement learning,” in International conference on machine learning , 2017, pp. 2817–2826. [17] A. Rajeswaran, S. Ghotra, B. Ravindran, and S. Levine, “Epopt: Learning robust neural network policies using model ensembles,” in 
+
+International Conference on Learning Representations , 2017. [18] X. B. Peng, M. Andrychowicz, W. Zaremba, and P. Abbeel, “Sim-to-real transfer of robotic control with dynamics randomization,” in 
+
+IEEE international conference on robotics and automation , 2018, pp. 3803–3810. [19] J. Tobin, R. Fong, A. Ray, J. Schneider, W. Zaremba, and P. Abbeel, “Domain randomization for transferring deep neural networks from simulation to the real world,” in IEEE/RSJ international conference on intelligent robots and systems , 2017, pp. 23–30. [20] O. M. Andrychowicz, B. Baker, M. Chociej, R. Jozefowicz, B. Mc-Grew, J. Pachocki, A. Petron, M. Plappert, G. Powell, A. Ray et al. ,“Learning dexterous in-hand manipulation,” The International Journal of Robotics Research , vol. 39, no. 1, pp. 3–20, 2020. [21] G. Iyengar, “Robust dynamic programming,” Math. Oper. Res. , vol. 30, pp. 257–280, 05 2005. [22] A. Nilim and L. El Ghaoui, “Robust control of markov decision processes with uncertain transition matrices,” Operations Research ,vol. 53, no. 5, pp. 780–798, 2005. [23] E. Derman and S. Mannor, “Distributional robustness and regular-ization in reinforcement learning,” arXiv preprint arXiv:2003.02894 ,2020. [24] H. Jesawada, A. Acernese, D. Del Vecchio, G. Russo, and C. D. Vecchio, “Dr-pets: Learning-based control with planning in adversarial environments,” IEEE Control Systems Letters , vol. 9, pp. 2006–2011, 2025. [25] E. Todorov, “Linearly-solvable Markov decision problems,” in Ad-vances in Neural Information Processing Systems , vol. 19, 2007, pp. 1369–1376. [26] D. Gagliardi and G. Russo, “On a probabilistic approach to synthesize control policies from example datasets,” Automatica , vol. 137, p. 110121, 2022. [27] G. Williams, A. Aldrich, and E. A. Theodorou, “Model predictive path integral control: From theory to parallel computation,” Journal of Guidance, Control, and Dynamics , vol. 40, no. 2, pp. 344–357, 2017. [28] G. Williams, P. Drews, B. Goldfain, J. M. Rehg, and E. A. Theodorou, “Information-theoretic model predictive control: Theory and applica-tions to autonomous driving,” IEEE Transactions on Robotics , vol. 34, no. 6, pp. 1603–1622, 2018. [29] K. Chua, R. Calandra, R. McAllister, and S. Levine, “Deep rein-forcement learning in a handful of trials using probabilistic dynamics models,” Advances in neural information processing systems , vol. 31, 2018. [30] M. Janner, J. Fu, M. Zhang, and S. Levine, “When to trust your model: Model-based policy optimization,” Advances in Neural Information Processing Systems , vol. 32, 2019. [31] Y. Yao, L. Xiao, Z. An, W. Zhang, and D. Luo, “Sample efficient rein-forcement learning via model-ensemble exploration and exploitation,” in IEEE International Conference on Robotics and Automation , 2021, pp. 4202–4208. [32] S. Levine, P. Pastor, A. Krizhevsky, J. Ibarz, and D. Quillen, “Learning hand-eye coordination for robotic grasping with deep learning and large-scale data collection,” The International journal of robotics research , vol. 37, no. 4-5, pp. 421–436, 2018. [33] A. Kumar, Z. Li, J. Zeng, D. Pathak, K. Sreenath, and J. Malik, “Adapting rapid motor adaptation for bipedal robots,” in IEEE/RSJ International Conference on Intelligent Robots and Systems , 2022, pp. 1161–1168. [34] G. Brockman, V. Cheung, L. Pettersson, J. Schneider, J. Schul-man, J. Tang, and W. Zaremba, “Openai gym,” arXiv preprint arXiv:1606.01540 , 2016. [35] E. Todorov, T. Erez, and Y. Tassa, “Mujoco: A physics engine for model-based control,” in IEEE/RSJ international conference on intelligent robots and systems , 2012, pp. 5026–5033. [36] E. Garrabe, H. Jesawada, C. Del Vecchio, and G. Russo, “On convex data-driven inverse optimal control for nonlinear, non-stationary and stochastic systems,” Automatica , vol. 173, p. 112015, 2025.

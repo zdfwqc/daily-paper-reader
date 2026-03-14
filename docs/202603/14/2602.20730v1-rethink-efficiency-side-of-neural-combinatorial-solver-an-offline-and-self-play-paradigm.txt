@@ -1,0 +1,713 @@
+Title: Rethink Efficiency Side of Neural Combinatorial Solver: An Offline and Self-Play Paradigm
+
+URL Source: https://arxiv.org/pdf/2602.20730v1
+
+Published Time: Wed, 25 Feb 2026 01:43:02 GMT
+
+Number of Pages: 15
+
+Markdown Content:
+# Rethink Efficiency Side of Neural Combinatorial Solver: An Offline and Self-Play Paradigm 
+
+Zhenxing Xu * 1 Zeyuan Ma * 2 Weidong Bao 1 Hui Yan 3 Yan Zheng 1 Ji Wang 1
+
+# Abstract 
+
+We propose ECO, a versatile learning paradigm that enables efficient offline self-play for Neu-ral Combinatorial Optimization (NCO). ECO ad-dresses key limitations in the field through: 1) 
+
+Paradigm Shift : Moving beyond inefficient on-line paradigms, we introduce a two-phase offline paradigm consisting of supervised warm-up and iterative Direct Preference Optimization (DPO); 2) Architecture Shift : We deliberately design a Mamba-based architecture to further enhance the efficiency in the offline paradigm; and 3) Pro-gressive Bootstrapping : To stabilize training, we employ a heuristic-based bootstrapping mecha-nism that ensures continuous policy improvement during training. Comparison results on TSP and CVRP highlight that ECO performs competitively with up-to-date baselines, with significant advan-tage on the efficiency side in terms of memory uti-lization and training throughput. We provide fur-ther in-depth analysis on the efficiency, through-put and memory usage of ECO. Ablation studies show rationale behind our designs. 
+
+# 1. Introduction 
+
+Combinatorial Optimization (CO) is essential for domains such as chip design (Ganjam et al., 2024), routing (Yuan et al., 2022), supply chain (Joel et al., 2024), logistics (Said & El-Rayes, 2014) and scheduling (Zhou et al., 2013). Over the past decades, how to solve CO has been discussed and explored extensively, and representative legacy such as Con-corde (Applegate et al., 2006), Lin-Kernighan-Helsgaun algorithm (Helsgaun, 2017), ant system (Blum, 2005), ge-netic algorithm (Holland, 1992) more or less address CO’s complexity. However, these meta-heuristics closely depend on expert-level knowledge to be crafted or even customized 
+
+> 1
+
+National Key Laboratory of Big Data and Decision, National University of Defense Technology 2School of Computer Science, South China University of Technology 3Information Support Force Engineering University. Correspondence to: Weidong Bao <wd-bao@nudt.edu.cn >.
+
+Preprint. February 25, 2026. 
+
+per case. As foretold by no-free-lunch theorem (Wolpert & Macready, 2002), such dependency may result in limited adaptability and scalability across diverse CO problems. Learning-based approaches are continuously getting pop-ular more recently for dealing with complex CO prob-lems (Bello et al., 2016b), which are commonly termed as Neural Combinatorial Optimization (NCO). Along NCO’s development, a crystal clear evolution path on the perfor-mance side could be observed from recent advances in this field: from pointer network (Vinyals et al., 2015) to Trans-former architecture (Vaswani et al., 2017) and Generative Flow Network (Bengio et al., 2021), from normal scale case (Kool et al., 2018) to massive scale generalization (Luo et al., 2025) and from simple reinforcement learning (Kwon et al., 2020) to enhanced hybrid training (Zhang & Cao, 2025). In contrast, to the best of our knowledge, limited attention is paid to the efficiency side (Luo et al., 2024; Wu et al., 2025). This induces the core motivation of this paper: what should be done to achieve efficient NCO learning? This is a quite important question since efficiency impacts multi-dimensional aspects in NCO, such as learning effec-tiveness, scalability and practical application value. Following the first principle, the efficiency bottleneck of existing NCO works predominantly roots from two aspects: 1) Learning Paradigm : The rollout and training in exist-ing works compose an online paradigm. Such sampling-then-training mode hardly benefits from parallelization and holistic GPU utilization; 2) Neural Network Architecture :State-of-the-art NCO models predominantly rely on the Transformer architecture (Vaswani et al., 2017), the core self-attention mechanism incurs quadratic computational and memory costs. Clearly, this field anticipates an effective framework to address these efficiency issues. To address this, we propose an efficient NCO framework pertinently, termed as ECO , to enable cost-effective train-ing of neural solvers through shifts of both the learning paradigm and the neural network architecture. Specifically, we first turn the learning paradigm from existing online fash-ion toward offline learning paradigm (Levine et al., 2020; Mandlekar et al., 2021). A two-phase training workflow is carefully established, where the first phase utilizes high quality offline trajectories and supervised training to assure 1      
+
+> arXiv:2602.20730v1 [cs.LG] 24 Feb 2026 Submission and Formatting Instructions for ICML 2026 0246810
+> Training Time (Hours)
+> 0
+> 25
+> 50
+> 75
+> 100
+> 125
+> 150
+> 175
+> Optimality Gap (%)
+> 82.17%
+> 63.42%
+> 22.37%
+> 17.09%
+> 4.84%
+> Convergence Efficiency on TSP1000
+> AM
+> POMO
+> LEHD
+> CNF
+> ECO (Ours)
+> Figure 1. Convergence efficiency on TSP1000. The curves dis-play the average optimality gap over 20 independent runs, with shaded regions indicating the standard deviation. All methods were trained on a single NVIDIA A800 GPU, with batch sizes tuned to maximize hardware utilization for each respective model.
+
+quick warm-up, and the second phase adopts Direct Prefer-ence Optimization (DPO) (Rafailov et al., 2023) to further refine the model with self-play and contrastive update. To further benefit from such offline paradigm, we propose a tailored network architecture based on Mamba (Gu & Dao, 2024), a selective state space model. Without changing the autoregressive sampling paradigm, the proposed archi-tecture improve the overall throughput and scalability via hardware-aware parallel scanning and efficient recurrent kernels. As illustrated in Figure 1, by combining the high-throughput Mamba architecture with a stable offline DPO training scheme, ECO achieves superior convergence speed and stability, reaching high-quality solutions significantly faster than varying baselines under the same hardware con-straints. Our contributions are in three-folds: 
+
+❶ We claim our ECO as a very first exploration on intro-ducing high throughput architecture (Mamba) and offline learning paradigm (DPO) to NCO. 
+
+❷ We introduce several novel designs to achieve effective and efficient offline NCO learning, which includes a tai-lored Mamba architecture compatible with NCO setting, and a two-phase offline training paradigm with a heuristic-based bootstrapping to ensure quick warm-up and smooth policy improvement. 
+
+❸ We conduct case study on TSP and CVRP, where rigor-ous benchmarking results demonstrate ECO’s competitive performance and significant efficiency advantage against online NCO baselines. Ablation studies underscore the efficacy of our proposed designs. 
+
+# 2. Related Works 
+
+2.1. Neural Combinatorial Optimization and Scalability Bottlenecks 
+
+NCO has emerged as a prominent paradigm for solving NP-hard problems such as the TSP. Early approaches, such as Pointer Networks (Vinyals et al., 2015), utilized RNNs to manage variable output dictionaries, while Bello et al. (Bello et al., 2016a) subsequently introduced reinforcement learning (RL) to enable unsupervised training. The Atten-tion Model (AM) by Kool et al. (Kool et al., 2018) estab-lished the dominance of Transformers in NCO, a framework later stabilized by POMO (Kwon et al., 2020) through the exploitation of solution symmetries for robust RL training. Although recent works like LEHD (Luo et al., 2023) attempt to alleviate computational loads via encoder-decoder decom-position, attention-based methods remain constrained by 
+
+O(N 2) quadratic complexity. This creates a dual challenge of memory explosion and excessive inference latency when generalizing to large-scale instances (where N ≥ 10 , 00 ). Consequently, developing global modeling architectures with linear complexity is a critical imperative for advancing the field of NCO. 
+
+2.2. Sequence Modeling via Mamba 
+
+Recently, structured state-space (SSM) models has been recognized as an effective alternative sequence models (Gu et al., 2021a;b; Fu et al., 2022; Katharopoulos et al., 2020; Sun et al., 2023). For an input sequence x ∈ RL×D with time horizon L and D-dimensional signal channels at each time step, SSM processes it by the following first-order dynamic equation, which maps the input signal x(t) ∈ RD
+
+to the time-dependent output y(t) ∈ RD through hidden state h(t) as follows: 
+
+h(t) = Ah (t − 1) + Bx (t), y(t) = Ch (t). (1) Here, A, B and C are learnable parameters, A and B are ob-tained by applying zero-order hold (ZOH) discretization rule to the continuous parameters A and B to embrace the dis-crete nature in sequence-to-sequence tasks. The SSM mod-els that fall into this paradigm is normally named as struc-tured state-space sequence (S4) models. We note that S4 paradigm shows beautiful properties in both the training effi-ciency and inference efficiency sides. For training, suppose we have an input sequence X = [ x(1) , x (2) , ..., x (T )] , S4 model supports “global convolution”, which pre-computes all intermediate parameters and processes X as: 
+
+K = ( CB, CAB, CA 2B, ... ), Y = X · K. (2) This parallel training mode makes S4 models particularly advantageous in offline training settings where all data is accessible. For inference side, S4 models follows “linear recurrence” model in Eq. 1, which is also economic since only constant level cache is required. Despite its high-efficiency computation, S4 models fall shorts in time-dependent sequence modeling since the pa-rameters are invariant for all time steps. More recently, Mamba (Gu & Dao, 2024; Dao & Gu, 2024) is proposed as a novel SSM models, which address this issue by selective mechanism (hence, it is also termed as S6 model), making 2Submission and Formatting Instructions for ICML 2026 
+
+learnable parameters time-dependent. Specifically, Mamba lets the parameters A, B and C be functions of the input 
+
+x(t). Therefore, the system now supports time-varying se-quence modeling. However, such novelty sacrifices the effi-cient computation in S4’s training since the time-dependent parameters cannot be pre-computed using the convolution mode. To mitigate this issue, Mamba borrows ideas from the prefix-sum scan algorithm to relieve complexity in recurrent mode and popular GPU memory optimization techniques. In the rest of this paper, we use S4 to denote time-invariance SSMs and use S6 to denote Mamba. 
+
+2.3. Preference Learning 
+
+Classic reinforcement learning (RL), either value-based methods (Mnih, 2013) or policy-gradient meth-ods (Williams, 1992; Mnih et al., 2016; Schulman et al., 2017), relies on well-defined, hand-crafted reward functions to ensure training effectiveness. Recently, a general consensus has emerged that such rewarding schemes often lead to reward hacking (Amodei et al., 2016), optimizing the designer’s proxy metrics rather than the actual human intent. To address this, Ouyang et al. proposed reinforcement learning from human feedback (RLHF) (Ouyang et al., 2022), where a reward model is explicitly trained from pairwise human feedback comparisons and subsequently optimized using policy-gradient methods. Following RLHF, DPO (Rafailov et al., 2023) introduced critical technical modifications to streamline this bi-stage workflow. Specifically, DPO demonstrates that the con-strained policy optimization problem can be solved analyti-cally, allowing policies to be optimized to match preferences via a simple classification loss. This effectively bypasses the complexity of explicit reward modeling and the insta-bility inherent in online PPO. Building on this, subsequent works like ReST (Gulcehre et al., 2023) and Self-Rewarding LM (Yuan et al., 2024) further validated the potential of iter-ative optimization using self-generated samples of varying quality. Consequently, two promising directions are cur-rently being widely explored in the community: bootstrap-ping strategies (Gulcehre et al., 2023; Yuan et al., 2024) for data efficiency and learning objective reformulation (Etha-yarajh et al., 2024; Hong et al., 2024) for robustness. Leveraging this paradigm, we adopt DPO as the base learner for our framework. While the application of DPO to NCO has been explored in concurrent works (Liao et al., 2025; Pan et al., 2025; Liu et al., 2025), our work advances this direction by addressing the unique data challenges in combi-natorial optimization. We introduce: 1) a two-phase training protocol that incorporates a high-quality supervised warm-up to stabilize the DPO routine, and 2) a heuristic-guided bootstrapping strategy to relieve the burden of offline data generation, the details of which are elaborated in Sec. 3.2. 
+
+# 3. Method 
+
+The core idea of our ECO is illustrated in Figure 2. In ECO, we have established a well-defined offline learning paradigm to leverage high-quality offline trajectory data for efficient NCO training. on the top of such offline paradigm, we have introduced a mixed Mamba-architecture which synergizes both long-sequence modeling and efficient inference. We further design an effective two-phase training workflow to assure robust convergence under the offline setting. In the subsequent sections, we provide detailed elaboration on every aspects of ECO in a step-by-step way. 
+
+3.1. Problem Formulation 
+
+We consider a general class of combinatorial optimization problems that can be formulated as finding an optimal per-mutation or sequence of nodes on a graph. Let G = ( V, E )
+
+be a graph where V = {v1, . . . , v N } represents a set of 
+
+N nodes (e.g., cities in TSP, customers in CVRP) char-acterized by feature vectors X = {x1, . . . , x N } (e.g., co-ordinates, demands). The goal is to generate a sequence 
+
+π = ( π1, . . . , π T ) of indices from {1, . . . , N } that satis-fies specific feasibility constraints Ω (e.g., visiting every node exactly once, capacity limits) while minimizing a cost objective C(π|G). The problem is formally defined as: 
+
+π∗ = arg min  
+
+> π∈Ω
+
+C(π|G). (3) We model this as a probabilistic sequence generation task using a parameterized policy pθ (π|X). By decomposing the joint probability via the chain rule, the probability of a solution π is: 
+
+pθ (π|X) = 
+
+> T
+
+Y
+
+> t=1
+
+pθ (πt|π<t , X ), (4) where π<t denotes the partial solution constructed up to step t − 1. Our objective is to optimize parameters θ such that the expected cost Eπ∼pθ [C(π|X)] is minimized. 
+
+3.2. Offline Training Paradigm 
+
+Traditional RL methods for CO, such as REINFORCE with a greedy rollout baseline, often suffer from high variance and training instability. Inspired by recent advances in LLM alignment, we propose a robust two-phase training strategy: a warm-up phase using supervised learning and a continuous policy improvement phase using iterative DPO (Rafailov et al., 2023). 3.2.1. P HASE I: S UPERVISED FINE -T UNING (SFT) This phase provides the policy model with a basic under-standing of TSP constraints and local optimality, we perform behavior cloning on high-quality solutions. 3Submission and Formatting Instructions for ICML 2026 Neural Network Architecture in ECO 
+
+> Routed Map
+
+𝐀 1 𝐀 2 𝐀 3 𝐀 4 𝐀 𝐀 
+
+> Node Embeddings
+
+Encoder  
+
+> (recurrent)
+
+x3 
+
+> Mamba
+> Layer
+> (S6)
+
+ℎ1 ℎ2 ℎ3 ℎ4 ℎ𝐀 hidden embed. 
+
+> Raw Graph
+
+Decoder  
+
+> (convolution)
+
+x3 
+
+> Mamba
+> Layer
+> (S4)
+
+𝐀 1 𝐀 2 𝐀 3 𝐀 4 𝐀 𝐀 decision output 
+
+> avg
+
+𝐀 
+
+> graph
+> context
+
+0 𝐀 ℎ𝐀 𝐀 ℎ𝐀 𝐀 ℎ𝐀 𝐀 ℎ4 𝐀 
+
+> masked permutation
+
+Phase I: Offline SFT   
+
+> Routed Map
+> Encoder Decoder predicted
+> routing
+> NLL loss
+
+Phase II: Offline Iterative DPO   
+
+> offline boostrapping direct preference optimization
+> Reference Model
+> self-play rollout
+> sampled offline data
+> Behavior
+> Model
+> Reference
+> Model
+> winner-loser pair
+> DPO loss
+
+Figure 2. The core designs and workflow of our ECO. Left : The Mamba-based Encoder-Decoder architecture proposed to facilitate offline NCO training. Right : The two-phase offline learning with a SFT warm-up as quick knowledge adaption and an iterative preference learning to further enhance performance. 
+
+Data Generation: We generate a dataset DSFT using the LKH-3 solver (or nearest neighbor heuristics for rapid ini-tialization). 
+
+Objective: We minimize the Negative Log-Likelihood (NLL) of the expert trajectories π∗:
+
+JSFT (θ) = −E(X,π ∗)∼D SFT 
+
+" NX
+
+> t=1
+
+log pθ (π∗ 
+
+> t
+
+|π∗
+
+> <t
+
+, X )
+
+#
+
+(5) 3.2.2. P HASE II: I TERATIVE DIRECT PREFERENCE 
+
+OPTIMIZATION (DPO) The core of our training is the Iterative DPO algorithm. Unlike PPO, DPO optimizes the policy directly from prefer-ence data without training a separate value function (Critic), significantly reducing memory overhead and training com-plexity. 
+
+Preference Pair Construction: In each iteration k, we generate a dataset of preference pairs. For a given instance 
+
+X, we sample K solutions {y1, . . . , y K } using the current policy πθ . To construct a pair (yw, y l): Winner ( yw): The trajectory with the shorter tour length. Loser ( yl): The trajectory with the longer tour length. 
+
+DPO Objective: We optimize the policy πθ to maximize the margin between the likelihood of the winner and the loser, constrained by a reference model πref (the policy from the previous iteration). The loss function is: 
+
+LDPO (θ; πref ) = −E(X,y w ,y l)
+
+
+
+log σ
+
+
+
+β log πθ (yw|X)
+
+πref (yw|X)
+
+− β log πθ (yl|X)
+
+πref (yl|X)
+
+ 
+
+(6) where σ is the sigmoid function and β is a temperature pa-rameter controlling the deviation from the reference model. 
+
+Iterative Refinement: Instead of a static reference model, we update πref ← πθ every T steps. This iterative approach allows the model to progressively ”climb” the quality land-scape, generating increasingly better reference distributions for subsequent self-improvement cycles. 3.2.3. E NHANCING PREFERENCE CONTRAST VIA 
+
+LOCAL SEARCH 
+
+In the standard DPO framework, preference pairs are constructed solely from model-sampled trajectories. As training progresses, the policy tends to generate solutions with similar quality, resulting in narrow reward margins (|L(yw) − L(yl)| → 0). This leads to vanishing gradients and hinders the model’s ability to distinguish subtle struc-tural improvements. To address this, we introduce an LS-Augmented Prefer-ence Construction mechanism. This strategy integrates a lightweight local search operator TLS (e.g., 2-opt or 3-opt) into the data generation process to amplify the quality con-trast and distill local optimization capabilities into the neural policy. Mechanism: For a subset of instances in each iteration, given a model-generated solution yraw ∼ πθ (·| X), we apply the local search operator to obtain an improved version: 
+
+yrefined = TLS (yraw ). We then construct the preference pair 
+
+(yw, y l) strictly as: 
+
+yw = yrefined , yl = yraw (7) Crucially, since TLS guarantees L(yrefined ) ≤ L(yraw ), this 4Submission and Formatting Instructions for ICML 2026 
+
+construction provides a strictly cleaner and stronger super-vision signal. 
+
+Margin Amplification: By manually widening the perfor-mance gap between the winner and the loser, we increase the magnitude of the implicit reward difference ˆrθ (yw)− ˆrθ (yl).This results in sharper gradients, accelerating convergence in plateau regions. 
+
+Operator Distillation: This process effectively treats the DPO objective as a distillation loss. By consistently prefer-ring the LS-refined solution over the raw output, the model implicitly learns the underlying geometric manipulations (e.g., untangling crossing edges) performed by the 2-opt/3-opt operator, effectively ”internalizing” the local search into the Mamba encoder-decoder weights without requiring ex-plicit execution during inference. 
+
+3.3. Mixed Mamba-based Architecture 
+
+Transformer-based NCO models (e.g., AM (Kool et al., 2018) and POMO (Kwon et al., 2020)), if without fur-ther software or hardware-level optimization (e.g., KV cache (Hooper et al., 2024), flash-attention (Dao et al., 2022)), fall short in addressing large scale (long-sequence) CO problems. To address this, we propose a tailored neural network architecture (as shown in Figure 2), including 1) a recurrent mode Mamba-based encoder to enable economical memory utilization and long-sequence correlation extrac-tion. By using such as mixed Mamba-based architecture, we maximize both the long-sequence modeling ability in encoder and parallel rollout/inference throughput in decoder. We detail this architecture as belows, with its computation steps and complexity analysis. 3.3.1. R ECURRENT MAMBA ENCODER 
+
+The encoder transforms the raw coordinate sequence into rich contextual node embeddings. Unlike the standard Trans-former encoder which computes an N × N attention map, our encoder utilizes stacked Mamba layers 1.
+
+Input Projection: The coordinates xi are projected into a 
+
+D-dimensional latent space via a linear transformation: 
+
+ei = Win xi + bin . (8) 
+
+Mamba Layers: We use Mamba layers with S6 setting (see the end of Sec. 2.2). This input-dependent setting helps the encoder to extract spatial dependence across a long sequence of nodes in a large scale CO problems. We denote the 
+
+L = 3 layers’ parameters as M (1) 
+
+> enc
+
+, M (2)  
+
+> enc
+
+and M (3) 
+
+> enc
+
+. Then following the per-layer computation in Eq. 1, we recurrently compute hidden embeddings of all nodes: 
+
+H = M (3)  
+
+> enc
+
+◦ M (2)  
+
+> enc
+
+◦ M (1) 
+
+> enc
+
+(E), (9) 
+
+> 1https://github.com/state-spaces/mamba
+
+where E is all node embeddings ei and H : {hi}Ni=1 are the obtained hidden embeddings for all nodes in the CO problems. We additionally compute a global graph embed-ding g = mean (H) as a context information used for the decoding phase. Since we adopt Mamba with S6 setting, the recurrent mode is used, which leverages the parallel scan algorithm to reduce the recurrent complexity. 3.3.2. C ONVOLUTIONAL MAMBA DECODER 
+
+Input Preparation. Since ECO operates in an offline set-ting, the decoder is always paired with offline data, which is a routed map as shown in Figure 2. Given the hidden embeddings H : {hi}Ni=1 , We first use the routed map as permutation mask to re-order the embeddings in H as the visiting order in the routed map, and obtain the permuted embeddings H′ : {h′
+
+> i
+
+}Ni=1 . Then, the input prepared as: 
+
+h′ 
+
+> i
+
+= h′ 
+
+> i
+
++ g, i = 1 , ..., N, (10) where g is the global context we obtained from the encoder. In this way, we inject an explicit problem-specific context into the decoding phase, to help inform the decoder problem-specific features. 
+
+Decoding. We use Mamba layers with S4 setting (see Sec. 2.2 and Eq. 2) to facilitate parallel decoding, hence maximizing the decoding efficiency. We denote the L = 3 
+
+layers’ parameters as M (1) 
+
+> dec
+
+, M (2)  
+
+> dec
+
+and M (3)  
+
+> dec
+
+and obtain decision output O : {oi}Ni=1 by: 
+
+O = M (3)  
+
+> dec
+
+◦ M (2)  
+
+> dec
+
+◦ M (1) 
+
+> dec
+
+(H′). (11) The logits in O are masked to prevent revisiting cities and normalized via Softmax to produce the selection probability 
+
+p(πt|π<t , X ).3.3.3. A LGORITHM COMPLEXITY 
+
+Based on the unified encoder-decoder pipeline, we briefly compare the algorithm complexity of the classic Trans-former NCO architecture and our proposed Mixed Mamba-based architecture. For the Transformer, the memory com-plexity in the encoder is quadratic O(N 2) (due to the self-attention matrix) , and the computational complexity in the decoder is generally quadratic O(N 2) (scaling linearly per step due to cross-attention). In contrast, for Mamba, the memory complexity in the encoder is linear O(N ) (enabled by parallel scan), and the computational complexity in the decoder is linear O(N ) (due to the fixed-size recurrent state update). This offers a significant advantage for scalable NCO deployment. Our experimental results (Sec. 4.2.2) validate this analysis. 5Submission and Formatting Instructions for ICML 2026 
+
+Table 1. Performance comparison on TSP and CVRP instances of varying sizes. We report the average objective value (Obj.), the average optimality gap (Gap) relative to the ground truth, and the total inference time (Time). Concorde , LKH-3 and HGS are used as the ground truth solvers for TSP and CVRP, respectively (indicated by 0.00% Gap). For learning-based methods, the best results are highlighted in bold , and the second-best results are underlined.                                                                                                                                                                                                                  
+
+> Method TSP200 TSP500 TSP1000 TSP5000 Obj. ↓Gap ↓Time ↓Obj. ↓Gap ↓Time ↓Obj. ↓Gap ↓Time ↓Obj. ↓Gap ↓Time ↓
+> Concorde 10.72 0.00% 3.0m 16.55 0.00% 37.6m 23.12 0.00% 7.9h 50.96 0.00% 18.4h LKH-3 10.72 0.00% 0.8m 16.55 0.00% 1.5m 23.12 0.00% 24m 50.96 0.00% 9.6h AM 11.03 2.89% 0.3m 21.24 28.34% 1.4m 35.18 52.16% 2.2m 96.37 89.11% 5.7m POMO 10.97 2.33% 0.2m 20.85 25.98% 1.0m 32.94 42.47% 1.6m 87.79 72.27% 4.8m CNF 10.80 0.74% 1.5m 17.29 4.47% 3.3m 25.19 8.95% 7.7m 56.53 10.93% 11.1m GFlowNet-HBG 10.78 0.56% 0.1m 17.05 3.02% 0.5m 24.42 5.62% 1.3m 54.67 7.28% 3.7m ECO 10.96 2.23% 0.1m 17.73 7.12% 0.4m 25.33 9.55% 0.9m 57.02 11.89% 2.5m
+> ECO(Local search) 10.76 0.37% 0.1m 16.98 2.59% 0.4m 24.24 4.84% 0.9m 53.76 5.49% 2.5m
+> CVRP100 CVRP200 CVRP500 CVRP1000 Obj. ↓Gap ↓Time ↓Obj. ↓Gap ↓Time ↓Obj. ↓Gap ↓Time ↓Obj. ↓Gap ↓Time ↓
+> HGS 15.56 0.00% 0.4m 19.63 0.00% 1.0m 37.15 0.00% 6.1m 63.26 0.00% 13.7m AM 16.73 7.51% 0.2m 21.33 8.64% 0.8m 47.36 27.39% 2.0m 104.40 65.03% 3.9m POMO 16.15 3.79% 0.2m 20.47 4.26% 0.6m 46.13 24.17% 1.4m 100.19 58.37% 2.1m CNF 15.85 1.86% 0.3m 20.08 2.31% 1.8m 38.51 3.64% 4.3m 66.94 5.82% 8.7m GFlowNet-HBG 15.70 0.91% 0.1m 20.01 1.96% 0.2m 38.19 2.81% 0.7m 65.09 2.89% 1.7m ECO 15.87 1.99% 0.1m 20.13 2.57% 0.2m 38.61 3.94% 0.6m 67.11 6.08% 1.2m
+> ECO(Local search) 15.69 0.86% 0.1m 20.33 1.77% 0.2m 38.21 2.85% 0.6m 65.08 2.87% 1.8m
+
+# 4. Experiment 
+
+4.1. Experimental Setup Problem Instances: Following standard generation proto-cols (Kool et al., 2018), we synthesized datasets for both TSP and CVRP. To evaluate scalability, we tested problem sizes of N ∈ { 200 , 500 , 1000 , 5000 }. All reported results represent the average performance computed over 1,000 independent test instances. 
+
+Model Configuration: The model embedding dimension is set to 128. Both the Mamba-based encoder and decoder consist of 3 layers. For the DPO training stability, we set the KL penalty coefficient β to 0.3 and the sampling size K to 32. The reference model is updated every 10 iterations. We utilize the Adam optimizer with a learning rate of 5 × 10 −4
+
+and L2 regularization. 
+
+Training Protocol: Our training pipeline proceeds in two stages. The first stage is a warm-up phase (Supervised Fine-Tuning), where the model is trained for 10 epochs on 100,000 instances labeled by the LKH solver to acquire foundational heuristic knowledge. The second stage imple-ments DPO training using offline data generation. Here, we enhance the learning signal by integrating a local search operator, with a mixing ratio α = 0 .3 for the optimized data. All experiments were conducted on a single NVIDIA A800 GPU (80GB). 
+
+Baselines: To rigorously validate our approach, we bench-mark against two categories of methods: (1) Traditional solvers, including LKH (Helsgaun, 2017), HGS (Vidal et al., 2012) and Concorde (Applegate et al., 2006) ; and (2) Rep-resentative and state-of-the-art NCO methods, specifically AM (Kool et al., 2018),POMO (Kwon et al., 2020),CNF (Zhou et al., 2024), and GFlowNet (HBG) (Zhang & Cao, 2025). 
+
+4.2. Experimental Analysis 
+
+To systematically address the core objectives of this study, we structure our experimental analysis around the following three Research Questions (RQs): RQ1 (Scalability and Quality): Can ECO maintain solu-tion quality comparable to mainstream Transformer-based NCO methods on large-scale instances while significantly reducing inference latency? RQ2 (Efficiency Mechanism): Does the proposed Mamba architecture empirically demonstrate linear GPU memory scaling and superior throughput advantages over Attention mechanisms in long-sequence tasks? RQ3 (Component Effectiveness): What are the individual contributions of the offline DPO paradigm, the warm-up strategy, and heuristic bootstrapping to the final model per-formance? 4.2.1. M AIN RESULTS ANALYSIS (R ESPONDS TO RQ1) Table 1 presents the comparative performance on TSP and CVRP instances ranging from N = 200 to N = 5000 .Our analysis yields two primary conclusions regarding the 6Submission and Formatting Instructions for ICML 2026 10 2 10 3 10 4       
+
+> Problem Size N(Log Scale)
+> 0
+> 10
+> 20
+> 30
+> 40
+> 50
+> 60
+> 70
+> 80
+> 90
+> Peak Memory (GB)
+> GPU Memory Limit (80GB)
+> (a) Memory Cost Analysis
+> ECO (Mamba)
+> Baseline (Transformer)
+> OOM
+> 10 210 310 4
+> Problem Size N(Log Scale)
+> 10 1
+> 10 0
+> 10 1
+> 10 2
+> 10 3
+> Throughput (instances/sec)
+> (b) Inference Throughput
+> ECO (Mamba)
+> Baseline (Transformer)
+
+Figure 3. Scalability and Efficiency Analysis on NVIDIA A800 GPU (80GB RAM). We perform a stress test comparing the resource consumption of ECO (Mamba-based) against the Transformer baseline across problem sizes N ranging from 100 to 10,000 (log scale). 
+
+(a) Peak Memory Usage: The baseline exhibits characteristic quadratic growth ( O(N 2)) due to the self-attention mechanism, triggering an Out-Of-Memory (OOM) error at N = 10 , 000 . In contrast, ECO maintains a near-linear memory profile ( O(N )) owing to Mamba’s fixed-size recurrent state, enabling scalable inference well within hardware limits. (b) Inference Throughput: ECO demonstrates orders-of-magnitude higher throughput (note the log scale on the y-axis) compared to the baseline. The performance gap widens significantly as N increases, validating the computational efficiency advantage of our proposed SSM architecture for large-scale NCO tasks. 
+
+scalability and learning efficacy of ECO: 
+
+Robust Performance on Large-Scale Instances: The most critical validation of our approach is observed on the massive-scale instances (TSP5000/CVRP1000). As shown in Table 1, traditional Transformer-based baselines (AM, POMO) suffer from significant performance degradation as the problem size increases, with optimality gaps deteriorat-ing to 89 .11% and 72 .27% on TSP5000. This collapse is largely attributed to the difficulty of training attention mech-anisms to capture global dependencies on such large graphs. In contrast, ECO maintains consistent high performance, achieving a competitive gap of 11 .89% on TSP5000. This result confirms that our Mamba-based architecture, com-bined with the proposed training paradigm, successfully scales to manage the complexity of thousands of nodes, overcoming the scalability bottlenecks inherent in previous NCO solvers. 
+
+Internalizing Local Search Capabilities via DPO: A key driver of ECO’s superior performance is the integration of Local Search (LS) into the DPO training phase. Rather than serving merely as a post-hoc repair operator, the LS-augmented data generation provides high-quality ”winner” trajectories ( yw) for the preference pairs. By optimizing the policy to distinguish between the raw model output and the LS-refined solution, ECO effectively distills the geomet-ric optimization logic of 2-opt/3-opt operators directly into the neural network weights. This ”internalization” process sharpens the learning signal, enabling the model to gener-ate structurally superior solutions autonomously. When a lightweight LS is optionally applied during inference (ECO(Local Search)), the performance is further refined, bridging the gap to the specialized LKH-3 solver ( 5.49% 
+
+gap on TSP5000) while retaining a substantial speed advan-tage. 
+
+Inference Latency and Practicality: ECO demonstrates a decisive advantage in computational efficiency. On TSP5000, ECO completes inference in just 2.5 minutes, representing a speedup of orders of magnitude compared to constructive heuristics and iterative baselines. This estab-lishes ECO as a highly practical solver for time-sensitive, large-scale industrial routing scenarios where traditional solvers typically require hours of computation. 4.2.2. E FFICIENCY AND THROUGHPUT ANALYSIS 
+
+(R ESPONDS TO RQ2) To rigorously isolate the efficiency gains attributed to the proposed SSM architecture, we conducted a controlled stress test. We implemented a Control Variate Baseline by replacing the Mamba backbone within the ECO framework with a standard Transformer architecture (mimicking the Attention Model), while keeping all other data processing and inference pipelines identical. 
+
+GPU Memory Scaling Analysis: We monitored the peak GPU memory consumption across problem sizes N ∈{100 , . . . , 10000 }. To accurately capture the architectural growth rate ( O(N ) vs. O(N 2)), we standardized the infer-7Submission and Formatting Instructions for ICML 2026                           
+
+> Table 2. Ablation study on TSP1000. We report the average Optimality Gap (Gap) relative to the ground truth and the Total Training Time. “–” indicates that the model failed to converge or exhibited instability. The best results are highlighted in bold .VARIANT COMPONENTS GAP (%) ↓TIME ↓
+> ECO (F ULL )SFT + DPO + LS 4.84 10.2 H
+> W/OLS B OOT .SFT + DPO 9.55 9.5 HW/OSFT DPO + LS >20 .0–ONLINE PPO ONLINE RL 4.88 34.5 H
+
+ence batch size to 8 for all measurements. 
+
+Results: As illustrated in Figure 3 (Left), the Transformer baseline exhibits a quadratic memory explosion, triggering an Out-Of-Memory (OOM) error on the A800 (80GB) GPU at approximately N = 7000 . Conversely, ECO maintains a strictly linear memory growth profile. Even at N = 10 , 000 ,the memory footprint remains well within hardware limits (approx. 40GB). This confirms that the fixed-size recurrent state of the Mamba encoder-decoder effectively resolves the memory bottleneck preventing Transformer-based models from scaling. 
+
+Limit-State Throughput Testing: To evaluate the maxi-mum processing capacity suitable for industrial deployment, we adopted a Maximal Utilization Protocol for throughput testing. Instead of a fixed batch size, we dynamically maxi-mized the inference batch size for each model and problem size until the GPU memory limit was reached. 
+
+Results: Figure 3 (Right) reports the throughput (in-stances/second) on a logarithmic scale. While the Trans-former’s throughput plummets for large N due to the neces-sity of reducing batch sizes to accommodate the massive attention matrices, ECO sustains high throughput levels. Specifically, at N = 5000 , ECO achieves a throughput orders of magnitude higher than the baseline. This perfor-mance gap highlights that the linear memory complexity of ECO not only saves VRAM but also unlocks the ability to process significantly larger batches in parallel, maximizing GPU utilization. 
+
+4.3. Ablation Study (Responds to RQ3) 
+
+To verify the contribution of the Offline DPO paradigm, Local Search (LS) Bootstrapping, and supervised warm-up (SFT), we conducted an ablation study on TSP1000. Table 2 summarizes the results across four variants. 
+
+The Necessity of Heuristic Bootstrapping (Signal Qual-ity): A critical hypothesis of our work is that standard self-play suffers from ”reward sparsity” in late training stages, where the model struggles to generate solutions significantly better than its current policy. As shown in Table 2, remov-ing the LS augmentation (w/o LS Bootstrapping) leads to a distinct performance drop, with the optimality gap increas-ing from 4.84% to 9.55% . Without the injection of high-quality solutions via local search, the preference margins 
+
+L(yl) − L(yw) become vanishingly small. In the DPO loss landscape, this results in weak gradients, causing the model to stagnate in local optima. The LS operator effectively acts as a ”guidance compass,” providing a strictly superior yw
+
+that forces the policy to learn the geometric transformations required to escape these local optima. 
+
+Offline DPO vs. Online PPO (Paradigm Efficiency): We challenge the dominance of Online RL in NCO by com-paring ECO against a standard Online PPO baseline utiliz-ing the same Mamba architecture. While PPO can even-tually converge, it requires significantly more wall-clock time ( TP P O ≈ 3 × TECO ) to reach comparable perfor-mance. Furthermore, ECO (Full) achieves a better final convergence gap. This validates the efficiency of the Offline paradigm. Online RL is bottlenecked by the interaction loop—generating fresh samples on-policy for every update step—which severely limits GPU utilization. In contrast, ECO’s offline data generation (coupled with parallelized Mamba inference) maximizes computational throughput. Moreover, DPO’s direct optimization of the policy distribu-tion avoids the instability associated with training a separate Value Network (Critic) in PPO. 
+
+The Role of Warm-up (The ”Cold Start” Problem): The w/o SFT variant fails to yield meaningful results, exhibiting an optimality gap of > 20% and unstable training curves. This confirms that DPO is highly sensitive to the quality of the reference model πref . If initialized randomly, both the reference policy and the current policy generate effectively random tours. Consequently, the preference pairs (yw, y l)
+
+contain no structural logic (i.e., yw is better than yl by pure chance, not by merit), leading to noisy gradients that derail the optimization. The SFT phase is therefore indispens-able, providing the ”topological common sense” required to bootstrap the preference learning process. 
+
+# 5. Conclusion 
+
+In this paper, we introduced ECO, a scalable NCO frame-work that fundamentally rethinks the efficiency bottle-necks of current neural solvers. By synergizing a linear-complexity Mamba architecture with an offline self-play paradigm, ECO effectively breaks the quadratic memory bar-rier and low-throughput constraints of Transformer-based online methods. Extensive experiments on TSP and CVRP confirm that ECO delivers competitive solution quality at a fraction of the computational cost, enabling practical in-ference on instances with thousands of nodes. Our findings suggest that shifting towards hardware-aware architectures and stable offline alignment strategies is a promising path for the next generation of large-scale combinatorial opti-mization. 8Submission and Formatting Instructions for ICML 2026 
+
+# Impact Statement 
+
+This paper presents work whose goal is to advance the field of Machine Learning. There are many potential societal consequences of our work, none which we feel must be specifically highlighted here. 
+
+# References 
+
+Amodei, D., Olah, C., Steinhardt, J., Christiano, P., Schul-man, J., and Man ´e, D. Concrete problems in ai safety. 
+
+arXiv preprint arXiv:1606.06565 , 2016. Applegate, D., Bixby, R., Chv ´atal, V., and Cook, W. Con-corde tsp solver, 2006. Bello, I., Pham, H., Le, Q. V., Norouzi, M., and Bengio, S. Neural combinatorial optimization with reinforcement learning. arXiv preprint arXiv:1611.09940 , 2016a. Bello, I., Pham, H., Le, Q. V., Norouzi, M., and Bengio, S. Neural combinatorial optimization with reinforcement learning. arXiv preprint arXiv:1611.09940 , 2016b. Bengio, E., Jain, M., Korablyov, M., Precup, D., and Ben-gio, Y. Flow network based generative models for non-iterative diverse candidate generation. Advances in neural information processing systems , 34:27381–27394, 2021. Blum, C. Ant colony optimization: Introduction and recent trends. Physics of Life reviews , 2(4):353–373, 2005. Dao, T. and Gu, A. Transformers are ssms: Generalized models and efficient algorithms through structured state space duality. arXiv preprint arXiv:2405.21060 , 2024. Dao, T., Fu, D., Ermon, S., Rudra, A., and R ´e, C. Flashat-tention: Fast and memory-efficient exact attention with io-awareness. Advances in neural information processing systems , 35:16344–16359, 2022. Ethayarajh, K., Xu, W., Muennighoff, N., Jurafsky, D., and Kiela, D. Kto: Model alignment as prospect theoretic optimization. arXiv preprint arXiv:2402.01306 , 2024. Fu, D. Y., Dao, T., Saab, K. K., Thomas, A. W., Rudra, A., and R ´e, C. Hungry hungry hippos: Towards lan-guage modeling with state space models. arXiv preprint arXiv:2212.14052 , 2022. Ganjam, S., Wang, Y., Lu, Y., Banerjee, A., Lei, C. U., Krayzman, L., Kisslinger, K., Zhou, C., Li, R., Jia, Y., et al. Surpassing millisecond coherence in on chip super-conducting quantum memories by optimizing materials and circuit design. Nature Communications , 15(1):3687, 2024. Gu, A. and Dao, T. Mamba: Linear-time sequence mod-eling with selective state spaces. In First conference on language modeling , 2024. Gu, A., Goel, K., and R ´e, C. Efficiently modeling long sequences with structured state spaces. arXiv preprint arXiv:2111.00396 , 2021a. Gu, A., Johnson, I., Goel, K., Saab, K., Dao, T., Rudra, A., and R ´e, C. Combining recurrent, convolutional, and continuous-time models with linear state space layers. 
+
+Advances in neural information processing systems , 34: 572–585, 2021b. Gulcehre, C., Paine, T. L., Srinivasan, S., Konyushkova, K., Weerts, L., Sharma, A., Siddhant, A., Ahern, A., Wang, M., Gu, C., et al. Reinforced self-training (rest) for language modeling. arXiv preprint arXiv:2308.08998 ,2023. Helsgaun, K. An extension of the lin-kernighan-helsgaun tsp solver for constrained traveling salesman and vehicle routing problems. Roskilde: Roskilde University , 12: 966–980, 2017. Holland, J. H. Genetic algorithms. Scientific american , 267 (1):66–73, 1992. Hong, J., Lee, N., and Thorne, J. Orpo: Monolithic pref-erence optimization without reference model. arXiv preprint arXiv:2403.07691 , 2024. Hooper, C., Kim, S., Mohammadzadeh, H., Mahoney, M. W., Shao, Y. S., Keutzer, K., and Gholami, A. Kvquant: Towards 10 million context length llm infer-ence with kv cache quantization. Advances in Neural Information Processing Systems , 37:1270–1303, 2024. Joel, O. S., Oyewole, A. T., Odunaiya, O. G., and Soyombo, O. T. Leveraging artificial intelligence for enhanced sup-ply chain optimization: a comprehensive review of cur-rent practices and future potentials. International Journal of Management & Entrepreneurship Research , 6(3):707– 721, 2024. Katharopoulos, A., Vyas, A., Pappas, N., and Fleuret, F. Transformers are rnns: Fast autoregressive transformers with linear attention. In International conference on ma-chine learning , pp. 5156–5165. PMLR, 2020. Kool, W., Van Hoof, H., and Welling, M. Attention, learn to solve routing problems! arXiv preprint arXiv:1803.08475 , 2018. Kwon, Y.-D., Choo, J., Kim, B., Yoon, I., Gwon, Y., and Min, S. Pomo: Policy optimization with multiple optima for reinforcement learning. Advances in Neural Informa-tion Processing Systems , 33:21188–21198, 2020. 9Submission and Formatting Instructions for ICML 2026 
+
+Levine, S., Kumar, A., Tucker, G., and Fu, J. Offline rein-forcement learning: Tutorial, review, and perspectives on open problems. arXiv preprint arXiv:2005.01643 , 2020. Liao, Z., Chen, J., Wang, D., Zhang, Z., and Wang, J. Bopo: Neural combinatorial optimization via best-anchored and objective-guided preference optimization. arXiv preprint arXiv:2503.07580 , 2025. Liu, F., Zhang, R., Lin, X., Lu, Z., and Zhang, Q. Fine-tuning large language model for automated algorithm design. arXiv preprint arXiv:2507.10614 , 2025. Luo, F., Lin, X., Liu, F., Zhang, Q., and Wang, Z. Neural combinatorial optimization with heavy decoder: Toward large scale generalization. Advances in Neural Informa-tion Processing Systems , 36:8845–8864, 2023. Luo, F., Lin, X., Wang, Z., Tong, X., Yuan, M., and Zhang, Q. Self-improved learning for scalable neural combina-torial optimization. arXiv preprint arXiv:2403.19561 ,2024. Luo, F., Lin, X., Wu, Y., Wang, Z., Xialiang, T., Yuan, M., and Zhang, Q. Boosting neural combinatorial optimiza-tion for large-scale vehicle routing problems. In The Thirteenth International Conference on Learning Repre-sentations , 2025. Mandlekar, A., Xu, D., Wong, J., Nasiriany, S., Wang, C., Kulkarni, R., Fei-Fei, L., Savarese, S., Zhu, Y., and Mart ´ın-Mart ´ın, R. What matters in learning from offline human demonstrations for robot manipulation. arXiv preprint arXiv:2108.03298 , 2021. Mnih, V. Playing atari with deep reinforcement learning. 
+
+arXiv preprint arXiv:1312.5602 , 2013. Mnih, V., Badia, A. P., Mirza, M., Graves, A., Lillicrap, T., Harley, T., Silver, D., and Kavukcuoglu, K. Asyn-chronous methods for deep reinforcement learning. In 
+
+International conference on machine learning , pp. 1928– 1937. PmLR, 2016. Ouyang, L., Wu, J., Jiang, X., Almeida, D., Wainwright, C., Mishkin, P., Zhang, C., Agarwal, S., Slama, K., Ray, A., et al. Training language models to follow instructions with human feedback. Advances in neural information processing systems , 35:27730–27744, 2022. Pan, M., Lin, G., Luo, Y.-W., Zhu, B., Dai, Z., Sun, L., and Yuan, C. Preference optimization for combinatorial optimization problems. In Forty-second International Conference on Machine Learning , 2025. Rafailov, R., Sharma, A., Mitchell, E., Manning, C. D., Ermon, S., and Finn, C. Direct preference optimiza-tion: Your language model is secretly a reward model. 
+
+Advances in neural information processing systems , 36: 53728–53741, 2023. Said, H. and El-Rayes, K. Automated multi-objective con-struction logistics optimization system. Automation in Construction , 43:110–122, 2014. Schulman, J., Wolski, F., Dhariwal, P., Radford, A., and Klimov, O. Proximal policy optimization algorithms. 
+
+arXiv preprint arXiv:1707.06347 , 2017. Sun, Y., Dong, L., Huang, S., Ma, S., Xia, Y., Xue, J., Wang, J., and Wei, F. Retentive network: A successor to transformer for large language models. arXiv preprint arXiv:2307.08621 , 2023. Vaswani, A., Shazeer, N., Parmar, N., Uszkoreit, J., Jones, L., Gomez, A. N., Kaiser, Ł., and Polosukhin, I. At-tention is all you need. Advances in neural information processing systems , 30, 2017. Vidal, T., Crainic, T. G., Gendreau, M., Lahrichi, N., and Rei, W. A hybrid genetic algorithm for multidepot and periodic vehicle routing problems. Operations Research ,60(3):611–624, 2012. Vinyals, O., Fortunato, M., and Jaitly, N. Pointer networks. 
+
+Advances in neural information processing systems , 28, 2015. Williams, R. J. Simple statistical gradient-following algo-rithms for connectionist reinforcement learning. Machine learning , 8(3):229–256, 1992. Wolpert, D. H. and Macready, W. G. No free lunch theo-rems for optimization. IEEE transactions on evolutionary computation , 1(1):67–82, 2002. Wu, X., Wang, D., Wu, C., Qi, K., Miao, C., Xiao, Y., Zhang, J., and Zhou, Y. Efficient neural combinatorial optimiza-tion solver for the min-max heterogeneous capacitated ve-hicle routing problem. arXiv preprint arXiv:2507.21386 ,2025. Yuan, T., da Rocha Neto, W., Rothenberg, C. E., Obraczka, K., Barakat, C., and Turletti, T. Machine learning for next-generation intelligent transportation systems: A survey. 
+
+Transactions on emerging telecommunications technolo-gies , 33(4):e4427, 2022. Yuan, W., Pang, R. Y., Cho, K., Li, X., Sukhbaatar, S., Xu, J., and Weston, J. E. Self-rewarding language mod-els. In Forty-first International Conference on Machine Learning , 2024. Zhang, N. and Cao, Z. Hybrid-balance gflownet for solving vehicle routing problems. In The Thirty-ninth Annual Conference on Neural Information Processing Systems ,2025. 10 Submission and Formatting Instructions for ICML 2026 
+
+Zhou, J., Love, P. E., Wang, X., Teo, K. L., and Irani, Z. A review of methods and algorithms for optimizing con-struction scheduling. Journal of the Operational Research Society , 64(8):1091–1105, 2013. Zhou, J., Wu, Y., Cao, Z., Song, W., Zhang, J., and Shen, Z. Collaboration! towards robust neural methods for routing problems. Advances in Neural Information Processing Systems , 37:121731–121764, 2024. 11 Submission and Formatting Instructions for ICML 2026 
+
+# A. Theoretical Analysis of Iterative DPO for Combinatorial Optimization 
+
+In this appendix, we provide a theoretical derivation of the Direct Preference Optimization (DPO) objective specifically within the context of Combinatorial Optimization (CO). We further analyze the gradient dynamics to explain why the iterative update of the reference model promotes convergence towards optimal solutions. 
+
+A.1. Derivation of the DPO Objective for TSP 
+
+The Traveling Salesperson Problem (TSP) can be formulated as a Reinforcement Learning problem where the objective is to maximize the expected reward (minimize tour length) subject to a KL-divergence constraint. This constraint ensures the policy does not deviate excessively from a reference policy πref , stabilizing the training. 
+
+The RL Objective: Let R(π, X ) = −L(π, X ) be the reward function (negative tour length). The objective is to find the optimal policy π∗ maximizing: 
+
+max  
+
+> π
+
+EX∼D ,π ∼π(·| X) [R(π, X )] − βDKL (π(·| X)|| πref (·| X)) , (12) where β is the regularization coefficient. The Closed-Form Solution: As shown in previous works, the optimal solution to this constrained maximization problem takes the form of a Gibbs distribution: 
+
+π∗(y|X) = 1
+
+Z(X) πref (y|X) exp 
+
+ R(y, X )
+
+β
+
+
+
+, (13) where Z(X) = P 
+
+> y′
+
+πref (y′|X) exp( R(y′, X )/β ) is the partition function. 
+
+Eliminating the Partition Function: By rearranging the equation above, we can express the reward function R in terms of the optimal policy, the reference policy, and the partition function: 
+
+R(y, X ) = β log π∗(y|X)
+
+πref (y|X) + β log Z(X). (14) This mapping is crucial because Z(X) depends only on the instance X, not on the specific path y.
+
+Modeling Preferences via Bradley-Terry: In our framework, we do not train an explicit Reward Model. Instead, we use paired data (yw, y l) where L(yw) < L (yl), implying yw ≻ yl. Assuming the preference distribution follows the Bradley-Terry model: 
+
+p(yw ≻ yl|X) = σ(R(yw, X ) − R(yl, X )) . (15) Substituting the expression for R(y, X ) derived above, the partition function terms β log Z(X) cancel out: 
+
+R(yw, X ) − R(yl, X ) = β log π∗(yw|X)
+
+πref (yw|X) − β log π∗(yl|X)
+
+πref (yl|X) . (16) Optimizing the negative log-likelihood of this probability yields the DPO loss LDPO used in our method. 
+
+A.2. Gradient Analysis and Optimization Dynamics 
+
+To understand why DPO is effective for TSP, we analyze the gradient of the loss function with respect to the network parameters θ. The gradient is given by: 
+
+∇θ LDPO = −βE(X,y w ,y l)
+
+σ(ˆ rθ (yl) − ˆrθ (yw)) 
+
+| {z }
+
+> Error Term
+
+∇θ log πθ (yw|X)
+
+| {z }
+
+> Reinforce Winner
+
+− ∇ θ log πθ (yl|X)
+
+| {z }
+
+> Suppress Loser
+
+ , (17) where ˆrθ (y) = β log πθ (y|X) 
+
+> πref (y|X)
+
+is the implicit reward. 12 Submission and Formatting Instructions for ICML 2026 
+
+Intuition for CO: Implicit Reward Shaping: The term ˆrθ (yw) − ˆrθ (yl) acts as a dynamic margin. The model updates its weights to increase the likelihood of the shorter path yw relative to the reference model, while decreasing the likelihood of yl.
+
+Automatic Curriculum via the Error Term: The scaling factor σ(ˆ rθ (yl) − ˆrθ (yw)) essentially represents the ”probability of making a mistake” (classifying the longer path as better). If the model is confident and correct ( yw is much more likely than yl), this term approaches 0, and the gradient vanishes (preventing overfitting). If the model is incorrect ( yl is more likely), the term approaches 1, applying a strong gradient to correct the behavior. This provides a natural, sample-efficient curriculum that focuses learning on ”hard” comparisons, which is critical for fine-grained optimization in TSP. A.2.1. C ONVERGENCE OF ITERATIVE DPO (I TERATIVE REFERENCE UPDATES )Standard DPO relies on a static πref . However, in Combinatorial Optimization, the static reference limits the exploration capability, as the KL constraint prevents the policy from drifting too far from an initially sub-optimal heuristic. Our Iterative DPO strategy updates π(t+1)  
+
+> ref
+
+← π(t) 
+
+> θ
+
+periodically. This can be viewed as a Generalized Expectation-Maximization (GEM) process: 
+
+E-Step (Sampling): By updating πref , we effectively reset the ”search radius” of the KL constraint. The new reference distribution π(t+1)  
+
+> ref
+
+is concentrated on better solutions found in iteration t.
+
+M-Step (Optimization): We optimize πθ to find solutions better than the new reference. Since L(yw) < L (yl) is grounded in the absolute metric of Euclidean distance (unlike subjective human preferences), the preference signal is noise-free. Let St be the set of high-probability paths under π(t). The iterative update ensures that Ey∼π(t+1) [L(y)] ≤ Ey∼π(t) [L(y)] as long as the optimizer can find a yw in the local neighborhood of π(t) such that 
+
+L(yw) < L (yl). This mimics a population-based evolutionary strategy where the population (distribution) progressively shifts towards the global optimum. 
+
+# B. Detailed Implementation Settings 
+
+To ensure the reproducibility of our results, we provide the detailed hyperparameter settings for both the neural architecture and the training phases. 
+
+B.1. Network Architecture 
+
+Our Mamba-based Encoder-Decoder follows the official implementation configurations of Mamba (Gu & Dao, 2024). The specific architectural hyperparameters are detailed in Table 3.  
+
+> Table 3. Hyperparameters of the Mixed Mamba Architecture.
+
+PARAMETER VALUE 
+
+EMBEDDING DIMENSION (D) 128 NUMBER OF LAYERS (L) 3MAMBA STATE DIMENSION (dstate ) 16 MAMBA CONV KERNEL SIZE (dconv ) 4MAMBA EXPANSION FACTOR (E) 2FEED -F ORWARD NETWORK (FFN) R ATIO 4NORMALIZATION RMSN ORM 
+
+13 Submission and Formatting Instructions for ICML 2026 
+
+B.2. Baseline Configurations and Reproducibility 
+
+To ensure a fair comparison, all baselines were evaluated on the same hardware environment (Single NVIDIA A800 GPU). We utilized the official open-source implementations for the learning-based methods: • Attention Model (AM) and POMO : We used the implementation from the widely adopted RL4CO library 2, maintaining their default hyperparameters. • GFlowNet-HBG : We utilized the official code provided by (Zhang & Cao, 2025), training the model with their recommended settings for 24 hours. • CNF : We reproduced the results using the official code from (Zhou et al., 2024), ensuring the flow-matching steps were consistent with their paper. For traditional solvers: • Concorde : We used the PyConcorde wrapper. • LKH-3 : We used the official binary with standard parameters (runs=1, max-trials=10000). 
+
+B.3. Data Generation and Local Search Details 
+
+Following standard NCO protocols (Kool et al., 2018), problem instances for both TSP and CVRP are generated by sampling 
+
+N node coordinates uniformly from the unit square [0 , 1] 2. For CVRP, demands are sampled uniformly from discrete values 
+
+{1, . . . , 9}, and capacities are set to 20 , 30 , 40 , and 50 for N = 20 , 50 , 100 , 200 respectively. For larger scales ( N ≥ 500 ), capacities are scaled linearly. In the Bootstrapping DPO phase, we employ 2-opt/3-opt local search operator to refine the raw model outputs. To balance efficiency and solution quality during data generation: • We implement a First Improvement strategy rather than Best Improvement to reduce computational overhead. • The maximum number of 2-opt iterations is capped at N (linear to problem size) to prevent excessive runtime during the offline data generation process. • This operator is implemented using Numba JIT compilation to ensure it does not become a bottleneck in the training pipeline. • During DPO training, we incorporate preference pairs enhanced by local search to strengthen the learning signal. Specifically, these augmented pairs constitute 20% of the total training data. 
+
+B.4. Algorithm Pseudocode 
+
+We provide the detailed training procedure of ECO in Algorithm 1. The framework consists of two phases: Supervised Fine-Tuning (SFT) warm-up and Iterative Direct Preference Optimization (DPO) with Heuristic Bootstrapping. 
+
+> 2https://github.com/ai4co/rl4co
+
+14 Submission and Formatting Instructions for ICML 2026 
+
+Algorithm 1 ECO: Efficient Combinatorial Optimization Training Framework 
+
+1: Input: Training instances X , Expert Solver (LKH/Heuristic) H, Local Search Operator TLS 
+
+2: Hyperparameters: Learning rates ηSF T , η DP O , Sampling size K, Mixing ratio α, Reference update freq M , KL coefficient β
+
+3: Initialize: Policy parameters θ, Reference model θref ← θ
+
+4: {Phase I: Supervised Warm-up (SFT) }
+
+5: Generate expert demonstrations DSF T = {(x, π ∗) | x ∈ X , π ∗ = H(x)}
+
+6: for epoch = 1 to ESF T do 
+
+7: for batch B ⊂ D SF T do 
+
+8: Compute Loss LSF T (θ) = − 1
+
+> |B|
+
+P 
+
+> (x,π ∗)∈B
+
+log pθ (π∗|x)
+
+9: Update θ ← θ − ηSF T ∇θ LSF T 
+
+10: end for 
+
+11: end for 
+
+12: {Phase II: Iterative DPO with LS Bootstrapping }
+
+13: Initialize θref ← θ
+
+14: for iteration t = 1 to TDP O do 
+
+15: Sample batch of instances Xbatch ⊂ X 
+
+16: Initialize preference buffer Dpref ← ∅ 
+
+17: for instance x ∈ Xbatch do 
+
+18: Sample K solutions Y = {y1, . . . , y K } using current policy πθ (·| x)
+
+19: {Heuristic Bootstrapping Strategy }
+
+20: if random() < α then 
+
+21: Select a candidate yraw ∈ Y
+
+22: Apply Local Search: yref ined ← T LS (yraw )
+
+23: Set pair: yw ← yref ined , yl ← yraw {Strictly better signal }
+
+24: else 
+
+25: Evaluate costs {L(y) | y ∈ Y }
+
+26: Set pair: yw ← arg min y∈Y L(y), yl ← arg max y∈Y L(y)
+
+27: end if 
+
+28: Add (x, y w, y l) to Dpref 
+
+29: end for 
+
+30: {DPO Update }
+
+31: Compute Implicit Rewards: ˆrθ (y) = β log πθ (y|x) 
+
+> πref (y|x)
+
+32: Compute Loss LDP O (θ) = −E(x,y w ,y l)∼D pref [log σ (ˆ rθ (yw) − ˆrθ (yl))] 
+
+33: Update θ ← θ − ηDP O ∇θ LDP O 
+
+34: {Iterative Reference Update }
+
+35: if t mod M == 0 then 
+
+36: Update Reference Model: θref ← θ
+
+37: end if 
+
+38: end for 
+
+39: Output: Optimized parameters θ
+
+15

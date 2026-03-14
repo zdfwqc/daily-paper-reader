@@ -1,0 +1,767 @@
+{
+  "mode": "standard",
+  "generated_at": "2026-03-14T19:19:07.217012+00:00",
+  "stats": {
+    "mode": "standard",
+    "tag_count": 2,
+    "deep_divecandidates": 51,
+    "deep_cap": 7,
+    "deep_selected": 7,
+    "quick_candidates": 136,
+    "quick_skim_target": 12,
+    "quick_selected": 12
+  },
+  "deep_dive": [
+    {
+      "id": "2603.07705v2",
+      "title": "Deep Incentive Design with Differentiable Equilibrium Blocks",
+      "abstract": "Automated design of multi-agent interactions with desirable equilibrium outcomes is inherently difficult due to the computational hardness, non-uniqueness, and instability of the resulting equilibria. In this work, we propose the use of game-agnostic differentiable equilibrium blocks (DEBs) as modules in a novel, differentiable framework to address a wide variety of incentive design problems from economics and computer science. We call this framework deep incentive design (DID). To validate our approach, we examine three diverse, challenging incentive design tasks: contract design, machine scheduling, and inverse equilibrium problems. For each task, we train a single neural network using a unified pipeline and DEB. This architecture solves the full distribution of problem instances, parameterized by a context, handling all games across a wide range of scales (from two to sixteen actions per player).",
+      "authors": [
+        "Vinzenz Thoma",
+        "Georgios Piliouras",
+        "Luke Marris"
+      ],
+      "primary_category": "cs.GT",
+      "categories": [
+        "cs.GT",
+        "cs.LG"
+      ],
+      "published": "2026-03-08T16:15:03+00:00",
+      "link": "https://arxiv.org/pdf/2603.07705v2",
+      "tags": [
+        "keyword:DRL",
+        "keyword:DRL JSP",
+        "query:DRL",
+        "query:DRL JSP"
+      ],
+      "llm_score": 9.0,
+      "llm_evidence_en": "Deep learning framework applied to machine scheduling",
+      "llm_evidence_cn": "应用于机器调度的深度学习框架",
+      "llm_evidence": "应用于机器调度的深度学习框架",
+      "canonical_evidence": "应用于机器调度的深度学习框架",
+      "llm_tldr_en": "Proposes Deep Incentive Design for multi-agent tasks including machine scheduling using differentiable blocks.",
+      "llm_tldr_cn": "提出深度激励设计框架，利用可微模块解决包括机器调度在内的多智能体任务。",
+      "llm_tldr": "提出深度激励设计框架，利用可微模块解决包括机器调度在内的多智能体任务。",
+      "llm_tags": [
+        "query:drl-jsp"
+      ],
+      "matched_query_tag": "query:drl-jsp",
+      "matched_query_text": "Deep Reinforcement Learning for scheduling",
+      "matched_requirement_id": "req-1",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2603.10199v1",
+      "title": "Actor-Accelerated Policy Dual Averaging for Reinforcement Learning in Continuous Action Spaces",
+      "abstract": "Policy Dual Averaging (PDA) offers a principled Policy Mirror Descent (PMD) framework that more naturally admits value function approximation than standard PMD, enabling the use of approximate advantage (or Q-) functions while retaining strong convergence guarantees. However, applying PDA in continuous state and action spaces remains computationally challenging, since action selection involves solving an optimization sub-problem at each decision step. In this paper, we propose \\textit{actor-accelerated PDA}, which uses a learned policy network to approximate the solution of the optimization sub-problems, yielding faster runtimes while maintaining convergence guarantees. We provide a theoretical analysis that quantifies how actor approximation error impacts the convergence of PDA under suitable assumptions. We then evaluate its performance on several benchmarks in robotics, control, and operations research problems. Actor-accelerated PDA achieves superior performance compared to popular on-policy baselines such as Proximal Policy Optimization (PPO). Overall, our results bridge the gap between the theoretical advantages of PDA and its practical deployment in continuous-action problems with function approximation.",
+      "authors": [
+        "Ji Gao",
+        "Caleb Ju",
+        "Guanghui Lan",
+        "Zhaohui Tong"
+      ],
+      "primary_category": "cs.LG",
+      "categories": [
+        "cs.LG"
+      ],
+      "published": "2026-03-10T20:05:18+00:00",
+      "link": "https://arxiv.org/pdf/2603.10199v1",
+      "tags": [
+        "keyword:DRL",
+        "keyword:DRL JSP",
+        "query:DRL",
+        "query:DRL JSP"
+      ],
+      "llm_score": 9.0,
+      "llm_evidence_en": "Mathematical foundations of policy dual averaging in RL",
+      "llm_evidence_cn": "强化学习中策略对偶平均的数学基础",
+      "llm_evidence": "强化学习中策略对偶平均的数学基础",
+      "canonical_evidence": "强化学习中策略对偶平均的数学基础",
+      "llm_tldr_en": "Analyzes actor-accelerated policy dual averaging for RL in continuous action spaces.",
+      "llm_tldr_cn": "分析了连续动作空间中强化学习的角色加速策略对偶平均算法。",
+      "llm_tldr": "分析了连续动作空间中强化学习的角色加速策略对偶平均算法。",
+      "llm_tags": [
+        "query:drl"
+      ],
+      "matched_query_tag": "query:drl",
+      "matched_query_text": "core principles and mathematical foundations of deep reinforcement learning",
+      "matched_requirement_id": "req-9",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2603.11321v1",
+      "title": "Hindsight-Anchored Policy Optimization: Turning Failure into Feedback in Sparse Reward Settings",
+      "abstract": "Reinforcement Learning with Verifiable Rewards (RLVR) has emerged as a promising paradigm for post-training reasoning models. However, group-based methods such as Group Relative Policy Optimization (GRPO) face a critical dilemma in sparse-reward settings: pure Reinforcement Learning (RL) suffers from advantage collapse and high-variance gradient estimation, while mixed-policy optimization introduces persistent distributional bias. To resolve this dilemma, we introduce Hindsight-Anchored Policy Optimization (HAPO). HAPO employs the Synthetic Success Injection (SSI) operator, a hindsight mechanism that selectively anchors optimization to teacher demonstrations during failure. This injection is governed by a Thompson sampling-inspired gating mechanism, creating an autonomous, self-paced curriculum. Theoretically, we demonstrate that HAPO achieves \\textit{asymptotic consistency}: by naturally annealing the teacher signal as the policy improves, HAPO recovers the unbiased on-policy gradient. This ensures off-policy guidance acts as a temporary scaffold rather than a persistent ceiling, enabling the model to surpass the limitations of static teacher forcing.",
+      "authors": [
+        "Yuning Wu",
+        "Ke Wang",
+        "Devin Chen",
+        "Kai Wei"
+      ],
+      "primary_category": "cs.LG",
+      "categories": [
+        "cs.LG",
+        "cs.AI",
+        "cs.CL"
+      ],
+      "published": "2026-03-11T21:33:41+00:00",
+      "link": "https://arxiv.org/pdf/2603.11321v1",
+      "tags": [
+        "keyword:DRL",
+        "keyword:DRL JSP",
+        "query:DRL",
+        "query:DRL JSP"
+      ],
+      "llm_score": 9.0,
+      "llm_evidence_en": "improving training stability in sparse reward settings",
+      "llm_evidence_cn": "改善稀疏奖励设置下的训练稳定性",
+      "llm_evidence": "改善稀疏奖励设置下的训练稳定性",
+      "canonical_evidence": "改善稀疏奖励设置下的训练稳定性",
+      "llm_tldr_en": "Introduces HAPO to resolve advantage collapse and variance in sparse-reward reinforcement learning.",
+      "llm_tldr_cn": "引入 HAPO 机制，解决稀疏奖励强化学习中的优势坍塌和梯度方差问题。",
+      "llm_tldr": "引入 HAPO 机制，解决稀疏奖励强化学习中的优势坍塌和梯度方差问题。",
+      "llm_tags": [
+        "query:drl"
+      ],
+      "matched_query_tag": "query:drl",
+      "matched_query_text": "techniques for improving training stability and convergence in DRL",
+      "matched_requirement_id": "req-10",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2603.11470v1",
+      "title": "NFPO: Stabilized Policy Optimization of Normalizing Flow for Robotic Policy Learning",
+      "abstract": "Deep Reinforcement Learning (DRL) has experienced significant advancements in recent years and has been widely used in many fields. In DRL-based robotic policy learning, however, current de facto policy parameterization is still multivariate Gaussian (with diagonal covariance matrix), which lacks the ability to model multi-modal distribution. In this work, we explore the adoption of a modern network architecture, i.e. Normalizing Flow (NF) as the policy parameterization for its ability of multi-modal modeling, closed form of log probability and low computation and memory overhead. However, naively training NF in online Reinforcement Learning (RL) usually leads to training instability. We provide a detailed analysis for this phenomenon and successfully address it via simple but effective technique. With extensive experiments in multiple simulation environments, we show our method, NFPO could obtain robust and strong performance in widely used robotic learning tasks and successfully transfer into real-world robots.",
+      "authors": [
+        "Diyuan Shi",
+        "Yiqi Tang",
+        "Zifeng Zhuang",
+        "Donglin Wang"
+      ],
+      "primary_category": "cs.RO",
+      "categories": [
+        "cs.RO"
+      ],
+      "published": "2026-03-12T02:50:15+00:00",
+      "link": "https://arxiv.org/pdf/2603.11470v1",
+      "tags": [
+        "keyword:DRL",
+        "keyword:DRL JSP",
+        "query:DRL",
+        "query:DRL JSP"
+      ],
+      "llm_score": 9.0,
+      "llm_evidence_en": "stabilized policy optimization for DRL in robotics",
+      "llm_evidence_cn": "机器人深度强化学习中的稳定策略优化",
+      "llm_evidence": "机器人深度强化学习中的稳定策略优化",
+      "canonical_evidence": "机器人深度强化学习中的稳定策略优化",
+      "llm_tldr_en": "Analyzes and stabilizes Normalizing Flow based policy optimization for robotic reinforcement learning.",
+      "llm_tldr_cn": "分析并稳定了基于归一化流的策略优化方法，用于机器人强化学习。",
+      "llm_tldr": "分析并稳定了基于归一化流的策略优化方法，用于机器人强化学习。",
+      "llm_tags": [
+        "query:drl"
+      ],
+      "matched_query_tag": "query:drl",
+      "matched_query_text": "techniques for improving training stability and convergence in DRL",
+      "matched_requirement_id": "req-10",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2603.11600v1",
+      "title": "Hybrid Energy-Aware Reward Shaping: A Unified Lightweight Physics-Guided Methodology for Policy Optimization",
+      "abstract": "Deep reinforcement learning excels in continuous control but often requires extensive exploration, while physics-based models demand complete equations and suffer cubic complexity. This study proposes Hybrid Energy-Aware Reward Shaping (H-EARS), unifying potential-based reward shaping with energy-aware action regularization. H-EARS constrains action magnitude while balancing task-specific and energy-based potentials via functional decomposition, achieving linear complexity O(n) by capturing dominant energy components without full dynamics. We establish a theoretical foundation including: (1) functional independence for separate task/energy optimization; (2) energy-based convergence acceleration; (3) convergence guarantees under function approximation; and (4) approximate potential error bounds. Lyapunov stability connections are analyzed as heuristic guides. Experiments across baselines show improved convergence, stability, and energy efficiency. Vehicle simulations validate applicability in safety-critical domains under extreme conditions. Results confirm that integrating lightweight physics priors enhances model-free RL without complete system models, enabling transfer from lab research to industrial applications.",
+      "authors": [
+        "Qijun Liao",
+        "Jue Yang",
+        "Yiting Kang",
+        "Xinxin Zhao",
+        "Yong Zhang",
+        "Mingan Zhao"
+      ],
+      "primary_category": "cs.LG",
+      "categories": [
+        "cs.LG"
+      ],
+      "published": "2026-03-12T06:47:01+00:00",
+      "link": "https://arxiv.org/pdf/2603.11600v1",
+      "tags": [
+        "keyword:DRL",
+        "keyword:DRL JSP",
+        "query:DRL",
+        "query:DRL JSP"
+      ],
+      "llm_score": 9.0,
+      "llm_evidence_en": "reward shaping for policy optimization and convergence acceleration",
+      "llm_evidence_cn": "用于策略优化和加速收敛的奖励塑造",
+      "llm_evidence": "用于策略优化和加速收敛的奖励塑造",
+      "canonical_evidence": "用于策略优化和加速收敛的奖励塑造",
+      "llm_tldr_en": "Introduces a physics-guided reward shaping method to improve DRL exploration and convergence in continuous control.",
+      "llm_tldr_cn": "引入物理引导的奖励塑造方法，以改善连续控制中深度强化学习的探索和收敛。",
+      "llm_tldr": "引入物理引导的奖励塑造方法，以改善连续控制中深度强化学习的探索和收敛。",
+      "llm_tags": [
+        "query:drl"
+      ],
+      "matched_query_tag": "query:drl",
+      "matched_query_text": "techniques for improving training stability and convergence in DRL",
+      "matched_requirement_id": "req-10",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2603.12110v1",
+      "title": "Taming the Adversary: Stable Minimax Deep Deterministic Policy Gradient via Fractional Objectives",
+      "abstract": "Reinforcement learning (RL) has achieved remarkable success in a wide range of control and decision-making tasks. However, RL agents often exhibit unstable or degraded performance when deployed in environments subject to unexpected external disturbances and model uncertainties. Consequently, ensuring reliable performance under such conditions remains a critical challenge. In this paper, we propose minimax deep deterministic policy gradient (MMDDPG), a framework for learning disturbance-resilient policies in continuous control tasks. The training process is formulated as a minimax optimization problem between a user policy and an adversarial disturbance policy. In this problem, the user learns a robust policy that minimizes the objective function, while the adversary generates disturbances that maximize it. To stabilize this interaction, we introduce a fractional objective that balances task performance and disturbance magnitude. This objective prevents excessively aggressive disturbances and promotes robust learning. Experimental evaluations in MuJoCo environments demonstrate that the proposed MMDDPG achieves significantly improved robustness against both external force perturbations and model parameter variations.",
+      "authors": [
+        "Taeho Lee",
+        "Donghwan Lee"
+      ],
+      "primary_category": "cs.LG",
+      "categories": [
+        "cs.LG",
+        "cs.AI"
+      ],
+      "published": "2026-03-12T16:15:06+00:00",
+      "link": "https://arxiv.org/pdf/2603.12110v1",
+      "tags": [
+        "keyword:DRL",
+        "keyword:DRL JSP",
+        "query:DRL",
+        "query:DRL JSP"
+      ],
+      "llm_score": 9.0,
+      "llm_evidence_en": "Improving stability in DRL via minimax optimization",
+      "llm_evidence_cn": "通过极大极小优化提高深度强化学习的稳定性",
+      "llm_evidence": "通过极大极小优化提高深度强化学习的稳定性",
+      "canonical_evidence": "通过极大极小优化提高深度强化学习的稳定性",
+      "llm_tldr_en": "Proposes MMDDPG to improve DRL stability and resilience against external disturbances.",
+      "llm_tldr_cn": "提出MMDDPG框架，通过极大极小优化提高深度强化学习在扰动下的稳定性。",
+      "llm_tldr": "提出MMDDPG框架，通过极大极小优化提高深度强化学习在扰动下的稳定性。",
+      "llm_tags": [
+        "query:drl"
+      ],
+      "matched_query_tag": "query:drl",
+      "matched_query_text": "techniques for improving training stability and convergence in DRL",
+      "matched_requirement_id": "req-10",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2603.06810v1",
+      "title": "Multi-Agent Reinforcement Learning with Submodular Reward",
+      "abstract": "In this paper, we study cooperative multi-agent reinforcement learning (MARL) where the joint reward exhibits submodularity, which is a natural property capturing diminishing marginal returns when adding agents to a team. Unlike standard MARL with additive rewards, submodular rewards model realistic scenarios where agent contributions overlap (e.g., multi-drone surveillance, collaborative exploration). We provide the first formal framework for this setting and develop algorithms with provable guarantees on sample efficiency and regret bound. For known dynamics, our greedy policy optimization achieves a $1/2$-approximation with polynomial complexity in the number of agents $K$, overcoming the exponential curse of dimensionality inherent in joint policy optimization. For unknown dynamics, we propose a UCB-based learning algorithm achieving a $1/2$-regret of $O(H^2KS\\sqrt{AT})$ over $T$ episodes.",
+      "authors": [
+        "Wenjing Chen",
+        "Chengyuan Qian",
+        "Shuo Xing",
+        "Yi Zhou",
+        "Victoria Crawford"
+      ],
+      "primary_category": "cs.LG",
+      "categories": [
+        "cs.LG",
+        "cs.DS"
+      ],
+      "published": "2026-03-06T19:17:29+00:00",
+      "link": "https://arxiv.org/pdf/2603.06810v1",
+      "tags": [
+        "keyword:DRL",
+        "keyword:DRL JSP",
+        "query:DRL",
+        "query:DRL JSP"
+      ],
+      "llm_score": 8.0,
+      "llm_evidence_en": "Multi-agent reinforcement learning with submodular rewards",
+      "llm_evidence_cn": "具有子模奖励的多智能体强化学习",
+      "llm_evidence": "具有子模奖励的多智能体强化学习",
+      "canonical_evidence": "具有子模奖励的多智能体强化学习",
+      "llm_tldr_en": "Provides a formal framework and algorithms for cooperative MARL with submodular rewards and sample efficiency.",
+      "llm_tldr_cn": "为具有子模奖励的协作式多智能体强化学习提供了正式框架、算法及样本效率保证。",
+      "llm_tldr": "为具有子模奖励的协作式多智能体强化学习提供了正式框架、算法及样本效率保证。",
+      "llm_tags": [
+        "query:drl"
+      ],
+      "matched_query_tag": "query:drl",
+      "matched_query_text": "state of the art algorithms in deep reinforcement learning research",
+      "matched_requirement_id": "req-11",
+      "selection_source": "fresh_fetch"
+    }
+  ],
+  "quick_skim": [
+    {
+      "id": "2602.20730v1",
+      "title": "Rethink Efficiency Side of Neural Combinatorial Solver: An Offline and Self-Play Paradigm",
+      "abstract": "We propose ECO, a versatile learning paradigm that enables efficient offline self-play for Neural Combinatorial Optimization (NCO). ECO addresses key limitations in the field through: 1) Paradigm Shift: Moving beyond inefficient online paradigms, we introduce a two-phase offline paradigm consisting of supervised warm-up and iterative Direct Preference Optimization (DPO); 2) Architecture Shift: We deliberately design a Mamba-based architecture to further enhance the efficiency in the offline paradigm; and 3) Progressive Bootstrapping: To stabilize training, we employ a heuristic-based bootstrapping mechanism that ensures continuous policy improvement during training. Comparison results on TSP and CVRP highlight that ECO performs competitively with up-to-date baselines, with significant advantage on the efficiency side in terms of memory utilization and training throughput. We provide further in-depth analysis on the efficiency, throughput and memory usage of ECO. Ablation studies show rationale behind our designs.",
+      "authors": [
+        "Zhenxing Xu",
+        "Zeyuan Ma",
+        "Weidong Bao",
+        "Hui Yan",
+        "Yan Zheng",
+        "Ji Wang"
+      ],
+      "primary_category": "cs.LG",
+      "categories": [
+        "cs.LG"
+      ],
+      "published": "2026-02-24T09:53:24+00:00",
+      "link": "https://arxiv.org/pdf/2602.20730v1",
+      "tags": [
+        "query:DRL",
+        "query:DRL JSP"
+      ],
+      "llm_score": 8.0,
+      "llm_evidence_en": "Neural Combinatorial Optimization for TSP and CVRP using offline self-play",
+      "llm_evidence_cn": "使用离线自我博弈解决TSP和CVRP的神经组合优化",
+      "llm_evidence": "使用离线自我博弈解决TSP和CVRP的神经组合优化",
+      "canonical_evidence": "使用离线自我博弈解决TSP和CVRP的神经组合优化",
+      "llm_tldr_en": "Presents ECO, an efficient offline self-play paradigm for solving combinatorial optimization problems like TSP.",
+      "llm_tldr_cn": "提出 ECO 范式，通过离线自我博弈高效解决 TSP 等组合优化问题。",
+      "llm_tldr": "提出 ECO 范式，通过离线自我博弈高效解决 TSP 等组合优化问题。",
+      "llm_tags": [
+        "query:drl-jsp:composite"
+      ],
+      "matched_query_tag": "query:drl-jsp:composite",
+      "matched_query_text": "Papers central to 深度强化学习解决作业车间调度问题 (JSP), especially work that connects or combines: Deep Reinforcement Learning for scheduling; s; Deep reinforcement learning approaches for job shop scheduling problems; Solving flexible job shop scheduling using deep reinforcement learning; End to end deep reinforcement learning for production scheduling; Comparison of DRL algorithms for manufacturing scheduling; Dynamic job shop scheduling via deep reinforcement learning.",
+      "matched_requirement_id": "req-composite-drl-jsp",
+      "selection_source": "carryover_cache",
+      "paper_id": "2602.20730v1",
+      "quick_tier": "8plus"
+    },
+    {
+      "id": "2603.06813v1",
+      "title": "Reinforcing the World's Edge: A Continual Learning Problem in the Multi-Agent-World Boundary",
+      "abstract": "Reusable decision structure survives across episodes in reinforcement learning, but this depends on how the agent--world boundary is drawn. In stationary, finite-horizon MDPs, an invariant core: the (not-necessarily contiguous) subsequences of state--action pairs shared by all successful trajectories (optionally under a simple abstraction) can be constructed. Under mild goal-conditioned assumptions, it's existence can be proven and explained by how the core captures prototypes that transfer across episodes. When the same task is embedded in a decentralized Markov game and the peer agent is folded into the world, each peer-policy update induces a new MDP; the per-episode invariant core can shrink or vanish, even with small changes to the induced world dynamics, sometimes leaving only the individual task core or just nothing. This policy-induced non-stationarity can be quantified with a variation budget over the induced kernels and rewards, linking boundary drift to loss of invariants. The view that a continual RL problem arises from instability of the agent--world boundary (rather than exogenous task switches) in decentralized MARL suggests future work on preserving, predicting, or otherwise managing boundary drift.",
+      "authors": [
+        "Dane Malenfant"
+      ],
+      "primary_category": "cs.AI",
+      "categories": [
+        "cs.AI"
+      ],
+      "published": "2026-03-06T19:18:54+00:00",
+      "link": "https://arxiv.org/pdf/2603.06813v1",
+      "tags": [
+        "keyword:DRL",
+        "keyword:DRL JSP",
+        "query:DRL",
+        "query:DRL JSP"
+      ],
+      "llm_score": 7.0,
+      "llm_evidence_en": "mathematical foundations of decision structures in RL",
+      "llm_evidence_cn": "强化学习决策结构的数学基础",
+      "llm_evidence": "强化学习决策结构的数学基础",
+      "canonical_evidence": "强化学习决策结构的数学基础",
+      "llm_tldr_en": "Explores the existence of invariant decision structures in MDPs and multi-agent environments.",
+      "llm_tldr_cn": "探讨了马尔可夫决策过程和多智能体环境下不变决策结构的存在性。",
+      "llm_tldr": "探讨了马尔可夫决策过程和多智能体环境下不变决策结构的存在性。",
+      "llm_tags": [
+        "query:drl"
+      ],
+      "matched_query_tag": "query:drl",
+      "matched_query_text": "core principles and mathematical foundations of deep reinforcement learning",
+      "matched_requirement_id": "req-9",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "7"
+    },
+    {
+      "id": "2603.07197v1",
+      "title": "$\\textbf{Re}^{2}$: Unlocking LLM Reasoning via Reinforcement Learning with Re-solving",
+      "abstract": "Reinforcement learning with verifiable rewards (RLVR) has shown promise in enhancing the reasoning performance of large language models (LLMs) by increasing test-time compute. However, even after extensive RLVR training, such models still tend to generate unnecessary and low-quality steps in their chain-of-thought (CoT), leading to inefficient overthinking and lower answer quality. We show that when the initial direction or quality of the CoT is suboptimal, the model often fails to reach the correct answer, even after generating several times more tokens than when the initial CoT is well-initialized. To this end, we introduce Reinforcement Learning with Re-solving (Re$^2$), in which LLMs learn to flexibly abandon unproductive reasoning paths and restart the solution process when necessary, rather than always committing to a final answer. Re$^2$ applies pure reinforcement learning without any preliminary supervised fine-tuning, successfully amplifying the rare redo behavior in vanilla models from only 0.5% to over 30%. This leads to substantial performance gains over standard RLVR under the same training compute budget, and also demonstrates notable improvements in test-time performance as the number of samples increases.",
+      "authors": [
+        "Pinzheng Wang",
+        "Shuli Xu",
+        "Juntao Li",
+        "Yu Luo",
+        "Dong Li",
+        "Jianye Hao",
+        "Min Zhang"
+      ],
+      "primary_category": "cs.AI",
+      "categories": [
+        "cs.AI"
+      ],
+      "published": "2026-03-07T13:17:46+00:00",
+      "link": "https://arxiv.org/pdf/2603.07197v1",
+      "tags": [
+        "keyword:DRL",
+        "keyword:DRL JSP",
+        "query:DRL",
+        "query:DRL JSP"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "Reinforcement learning for enhancing LLM reasoning performance",
+      "llm_evidence_cn": "用于增强大语言模型推理性能的强化学习",
+      "llm_evidence": "用于增强大语言模型推理性能的强化学习",
+      "canonical_evidence": "用于增强大语言模型推理性能的强化学习",
+      "llm_tldr_en": "Introduces Re2 to improve LLM reasoning by allowing models to abandon unproductive reasoning paths during RL.",
+      "llm_tldr_cn": "引入Re2框架，通过强化学习使大模型能够灵活放弃无效推理路径，提升推理效率和质量。",
+      "llm_tldr": "引入Re2框架，通过强化学习使大模型能够灵活放弃无效推理路径，提升推理效率和质量。",
+      "llm_tags": [
+        "query:drl"
+      ],
+      "matched_query_tag": "query:drl",
+      "matched_query_text": "state of the art algorithms in deep reinforcement learning research",
+      "matched_requirement_id": "req-11",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    },
+    {
+      "id": "2602.21680v1",
+      "title": "Hierarchical Lead Critic based Multi-Agent Reinforcement Learning",
+      "abstract": "Cooperative Multi-Agent Reinforcement Learning (MARL) solves complex tasks that require coordination from multiple agents, but is often limited to either local (independent learning) or global (centralized learning) perspectives. In this paper, we introduce a novel sequential training scheme and MARL architecture, which learns from multiple perspectives on different hierarchy levels. We propose the Hierarchical Lead Critic (HLC) - inspired by natural emerging distributions in team structures, where following high-level objectives combines with low-level execution. HLC demonstrates that introducing multiple hierarchies, leveraging local and global perspectives, can lead to improved performance with high sample efficiency and robust policies. Experimental results conducted on cooperative, non-communicative, and partially observable MARL benchmarks demonstrate that HLC outperforms single hierarchy baselines and scales robustly with increasing amounts of agents and difficulty.",
+      "authors": [
+        "David Eckel",
+        "Henri Meeß"
+      ],
+      "primary_category": "cs.LG",
+      "categories": [
+        "cs.LG",
+        "cs.MA"
+      ],
+      "published": "2026-02-25T08:33:39+00:00",
+      "link": "https://arxiv.org/pdf/2602.21680v1",
+      "tags": [
+        "query:DRL",
+        "query:DRL JSP"
+      ],
+      "llm_score": 8.0,
+      "llm_evidence_en": "novel MARL architecture",
+      "llm_evidence_cn": "新型多智能体强化学习架构",
+      "llm_evidence": "新型多智能体强化学习架构",
+      "canonical_evidence": "新型多智能体强化学习架构",
+      "llm_tldr_en": "Introduces a hierarchical lead critic architecture for improved multi-agent reinforcement learning.",
+      "llm_tldr_cn": "引入一种分层引导评论家架构，以改进多智能体强化学习的性能。",
+      "llm_tldr": "引入一种分层引导评论家架构，以改进多智能体强化学习的性能。",
+      "llm_tags": [
+        "query:drl"
+      ],
+      "matched_query_tag": "query:drl",
+      "matched_query_text": "state of the art algorithms in deep reinforcement learning research",
+      "matched_requirement_id": "req-11",
+      "selection_source": "carryover_cache",
+      "paper_id": "2602.21680v1",
+      "quick_tier": "8plus"
+    },
+    {
+      "id": "2603.06831v1",
+      "title": "Learning-Based Robust Control: Unifying Exploration and Distributional Robustness for Reliable Robotics via Free Energy",
+      "abstract": "A key challenge towards reliable robotic control is devising computational models that can both learn policies and guarantee robustness when deployed in the field. Inspired by the free energy principle in computational neuroscience, to address these challenges, we propose a model for policy computation that jointly learns environment dynamics and rewards, while ensuring robustness to epistemic uncertainties. Expounding a distributionally robust free energy principle, we propose a modification to the maximum diffusion learning framework. After explicitly characterizing robustness of our policies to epistemic uncertainties in both environment and reward, we validate their effectiveness on continuous-control benchmarks, via both simulations and real-world experiments involving manipulation with a Franka Research~3 arm. Across simulation and zero-shot deployment, our approach narrows the sim-to-real gap, and enables repeatable tabletop manipulation without task-specific fine-tuning.",
+      "authors": [
+        "Hozefa Jesawada",
+        "Giovanni Russo",
+        "Abdalla Swikir",
+        "Fares Abu-Dakka"
+      ],
+      "primary_category": "cs.RO",
+      "categories": [
+        "cs.RO",
+        "math.OC"
+      ],
+      "published": "2026-03-06T19:47:17+00:00",
+      "link": "https://arxiv.org/pdf/2603.06831v1",
+      "tags": [
+        "keyword:DRL",
+        "keyword:DRL JSP",
+        "query:DRL",
+        "query:DRL JSP"
+      ],
+      "llm_score": 7.0,
+      "llm_evidence_en": "Unifying exploration and distributional robustness in RL",
+      "llm_evidence_cn": "统一强化学习中的探索与分布鲁棒性",
+      "llm_evidence": "统一强化学习中的探索与分布鲁棒性",
+      "canonical_evidence": "统一强化学习中的探索与分布鲁棒性",
+      "llm_tldr_en": "Proposes a free energy-based model to ensure robustness to uncertainties in reinforcement learning for robotics.",
+      "llm_tldr_cn": "提出一种基于自由能原理的模型，确保机器人强化学习在不确定性下的鲁棒性。",
+      "llm_tldr": "提出一种基于自由能原理的模型，确保机器人强化学习在不确定性下的鲁棒性。",
+      "llm_tags": [
+        "query:drl:composite"
+      ],
+      "matched_query_tag": "query:drl:composite",
+      "matched_query_text": "Papers central to 深度强化学习, especially work that connects or combines: fundamental concepts and architectures of deep reinforcement learning; core principles and mathematical foundations of deep reinforcement learning; techniques for improving training stability and convergence in DRL; state of the art algorithms in deep reinforcement learning research.",
+      "matched_requirement_id": "req-composite-drl",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "7"
+    },
+    {
+      "id": "2603.07416v1",
+      "title": "DualSpec: Accelerating Deep Research Agents via Dual-Process Action Speculation",
+      "abstract": "Large language model-based deep research agents have been increasingly popular for addressing long-horizon information-seeking tasks, but they often incur high end-to-end latency due to extensive reasoning and frequent tool use. Speculation frameworks aim to reduce latency by overlapping action execution with reasoning; however, existing approaches typically rely on uniform speculation strategies and strict action matching, which limits inference speedups and robustness. In this work, we revisit the speculate-verify paradigm for deep research agents through the lens of action heterogeneity. We show that \\textit{Search} and \\textit{Visit} actions exhibit fundamentally different reasoning and model capacity requirements: entropy-based analysis reveals that Search decisions have higher uncertainty and benefit significantly from explicit reasoning, whereas Visit decisions have lower entropy and depend primarily on model capacity. Motivated by this dual-process characteristic, we propose DualSpec, a heterogeneous speculation framework equipped with a lightweight, confidence-based semantic verifier. Experiments across multiple models and benchmarks demonstrate that DualSpec achieves up to 3.28$\\times$ end-to-end speedup while maintaining accuracy comparable to fully reasoning agents.",
+      "authors": [
+        "Shuzhang Zhong",
+        "Baotong Lu",
+        "Qi Chen",
+        "Chuanjie Liu",
+        "Fan Yang",
+        "Meng Li"
+      ],
+      "primary_category": "cs.LG",
+      "categories": [
+        "cs.LG"
+      ],
+      "published": "2026-03-08T02:03:58+00:00",
+      "link": "https://arxiv.org/pdf/2603.07416v1",
+      "tags": [
+        "keyword:DRL",
+        "keyword:DRL JSP",
+        "query:DRL",
+        "query:DRL JSP"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "accelerating deep research agents via action speculation",
+      "llm_evidence_cn": "通过动作推测加速深度研究智能体",
+      "llm_evidence": "通过动作推测加速深度研究智能体",
+      "canonical_evidence": "通过动作推测加速深度研究智能体",
+      "llm_tldr_en": "Introduces DualSpec to reduce latency in LLM-based research agents through dual-process action speculation.",
+      "llm_tldr_cn": "引入DualSpec，通过双过程动作推测降低基于大模型的科研智能体的延迟。",
+      "llm_tldr": "引入DualSpec，通过双过程动作推测降低基于大模型的科研智能体的延迟。",
+      "llm_tags": [
+        "query:drl"
+      ],
+      "matched_query_tag": "query:drl",
+      "matched_query_text": "state of the art algorithms in deep reinforcement learning research",
+      "matched_requirement_id": "req-11",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    },
+    {
+      "id": "2602.22774v1",
+      "title": "Transformer Actor-Critic for Efficient Freshness-Aware Resource Allocation",
+      "abstract": "Emerging applications such as autonomous driving and industrial automation demand ultra-reliable and low-latency communication (URLLC), where maintaining fresh and timely information is critical. A key performance metric in such systems is the age of information (AoI). This paper addresses AoI minimization in a multi-user uplink wireless network using non-orthogonal multiple access (NOMA), where users offload tasks to a base station. The system must handle user heterogeneity in task sizes, AoI thresholds, and penalty sensitivities, while adhering to NOMA constraints on user scheduling. We propose a deep reinforcement learning (DRL) framework based on proximal policy optimization (PPO), enhanced with a Transformer encoder. The attention mechanism allows the agent to focus on critical user states and capture inter-user dependencies, improving policy performance and scalability. Extensive simulations show that our method reduces average AoI compared to baselines. We also analyze the evolution of attention weights during training and observe that the model progressively learns to prioritize high-importance users. Attention maps reveal meaningful structure: early-stage policies exhibit uniform attention, while later stages show focused patterns aligned with user priority and NOMA constraints. These results highlight the promise of attention-driven DRL for intelligent, priority-aware resource allocation in next-generation wireless systems.",
+      "authors": [
+        "Maryam Ansarifard",
+        "Mohit K. Sharma",
+        "Kishor C. Joshi",
+        "George Exarchakos"
+      ],
+      "primary_category": "eess.SY",
+      "categories": [
+        "eess.SY"
+      ],
+      "published": "2026-02-26T09:10:43+00:00",
+      "link": "https://arxiv.org/pdf/2602.22774v1",
+      "tags": [
+        "query:DRL",
+        "query:DRL JSP"
+      ],
+      "llm_score": 8.0,
+      "llm_evidence_en": "DRL for resource allocation and user scheduling in wireless networks",
+      "llm_evidence_cn": "用于无线网络资源分配和用户调度的深度强化学习",
+      "llm_evidence": "用于无线网络资源分配和用户调度的深度强化学习",
+      "canonical_evidence": "用于无线网络资源分配和用户调度的深度强化学习",
+      "llm_tldr_en": "Uses a Transformer-enhanced PPO framework for efficient resource allocation and scheduling in URLLC networks.",
+      "llm_tldr_cn": "采用 Transformer 增强的 PPO 框架，实现 URLLC 网络中的高效资源分配与调度。",
+      "llm_tldr": "采用 Transformer 增强的 PPO 框架，实现 URLLC 网络中的高效资源分配与调度。",
+      "llm_tags": [
+        "query:drl-jsp"
+      ],
+      "matched_query_tag": "query:drl-jsp",
+      "matched_query_text": "Deep Reinforcement Learning for scheduling",
+      "matched_requirement_id": "req-1",
+      "selection_source": "carryover_cache",
+      "paper_id": "2602.22774v1",
+      "quick_tier": "8plus"
+    },
+    {
+      "id": "2603.06859v1",
+      "title": "Contextual Counterfactual Credit Assignment for Multi-Agent Reinforcement Learning in LLM Collaboration",
+      "abstract": "Cooperative multi-agent reinforcement learning (MARL) systems powered by large language models (LLMs) are frequently optimized via sparse terminal-only feedback. This shared signal entangles upstream decisions, obstructing accurate decision-level credit assignment. To address this trajectory-level diffusion, we introduce Contextual Counterfactual Credit Assignment (\\textbf{\\texttt{C3}}). Instead of distributing rewards across an entire episode, \\textbf{\\texttt{C3}} isolates the causal impact of individual messages by freezing the exact transcript-derived context, evaluating context-matched alternatives via fixed-continuation replay, and applying a leave-one-out (LOO) baseline. This localized intervention extracts unbiased, low-variance marginal advantages for standard policy-gradient optimization. Evaluated across five mathematical and coding benchmarks under matched budgets, \\textbf{\\texttt{C3}} improves terminal performance over established baselines. Mechanistic diagnostics further show that these gains are accompanied by higher credit fidelity, lower contextual variance, and stronger inter-agent causal dependence. Our code is available at https://github.com/EIT-EAST-Lab/C3.",
+      "authors": [
+        "Yanjun Chen",
+        "Yirong Sun",
+        "Hanlin Wang",
+        "Xinming Zhang",
+        "Xiaoyu Shen",
+        "Wenjie Li",
+        "Wei Zhang"
+      ],
+      "primary_category": "cs.LG",
+      "categories": [
+        "cs.LG",
+        "cs.AI"
+      ],
+      "published": "2026-03-06T20:25:11+00:00",
+      "link": "https://arxiv.org/pdf/2603.06859v1",
+      "tags": [
+        "keyword:DRL",
+        "keyword:DRL JSP",
+        "query:DRL",
+        "query:DRL JSP"
+      ],
+      "llm_score": 7.0,
+      "llm_evidence_en": "Multi-agent reinforcement learning for LLM collaboration",
+      "llm_evidence_cn": "用于大语言模型协作的多智能体强化学习",
+      "llm_evidence": "用于大语言模型协作的多智能体强化学习",
+      "canonical_evidence": "用于大语言模型协作的多智能体强化学习",
+      "llm_tldr_en": "Introduces a counterfactual credit assignment method for multi-agent RL in LLM systems.",
+      "llm_tldr_cn": "为大语言模型系统中的多智能体强化学习引入了一种反事实信用分配方法。",
+      "llm_tldr": "为大语言模型系统中的多智能体强化学习引入了一种反事实信用分配方法。",
+      "llm_tags": [
+        "query:drl"
+      ],
+      "matched_query_tag": "query:drl",
+      "matched_query_text": "state of the art algorithms in deep reinforcement learning research",
+      "matched_requirement_id": "req-11",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "7"
+    },
+    {
+      "id": "2603.07568v1",
+      "title": "Constraints Matrix Diffusion based Generative Neural Solver for Vehicle Routing Problems",
+      "abstract": "Over the past decade, neural network solvers powered by generative artificial intelligence have garnered significant attention in the domain of vehicle routing problems (VRPs), owing to their exceptional computational efficiency and superior reasoning capabilities. In particular, autoregressive solvers integrated with reinforcement learning have emerged as a prominent trend. However, much of the existing work emphasizes large-scale generalization of neural approaches while neglecting the limited robustness of attention-based methods across heterogeneous distributions of problem parameters. Their improvements over heuristic search remain largely restricted to hand-curated, fixed-distribution benchmarks. Furthermore, these architectures tend to degrade significantly when node representations are highly similar or when tasks involve long decision horizons. To address the aforementioned limitations, we propose a novel fusion neural network framework that employs a discrete noise graph diffusion model to learn the underlying constraints of vehicle routing problems and generate a constraint assignment matrix. This matrix is subsequently integrated adaptively into the feature representation learning and decision process of the autoregressive solver, serving as a graph structure mask that facilitates the formation of solutions characterized by both global vision and local feature integration. To the best of our knowledge, this work represents the first comprehensive experimental investigation of neural network model solvers across a 378-combinatorial space spanning four distinct dimensions within the CVRPlib public dataset. Extensive experimental evaluations demonstrate that our proposed fusion model effectively captures and leverages problem constraints, achieving state-of-the-art performance across multiple benchmark datasets.",
+      "authors": [
+        "Zhenwei Wang",
+        "Tiehua Zhang",
+        "Ning Xue",
+        "Ender Ozcan",
+        "Ling Wang",
+        "Ruibin Bai"
+      ],
+      "primary_category": "cs.LG",
+      "categories": [
+        "cs.LG"
+      ],
+      "published": "2026-03-08T10:03:34+00:00",
+      "link": "https://arxiv.org/pdf/2603.07568v1",
+      "tags": [
+        "keyword:DRL",
+        "keyword:DRL JSP",
+        "query:DRL",
+        "query:DRL JSP"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "autoregressive solvers integrated with reinforcement learning for VRP",
+      "llm_evidence_cn": "结合强化学习的自回归求解器用于车辆路径问题",
+      "llm_evidence": "结合强化学习的自回归求解器用于车辆路径问题",
+      "canonical_evidence": "结合强化学习的自回归求解器用于车辆路径问题",
+      "llm_tldr_en": "Proposes a diffusion-based generative neural solver to improve the robustness of RL-based vehicle routing solvers.",
+      "llm_tldr_cn": "提出一种基于扩散的生成式神经求解器，以提高基于强化学习的车辆路径求解器的鲁棒性。",
+      "llm_tldr": "提出一种基于扩散的生成式神经求解器，以提高基于强化学习的车辆路径求解器的鲁棒性。",
+      "llm_tags": [
+        "query:drl"
+      ],
+      "matched_query_tag": "query:drl",
+      "matched_query_text": "state of the art algorithms in deep reinforcement learning research",
+      "matched_requirement_id": "req-11",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    },
+    {
+      "id": "2602.23242v1",
+      "title": "A Model-Free Universal AI",
+      "abstract": "In general reinforcement learning, all established optimal agents, including AIXI, are model-based, explicitly maintaining and using environment models. This paper introduces Universal AI with Q-Induction (AIQI), the first model-free agent proven to be asymptotically $\\varepsilon$-optimal in general RL. AIQI performs universal induction over distributional action-value functions, instead of policies or environments like previous works. Under a grain of truth condition, we prove that AIQI is strong asymptotically $\\varepsilon$-optimal and asymptotically $\\varepsilon$-Bayes-optimal. Our results significantly expand the diversity of known universal agents.",
+      "authors": [
+        "Yegon Kim",
+        "Juho Lee"
+      ],
+      "primary_category": "cs.AI",
+      "categories": [
+        "cs.AI"
+      ],
+      "published": "2026-02-26T17:21:16+00:00",
+      "link": "https://arxiv.org/pdf/2602.23242v1",
+      "tags": [
+        "query:DRL"
+      ],
+      "llm_score": 8.0,
+      "llm_evidence_en": "Mathematical foundations of model-free universal AI",
+      "llm_evidence_cn": "无模型通用人工智能的数学基础",
+      "llm_evidence": "无模型通用人工智能的数学基础",
+      "canonical_evidence": "无模型通用人工智能的数学基础",
+      "llm_tldr_en": "Introduces AIQI, the first model-free agent proven to be asymptotically optimal in general RL.",
+      "llm_tldr_cn": "引入 AIQI，这是首个在通用强化学习中被证明具有渐近最优性的无模型智能体。",
+      "llm_tldr": "引入 AIQI，这是首个在通用强化学习中被证明具有渐近最优性的无模型智能体。",
+      "llm_tags": [
+        "query:drl"
+      ],
+      "matched_query_tag": "query:drl",
+      "matched_query_text": "core principles and mathematical foundations of deep reinforcement learning",
+      "matched_requirement_id": "req-9",
+      "selection_source": "carryover_cache",
+      "paper_id": "2602.23242v1",
+      "quick_tier": "8plus"
+    },
+    {
+      "id": "2603.06958v1",
+      "title": "Chart-RL: Generalized Chart Comprehension via Reinforcement Learning with Verifiable Rewards",
+      "abstract": "Accurate chart comprehension represents a critical challenge in advancing multimodal learning systems, as extensive information is compressed into structured visual representations. However, existing vision-language models (VLMs) frequently struggle to generalize on unseen charts because it requires abstract, symbolic, and quantitative reasoning over structured visual representations. In this work, we introduce Chart-RL, an effective reinforcement learning (RL) method that employs mathematically verifiable rewards to enhance chart question answering in VLMs. Our experiments demonstrate that Chart-RL consistently outperforms supervised fine-tuning (SFT) across different chart understanding benchmarks, achieving relative improvements of 16.7% on MutlChartQA, and 11.5% on ChartInsights. We conduct robustness analysis, where Chart-RL achieves enhanced performance in 18 of 25 perturbed chart categories, demonstrating strong consistency and reasoning capability across visual variations. Furthermore, we demonstrate that task difficulty and inherent complexity are more critical than data quantity in RL training. For instance, Chart-RL trained on merely 10 complex chart-query examples significantly outperforms models trained on over 6,000 simple examples. Additionally, training on challenging reasoning tasks not only improves in-domain generalization relative to simpler tasks, but also facilitate strong transfer to out-of-domain visual mathematical problems.",
+      "authors": [
+        "Xin Zhang",
+        "Xingyu Li",
+        "Rongguang Wang",
+        "Ruizhong Miao",
+        "Zheng Wang",
+        "Dan Roth",
+        "Chenyang Li"
+      ],
+      "primary_category": "cs.LG",
+      "categories": [
+        "cs.LG",
+        "cs.CL"
+      ],
+      "published": "2026-03-07T00:26:52+00:00",
+      "link": "https://arxiv.org/pdf/2603.06958v1",
+      "tags": [
+        "keyword:DRL",
+        "keyword:DRL JSP",
+        "query:DRL",
+        "query:DRL JSP"
+      ],
+      "llm_score": 7.0,
+      "llm_evidence_en": "Reinforcement learning with verifiable rewards for multimodal learning",
+      "llm_evidence_cn": "具有可验证奖励的强化学习用于多模态学习",
+      "llm_evidence": "具有可验证奖励的强化学习用于多模态学习",
+      "canonical_evidence": "具有可验证奖励的强化学习用于多模态学习",
+      "llm_tldr_en": "Introduces Chart-RL, using RL with verifiable rewards to improve chart comprehension in vision-language models.",
+      "llm_tldr_cn": "介绍了Chart-RL，利用具有可验证奖励的强化学习来提高视觉语言模型的图表理解能力。",
+      "llm_tldr": "介绍了Chart-RL，利用具有可验证奖励的强化学习来提高视觉语言模型的图表理解能力。",
+      "llm_tags": [
+        "query:drl"
+      ],
+      "matched_query_tag": "query:drl",
+      "matched_query_text": "state of the art algorithms in deep reinforcement learning research",
+      "matched_requirement_id": "req-11",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "7"
+    },
+    {
+      "id": "2603.07642v1",
+      "title": "Helix: Evolutionary Reinforcement Learning for Open-Ended Scientific Problem Solving",
+      "abstract": "Large language models (LLMs) with reasoning abilities have demonstrated growing promise for tackling complex scientific problems. Yet such tasks are inherently domain-specific, unbounded and open-ended, demanding exploration across vast and flexible solution spaces. Existing approaches, whether purely learning-based or reliant on carefully designed workflows, often suffer from limited exploration efficiency and poor generalization. To overcome these challenges, we present HELIX -- a Hierarchical Evolutionary reinforcement Learning framework with In-context eXperiences. HELIX introduces two key novelties: (i) a diverse yet high-quality pool of candidate solutions that broadens exploration through in-context learning, and (ii) reinforcement learning for iterative policy refinement that progressively elevates solution quality. This synergy enables the discovery of more advanced solutions. On the circle packing task, HELIX achieves state-of-the-art result with a sum of radii of 2.63598308 using only a 14B model. Across standard machine learning benchmarks, HELIX further surpasses GPT-4o with a carefully engineered pipeline, delivering an average F1 improvement of 5.95 points on the Adult and Bank Marketing datasets.",
+      "authors": [
+        "Chang Su",
+        "Zhongkai Hao",
+        "Zhizhou Zhang",
+        "Zeyu Xia",
+        "Youjia Wu",
+        "Hang Su",
+        "Jun Zhu"
+      ],
+      "primary_category": "cs.LG",
+      "categories": [
+        "cs.LG"
+      ],
+      "published": "2026-03-08T14:08:52+00:00",
+      "link": "https://arxiv.org/pdf/2603.07642v1",
+      "tags": [
+        "keyword:DRL",
+        "keyword:DRL JSP",
+        "query:DRL",
+        "query:DRL JSP"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "evolutionary RL for complex problem solving",
+      "llm_evidence_cn": "用于复杂问题解决的进化强化学习",
+      "llm_evidence": "用于复杂问题解决的进化强化学习",
+      "canonical_evidence": "用于复杂问题解决的进化强化学习",
+      "llm_tldr_en": "Develops HELIX, a hierarchical evolutionary RL framework for open-ended scientific problem solving.",
+      "llm_tldr_cn": "开发了 HELIX，一种分层进化强化学习框架，用于解决开放式科学问题。",
+      "llm_tldr": "开发了 HELIX，一种分层进化强化学习框架，用于解决开放式科学问题。",
+      "llm_tags": [
+        "query:drl"
+      ],
+      "matched_query_tag": "query:drl",
+      "matched_query_text": "state of the art algorithms in deep reinforcement learning research",
+      "matched_requirement_id": "req-11",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    }
+  ]
+}
